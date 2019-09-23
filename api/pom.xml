@@ -12,7 +12,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>edu.utexas.tacc</groupId>
+            <groupId>edu.utexas.tacc.tapis.files</groupId>
             <artifactId>tapis-files-lib</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>compile</scope>
@@ -38,6 +38,17 @@
             <version>${jersey-container-servlet.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.glassfish.jersey.core</groupId>
+            <artifactId>jersey-common</artifactId>
+            <version>${jersey-container-servlet.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.jersey.inject</groupId>
+            <artifactId>jersey-hk2</artifactId>
+            <version>${jersey-container-servlet.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.glassfish.jersey.containers</groupId>
             <artifactId>jersey-container-grizzly2-http</artifactId>
             <version>${jersey-container-servlet.version}</version>
@@ -53,6 +64,7 @@
             <version>${jersey-container-servlet.version}</version>
             <scope>test</scope>
         </dependency>
+
 
     </dependencies>
 

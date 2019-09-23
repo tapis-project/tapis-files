@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.api;
 
-//import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.files.api.filters.TapisJWTFilter;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import org.glassfish.grizzly.http.server.HttpServer;
