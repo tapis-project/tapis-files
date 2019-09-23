@@ -1,4 +1,5 @@
 FROM maven:3-jdk-12
+EXPOSE 8080
 WORKDIR /api
 RUN ls -la
 RUN pwd

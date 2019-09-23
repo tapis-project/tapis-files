@@ -47,10 +47,10 @@ public class TapisJWTFilter implements ContainerRequestFilter {
     }
 
     // Strip out the leading Bearer part of the Authorization header, leaving us with just the string JWT
-    authHeader.replace("Bearer ", "");
+    authHeader = authHeader.replace("Bearer ", "");
 
     try {
-      jwt = Jwts.parser().parse(authHeader);
+      jwt = decodeJWT(authHeader);
       Claims claims = (Claims) jwt.getBody();
       String username = (String) claims.get("username");
       String tenantId = (String) claims.get("tenantId");
@@ -60,9 +60,11 @@ public class TapisJWTFilter implements ContainerRequestFilter {
     } catch (Exception e) {
       requestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
     }
+  }
 
-
-
-
+  private Jwt decodeJWT(String encodedJWT) {
+    String tmp = encodedJWT.substring(0, encodedJWT.lastIndexOf(".")+1);
+    Jwt j = Jwts.parser().parse(tmp);
+    return j;
   }
 }

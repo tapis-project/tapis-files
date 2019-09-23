@@ -9,22 +9,33 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataParam;
+
+
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import java.io.InputStream;
 
+
+@Path("/systems")
 public class SystemsApiResource {
+
+  private final String EXAMPLE_SYSTEM_ID = "system123";
+  private final String EXMAPLE_PATH = "/folderA/folderB/";
 
   @GET
   @Path("/{systemId}/{path}")
   @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "file operations" })
   @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "OK") })
+      @ApiResponse(responseCode = "200", description = "OK")
+  })
   public Response filesGetContents(
-      @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
-      @Parameter(description = "File path",required=true) @PathParam("path") String path,
-      @Parameter(description = "Range of bytes to send" )@HeaderParam("Range") String range,
+      @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
+      @Parameter(description = "File path",required=true, example = EXMAPLE_PATH) @PathParam("path") String path,
+      @Parameter(description = "Range of bytes to send" ) @HeaderParam("Range") String range,
       @Context SecurityContext securityContext) throws NotFoundException {
     return Response.ok().build();
   }
@@ -38,13 +49,48 @@ public class SystemsApiResource {
       @ApiResponse(
           responseCode = "200",
           description = "A list of files",
-          content = @Content(array = @ArraySchema(schema = @Schema(implementation = FileInfo.class))))
+          content = @Content(array = @ArraySchema(schema = @Schema(implementation = FileInfo.class)))
+      )
   })
   public Response filesList(
-      @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
-      @Parameter(description = "path relative to root of bucket") @QueryParam("path") String path,
+      @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
+      @Parameter(description = "path relative to root of bucket", example = EXMAPLE_PATH) @QueryParam("path") String path,
       @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
       @Context SecurityContext securityContext) throws NotFoundException {
+    return Response.ok().build();
+  }
+
+  @POST
+  @Path("/{systemId}/{path}")
+  @Consumes({ "multipart/form-data" })
+  @Operation(summary = "Upload a file", description = "The file will be added at the {path} independent of the original file name", tags={ "file operations" })
+  @ApiResponses(value = {
+      @ApiResponse(
+          responseCode = "200",
+          description = "OK")
+  })
+  public Response filesPostForm(
+      @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
+      @Parameter(description = "System ID",required=true) @PathParam("path") String path,
+      @FormDataParam("fileName") InputStream fileNameInputStream,
+      @FormDataParam("fileName") FormDataContentDisposition fileNameDetail,
+      @Parameter(description = "String dump of a valid JSON object to be associated with the file" ) @HeaderParam("x-meta") String xMeta,
+      @Context SecurityContext securityContext) throws NotFoundException {
+    return Response.ok().build();
+  }
+
+  @PUT
+  @Path("/{systemId}/{path}")
+  @Operation(summary = "Rename a file or folder", description = "Move/Rename a file in {systemID} at path {path}.", tags={ "file operations" })
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "OK")
+  })
+  public Response filesRenameObject(
+      @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
+      @Parameter(description = "File path",required=true) @PathParam("path") String path,
+      @Parameter(description = "",required=true) @QueryParam("newName") String newName,
+      @Context SecurityContext securityContext)
+      throws NotFoundException {
     return Response.ok().build();
   }
 }
