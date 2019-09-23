@@ -4,14 +4,19 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>edu.utexas.tacc</groupId>
+    <groupId>edu.utexas.tacc.tapis.files</groupId>
     <artifactId>tapis-files</artifactId>
     <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
     <properties>
-        <guava.version>28.0-jre</guava.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <guava.version>28.1-jre</guava.version>
         <hikariCP.version>3.3.1</hikariCP.version>
         <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
+        <maven-surefire-plugin.version>3.0.0-M3</maven-surefire-plugin.version>
+        <maven-failsafe-plugin.version>3.0.0-M3</maven-failsafe-plugin.version>
+        <maven-buildnumber-plugin.version>1.4</maven-buildnumber-plugin.version>
+        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
         <swagger-maven-plugin.version>2.0.9</swagger-maven-plugin.version>
         <postgresql.version>42.2.6</postgresql.version>
         <rabbitmq.version>3.6.11</rabbitmq.version>
@@ -20,7 +25,7 @@
         <swagger-jaxrs2.version>2.0.9</swagger-jaxrs2.version>
         <jjwt.version>0.9.1</jjwt.version>
         <commons-lang3.version>3.9</commons-lang3.version>
-        <slf4j-api.version>1.7.25</slf4j-api.version>
+        <slf4j-api.version>1.7.28</slf4j-api.version>
         <jackson-databind.version>2.9.4</jackson-databind.version>
         <jcraft.version>0.1.54</jcraft.version>
         <software.amazon.awssdk.version>2.9.3</software.amazon.awssdk.version>
@@ -34,6 +39,7 @@
                     <source>12</source>
                     <target>12</target>
                 </configuration>
+                <version>${maven-compiler-plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -50,6 +56,7 @@
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
+                                        <exclude>module-info.class</exclude>
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
@@ -88,16 +95,36 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>${maven-buildnumber-plugin.version}</version>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <groups>unit</groups>
+                </configuration>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven-failsafe-plugin.version}</version>
+                <configuration>
+                    <groups>integration</groups>
+                    <includes>
+                        <include>**/*Test*.java</include>
+                    </includes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
         </plugins>
@@ -117,8 +144,13 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j-api.version}</version>
-            <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>${slf4j-api.version}</version>
+        </dependency>
+
     </dependencies>
 
     <modules>

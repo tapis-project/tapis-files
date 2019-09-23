@@ -7,7 +7,7 @@ import java.time.Instant;
 
 public class RemoteFileInfo {
 
-    @JsonFormat(shape = JsonFormat.Shape.NUMBER, timezone = "UTC")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, timezone = "UTC")
     private Instant lastModified;
 
     private String name;
