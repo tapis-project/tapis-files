@@ -8,17 +8,14 @@ import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import java.util.Map;
-import java.util.List;
-
 
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.*;
-import javax.validation.constraints.*;
+
 import edu.utexas.tacc.tapis.files.lib.dao.sharing.SharedFileObject;
-import edu.utexas.tacc.tapis.files.api.resources.models.NewShareFile;
+import edu.utexas.tacc.tapis.files.api.models.NewShareFile;
 
 @Path("/share")
 public class ShareApiResource  {

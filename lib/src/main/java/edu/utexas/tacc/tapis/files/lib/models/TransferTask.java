@@ -1,10 +1,8 @@
-package edu.utexas.tacc.tapis.files.lib.dao.transfers;
+package edu.utexas.tacc.tapis.files.lib.models;
 
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonCreator;
 import io.swagger.v3.oas.annotations.media.Schema;
-import javax.validation.constraints.*;
 
 public class TransferTask   {
   @JsonProperty("uuid")

@@ -25,7 +25,12 @@ public class ConnectionPool {
 
   private ConnectionPool() {}
 
-  public static Connection getConnection() throws SQLException {
-    return ds.getConnection();
+  public static Connection getConnection() {
+    try {
+      Connection connection = ds.getConnection();
+      return connection;
+    } catch (SQLException ex) {
+      throw new RuntimeException("Error connecting to database");
+    }
   }
 }
