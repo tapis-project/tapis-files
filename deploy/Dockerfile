@@ -1,11 +1,11 @@
 FROM maven:3-jdk-12
 EXPOSE 8080
-WORKDIR /api
+WORKDIR /app
 RUN ls -la
 RUN pwd
 # Copy main pom file and shared libs
-COPY ../tapis-files .
+COPY . .
 
-RUN mvn -pl tapis-files clean install --also-make -DskipTests
+RUN mvn -pl api clean install --also-make -DskipTests
 
-CMD ["java", "-cp", "/api/tapis-files,/api/tapis-files/lib", "edu.utexas.tacc.tapis.files.api.FilesApplication"]
+CMD ["java", "-cp", "/app/api,/app/lib", "edu.utexas.tacc.tapis.files.api.FilesApplication"]

@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE table transfer_tasks (
     id serial PRIMARY KEY,
     tenant_id VARCHAR(265) NOT NULL,
@@ -8,8 +10,8 @@ CREATE table transfer_tasks (
     source_path VARCHAR NOT NULL,
     destination_system_id VARCHAR NOT NULL,
     destination_path VARCHAR NOT NULL,
-    status VARCHAR(128) NOT NULL,
-)
+    status VARCHAR(128) NOT NULL
+);
 CREATE index on transfer_tasks(tenant_id, username, uuid);
 
 
@@ -24,7 +26,7 @@ CREATE TABLE shares (
     uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
     max_views integer NOT NULL,
     views integer NOT NULL
-)
+);
 CREATE index on shares(tenant_id, username, uuid);
 
 CREATE TABLE permissions (
@@ -35,5 +37,5 @@ CREATE TABLE permissions (
     uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
     system_id VARCHAR NOT NULL,
     path VARCHAR NOT NULL
-)
+);
 CREATE index on permissions(tenant_id, username, uuid);

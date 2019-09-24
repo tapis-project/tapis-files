@@ -31,9 +31,51 @@
         <jackson-databind.version>2.9.4</jackson-databind.version>
         <jcraft.version>0.1.54</jcraft.version>
         <software.amazon.awssdk.version>2.9.3</software.amazon.awssdk.version>
+        <flyway-maven-plugin.version>6.0.4</flyway-maven-plugin.version>
     </properties>
+    <profiles>
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <flyway.user>dev</flyway.user>
+                <flyway.password>dev</flyway.password>
+                <flyway.url>jdbc:postgresql://postgres/dev</flyway.url>
+                <flyway.skip>true</flyway.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>integration-test</id>
+            <properties>
+                <flyway.user>test</flyway.user>
+                <flyway.password>test</flyway.password>
+                <flyway.url>jdbc:postgresql://postgres/test</flyway.url>
+                <DB_USERNAME>test</DB_USERNAME>
+                <DB_PASSWORD>test</DB_PASSWORD>
+                <DB_NAME>test</DB_NAME>
+                <DB_HOST>postgres</DB_HOST>
+            </properties>
+        </profile>
+    </profiles>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>flyway-clean-database</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>clean</goal>
+                            <goal>migrate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -134,6 +176,11 @@
     </build>
 
     <dependencies>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.2.8</version>
+        </dependency>
         <dependency>
             <!-- There are only test dependencies on testng -->
             <groupId>org.testng</groupId>

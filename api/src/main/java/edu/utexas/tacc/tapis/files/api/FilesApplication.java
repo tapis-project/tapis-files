@@ -19,7 +19,7 @@ import edu.utexas.tacc.tapis.files.api.filters.TapisJWTFilter;
 // The path here is appended to the context root and
 // is configured to work when invoked in a standalone 
 // container (command line) and in an IDE (eclipse). 
-@ApplicationPath("files")
+@ApplicationPath("/")
 public class FilesApplication extends ResourceConfig {
 	public FilesApplication() {
 
@@ -37,7 +37,7 @@ public class FilesApplication extends ResourceConfig {
 	}
 
 	public static void main(String[] args) throws Exception {
-		final URI BASE_URI = URI.create("http://0.0.0.0:9999");
+		final URI BASE_URI = URI.create("http://0.0.0.0:8080");
 		ResourceConfig config = new FilesApplication();
 		System.out.println(config.getResources());
 		final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(BASE_URI, config, false);
