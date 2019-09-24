@@ -158,6 +158,7 @@
     <modules>
         <module>api</module>
         <module>lib</module>
+        <module>migrations</module>
     </modules>
 
 </project>
