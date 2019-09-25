@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.dao;
 
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,7 +16,19 @@ public class TestFileTransfersDAO {
   @Test
   public void testCreateTransferTask() {
     FileTransfersDAO dao = new FileTransfersDAO();
-    dao.createTransferTask();
-    Assert.assertEquals(1, 1);
+    TransferTask task = new TransferTask();
+    task.setTenantId("test");
+    task.setDestinationPath("/test1/test2");
+    task.setDestinationSystemId("testOrigin");
+    task.setSourceSystemId("testOrigin");
+    task.setSourcePath("/test1/test2");
+    task.setUsername("testUser");
+    try {
+      dao.createTransferTask(task);
+      TransferTask newTask = dao.getTransferTask(task.getUuid());
+      Assert.assertEquals(newTask.getTenantId(), "test");
+    } catch (Exception e) {
+      Assert.fail();
+    }
   }
 }

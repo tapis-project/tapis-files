@@ -13,7 +13,7 @@ public class ConnectionPool {
   private static HikariDataSource ds;
 
   static {
-    String dbUrl = String.format("jdbc:postgresql://{}:{}/{}", Settings.get("DB_HOST"), Settings.get("DB_PORT"), Settings.get("DB_NAME"));
+    String dbUrl = String.format("jdbc:postgresql://%s:%s/%s", Settings.get("DB_HOST"), Settings.get("DB_PORT"), Settings.get("DB_NAME"));
     config.setJdbcUrl( dbUrl );
     config.setUsername( Settings.get("DB_USERNAME") );
     config.setPassword( Settings.get("DB_PASSWORD") );

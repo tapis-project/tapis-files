@@ -25,9 +25,11 @@ services:
     volumes:
       - ../:/app
     environment:
-      - TAPIS_DB_USERNAME=dev
-      - TAPIS_DB_PASSWORD=dev
-      - TAPIS_DB_NAME=dev
+      - DB_USERNAME=dev
+      - DB_PASSWORD=dev
+      - DB_NAME=dev
+      - DB_PORT=5432
+      - DB_HOST=postgres
       - TAPIS_SKIP_JWT_VERIFY=true
     ports:
       - 8080:8080

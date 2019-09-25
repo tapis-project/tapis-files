@@ -1,23 +1,36 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import java.sql.Timestamp;
 import java.util.Objects;
+import java.util.UUID;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public class TransferTask   {
+
+  public TransferTask() {
+
+    this.uuid = UUID.randomUUID();
+    this.status = "PENDING";
+  }
+
+  private String tenantId = null;
+  private String username = null;
+  private String sourceSystemId = null;
+  private String sourcePath;
+  private String destinationSystemId;
+  private String destinationPath;
+
   @JsonProperty("uuid")
-  private String uuid = null;
+  private UUID uuid = null;
 
   @JsonProperty("created")
-  private String created = null;
+  private Timestamp created = null;
 
   @JsonProperty("status")
   private String status = null;
 
-  public TransferTask uuid(String uuid) {
-    this.uuid = uuid;
-    return this;
-  }
 
   /**
    * Unique ID of the task.
@@ -25,37 +38,76 @@ public class TransferTask   {
    **/
   @JsonProperty("uuid")
   @Schema(description = "Unique ID of the task.")
-  public String getUuid() {
+  public UUID getUuid() {
     return uuid;
   }
 
-  public void setUuid(String uuid) {
+  public String getTenantId() {
+    return tenantId;
+  }
+
+  public void setTenantId(String tenantId) {
+    this.tenantId = tenantId;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public void setUsername(String username) {
+    this.username = username;
+  }
+
+  public String getSourceSystemId() {
+    return sourceSystemId;
+  }
+
+  public void setSourceSystemId(String sourceSystemId) {
+    this.sourceSystemId = sourceSystemId;
+  }
+
+  public String getSourcePath() {
+    return sourcePath;
+  }
+
+  public void setSourcePath(String sourcePath) {
+    this.sourcePath = sourcePath;
+  }
+
+  public String getDestinationSystemId() {
+    return destinationSystemId;
+  }
+
+  public void setDestinationSystemId(String destinationSystemId) {
+    this.destinationSystemId = destinationSystemId;
+  }
+
+  public String getDestinationPath() {
+    return destinationPath;
+  }
+
+  public void setDestinationPath(String destinationPath) {
+    this.destinationPath = destinationPath;
+  }
+
+
+
+
+  public void setUuid(UUID uuid) {
     this.uuid = uuid;
   }
 
-  public TransferTask created(String created) {
-    this.created = created;
-    return this;
-  }
 
-  /**
-   * Timestamp in UTC of task creation.
-   * @return created
-   **/
   @JsonProperty("created")
   @Schema(description = "Timestamp in UTC of task creation.")
-  public String getCreated() {
+  public Timestamp getCreated() {
     return created;
   }
 
-  public void setCreated(String created) {
+  public void setCreated(Timestamp created) {
     this.created = created;
   }
 
-  public TransferTask status(String status) {
-    this.status = status;
-    return this;
-  }
 
   /**
    * The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED
