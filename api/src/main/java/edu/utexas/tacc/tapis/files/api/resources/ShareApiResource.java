@@ -14,7 +14,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.*;
 
-import edu.utexas.tacc.tapis.files.lib.dao.sharing.SharedFileObject;
+import edu.utexas.tacc.tapis.files.lib.models.SharedFileObject;
 import edu.utexas.tacc.tapis.files.api.models.NewShareFile;
 
 @Path("/share")
@@ -48,10 +48,10 @@ public class ShareApiResource  {
           description = "List of shares",
           content = @Content(array = @ArraySchema(schema = @Schema(implementation = SharedFileObject.class))))
   })
-  public Response shareList (@Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId
-      ,@Parameter(description = "System ID",required=true) @PathParam("path") String path
-      ,@Context SecurityContext securityContext)
-      throws NotFoundException {
+  public Response shareList (
+      @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
+      @Parameter(description = "System ID",required=true) @PathParam("path") String path,
+      @Context SecurityContext securityContext) throws NotFoundException {
     return Response.ok().build();
   }
 
@@ -73,10 +73,9 @@ public class ShareApiResource  {
   public Response shareFile (
       @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
       @Parameter(description = "path",required=true) @PathParam("path") String path,
-      @Parameter(description = "" ) NewShareFile body
-
-      ,@Context SecurityContext securityContext)
-      throws NotFoundException {
+      @Parameter(description = "" ) NewShareFile body,
+      @Context SecurityContext securityContext) throws NotFoundException {
+    // Add row to security kernel?
     return Response.ok().build();
   }
 }

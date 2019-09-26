@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.lib.dao.sharing;
+package edu.utexas.tacc.tapis.files.lib.models;
 
 /*
  * TAPIS files API
@@ -14,9 +14,7 @@ package edu.utexas.tacc.tapis.files.lib.dao.sharing;
 
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonCreator;
 import io.swagger.v3.oas.annotations.media.Schema;
-import javax.validation.constraints.*;
 
 public class SharedFileObject   {
   @JsonProperty("creator")

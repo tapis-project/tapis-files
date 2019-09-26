@@ -32,6 +32,7 @@
         <jcraft.version>0.1.54</jcraft.version>
         <software.amazon.awssdk.version>2.9.3</software.amazon.awssdk.version>
         <flyway-maven-plugin.version>6.0.4</flyway-maven-plugin.version>
+        <mockito-core.version>3.0.0</mockito-core.version>
     </properties>
     <profiles>
         <profile>
@@ -51,11 +52,8 @@
             <properties>
                 <flyway.user>test</flyway.user>
                 <flyway.password>test</flyway.password>
-                <flyway.url>jdbc:postgresql://postgres/test</flyway.url>
-                <DB_USERNAME>test</DB_USERNAME>
-                <DB_PASSWORD>test</DB_PASSWORD>
-                <DB_NAME>test</DB_NAME>
-                <DB_HOST>postgres</DB_HOST>
+                <flyway.url>jdbc:postgresql://localhost/test</flyway.url>
+                <flyway.locations>filesystem:migrations/src/main/resources/db/migration</flyway.locations>
             </properties>
         </profile>
     </profiles>
@@ -156,6 +154,13 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${maven-failsafe-plugin.version}</version>
                 <configuration>
+                    <systemProperties>
+                        <DB_HOST>localhost</DB_HOST>
+                        <DB_NAME>test</DB_NAME>
+                        <DB_USERNAME>test</DB_USERNAME>
+                        <DB_PASSWORD>test</DB_PASSWORD>
+                        <DB_PORT>5432</DB_PORT>
+                    </systemProperties>
                     <groups>integration</groups>
                     <includes>
                         <include>**/*Test*.java</include>
@@ -176,6 +181,13 @@
     </build>
 
     <dependencies>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito-core.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>

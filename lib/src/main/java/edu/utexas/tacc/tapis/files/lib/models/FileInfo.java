@@ -1,13 +1,26 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import java.time.Instant;
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
-import javax.validation.constraints.*;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
+import javax.validation.constraints.*;
+import javax.xml.bind.annotation.XmlRootElement;
+
+@XmlRootElement
 public class FileInfo   {
+
+  public FileInfo(S3Object listing) {
+    this.name = listing.key();
+    this.lastModified = listing.lastModified();
+    this.size = listing.size();
+    this.path = listing.key();
+  }
+
   @JsonProperty("lastModified")
-  private String lastModified = null;
+  private Instant lastModified = null;
 
   @JsonProperty("name")
   private String name = null;
@@ -19,12 +32,9 @@ public class FileInfo   {
   private String systemId = null;
 
   @JsonProperty("size")
-  private Integer size = null;
+  private Long size = null;
 
-  public FileInfo lastModified(String lastModified) {
-    this.lastModified = lastModified;
-    return this;
-  }
+
 
   /**
    * Get lastModified
@@ -32,17 +42,12 @@ public class FileInfo   {
    **/
   @JsonProperty("lastModified")
   @Schema(description = "")
-  public String getLastModified() {
+  public Instant getLastModified() {
     return lastModified;
   }
 
-  public void setLastModified(String lastModified) {
+  public void setLastModified(Instant lastModified) {
     this.lastModified = lastModified;
-  }
-
-  public FileInfo name(String name) {
-    this.name = name;
-    return this;
   }
 
   /**
@@ -59,10 +64,6 @@ public class FileInfo   {
     this.name = name;
   }
 
-  public FileInfo path(String path) {
-    this.path = path;
-    return this;
-  }
 
   /**
    * Get path
@@ -78,10 +79,6 @@ public class FileInfo   {
     this.path = path;
   }
 
-  public FileInfo systemId(String systemId) {
-    this.systemId = systemId;
-    return this;
-  }
 
   /**
    * Get systemId
@@ -97,10 +94,6 @@ public class FileInfo   {
     this.systemId = systemId;
   }
 
-  public FileInfo size(Integer size) {
-    this.size = size;
-    return this;
-  }
 
   /**
    * size in kB
@@ -108,11 +101,11 @@ public class FileInfo   {
    **/
   @JsonProperty("size")
   @Schema(description = "size in kB")
-  public Integer getSize() {
+  public Long getSize() {
     return size;
   }
 
-  public void setSize(Integer size) {
+  public void setSize(Long size) {
     this.size = size;
   }
 

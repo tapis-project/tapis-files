@@ -46,9 +46,11 @@ public class FileTransfersDAO implements IFileTransferDAO {
           "(tenant_id, username, uuid, source_system_id, source_path, destination_system_id, destination_path, status)" +
           "values (?, ?, ?, ?, ?, ?, ?, ?)";
       QueryRunner runner = new QueryRunner();
-      int inserts = runner.update(connection, stmt, task.getTenantId(), task.getUsername(), task.getUuid(),
+      int insert = runner.update(connection, stmt, task.getTenantId(), task.getUsername(), task.getUuid(),
           task.getSourceSystemId(), task.getSourcePath(), task.getDestinationSystemId(), task.getDestinationPath(), task.getStatus());
-      return task;
+
+      TransferTask insertedTask = getTransferTask(task.getUuid());
+      return insertedTask;
     } catch (SQLException ex) {
       throw new DAOException(ex.getErrorCode());
     } finally {

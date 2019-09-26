@@ -28,7 +28,7 @@ public class TestFileTransfersDAO {
       TransferTask newTask = dao.getTransferTask(task.getUuid());
       Assert.assertEquals(newTask.getTenantId(), "test");
     } catch (Exception e) {
-      Assert.fail();
+      Assert.fail(e.getMessage());
     }
   }
 }

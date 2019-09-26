@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import edu.utexas.tacc.tapis.files.api.filters.Secured;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,12 +14,12 @@ import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
 
+import javax.annotation.security.PermitAll;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import java.io.InputStream;
-
 
 @Path("/systems")
 public class SystemsApiResource {
@@ -69,7 +70,7 @@ public class SystemsApiResource {
           responseCode = "200",
           description = "OK")
   })
-  public Response filesPostForm(
+  public Response filesUpload(
       @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
       @Parameter(description = "System ID",required=true) @PathParam("path") String path,
       @FormDataParam("fileName") InputStream fileNameInputStream,

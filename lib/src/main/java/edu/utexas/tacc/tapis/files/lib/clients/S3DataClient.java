@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -33,7 +34,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public List<RemoteFileInfo> ls(String path) throws IOException {
+    public List<FileInfo> ls(String path) throws IOException {
         ListObjectsRequest req = ListObjectsRequest.builder()
                 .bucket("test")
                 .prefix("/")
@@ -41,7 +42,7 @@ public class S3DataClient implements IRemoteDataClient {
         ListObjectsResponse resp =this.client.listObjects(req);
         List files = new ArrayList();
         resp.contents().stream().forEach(x->{
-            files.add(new RemoteFileInfo(x));
+            files.add(new FileInfo(x));
         });
         return  files;
     }
