@@ -2,16 +2,16 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: postgres
+  name: tapisfiles-postgres
 data:
-  password: password
+  password: cGFzc3dvcmQK
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: rabbitmq
+  name: tapisfiles-rabbitmq
 data:
-  password: password
+  password: cGFzc3dvcmQK
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -37,7 +37,7 @@ kind: PersistentVolumeClaim
 metadata:
   labels:
     app: pgdata
-  name: pgdata
+  name: tapisfiles-pgdata
 spec:
   accessModes:
     - ReadWriteOnce
@@ -75,7 +75,6 @@ spec:
   selector:
     app: tapisfiles
 ---
----
 apiVersion: v1
 kind: Service
 metadata:
@@ -83,11 +82,12 @@ metadata:
     app: tapisfiles
   name: tapisfiles
 spec:
+  type: NodePort
   ports:
     - port: 8080
       targetPort: 8080
   selector:
-    app: tapisfiles
+    app: tapisfiles-api
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -114,12 +114,12 @@ spec:
             - name: RABBITMQ_DEFAULT_PASS
               valueFrom:
                 secretKeyRef:
-                  name: rabbitmq
+                  name: tapisfiles-rabbitmq
                   key: password
           envFrom:
             - configMapRef:
                 name: tapisfiles-environment-vars
-          image: rabbitmq
+          image: rabbitmq:3.8-alpine
           ports:
             - containerPort: 5672
           name: tapisfiles-rabbitmq
@@ -152,7 +152,7 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres
+                  name: tapisfiles-postgres
                   key: password
           envFrom:
             - configMapRef:
@@ -171,7 +171,7 @@ spec:
       volumes:
         - name: pgdata
           persistentVolumeClaim:
-            claimName: pgdata
+            claimName: tapisfiles-pgdata
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -202,23 +202,20 @@ spec:
             - name: RABBITMQ_PASSWD
               valueFrom:
                 secretKeyRef:
-                  name: rabbitmq
+                  name: tapisfiles-rabbitmq
                   key: password
             - name: DB_PASSWD
               valueFrom:
                 secretKeyRef:
-                  name: postgres
+                  name: tapisfiles-rabbitmq
                   key: password
           image: taccaci/tapis-files:latest
           name: tapisfiles-api
           ports:
-            - containerPort: 5000
+            - containerPort: 8080
           resources: {}
           stdin: true
           tty: true
-          volumeMounts:
-            - mountPath: /assets
-              name: assets
       hostname: tapisfiles-api
       restartPolicy: Always
 ---

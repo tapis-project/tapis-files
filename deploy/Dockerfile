@@ -8,4 +8,4 @@ COPY . .
 
 RUN mvn -pl api clean install --also-make -DskipTests
 
-CMD ["java", "-cp", "/app/api,/app/lib", "edu.utexas.tacc.tapis.files.api.FilesApplication"]
+CMD ["java", "-jar", "api/target/tapis-files.jar"]
