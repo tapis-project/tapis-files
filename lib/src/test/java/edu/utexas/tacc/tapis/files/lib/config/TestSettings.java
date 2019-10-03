@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.config;
 
-import org.junit.runner.RunWith;
 import org.mockito.*;
 import org.testng.Assert;
 import org.mockito.Mockito.*;

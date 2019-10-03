@@ -55,6 +55,7 @@ public class TapisAuthenticationFilter implements ContainerRequestFilter {
     authHeader = headers.getFirst(AUTH_HEADER);
     if (authHeader == null) {
       requestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
+      return;
     }
 
     // Strip out the leading Bearer part of the Authorization header, leaving us with just the string JWT
@@ -70,6 +71,7 @@ public class TapisAuthenticationFilter implements ContainerRequestFilter {
       requestContext.setSecurityContext(new TapisSecurtiyContext(user));
     } catch (Exception e) {
       requestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
+      return;
     }
   }
 

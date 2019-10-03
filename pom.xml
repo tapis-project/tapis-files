@@ -154,6 +154,7 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${maven-failsafe-plugin.version}</version>
                 <configuration>
+                    <trimStackTrace>false</trimStackTrace>
                     <systemProperties>
                         <DB_HOST>localhost</DB_HOST>
                         <DB_NAME>test</DB_NAME>

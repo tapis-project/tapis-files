@@ -21,7 +21,7 @@ services:
     build:
       context: ..
       dockerfile: ./deploy/Dockerfile
-    image: tapis-files
+    image: taccaci/tapis-files:latest
     volumes:
       - ../:/app
     environment:
