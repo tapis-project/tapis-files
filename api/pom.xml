@@ -13,29 +13,27 @@
     <dependencies>
         <dependency>
             <groupId>edu.utexas.tacc</groupId>
-            <artifactId>tapis-sharedapi</artifactId>
-            <version>1.0.2-SNAPSHOT</version>
+            <artifactId>tapis-shared-api</artifactId>
+            <version>${tapis-shared.version}</version>
         </dependency>
         <dependency>
             <groupId>edu.utexas.tacc</groupId>
             <artifactId>tapis-files-lib</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt</artifactId>
-            <version>${jjwt.version}</version>
         </dependency>
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-jaxrs2</artifactId>
-            <version>${swagger-jaxrs2.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson-databind.version}</version>
+            <version>${jersey-container-servlet.version}</version>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
@@ -45,12 +43,10 @@
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-common</artifactId>
-            <version>${jersey-container-servlet.version}</version>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.inject</groupId>
             <artifactId>jersey-hk2</artifactId>
-            <version>${jersey-container-servlet.version}</version>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.containers</groupId>

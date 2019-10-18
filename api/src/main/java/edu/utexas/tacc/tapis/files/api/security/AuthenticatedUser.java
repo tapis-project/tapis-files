@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.api.security;
 
 import io.jsonwebtoken.Jwt;
 import java.security.Principal;
-import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.IsThisTHere;
 /**s
  *
  */

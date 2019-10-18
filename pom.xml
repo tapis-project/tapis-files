@@ -10,6 +10,7 @@
     <version>1.0-SNAPSHOT</version>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <tapis-shared.version>1.0.8</tapis-shared.version>
         <guava.version>28.1-jre</guava.version>
         <hikariCP.version>3.4.1</hikariCP.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
@@ -20,13 +21,13 @@
         <maven-buildnumber-plugin.version>1.4</maven-buildnumber-plugin.version>
         <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
         <swagger-maven-plugin.version>2.0.9</swagger-maven-plugin.version>
-        <postgresql.version>42.2.6</postgresql.version>
-        <rabbitmq.version>3.6.11</rabbitmq.version>
-        <testng.version>6.14.3</testng.version>
+<!--        <postgresql.version>42.2.6</postgresql.version>-->
+<!--        <rabbitmq.version>3.6.11</rabbitmq.version>-->
+<!--        <testng.version>6.14.3</testng.version>-->
         <jersey-container-servlet.version>2.29</jersey-container-servlet.version>
-        <swagger-jaxrs2.version>2.0.9</swagger-jaxrs2.version>
-        <jjwt.version>0.9.1</jjwt.version>
-        <commons-lang3.version>3.9</commons-lang3.version>
+<!--        <swagger-jaxrs2.version>2.0.9</swagger-jaxrs2.version>-->
+<!--        <jjwt.version>0.9.1</jjwt.version>-->
+<!--        <commons-lang3.version>3.9</commons-lang3.version>-->
         <slf4j-api.version>1.7.28</slf4j-api.version>
         <jackson-databind.version>2.9.4</jackson-databind.version>
         <jcraft.version>0.1.54</jcraft.version>
@@ -181,6 +182,18 @@
         <finalName>tapis-files</finalName>
     </build>
 
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>edu.utexas.tacc</groupId>
+                <artifactId>tapis-bom</artifactId>
+                <version>1.0.7-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.mockito</groupId>
@@ -192,30 +205,22 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.2.8</version>
         </dependency>
         <dependency>
             <!-- There are only test dependencies on testng -->
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <version>${testng.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <!-- Logback supplies the proper version of sl4j -->
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>${slf4j-api.version}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>${slf4j-api.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>edu.utexas.tacc</groupId>
-            <artifactId>tapis-shared-api</artifactId>
-            <version>1.0.2-SNAPSHOT</version>
         </dependency>
 
     </dependencies>
