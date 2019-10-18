@@ -188,7 +188,7 @@
             <dependency>
                 <groupId>edu.utexas.tacc</groupId>
                 <artifactId>tapis-bom</artifactId>
-                <version>1.0.7-SNAPSHOT</version>
+                <version>1.0.7</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
