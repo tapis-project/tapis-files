@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import edu.utexas.tacc.tapis.files.api.filters.Secured;
+import edu.utexas.tacc.tapis.files.lib.clients.*;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,20 +12,30 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
-import javax.annotation.security.PermitAll;
+import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 
 @Path("/systems")
 public class SystemsApiResource {
 
   private final String EXAMPLE_SYSTEM_ID = "system123";
-  private final String EXMAPLE_PATH = "/folderA/folderB/";
+  private final String EXAMPLE_PATH = "/folderA/folderB/";
+  private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
+
+  @Inject
+  private FakeSystemsService systemsService;
+
+  private Logger log = LoggerFactory.getLogger(SystemsApiResource.class);
 
   @GET
   @Path("/{systemId}/{path}")
@@ -35,9 +45,19 @@ public class SystemsApiResource {
   })
   public Response filesGetContents(
       @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
-      @Parameter(description = "File path",required=true, example = EXMAPLE_PATH) @PathParam("path") String path,
+      @Parameter(description = "File path",required=true, example = EXAMPLE_PATH) @PathParam("path") String path,
       @Parameter(description = "Range of bytes to send" ) @HeaderParam("Range") String range,
       @Context SecurityContext securityContext) throws NotFoundException {
+
+    // First do SK check on system/path
+
+    // Fetch the system
+
+    // Fetch the creds
+
+    // build the client
+
+
     return Response.ok().build();
   }
 
@@ -55,10 +75,26 @@ public class SystemsApiResource {
   })
   public Response filesList(
       @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
-      @Parameter(description = "path relative to root of bucket", example = EXMAPLE_PATH) @QueryParam("path") String path,
+      @Parameter(description = "path relative to root of bucket", example = EXAMPLE_PATH) @QueryParam("path") String path,
       @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
       @Context SecurityContext securityContext) throws NotFoundException {
-    return Response.ok().build();
+
+    try {
+      // First do SK check on system/path or throw 403
+
+      // Fetch the system
+      FakeSystem system = systemsService.getSystemByID(systemId);
+
+      // Fetch the creds
+
+      // build the client
+      IRemoteDataClient client = clientFactory.getRemoteDataClient(system);
+      List<FileInfo> listing = client.ls(path);
+      return Response.ok(listing).build();
+    } catch (IOException e) {
+      log.error("Failed to list files", e);
+      return Response.status(400).build();
+    }
   }
 
   @POST

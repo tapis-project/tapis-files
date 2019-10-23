@@ -18,14 +18,16 @@ import java.util.List;
 public class S3DataClient implements IRemoteDataClient {
 
     private S3Client client;
+    private String bucket;
 
-    public S3DataClient() throws IOException {
-        AwsCredentials credentials = AwsBasicCredentials.create("user", "password");
-
+    public S3DataClient(FakeSystem system) throws IOException {
+        this.bucket = system.getBucketName();
         try {
+            URI endpoint = new URI(system.getHost() + ":" + system.getPort());
+            AwsCredentials credentials = AwsBasicCredentials.create(system.getUsername(), system.getPassword());
             client = S3Client.builder()
                     .region(Region.AP_NORTHEAST_1)
-                    .endpointOverride(new URI("http://localhost:9000"))
+                    .endpointOverride(endpoint)
                     .credentialsProvider(StaticCredentialsProvider.create(credentials))
                     .build();
         } catch (URISyntaxException e) {
@@ -36,11 +38,11 @@ public class S3DataClient implements IRemoteDataClient {
     @Override
     public List<FileInfo> ls(String path) throws IOException {
         ListObjectsRequest req = ListObjectsRequest.builder()
-                .bucket("test")
-                .prefix("/")
+                .bucket(bucket)
+                .prefix(path)
                 .build();
-        ListObjectsResponse resp =this.client.listObjects(req);
-        List files = new ArrayList();
+        ListObjectsResponse resp = client.listObjects(req);
+        List<FileInfo> files = new ArrayList<>();
         resp.contents().stream().forEach(x->{
             files.add(new FileInfo(x));
         });
