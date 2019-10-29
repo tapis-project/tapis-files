@@ -1,10 +1,8 @@
 package edu.utexas.tacc.tapis.files.api.security;
 
 import io.jsonwebtoken.Jwt;
-
 import java.security.Principal;
-
-/**
+/**s
  *
  */
 public class AuthenticatedUser implements Principal {

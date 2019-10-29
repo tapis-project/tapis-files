@@ -1,9 +1,11 @@
 package edu.utexas.tacc.tapis.files.api;
 
+import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
 import edu.utexas.tacc.tapis.files.api.resources.PermissionsApiResource;
 import edu.utexas.tacc.tapis.files.api.resources.ShareApiResource;
 import edu.utexas.tacc.tapis.files.api.resources.SystemsApiResource;
 import edu.utexas.tacc.tapis.files.api.resources.TransfersApiResource;
+import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.config.Settings;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
@@ -14,6 +16,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.glassfish.grizzly.http.server.HttpServer;
+import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -59,7 +62,8 @@ public class FilesApplication extends ResourceConfig {
 
 	  // Serialization
 		register(JacksonFeature.class);
-
+		// Custom Timestamp/Instant serialization;
+		register(ObjectMapperContextResolver.class);
 		// Authentication Filter
 		register(TapisAuthenticationFilter.class);
 
@@ -68,8 +72,17 @@ public class FilesApplication extends ResourceConfig {
 		register(TransfersApiResource.class);
     register(PermissionsApiResource.class);
     register(ShareApiResource.class);
-
+		//OpenAPI jazz
 		register(OpenApiResource.class);
+
+		//For dependency injection into the Resource classes for testing.
+		register(new AbstractBinder() {
+			@Override
+			protected void configure() {
+				bindAsContract(FakeSystemsService.class);
+			}
+		});
+
 		setApplicationName("files");
 
 	}
