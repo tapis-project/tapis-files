@@ -1,0 +1,8 @@
+version: '2'
+
+services: 
+  ubuntu:
+    container_name: ubuntu-sshd
+    image: rastasheep/ubuntu-sshd:18.04
+    ports:
+      - "2222:22"
