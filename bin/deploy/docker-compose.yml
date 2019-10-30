@@ -17,24 +17,24 @@ services:
     ports:
       - 5432:5432
 
-  api:
-    build:
-      context: ..
-      dockerfile: ./deploy/Dockerfile
-    image: taccaci/tapis-files:latest
-    volumes:
-      - ../:/app
-    environment:
-      - DB_USERNAME=dev
-      - DB_PASSWORD=dev
-      - DB_NAME=dev
-      - DB_PORT=5432
-      - DB_HOST=postgres
-      - TAPIS_SKIP_JWT_VERIFY=true
-    ports:
-      - 8080:8080
-      - 5005:5005
-    command: ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/app/api/target/tapis-files.jar"]
+#  api:
+#    build:
+#      context: ..
+#      dockerfile: ./deploy/Dockerfile
+#    image: taccaci/tapis-files:latest
+#    volumes:
+#      - ../:/app
+#    environment:
+#      - DB_USERNAME=dev
+#      - DB_PASSWORD=dev
+#      - DB_NAME=dev
+#      - DB_PORT=5432
+#      - DB_HOST=postgres
+#      - TAPIS_SKIP_JWT_VERIFY=true
+#    ports:
+#      - 8080:8080
+#      - 5005:5005
+#    command: ["java", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "-jar", "/app/api/target/tapis-files.jar"]
 
   minio:
     image: minio/minio
@@ -46,3 +46,14 @@ services:
     volumes:
       - miniodata:/data
     command: server /data
+  
+  ssh-machine:
+    build:
+      context: ..
+      dockerfile: ./deploy/Dockerfile.ssh-machine
+    ports:
+      - "2222:22"
+    
+    
+    
+   
