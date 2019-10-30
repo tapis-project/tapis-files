@@ -154,7 +154,9 @@ public class SftpFilesKernel {
 			session.setTimeout(CONNECT_TIMEOUT_MILLIS);
 
 		} catch (JSchException e) {
-			String Msg = "KERNEL_ERROR_GET_SESSION in method initSession(): " + e.toString();
+			String Msg = "FK_GET_SESSION_ERROR in method " + this.getClass().getName() +" for user:  "
+		            + username + "on destination host: "
+					+ host + " : " + e.toString();
 			_log.error(Msg,e);
 			throw new FilesKernelException(Msg,e);
 		}
@@ -171,7 +173,9 @@ public class SftpFilesKernel {
 				ui = new UserInfoImplementation(username, privateKey);
 				_log.debug("identity for public-key authentication successfully added");
 			} catch (JSchException e) {
-				String Msg = "KERNEL_ERROR_ADD_KEY: " + e.toString();
+				String Msg = "FK_ADD_KEY_ERROR in method "+ this.getClass().getName() +" for user:  " 
+			            + username + "on destination host: "
+						+ host + " : " + e.toString();
 				_log.error(Msg, e);
 				throw new FilesKernelException(Msg, e);
 			}
@@ -189,7 +193,9 @@ public class SftpFilesKernel {
 			session.connect();
 			_log.info("Connection established");
 		} catch (JSchException e) {
-			String Msg = "KERNEL_ERROR_CONNECT_SESSION in the method initSesion(): " + e.toString();
+			String Msg = "FK_CONEECT_SESSION_ERROR in method "+ this.getClass().getName() +" for user:  " 
+		            + username + "on destination host: "
+					+ host + " : " + e.toString();
 			_log.error(Msg,e);
 			throw new FilesKernelException(Msg,e);
 		}
@@ -199,8 +205,10 @@ public class SftpFilesKernel {
 			channelSftp = (ChannelSftp) session.openChannel(CHANNEL_TYPE);
 			_log.debug("Open SSH Channel successful");
 		} catch (JSchException e) {
-			String Msg = "KERNEL_ERROR_OPEN_SFTPCHANNEL: " + e.toString();
-			_log.error(Msg,e);
+			String Msg = "FK_OPEN_SFTP_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  " 
+		            + username + "on destination host: "
+					+ host + " : " + e.toString();
+						_log.error(Msg,e);
 			throw new FilesKernelException(Msg,e);
 		}
 		try {
@@ -208,8 +216,10 @@ public class SftpFilesKernel {
 			channelSftp.connect();
 			_log.debug("Channel open OK");
 		} catch (JSchException e) {
-			String Msg = "KERNEL_ERROR_CONNECT_SFTPCHANNEL: " + e.toString();
-			_log.error(Msg,e);
+			String Msg = "FK_CONNECT_SFTP_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  " 
+		            + username + "on destination host: "
+					+ host + " : " + e.toString();
+						_log.error(Msg,e);
 			throw new FilesKernelException(Msg,e);
 		}
 
@@ -229,8 +239,11 @@ public class SftpFilesKernel {
 				return true;
 
 		} catch (SftpException e) {
-			String Msg = "KERNEL_ERROR_TRANSFER_FILE " + e.toString();
-			_log.error(Msg,e);
+			String Msg = "FK_FILE_TRANSFER_ERROR in method "+ this.getClass().getName() +" for user:  " 
+		            + username + "on destination host: "
+					+ host + " : " + e.toString();
+						_log.error(Msg,e);
+		_log.error(Msg,e);
 			throw new FilesKernelException(Msg,e);
 		}
 	   }
