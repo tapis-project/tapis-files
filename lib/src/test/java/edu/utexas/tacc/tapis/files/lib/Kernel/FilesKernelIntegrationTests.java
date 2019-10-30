@@ -26,7 +26,10 @@ public class FilesKernelIntegrationTests {
 	 * 
 	 *
 	 */
-
+	/* **************************************************************************** */
+    /*                                    Fields                                    */
+    /* **************************************************************************** */
+  
 	private byte[] privateKey;
 	private byte[] publicKey ;
 	private byte[] passphrase;
@@ -34,6 +37,7 @@ public class FilesKernelIntegrationTests {
 	
 	// Local logger.
 	private static final Logger _log = LoggerFactory.getLogger(FilesKernelIntegrationTests.class.getName());
+	
 	
 	@BeforeSuite
 	private void readPrivateKey () throws IOException {
@@ -71,8 +75,8 @@ public class FilesKernelIntegrationTests {
 		String REMOTEFILE = "/root/tmp";
 		SftpFilesKernel sftp = new SftpFilesKernel(host, user, Integer.parseInt(port), privateKey, publicKey, passphrase, identity);
 		sftp.initSession();
-		String actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
-		String expected = "Successfully transfered file";
+		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		boolean expected = true;
 		Assert.assertEquals(actual, expected);
 
 	}
@@ -95,8 +99,8 @@ public class FilesKernelIntegrationTests {
 		String REMOTEFILE = "/root/tmp";
 		SftpFilesKernel sftp = new SftpFilesKernel(host, user, Integer.parseInt(port), privateKey, publicKey, passphrase, identity);
 		sftp.initSession();
-		String actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
-		String expected = "Successfully transfered file";
+		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		boolean expected = true;
 		Assert.assertEquals(actual, expected);
 
 
@@ -117,8 +121,8 @@ public class FilesKernelIntegrationTests {
 		String REMOTEFILE = "/root/tmp";
 		SftpFilesKernel sftp = new SftpFilesKernel(host, user, Integer.parseInt(port), privateKey, publicKey, passphrase, identity);
 		sftp.initSession();
-		String actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
-	}
+		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+	 }
 
 	/**
 	 * This is a negative test is for sftp file transfer when public auth method is
@@ -136,7 +140,7 @@ public class FilesKernelIntegrationTests {
 		String REMOTEFILE = "/root/tmp";
 		SftpFilesKernel sftp = new SftpFilesKernel(host, user, Integer.parseInt(port), privateKey, publicKey, passphrase, identity);
 		sftp.initSession();
-		String actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
 
 	}
 
@@ -163,8 +167,8 @@ public class FilesKernelIntegrationTests {
 		String REMOTEFILE = "/root/tmp";
 		SftpFilesKernel sftp = new SftpFilesKernel(host, Integer.parseInt(port), user, password);
 		sftp.initSession();
-		String actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
-		String expected = "Successfully transfered file";
+		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		boolean expected = true;
 		Assert.assertEquals(actual, expected);
 
 	}
@@ -188,9 +192,10 @@ public class FilesKernelIntegrationTests {
 		String REMOTEFILE = "/root/tmp";
 		SftpFilesKernel sftp = new SftpFilesKernel(host, Integer.parseInt(port), user, password);
 		sftp.initSession();
-		String actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
-		String expected = "Successfully transfered file";
+		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		boolean expected = true;
 		Assert.assertEquals(actual, expected);
+
 	}
 
 	/**
@@ -211,7 +216,7 @@ public class FilesKernelIntegrationTests {
 		String REMOTEFILE = "/root/tmp";
 		SftpFilesKernel sftp = new SftpFilesKernel(host, Integer.parseInt(port), user, password);
 		sftp.initSession();
-		String actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
 
 	}
 
@@ -233,7 +238,7 @@ public class FilesKernelIntegrationTests {
 		String REMOTEFILE = "/root/tmp";
 		SftpFilesKernel sftp = new SftpFilesKernel(host, Integer.parseInt(port), user, password);
 		sftp.initSession();
-		String actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
 
 	}
 	

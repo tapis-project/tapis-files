@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.lib.kernel; 
+package edu.utexas.tacc.tapis.files.lib.kernel;
 
 import java.io.IOException;
 
@@ -17,70 +17,76 @@ import com.jcraft.jsch.UserInfo;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 
-
-
 /**
  * @author ajamthe
- *
+ * This class is the core of the Files Kernel
+ * It uses the JSch API to establish sftp channel and securely transfer file to
+ * the destination host 
  */
 public class SftpFilesKernel {
-	/*
-	* ****************************************************************************
-	*/
-	/* Constants */
-	/*
-	* ****************************************************************************
-	*/
-	// Local logger.
-	private static final Logger _log = LoggerFactory.getLogger(SftpFilesKernel.class);
-	
-	// Socket timeouts
-    private static final int CONNECT_TIMEOUT_MILLIS = 15000;   // 15 seconds
-    private static final String CHANNEL_TYPE = "sftp";
+	/* **************************************************************************** */
+    /*                                   Constants                                  */
+    /* **************************************************************************** */
  
-    // 
-    //Indicates what to do if the server's host key changed or the server is unknown. 
-    //One of yes (refuse connection), ask (ask the user whether to add/change the key) and no 
-    //(always insert the new key).
+	private static final int CONNECT_TIMEOUT_MILLIS = 15000; // 15 seconds
+	private static final String CHANNEL_TYPE = "sftp";
+	//
+	// Indicates what to do if the server's host key changed or the server is
+	// unknown.
+	// One of yes (refuse connection), ask (ask the user whether to add/change the
+	// key) and no
+	// (always insert the new key).
 	private static final String STRICT_HOSTKEY_CHECKIN_KEY = "StrictHostKeyChecking";;
 	private static final String STRICT_HOSTKEY_CHECKIN_VALUE = "no";
-
-	/*
-	* ****************************************************************************
-	*/
-	/* Fields */
-	/*
-	* ****************************************************************************
-	*/
 	
+	/* **************************************************************************** */
+    /*                                   Enum                                    */
+    /* **************************************************************************** */
+     private enum AuthMethod {PUBLICKEY_AUTH, PASSWORD_AUTH};
+
+	/* **************************************************************************** */
+    /*                                    Fields                                    */
+    /* **************************************************************************** */
+  
 	private final String host;
 	private final int port;
 	private final String username;
-	private final String authMethod;
+	private final AuthMethod authMethod;
 	private String password;
 	private byte[] privateKey;
 	private byte[] publicKey;
 	private byte[] passPhrase;
 	private String identity;
-
 	private Session session;
 	private ChannelSftp channelSftp;
-	
-	
+
+	// Local logger.
+	private static final Logger _log = LoggerFactory.getLogger(SftpFilesKernel.class);
+
 	/* ********************************************************************** */
 	/* Constructors */
 	/* ********************************************************************** */
-	
+	/*
+	 * ----------------------------------------------------------------------------
+	 */
+	/* constructor: */
+	/*
+	 * ----------------------------------------------------------------------------
+	 */
+   //  TODO: Fix //
 	/**
-	* @param host // Destination host name for files/dir copy
-	* @param user //user having access to the remote system
-	* @param port //connection port number. If user defined port is greater than 0 then set it or default to 22.
-	* @param publicKey //public Key of the user 
-	* @param privateKey //private key of the user 
-	* This constructor will get called if user chooses ssh keys to authenticate to remote host
-	* This will set authMethod to "publickeyAuth"
-	*/
-	public SftpFilesKernel(String host, String username, int port, byte[] privateKey, byte[] publicKey, byte[] passphrase, String identity) {
+	 * @param host Destination host name for files/dir copy
+	 * @param user user having access to the remote system
+	 * @param port connection port number. If user defined port is greater
+	 * than 0 then set it or default to 22.
+	 * @param publicKey public Key of the user
+	 * @param privateKey private key of the user This constructor will get called
+	 * if user chooses ssh keys to authenticate to remote host
+	 * This will set authMethod to PUBLICKEY_AUTH
+	 * Private Key needs to be in SSLeay/traditional format 
+	 */
+	public SftpFilesKernel(String host, String username, int port, byte[] privateKey, byte[] publicKey,
+			byte[] passphrase, String identity) {
 		super();
 		this.host = host;
 		this.username = username;
@@ -89,186 +95,161 @@ public class SftpFilesKernel {
 		this.publicKey = publicKey;
 		this.passPhrase = passPhrase;
 		this.identity = identity;
-		authMethod = "publickeyAuth";			
+		authMethod = AuthMethod.PUBLICKEY_AUTH;
 	}
-		
-	
+
+	/*
+	 * ----------------------------------------------------------------------------
+	 */
+	/* constructor: */
+	/*
+	 * ----------------------------------------------------------------------------
+	 */
+
 	/**
-	* @param host // Destination host name for files/dir copy
-	* @param port // connection port number. If user defined port is greater than 0 then set it or default to 22.
-	* @param username //user having access to the remote system
-	* @param password //password
-	* This constructor will get called if user chooses password to authenticate to remote host
-	* This will set the authMethod to "passwordAuth";
-	*/
+	 * @param host Destination host name for files/dir copy
+	 * @param port connection port number. If user defined port is greater
+	 *                 than 0 then set it or default to 22.
+	 * @param username user having access to the remote system
+	 * @param password password This constructor will get called if user chooses
+	 *                 password to authenticate to remote host This will set the
+	 *                 authMethod to "passwordAuth";
+	 */
 	public SftpFilesKernel(String host, int port, String username, String password) {
 		super();
-		this.host = host; 
+		this.host = host;
 		this.port = port > 0 ? port : 22;
 		this.username = username;
 		this.password = password;
-		authMethod = "passwordAuth";
+		authMethod = AuthMethod.PASSWORD_AUTH;
 
 	}
 
 	/* ********************************************************************** */
-	/* Public Methods */
+	/* 						Public Methods */
 	/* ********************************************************************** */
-		
-   /**
-    * 
-    * @throws JSchException
-    * @throws IOException
-    */
+
+	/**
+	 * 
+	 * @throws JSchException
+	 * @throws IOException
+	 */
 	public void initSession() throws FilesKernelException {
-	   
-		//Create a JSch object
+
+		// Create a JSch object
 		final JSch jsch = new JSch();
-		
-		//Instantiates the Session object with username and host. 
-		//The TCP port defined by user will be used in making the connection. 
-		//Port 22 is the default port.
-		// TCP connection must not be established until Session#connect() 
-		//returns instance of session class
+
+		// Instantiates the Session object with username and host.
+		// The TCP port defined by user will be used in making the connection.
+		// Port 22 is the default port.
+		// TCP connection must not be established until Session#connect()
+		// returns instance of session class
 		try {
 			session = jsch.getSession(username, host, port);
-			//Once getSession is successful set the configuration
+			// Once getSession is successful set the configuration
 			// STRICT_HOSTKEY_CHECKIN_KEY is set to "no"
-			// Connection time out is set to 15 seconds 	
+			// Connection time out is set to 15 seconds
 			session.setConfig(STRICT_HOSTKEY_CHECKIN_KEY, STRICT_HOSTKEY_CHECKIN_VALUE);
-			session.setConfig("PreferredAuthentications",
-	                 "password,publickey,keyboard-interactive");
+			session.setConfig("PreferredAuthentications", "password,publickey,keyboard-interactive");
 			session.setTimeout(CONNECT_TIMEOUT_MILLIS);
-	   
+
 		} catch (JSchException e) {
-			 String Msg = "FK_ERROR_GET_SESSION in method initSession()" + e.toString(); 
-			 _log.error(Msg);
-			 throw new FilesKernelException(Msg);
+			String Msg = "KERNEL_ERROR_GET_SESSION in method initSession(): " + e.toString();
+			_log.error(Msg,e);
+			throw new FilesKernelException(Msg,e);
 		}
-		
-		_log.info("Try to connect to the host " + host +":" + port +" with user "+ username);
-		
+
+		_log.debug("Try to connect to the host " + host + ":" + port + " with user " + username);
+
 		UserInfo ui = null;
 		UIKeyboardInteractive interactive = null;
-		
-		if(authMethod.equalsIgnoreCase("publicKeyAuth")) {
-		//Adds an identity to be used for public-key authentication
+
+		if (authMethod == AuthMethod.PUBLICKEY_AUTH) {
+			// Adds an identity to be used for public-key authentication
 			try {
-				jsch.addIdentity(identity,privateKey,publicKey,passPhrase);
-	    		 ui = new UserInfoImplementation(username,privateKey);
-	    		 _log.info("identity for public-key authentication successfully added");
+				jsch.addIdentity(identity, privateKey, publicKey, passPhrase);
+				ui = new UserInfoImplementation(username, privateKey);
+				_log.debug("identity for public-key authentication successfully added");
 			} catch (JSchException e) {
-				 String Msg = "FK_ERROR_ADD_KEY " + e.toString(); 
-				 _log.error(Msg);
-				 throw new FilesKernelException(Msg);
+				String Msg = "KERNEL_ERROR_ADD_KEY: " + e.toString();
+				_log.error(Msg, e);
+				throw new FilesKernelException(Msg, e);
 			}
-			
-		}
-		
 
-		if(authMethod.equalsIgnoreCase("passwordAuth")){
-			//Adds password to be used for password based authentication
-    		session.setPassword(password);		
-		    // Create a object of Userinfo Implementation class to get the user info
-    		ui = new UserInfoImplementation(username, password);
-    		session.setUserInfo(ui);
+		}      
+		else {
+			// Adds password to be used for password based authentication
+			session.setPassword(password);
+			// Create a object of Userinfo Implementation class to get the user info
+			ui = new UserInfoImplementation(username, password);
+			session.setUserInfo(ui);
 		}
-		
-    	try {
-    		session.connect();
-    		_log.info("Connection established");
-    	} catch (JSchException e) {
-    		String Msg = "FK_ERROR_CONNECT_SESSION in the method initSesion() " + e.toString(); 
-    		_log.error(Msg);
-    		throw new FilesKernelException(Msg); 			
-    		}
-		//Open Sftp Channel since session connect is successful
-		
+
 		try {
-			_log.info("Trying to open SSH Channel");
+			session.connect();
+			_log.info("Connection established");
+		} catch (JSchException e) {
+			String Msg = "KERNEL_ERROR_CONNECT_SESSION in the method initSesion(): " + e.toString();
+			_log.error(Msg,e);
+			throw new FilesKernelException(Msg,e);
+		}
+		// Open Sftp Channel since session connect is successful
+		try {
+			_log.debug("Trying to open SSH Channel");
 			channelSftp = (ChannelSftp) session.openChannel(CHANNEL_TYPE);
-			_log.info("Open SSH Channel successful");
+			_log.debug("Open SSH Channel successful");
 		} catch (JSchException e) {
-			 String Msg = "FK_ERROR_OPEN_SFTPCHANNEL" + e.toString(); 
-			 _log.error(Msg);
-			 throw new FilesKernelException(Msg);
+			String Msg = "KERNEL_ERROR_OPEN_SFTPCHANNEL: " + e.toString();
+			_log.error(Msg,e);
+			throw new FilesKernelException(Msg,e);
 		}
 		try {
-			_log.info("Trying to connect the sftp Channel");
+			_log.debug("Trying to connect the sftp Channel");
 			channelSftp.connect();
-			_log.info("Channel open OK");
+			_log.debug("Channel open OK");
 		} catch (JSchException e) {
-			String Msg = "FK_ERROR_CONNECT_SFTPCHANNEL" + e.toString(); 
-			 _log.error(Msg);
-			 throw new FilesKernelException(Msg);
+			String Msg = "KERNEL_ERROR_CONNECT_SFTPCHANNEL: " + e.toString();
+			_log.error(Msg,e);
+			throw new FilesKernelException(Msg,e);
 		}
-		
-   }
 
-	
-	
+	}
 
-	public String transferFile(@NotNull String source, @NotNull String destination) throws FilesKernelException{
-	    String success = "Successfully transfered file";
-		if (session.isConnected()) {
-	    	try {
+	/**
+	 * @param source
+	 * @param destination
+	 * @return
+	 * @throws FilesKernelException
+	 */
+	public boolean transferFile(@NotNull String source, @NotNull String destination) throws FilesKernelException {
+		if (session != null && channelSftp != null) {
+		try {
 				ProgressMonitor progress = new ProgressMonitor();
 				channelSftp.put(source, destination, progress);
-				return success;
+				return true;
 
-			} catch (SftpException e) {
-				String Msg = "FK_ERROR_TRANSFER_FILE " + e.toString(); 
-				 _log.error(Msg);
-				  throw new FilesKernelException(Msg);
-			}
-	    }
-		return null;
-		
+		} catch (SftpException e) {
+			String Msg = "KERNEL_ERROR_TRANSFER_FILE " + e.toString();
+			_log.error(Msg,e);
+			throw new FilesKernelException(Msg,e);
+		}
+	   }
+			
+	return false;
 		
 	}
 
-	//TODO: look at the disconnect declaration to find out what happens if session is not disconnected
 	/**
-	    * @throws Exception
-	    */
-	   public void closeSession() {
+	 * Disconnect session
+	 */
+	public void closeSession() {
 
-		   if(channelSftp != null && channelSftp.isConnected())
-		   // Close channel
-			   channelSftp.disconnect();
-		   // Close session
-		   if (session != null && session.isConnected()) 
-			   session.disconnect();
+		if (channelSftp != null && channelSftp.isConnected())
+			// Close channel
+			channelSftp.disconnect();
+		// Close session
+		if (session != null && session.isConnected())
+			session.disconnect();
 
-	   }
+	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

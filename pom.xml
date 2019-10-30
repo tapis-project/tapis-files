@@ -10,7 +10,7 @@
     <version>1.0-SNAPSHOT</version>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <tapis-shared.version>1.0.41-SNAPSHOT</tapis-shared.version>
+        <tapis-shared.version>1.0.41</tapis-shared.version>
         <jaxb-api.version>2.3.1</jaxb-api.version>
         <commons-dbutils.version>1.7</commons-dbutils.version>
         <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>

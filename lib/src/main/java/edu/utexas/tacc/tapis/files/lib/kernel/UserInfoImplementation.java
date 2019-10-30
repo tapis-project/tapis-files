@@ -14,26 +14,40 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 /**
  * @author ajamthe
  * This class implements the abstract classes UserInfo and UIKeyboardInteractive
- * Received MFA prompt is compared with the known prompts and the program exits as the 
- * two factor authentication cannot be completed
+ * Received MFA prompt is compared with the known prompts error is reported as 
+ * file transfer cannot be completed
  * 
  *
  */
 public class UserInfoImplementation implements UserInfo, UIKeyboardInteractive {
+	
+	/* **************************************************************************** */
+    /*                                   Constants                                  */
+    /* **************************************************************************** */
+ 
+	private static final String[] KNOWN_MFA_PROMPTS = { "[sudo] password for: ", "TACC Token Code:",
+			"select one of the following options", "Duo two-factor", "Yubikey for " };
+
+	
+	
+	/* **************************************************************************** */
+    /*                                    Fields                                    */
+    /* **************************************************************************** */
+  
 	public String method;
 	private String passwd;
 	public String username;
 	private byte[] privateKey;
-	
-	/**
-	 * Known MFA prompts
-	 */
-	private static final String[] KNOWN_MFA_PROMPTS = { "[sudo] password for: ", "TACC Token Code:",
-			"select one of the following options", "Duo two-factor", "Yubikey for " };
-
 	// Local logger.
 	private static final Logger _log = LoggerFactory.getLogger(UserInfoImplementation.class);
+	
 
+	/* ********************************************************************** */
+	/* Constructors */
+	/* ********************************************************************** */
+	/* ---------------------------------------------------------------------------- */
+    /* constructor:                                                                 */
+    /* ---------------------------------------------------------------------------- */
 	/**
 	 * Constructor
 	 * @param username
@@ -44,13 +58,19 @@ public class UserInfoImplementation implements UserInfo, UIKeyboardInteractive {
 		this.passwd = passwd;
 
 	}	
-
+	/* ---------------------------------------------------------------------------- */
+    /* constructor:                                                                 */
+    /* ---------------------------------------------------------------------------- */
 	public UserInfoImplementation(String username, byte[] privateKey) {
 		this.username = username;
 		this.privateKey = privateKey;
 
 	}	
+	/* ********************************************************************** */
+	/* Public methods */
+	/* ********************************************************************** */
 
+	
 	@Override
 	public String getPassphrase() {
 		return null;
@@ -80,22 +100,23 @@ public class UserInfoImplementation implements UserInfo, UIKeyboardInteractive {
 	public void showMessage(String message) {
 	}
 
+	/**
+	 * This method catches the MFA prompt and logs it as error
+	 * 
+	 */
 	@Override
 	public String[] promptKeyboardInteractive(String destination, String name, String instruction, String[] prompt,
 			boolean[] echo) {
-		try {
-		    if (isMFAPrompt(prompt[0]))
-		    		_log.info("Known MFA prompt ");
+			String receivedPrompt = null;
+			if (isMFAPrompt(prompt[0]))
+				_log.debug("Known MFA prompt ");
 			if (prompt.length != 0) {
-				prompt[0] = "Prompt received is " + prompt[0];
-			}
-			throw new FilesKernelException(prompt[0]);
-		}
-		catch (FilesKernelException e)
-		{	
-			_log.error(prompt[0]);
+				receivedPrompt = "Prompt received is " + prompt[0];
+			}		
+			String Msg = "KERNEL_ERROR_RECEIVED_MFA_PROMPT "  + receivedPrompt;
+			_log.error(Msg);
 			return null;
-		}
+		
 	}
 
 	/**
@@ -105,7 +126,7 @@ public class UserInfoImplementation implements UserInfo, UIKeyboardInteractive {
 	 * @param prompt the message returned from a kbi prompt
 	 * @return true if the prompt is a mfa challenge phrase, false otherwise
 	 */
-	protected boolean isMFAPrompt(String prompt) {
+	public boolean isMFAPrompt(String prompt) {
 		for (String knownMFAPrompt : KNOWN_MFA_PROMPTS) {
 			if (StringUtils.contains(prompt, knownMFAPrompt)) {
 				return true;

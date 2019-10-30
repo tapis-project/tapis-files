@@ -6,15 +6,33 @@ import org.slf4j.LoggerFactory;
 import com.jcraft.jsch.SftpProgressMonitor;
 
 public class ProgressMonitor implements SftpProgressMonitor {
-	// Local logger.
-	private static final Logger _log = LoggerFactory.getLogger(ProgressMonitor.class.getName());
-
+	
+	/* **************************************************************************** */
+    /*                                   Fields                                 */
+    /* **************************************************************************** */
+ 
 	private long max = 0;
 	private long count = 0;
 	private long percent = 0;
+    private String source = null;
+    private String destination = null;
+	
+	// Local logger.
+	private static final Logger _log = LoggerFactory.getLogger(ProgressMonitor.class.getName());
 
+	/* ********************************************************************** */
+	/* Constructors */
+	/* ********************************************************************** */
+	/* ---------------------------------------------------------------------------- */
+    /* constructor:                                                                 */
+    /* ---------------------------------------------------------------------------- */
+	
 	public ProgressMonitor() {
 	}
+
+	/* ********************************************************************** */
+	/* 						Public Methods */
+	/* ********************************************************************** */
 
 	/**
 	 * Will be called when a new operation starts.
@@ -24,12 +42,14 @@ public class ProgressMonitor implements SftpProgressMonitor {
 	 */
 	@Override public void init(int op, String src, String dest, long max) {
 		this.max = max;
+		this.source = src;
+		this.destination = dest;
 		if (max < 0) 
 			max = 0;
-		_log.info("starting copy from source: " + src + " to destination " + dest + " total file size:  " + max);
-
+		_log.debug("starting copy from source: " + src + " to destination " + dest + " total file size:  " + max);
 	}
-
+	
+	
 	/**
 	 * Will be called periodically as more data is transfered.
 	 * count - the number of bytes transferred so far
@@ -40,20 +60,22 @@ public class ProgressMonitor implements SftpProgressMonitor {
 		long percentNow = this.count * 100 / max;
 		if (percentNow > this.percent) {
 			this.percent = percentNow;
-			_log.info("progress " + this.percent); // Progress 0,0
-			_log.info("Total file size: " + max + " bytes"); // total file size
-			_log.info("Bytes copied: " + this.count);// Progress in bytes from the total
+			_log.debug("progress " + this.percent + "\n" + "Total file size: " + max + " bytes" +
+			"\n" + "Bytes copied: " + this.count ); 
 		}
 		return true;
-	}
-
+	}	
+	
 	
 	/**
 	 * Will be called when the transfer ended, either because all the data was transferred, 
 	 * or because the transfer was cancelled.
 	 */
 	@Override public void end() {
-		_log.debug("finished copying " + this.percent + "%");
+		_log.debug("finished copying file of  " + this.max + "  bytes from source " + 
+		 this.source  + " to destination " +  this.destination);
 
 	}
+	
+	
 }
