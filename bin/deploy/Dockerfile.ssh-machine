@@ -1,4 +1,0 @@
-FROM rastasheep/ubuntu-sshd:18.04
-
-COPY ./deploy/ssh-machine.pub /root/.ssh/authorized_keys
-
