@@ -180,7 +180,7 @@
             <dependency>
                 <groupId>edu.utexas.tacc</groupId>
                 <artifactId>tapis-bom</artifactId>
-                <version>1.0.7</version>
+                <version>1.0.7-SNAPSHOT</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -190,7 +190,6 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>${mockito-core.version}</version>
             <scope>test</scope>
         </dependency>
 

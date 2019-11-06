@@ -17,8 +17,7 @@ import javax.ws.rs.core.SecurityContext;
 @Path("/transfers")
 public class TransfersApiResource {
 
-  private final String EXAMPLE_SYSTEM_ID = "system123";
-  private final String EXMAPLE_PATH = "/folderA/folderB/";
+  private final String EXAMPLE_TASK_ID = "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c";
 
   @GET
   @Path("/{transferTaskId}/")
@@ -27,7 +26,7 @@ public class TransfersApiResource {
       @ApiResponse(responseCode = "200", description = "OK")
   })
   public Response getTransferTaskStatus(
-      @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("transferTaskId") String systemId,
+      @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_TASK_ID) @PathParam("transferTaskId") String systemId,
       @Parameter(description = "Range of bytes to send" ) @HeaderParam("Range") String range,
       @Context SecurityContext securityContext) throws NotFoundException {
     return Response.ok().build();
@@ -45,7 +44,7 @@ public class TransfersApiResource {
       )
   })
   public Response cancelTransferTask(
-      @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("transferTaskId") String systemId,
+      @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_TASK_ID) @PathParam("transferTaskId") String systemId,
       @Context SecurityContext securityContext) throws NotFoundException {
     return Response.ok().build();
   }
