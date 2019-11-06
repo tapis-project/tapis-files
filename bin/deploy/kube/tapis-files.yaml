@@ -1,0 +1,221 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tapisfiles-postgres
+data:
+  password: cGFzc3dvcmQK
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tapisfiles-rabbitmq
+data:
+  password: cGFzc3dvcmQK
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tapisfiles-environment-vars
+data:
+  # These are for the default creds for the rabbitmq container
+  RABBITMQ_DEFAULT_USER: tapisfiles
+  RABBITMQ_DEFAULT_VHOST: tapisfiles
+  # These are for the postgres container itself
+  POSTGRES_DB: tapisfiles
+  POSTGRES_USER: tapisfiles
+
+  RABBITMQ_HOSTNAME: rabbitmq
+  RABBITMQ_VHOST: tapisfiles
+  RABBITMQ_USERNAME: tapisfiles
+  DB_USERNAME: tapisfiles
+  DB_HOST: tapisfiles-postgres
+  DB_NAME: tapisfiles
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: pgdata
+  name: tapisfiles-pgdata
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rbd
+  resources:
+    requests:
+      storage: 1G
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: tapisfiles
+  name: tapisfiles-rabbitmq
+spec:
+  ports:
+    - port: 5672
+      targetPort: 5672
+  selector:
+    app: tapisfiles
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: tapisfiles
+  name: tapisfiles-postgres
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: tapisfiles
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: tapisfiles
+  name: tapisfiles
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: tapisfiles-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: tapisfiles-rabbitmq
+  name: tapisfiles-rabbitmq
+spec:
+  replicas: 1
+  strategy: {}
+  selector:
+    matchLabels:
+      app: tapisfiles-rabbitmq
+  template:
+    metadata:
+      labels:
+        app: tapisfiles-rabbitmq
+    spec:
+      containers:
+        - env:
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: tapisfiles-rabbitmq
+                  key: password
+          envFrom:
+            - configMapRef:
+                name: tapisfiles-environment-vars
+          image: rabbitmq:3.8-alpine
+          ports:
+            - containerPort: 5672
+          name: tapisfiles-rabbitmq
+          resources: {}
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: tapisfiles-postgres
+  name: tapisfiles-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tapisfiles-postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: tapisfiles-postgres
+    spec:
+      containers:
+        - env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tapisfiles-postgres
+                  key: password
+          envFrom:
+            - configMapRef:
+                name: tapisfiles-environment-vars
+          image: postgres:11
+          name: tapisfiles-postgres
+          ports:
+            - containerPort: 5432
+          resources: {}
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: pgdata
+              subPath: postgres
+      hostname: tapisfile-postgres
+      restartPolicy: Always
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: tapisfiles-pgdata
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: tapisfiles-api
+  name:  tapisfiles-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app:  tapisfiles-api
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app:  tapisfiles-api
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name:  tapisfiles-environment-vars
+          env:
+            - name: RABBITMQ_PASSWD
+              valueFrom:
+                secretKeyRef:
+                  name: tapisfiles-rabbitmq
+                  key: password
+            - name: DB_PASSWD
+              valueFrom:
+                secretKeyRef:
+                  name: tapisfiles-rabbitmq
+                  key: password
+          image: taccaci/tapis-files:latest
+          name: tapisfiles-api
+          ports:
+            - containerPort: 8080
+          resources: {}
+          stdin: true
+          tty: true
+      hostname: tapisfiles-api
+      restartPolicy: Always
+---

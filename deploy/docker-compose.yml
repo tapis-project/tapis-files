@@ -46,3 +46,14 @@ services:
     volumes:
       - miniodata:/data
     command: server /data
+  
+  ssh-machine:
+    build:
+      context: ..
+      dockerfile: ./deploy/Dockerfile.ssh-machine
+    ports:
+      - "2222:22"
+    
+    
+    
+   
