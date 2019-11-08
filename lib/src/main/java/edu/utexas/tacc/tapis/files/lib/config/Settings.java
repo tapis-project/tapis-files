@@ -9,9 +9,9 @@ import java.util.Map;
  */
 public class Settings {
 
-  private Map<String, String> props = (Map) System.getProperties();
+  private Map props = (Map) System.getProperties();
   private Map<String, String> envs = System.getenv();
-  private Map<String, String> settings;
+  private Map<String, String> runtimeSettings;
 
 
   /**
@@ -19,12 +19,12 @@ public class Settings {
    * @return value
    */
   public String get(String key) {
-    if (settings == null) {
-      settings = new HashMap();
-      settings.putAll(envs);
-      settings.putAll(props);
+    if (runtimeSettings == null) {
+      runtimeSettings = new HashMap();
+      runtimeSettings.putAll(envs);
+      runtimeSettings.putAll(props);
     }
-    return settings.get(key);
+    return runtimeSettings.get(key);
   }
 
 

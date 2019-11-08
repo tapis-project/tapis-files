@@ -36,25 +36,25 @@ import edu.utexas.tacc.tapis.files.api.filters.TapisAuthenticationFilter;
 				version = "0.0",
 				description = "My API",
 				license = @License(name = "Apache 2.0", url = "http://foo.bar"),
-				contact = @Contact(url = "http://gigantic-server.com", name = "Fred", email = "Fred@gigagantic-server.com")
+				contact = @Contact(url = "http://tacc.utexas.edu", name = "CicSupport", email = "cicsupport@tacc.utexas.edu")
 		),
 		tags = {
-				@Tag(name = "file operations", description = "desc 1"),
-				@Tag(name = "sharing", description = "desc 2"),
+				@Tag(name = "file operations"),
+				@Tag(name = "sharing"),
 				@Tag(name = "permissions"),
 				@Tag(name = "transfers")
 		},
 		security = {
-				@SecurityRequirement(name = "Bearer", scopes = {"a", "b"}),
+				@SecurityRequirement(name = "Bearer"),
 		},
 		servers = {
 				@Server(
 						description = "localhost",
-						url = "localhost:8080"
+						url = "http://localhost:8080/v3/files/"
 				)
 		}
 )
-@ApplicationPath("/")
+@ApplicationPath("/v3/files/")
 public class FilesApplication extends ResourceConfig {
 	public FilesApplication() {
 
@@ -83,7 +83,7 @@ public class FilesApplication extends ResourceConfig {
 			}
 		});
 
-		setApplicationName("files");
+//		setApplicationName("files");
 
 	}
 

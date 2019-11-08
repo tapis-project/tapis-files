@@ -3,29 +3,19 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>edu.utexas.tacc</groupId>
+        <artifactId>tapis-bom</artifactId>
+        <version>1.1</version>
+    </parent>
 
-    <groupId>edu.utexas.tacc</groupId>
     <artifactId>tapis-files</artifactId>
     <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
+
     <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <tapis-shared.version>1.0.41</tapis-shared.version>
-        <jaxb-api.version>2.3.1</jaxb-api.version>
-        <commons-dbutils.version>1.7</commons-dbutils.version>
-        <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
-        <maven-surefire-plugin.version>3.0.0-M3</maven-surefire-plugin.version>
-        <maven-failsafe-plugin.version>3.0.0-M3</maven-failsafe-plugin.version>
-        <maven-buildnumber-plugin.version>1.4</maven-buildnumber-plugin.version>
-        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
-        <swagger-maven-plugin.version>2.0.9</swagger-maven-plugin.version>
-        <jersey-container-servlet.version>2.29</jersey-container-servlet.version>
+        <tapis-shared.version>1.1-SNAPSHOT</tapis-shared.version>
         <slf4j-api.version>1.7.28</slf4j-api.version>
-        <jackson-databind.version>2.9.4</jackson-databind.version>
-        <jcraft.version>0.1.54</jcraft.version>
-        <software.amazon.awssdk.version>2.9.3</software.amazon.awssdk.version>
-        <flyway-maven-plugin.version>6.0.4</flyway-maven-plugin.version>
-        <mockito-core.version>3.0.0</mockito-core.version>
     </properties>
     <profiles>
         <profile>
@@ -55,7 +45,6 @@
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
-                <version>${flyway-maven-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>flyway-clean-database</id>
@@ -70,16 +59,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>12</source>
-                    <target>12</target>
-                </configuration>
-                <version>${maven-compiler-plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>${maven-shade-plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -112,7 +95,6 @@
             <plugin>
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-maven-plugin</artifactId>
-                <version>${swagger-maven-plugin.version}</version>
                 <configuration>
                     <outputFileName>openapi</outputFileName>
                     <outputPath>${project.basedir}/src/main/resources/</outputPath>
@@ -130,24 +112,17 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>buildnumber-maven-plugin</artifactId>
-                <version>${maven-buildnumber-plugin.version}</version>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven-surefire-plugin.version}</version>
-                <configuration>
-                    <groups>unit</groups>
-                </configuration>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>${maven-failsafe-plugin.version}</version>
                 <configuration>
-                    <trimStackTrace>false</trimStackTrace>
                     <systemProperties>
                         <DB_HOST>localhost</DB_HOST>
                         <DB_NAME>test</DB_NAME>
@@ -155,37 +130,13 @@
                         <DB_PASSWORD>test</DB_PASSWORD>
                         <DB_PORT>5432</DB_PORT>
                     </systemProperties>
-                    <groups>integration</groups>
-                    <includes>
-                        <include>**/*Test*.java</include>
-                    </includes>
                 </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>integration-test</goal>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
 
         </plugins>
         <finalName>tapis-files</finalName>
     </build>
 
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>edu.utexas.tacc</groupId>
-                <artifactId>tapis-bom</artifactId>
-                <version>1.0.7-SNAPSHOT</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.mockito</groupId>
