@@ -20,18 +20,204 @@
     "variables" : { }
   } ],
   "security" : [ {
-    "Bearer" : [ "a", "b" ]
+    "Bearer" : [ ]
   } ],
   "tags" : [ {
     "name" : "file operations"
   }, {
-    "name" : "sharing"
+    "name" : "share"
   }, {
     "name" : "permissions"
   }, {
     "name" : "transfers"
   } ],
   "paths" : {
+    "/content/{systemId}/{path}" : {
+      "get" : {
+        "tags" : [ "content" ],
+        "summary" : "Retrieve a file from the files service",
+        "description" : "Get file contents/serve file",
+        "operationId" : "filesGetContents",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "system123"
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "File path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "/folderA/folderB/"
+        }, {
+          "name" : "Range",
+          "in" : "header",
+          "description" : "Range of bytes to send",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
+    "/health/healthcheck}" : {
+      "get" : {
+        "tags" : [ "health" ],
+        "summary" : "Health check",
+        "description" : "Health check",
+        "operationId" : "healthCheck",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
+    "/ops/{systemId}" : {
+      "get" : {
+        "tags" : [ "file operations" ],
+        "summary" : "List files/objects in a storage system.",
+        "description" : "List files in a bucket",
+        "operationId" : "listFiles",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "system123"
+        }, {
+          "name" : "path",
+          "in" : "query",
+          "description" : "path relative to root of bucket/folder",
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "/folderA/folderB/"
+        }, {
+          "name" : "meta",
+          "in" : "query",
+          "description" : "Return metadata also? This will slow down the request.",
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "A list of files",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/FileInfo"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ops/{systemId}/{path}" : {
+      "put" : {
+        "tags" : [ "file operations" ],
+        "summary" : "Rename a file or folder",
+        "description" : "Move/Rename a file in {systemID} at path {path}.",
+        "operationId" : "filesRenameObject",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "File path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "newName",
+          "in" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "file operations" ],
+        "summary" : "Upload a file",
+        "description" : "The file will be added at the {path} independent of the original file name",
+        "operationId" : "uploadFile",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "Path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "x-meta",
+          "in" : "header",
+          "description" : "String dump of a valid JSON object to be associated with the file",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "fileName" : {
+                    "$ref" : "#/components/schemas/FormDataContentDisposition"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
     "/permissions/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "permissions" ],
@@ -269,177 +455,6 @@
         }
       }
     },
-    "/systems/{systemId}/{path}" : {
-      "get" : {
-        "tags" : [ "file operations" ],
-        "summary" : "Retrieve a file from the files service",
-        "description" : "Get file contents/serve file",
-        "operationId" : "filesGetContents",
-        "parameters" : [ {
-          "name" : "systemId",
-          "in" : "path",
-          "description" : "System ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "system123"
-        }, {
-          "name" : "path",
-          "in" : "path",
-          "description" : "File path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "/folderA/folderB/"
-        }, {
-          "name" : "Range",
-          "in" : "header",
-          "description" : "Range of bytes to send",
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK"
-          }
-        }
-      },
-      "put" : {
-        "tags" : [ "file operations" ],
-        "summary" : "Rename a file or folder",
-        "description" : "Move/Rename a file in {systemID} at path {path}.",
-        "operationId" : "filesRenameObject",
-        "parameters" : [ {
-          "name" : "systemId",
-          "in" : "path",
-          "description" : "System ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "path",
-          "in" : "path",
-          "description" : "File path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "newName",
-          "in" : "query",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK"
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "file operations" ],
-        "summary" : "Upload a file",
-        "description" : "The file will be added at the {path} independent of the original file name",
-        "operationId" : "filesUpload",
-        "parameters" : [ {
-          "name" : "systemId",
-          "in" : "path",
-          "description" : "System ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "path",
-          "in" : "path",
-          "description" : "System ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "x-meta",
-          "in" : "header",
-          "description" : "String dump of a valid JSON object to be associated with the file",
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "multipart/form-data" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "fileName" : {
-                    "$ref" : "#/components/schemas/FormDataContentDisposition"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK"
-          }
-        }
-      }
-    },
-    "/systems/{systemId}" : {
-      "get" : {
-        "tags" : [ "file operations" ],
-        "summary" : "List files/objects in a storage system.",
-        "description" : "List files in a bucket",
-        "operationId" : "filesList",
-        "parameters" : [ {
-          "name" : "systemId",
-          "in" : "path",
-          "description" : "System ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "system123"
-        }, {
-          "name" : "path",
-          "in" : "query",
-          "description" : "path relative to root of bucket",
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "/folderA/folderB/"
-        }, {
-          "name" : "meta",
-          "in" : "query",
-          "description" : "Return metadata also? This will slow down the request.",
-          "schema" : {
-            "type" : "boolean"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "A list of files",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/FileInfo"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -512,6 +527,65 @@
   },
   "components" : {
     "schemas" : {
+      "FileInfo" : {
+        "type" : "object",
+        "properties" : {
+          "lastModified" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "systemId" : {
+            "type" : "string"
+          },
+          "size" : {
+            "type" : "integer",
+            "description" : "size in kB",
+            "format" : "int64"
+          }
+        }
+      },
+      "FormDataContentDisposition" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "parameters" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            }
+          },
+          "fileName" : {
+            "type" : "string"
+          },
+          "creationDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "modificationDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "readDate" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "size" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        }
+      },
       "FilePermission" : {
         "type" : "object",
         "properties" : {
@@ -563,65 +637,6 @@
             "type" : "integer",
             "description" : "Time in seconds of expiration. minimum=1, maximum=604800 (1 week)",
             "format" : "int32"
-          }
-        }
-      },
-      "FormDataContentDisposition" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "type" : "string"
-          },
-          "parameters" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "string"
-            }
-          },
-          "fileName" : {
-            "type" : "string"
-          },
-          "creationDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "modificationDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "readDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "size" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "name" : {
-            "type" : "string"
-          }
-        }
-      },
-      "FileInfo" : {
-        "type" : "object",
-        "properties" : {
-          "lastModified" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "path" : {
-            "type" : "string"
-          },
-          "systemId" : {
-            "type" : "string"
-          },
-          "size" : {
-            "type" : "integer",
-            "description" : "size in kB",
-            "format" : "int64"
           }
         }
       },

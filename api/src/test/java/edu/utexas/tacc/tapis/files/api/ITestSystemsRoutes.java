@@ -1,7 +1,5 @@
 package edu.utexas.tacc.tapis.files.api;
 
-import edu.utexas.tacc.tapis.files.api.resources.SystemsApiResource;
-import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg.ContainerPerClassTest;
 import org.glassfish.jersey.test.TestProperties;
 import org.testng.Assert;

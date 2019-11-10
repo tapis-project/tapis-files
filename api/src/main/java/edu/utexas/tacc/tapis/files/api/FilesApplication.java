@@ -1,12 +1,8 @@
 package edu.utexas.tacc.tapis.files.api;
 
 import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
-import edu.utexas.tacc.tapis.files.api.resources.PermissionsApiResource;
-import edu.utexas.tacc.tapis.files.api.resources.ShareApiResource;
-import edu.utexas.tacc.tapis.files.api.resources.SystemsApiResource;
-import edu.utexas.tacc.tapis.files.api.resources.TransfersApiResource;
+import edu.utexas.tacc.tapis.files.api.resources.*;
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
-import edu.utexas.tacc.tapis.files.lib.config.Settings;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
@@ -40,7 +36,7 @@ import edu.utexas.tacc.tapis.files.api.filters.TapisAuthenticationFilter;
 		),
 		tags = {
 				@Tag(name = "file operations"),
-				@Tag(name = "sharing"),
+				@Tag(name = "share"),
 				@Tag(name = "permissions"),
 				@Tag(name = "transfers")
 		},
@@ -68,10 +64,12 @@ public class FilesApplication extends ResourceConfig {
 		register(TapisAuthenticationFilter.class);
 
 		//Our APIs
-		register(SystemsApiResource.class);
+		register(ContentApiResource.class);
 		register(TransfersApiResource.class);
     register(PermissionsApiResource.class);
     register(ShareApiResource.class);
+    register(HealthApiResource.class);
+    register(OperationsApiResource.class);
 		//OpenAPI jazz
 		register(OpenApiResource.class);
 
