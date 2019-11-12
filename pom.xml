@@ -16,7 +16,11 @@
     <properties>
         <tapis-shared.version>1.1-SNAPSHOT</tapis-shared.version>
         <slf4j-api.version>1.7.28</slf4j-api.version>
+        
+        <!-- Skip integration tests by default -->
+        <skipTests>true</skipTests>
     </properties>
+
     <profiles>
         <profile>
             <id>dev</id>
@@ -138,6 +142,7 @@
                         <DB_PASSWORD>test</DB_PASSWORD>
                         <DB_PORT>5432</DB_PORT>
                     </systemProperties>
+                    <skipITs>${skipTests}</skipITs>
                 </configuration>
             </plugin>
 
