@@ -1,17 +1,11 @@
 package edu.utexas.tacc.tapis.files.lib.dao.sharing;
 
-import edu.utexas.tacc.tapis.files.lib.database.ConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.SharedFileObject;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import org.apache.commons.dbutils.*;
-import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.UUID;
 
 public class FileSharingDAO implements IFileSharingDAO {

@@ -8,7 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.config.Settings;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class ConnectionPool {
+public class HikariConnectionPool {
   private static HikariConfig config = new HikariConfig();
   private static HikariDataSource ds;
   private static Settings settings=  new Settings();
@@ -24,7 +24,7 @@ public class ConnectionPool {
     ds = new HikariDataSource( config );
   }
 
-  private ConnectionPool() {}
+  private HikariConnectionPool() {}
 
   public static Connection getConnection() {
     try {

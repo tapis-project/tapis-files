@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public class TransferTask   {
 
   public TransferTask() {
-
     this.uuid = UUID.randomUUID();
     this.status = "PENDING";
   }

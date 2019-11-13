@@ -15,8 +15,12 @@
     "version" : "0.0"
   },
   "servers" : [ {
-    "url" : "http://localhost:8080/v3/files/",
+    "url" : "http://localhost:8080/",
     "description" : "localhost",
+    "variables" : { }
+  }, {
+    "url" : "https://dev.develop.tapis.io/v3",
+    "description" : "development",
     "variables" : { }
   } ],
   "security" : [ {
@@ -71,7 +75,7 @@
         }
       }
     },
-    "/health/healthcheck}" : {
+    "/health/healthcheck" : {
       "get" : {
         "tags" : [ "health" ],
         "summary" : "Health check",
@@ -84,60 +88,12 @@
         }
       }
     },
-    "/ops/{systemId}" : {
-      "get" : {
-        "tags" : [ "file operations" ],
-        "summary" : "List files/objects in a storage system.",
-        "description" : "List files in a bucket",
-        "operationId" : "listFiles",
-        "parameters" : [ {
-          "name" : "systemId",
-          "in" : "path",
-          "description" : "System ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "system123"
-        }, {
-          "name" : "path",
-          "in" : "query",
-          "description" : "path relative to root of bucket/folder",
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "/folderA/folderB/"
-        }, {
-          "name" : "meta",
-          "in" : "query",
-          "description" : "Return metadata also? This will slow down the request.",
-          "schema" : {
-            "type" : "boolean"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "A list of files",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/FileInfo"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/ops/{systemId}/{path}" : {
       "put" : {
         "tags" : [ "file operations" ],
         "summary" : "Rename a file or folder",
         "description" : "Move/Rename a file in {systemID} at path {path}.",
-        "operationId" : "filesRenameObject",
+        "operationId" : "rename",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -214,6 +170,54 @@
         "responses" : {
           "200" : {
             "description" : "OK"
+          }
+        }
+      }
+    },
+    "/ops/{systemId}" : {
+      "get" : {
+        "tags" : [ "file operations" ],
+        "summary" : "List files/objects in a storage system.",
+        "description" : "List files in a bucket",
+        "operationId" : "listFiles",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "system123"
+        }, {
+          "name" : "path",
+          "in" : "query",
+          "description" : "path relative to root of bucket/folder",
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "/folderA/folderB/"
+        }, {
+          "name" : "meta",
+          "in" : "query",
+          "description" : "Return metadata also? This will slow down the request.",
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "A list of files",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/FileInfo"
+                  }
+                }
+              }
+            }
           }
         }
       }

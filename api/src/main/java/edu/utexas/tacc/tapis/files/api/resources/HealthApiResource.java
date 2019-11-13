@@ -12,7 +12,7 @@ import javax.ws.rs.core.Response;
 public class HealthApiResource {
   @GET
   @PermitAll
-  @Path("/healthcheck}")
+  @Path("/healthcheck")
   @Operation(summary = "Health check", description = "Health check", tags={ "health" })
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "OK")

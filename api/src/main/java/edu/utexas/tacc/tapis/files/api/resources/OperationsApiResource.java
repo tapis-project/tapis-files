@@ -99,7 +99,7 @@ public class OperationsApiResource {
   @ApiResponses(value = {
       @ApiResponse(responseCode = "200", description = "OK")
   })
-  public Response filesRenameObject(
+  public Response rename(
       @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
       @Parameter(description = "File path",required=true) @PathParam("path") String path,
       @Parameter(description = "",required=true) @QueryParam("newName") String newName,

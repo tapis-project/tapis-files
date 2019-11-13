@@ -1,16 +1,13 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
-import edu.utexas.tacc.tapis.files.lib.database.ConnectionPool;
+import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
-import org.apache.commons.dbutils.handlers.ScalarHandler;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 
@@ -23,7 +20,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
 
   @Override
   public TransferTask getTransferTask(@NotNull  UUID taskUUID) throws DAOException {
-    Connection connection = ConnectionPool.getConnection();
+    Connection connection = HikariConnectionPool.getConnection();
     try {
       BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
       String query = "SELECT * FROM transfer_tasks where uuid= ?";
@@ -40,7 +37,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
   @Override
   public TransferTask createTransferTask(@NotNull TransferTask task) throws DAOException {
 
-    Connection connection = ConnectionPool.getConnection();
+    Connection connection = HikariConnectionPool.getConnection();
     try {
       String stmt = "INSERT into transfer_tasks " +
           "(tenant_id, username, uuid, source_system_id, source_path, destination_system_id, destination_path, status)" +

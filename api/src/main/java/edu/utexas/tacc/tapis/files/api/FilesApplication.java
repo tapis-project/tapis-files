@@ -21,74 +21,80 @@ import org.glassfish.jersey.server.ResourceConfig;
 import javax.ws.rs.ApplicationPath;
 import java.net.URI;
 import edu.utexas.tacc.tapis.files.api.filters.TapisAuthenticationFilter;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
+
 
 
 // The path here is appended to the context root and
 // is configured to work when invoked in a standalone 
 // container (command line) and in an IDE (eclipse).
 @OpenAPIDefinition(
-		info = @Info(
-				title = "Tapis Files API",
-				version = "0.0",
-				description = "My API",
-				license = @License(name = "Apache 2.0", url = "http://foo.bar"),
-				contact = @Contact(url = "http://tacc.utexas.edu", name = "CicSupport", email = "cicsupport@tacc.utexas.edu")
-		),
-		tags = {
-				@Tag(name = "file operations"),
-				@Tag(name = "share"),
-				@Tag(name = "permissions"),
-				@Tag(name = "transfers")
-		},
-		security = {
-				@SecurityRequirement(name = "Bearer"),
-		},
-		servers = {
-				@Server(
-						description = "localhost",
-						url = "http://localhost:8080/v3/files/"
-				)
-		}
+        info = @Info(
+                title = "Tapis Files API",
+                version = "0.0",
+                description = "My API",
+                license = @License(name = "Apache 2.0", url = "http://foo.bar"),
+                contact = @Contact(url = "http://tacc.utexas.edu", name = "CicSupport", email = "cicsupport@tacc.utexas.edu")
+        ),
+        tags = {
+                @Tag(name = "file operations"),
+                @Tag(name = "share"),
+                @Tag(name = "permissions"),
+                @Tag(name = "transfers")
+        },
+        security = {
+                @SecurityRequirement(name = "Bearer"),
+        },
+        servers = {
+                @Server(
+                        description = "localhost",
+                        url = "http://localhost:8080/"
+                ),
+                @Server(
+                        description = "development",
+                        url = "https://dev.develop.tapis.io/v3"
+                )
+        }
 )
-@ApplicationPath("/v3/files/")
+@ApplicationPath("/files")
 public class FilesApplication extends ResourceConfig {
-	public FilesApplication() {
+    public FilesApplication() {
 
-	  register(MultiPartFeature.class);
+        register(MultiPartFeature.class);
 
-	  // Serialization
-		register(JacksonFeature.class);
-		// Custom Timestamp/Instant serialization;
-		register(ObjectMapperContextResolver.class);
-		// Authentication Filter
-		register(TapisAuthenticationFilter.class);
+        // Serialization
+        register(JacksonFeature.class);
+        // Custom Timestamp/Instant serialization
+        register(ObjectMapperContextResolver.class);
+        // Authentication Filter
+        register(JWTValidateRequestFilter.class);
 
-		//Our APIs
-		register(ContentApiResource.class);
-		register(TransfersApiResource.class);
-    register(PermissionsApiResource.class);
-    register(ShareApiResource.class);
-    register(HealthApiResource.class);
-    register(OperationsApiResource.class);
-		//OpenAPI jazz
-		register(OpenApiResource.class);
+        //Our APIs
+        register(ContentApiResource.class);
+        register(TransfersApiResource.class);
+        register(PermissionsApiResource.class);
+        register(ShareApiResource.class);
+        register(HealthApiResource.class);
+        register(OperationsApiResource.class);
+        //OpenAPI jazz
+        register(OpenApiResource.class);
 
-		//For dependency injection into the Resource classes for testing.
-		register(new AbstractBinder() {
-			@Override
-			protected void configure() {
-				bindAsContract(FakeSystemsService.class);
-			}
-		});
+        //For dependency injection into the Resource classes for testing.
+        register(new AbstractBinder() {
+            @Override
+            protected void configure() {
+                bindAsContract(FakeSystemsService.class);
+            }
+        });
 
-//		setApplicationName("files");
+		setApplicationName("files");
 
-	}
+    }
 
-	public static void main(String[] args) throws Exception {
-		final URI BASE_URI = URI.create("http://0.0.0.0:8080");
-		ResourceConfig config = new FilesApplication();
-		final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(BASE_URI, config, false);
-		server.start();
-	}
+    public static void main(String[] args) throws Exception {
+        final URI BASE_URI = URI.create("http://0.0.0.0:8080/files");
+        ResourceConfig config = new FilesApplication();
+        final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(BASE_URI, config, false);
+        server.start();
+    }
 }
