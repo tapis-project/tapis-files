@@ -6,7 +6,8 @@ import java.util.stream.Collectors;
 
 
 /**
- *
+ * Get all the environment variables and system properties add them together in a HashMap. System
+ * properties override environment variables.
  */
 public class Settings {
 
@@ -18,8 +19,18 @@ public class Settings {
 
     /**
      * @param key
+     * @param def String default
      * @return value
      */
+    public String get(String key, String def) {
+        if (runtimeSettings == null) {
+            runtimeSettings = new HashMap<>();
+            runtimeSettings.putAll(envs);
+            runtimeSettings.putAll(props);
+        }
+        return runtimeSettings.getOrDefault(key, def);
+    }
+
     public String get(String key) {
         if (runtimeSettings == null) {
             runtimeSettings = new HashMap<>();

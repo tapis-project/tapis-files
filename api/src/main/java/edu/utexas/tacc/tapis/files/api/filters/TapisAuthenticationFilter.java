@@ -45,7 +45,7 @@ public class TapisAuthenticationFilter implements ContainerRequestFilter {
         Jwt jwt;
 
         // @PermitAll on the method takes precedence over @RolesAllowed on the class
-        if (method.isAnnotationPresent(PermitAll.class)) {
+        if (resourceInfo.getResourceMethod().isAnnotationPresent(PermitAll.class)) {
             // Do nothing
             return;
         }

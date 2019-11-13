@@ -48,8 +48,8 @@ public class ITestSystemsRoutes extends ContainerPerClassTest{
             .get();
         Assert.assertEquals(response.getStatus(), 200);
     }
-    
-    @Test
+
+    @Test(enabled=false)
     public void testFilesListNoAuth() {
 
         Response response = target("/systems/system1?path=test")

@@ -20,7 +20,6 @@ import org.glassfish.jersey.server.ResourceConfig;
 
 import javax.ws.rs.ApplicationPath;
 import java.net.URI;
-import edu.utexas.tacc.tapis.files.api.filters.TapisAuthenticationFilter;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 
 

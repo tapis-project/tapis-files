@@ -3,7 +3,8 @@ package edu.utexas.tacc.tapis.files.lib.database;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import edu.utexas.tacc.tapis.files.lib.config.Settings;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -11,13 +12,17 @@ import java.sql.SQLException;
 public class HikariConnectionPool {
   private static HikariConfig config = new HikariConfig();
   private static HikariDataSource ds;
-  private static Settings settings=  new Settings();
+  private static IRuntimeConfig conf = RuntimeSettings.get();
 
   static {
-    String dbUrl = String.format("jdbc:postgresql://%s:%s/%s", settings.get("DB_HOST"), settings.get("DB_PORT"), settings.get("DB_NAME"));
+    String dbUrl = String.format("jdbc:postgresql://%s:%s/%s",
+            conf.getDbHost(),
+            conf.getDbPort(),
+            conf.getDbName()
+    );
     config.setJdbcUrl( dbUrl );
-    config.setUsername( settings.get("DB_USERNAME") );
-    config.setPassword( settings.get("DB_PASSWORD") );
+    config.setUsername( conf.getDbUsername() );
+    config.setPassword( conf.getDbPassword() );
     config.addDataSourceProperty( "cachePrepStmts" , "true" );
     config.addDataSourceProperty( "prepStmtCacheSize" , "250" );
     config.addDataSourceProperty( "prepStmtCacheSqlLimit" , "2048" );
