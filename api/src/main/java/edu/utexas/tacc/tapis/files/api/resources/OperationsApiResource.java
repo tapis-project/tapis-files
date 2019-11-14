@@ -37,7 +37,7 @@ public class OperationsApiResource {
   @Inject
   private FakeSystemsService systemsService;
 
-  private Logger log = LoggerFactory.getLogger(ContentApiResource.class);
+  private Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
 
 
   @GET

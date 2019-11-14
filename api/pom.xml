@@ -3,9 +3,9 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <groupId>edu.utexas.tacc</groupId>
         <artifactId>tapis-files</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <groupId>edu.utexas.tacc.tapis</groupId>
+        <version>1.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tapis-files-api</artifactId>
@@ -14,19 +14,15 @@
 
     <dependencies>
         <dependency>
-            <groupId>edu.utexas.tacc</groupId>
+            <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>tapis-shared-api</artifactId>
             <version>${tapis-shared.version}</version>
         </dependency>
         <dependency>
-            <groupId>edu.utexas.tacc</groupId>
+            <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>tapis-files-lib</artifactId>
             <version>${project.version}</version>
             <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt</artifactId>
         </dependency>
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
