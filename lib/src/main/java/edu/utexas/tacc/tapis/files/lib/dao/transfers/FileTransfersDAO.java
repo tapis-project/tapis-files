@@ -18,7 +18,11 @@ public class FileTransfersDAO implements IFileTransferDAO {
   private Logger log = LoggerFactory.getLogger(FileTransfersDAO.class);
   private RowProcessor rowProcessor = new BasicRowProcessor(new GenerousBeanProcessor());
 
-  @Override
+  public TransferTask getTransferTask(@NotNull String uuid) throws DAOException {
+    UUID taskUUID = UUID.fromString(uuid);
+    return getTransferTask(taskUUID);
+  }
+
   public TransferTask getTransferTask(@NotNull  UUID taskUUID) throws DAOException {
     Connection connection = HikariConnectionPool.getConnection();
     try {
@@ -34,7 +38,6 @@ public class FileTransfersDAO implements IFileTransferDAO {
     }
   }
 
-  @Override
   public TransferTask createTransferTask(@NotNull TransferTask task) throws DAOException {
 
     Connection connection = HikariConnectionPool.getConnection();
