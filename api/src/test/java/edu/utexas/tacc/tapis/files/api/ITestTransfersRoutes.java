@@ -51,6 +51,8 @@ public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
                 .request()
                 .header("Authorization", jwt)
                 .post(Entity.json(payload));
+
+        Assert.assertEquals(response.getStatus(), 200);
     }
 
 

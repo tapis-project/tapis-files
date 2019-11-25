@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
@@ -31,11 +32,17 @@ public class TransfersApiResource {
     @Inject
     FileTransfersDAO transfersDAO;
 
+    private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
+
     @GET
     @Path("/{transferTaskId}/")
     @Operation(summary = "Get the status of a transfer task", description = "", tags={ "transfers" })
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "OK")
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "OK",
+                    content = @Content(schema = @Schema(implementation = TransferTaskResponse.class))
+            )
     })
     public Response getTransferTaskStatus(
             @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_TASK_ID) @PathParam("transferTaskId") String transferTaskId,

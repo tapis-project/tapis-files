@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -20,5 +21,7 @@ public class HealthApiResource {
   public Response healthCheck() throws NotFoundException {
     return Response.ok().build();
   }
+
+  private class HealthCheckResponse extends TapisResponse<String> {}
 
 }

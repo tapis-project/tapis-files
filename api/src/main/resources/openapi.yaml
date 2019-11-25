@@ -162,9 +162,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/FileInfo'
+                $ref: '#/components/schemas/FileListingResponse'
   /permissions/{systemId}/{path}:
     get:
       tags:
@@ -415,6 +413,20 @@ components:
           type: integer
           description: size in kB
           format: int64
+    FileListingResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: int32
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileInfo'
+        version:
+          type: string
     FormDataContentDisposition:
       type: object
       properties:

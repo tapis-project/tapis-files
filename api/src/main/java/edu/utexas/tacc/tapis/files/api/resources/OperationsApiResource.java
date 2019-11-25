@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 
+import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystem;
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -8,7 +9,6 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,6 +39,7 @@ public class OperationsApiResource {
 
     private Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
 
+    private static class FileListingResponse extends TapisResponse<List<FileInfo>>{}
 
     @GET
     @Path("/{systemId}")
@@ -48,7 +49,7 @@ public class OperationsApiResource {
             @ApiResponse(
                     responseCode = "200",
                     description = "A list of files",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = FileInfo.class)))
+                    content = @Content(schema = @Schema(implementation = FileListingResponse.class))
             )
     })
     public Response listFiles(
