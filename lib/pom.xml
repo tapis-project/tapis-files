@@ -21,7 +21,11 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
+    
+     <properties>
+    <tapis-client-java.version>1.1-SNAPSHOT</tapis-client-java.version>
+    </properties>
+    
     <dependencies>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -59,6 +63,26 @@
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-jaxrs2</artifactId>
         </dependency>
+        
+    	<dependency>
+    		<groupId>com.squareup.okhttp3</groupId>
+    		<artifactId>okhttp</artifactId>
+    	</dependency>
+    	<dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>tokens-client</artifactId>
+      <version>${tapis-client-java.version}</version>
+    </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>tenants-client</artifactId>
+        <version>${tapis-client-java.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>systems-client</artifactId>
+        <version>${tapis-client-java.version}</version>
+      </dependency>
     </dependencies>
 
 </project>

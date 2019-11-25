@@ -1,6 +1,9 @@
 package edu.utexas.tacc.tapis.files.lib.kernel;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Vector;
 
 import javax.validation.constraints.NotNull;
 
@@ -14,6 +17,7 @@ import com.jcraft.jsch.Session;
 import com.jcraft.jsch.SftpException;
 import com.jcraft.jsch.UIKeyboardInteractive;
 import com.jcraft.jsch.UserInfo;
+import com.jcraft.jsch.ChannelSftp.LsEntry;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 
@@ -250,6 +254,34 @@ public class SftpFilesKernel {
 			
 	return false;
 		
+	}
+	public List<String> ls(String remotePath) throws FilesKernelException{
+		List<String> fileArrayList = new ArrayList();
+		if (session != null && channelSftp != null) {
+			try {
+				System.out.println("remotePath: "+remotePath);
+				Vector filelist = channelSftp.ls(remotePath);
+	            for(int i=0; i<filelist.size();i++){
+	                LsEntry entry = (LsEntry) filelist.get(i);
+	                System.out.println(entry.getFilename());
+	            }
+	             fileArrayList = new ArrayList<>(filelist);
+					return fileArrayList;
+
+			} catch (SftpException e) {
+				String Msg = "FK_FILE_TRANSFER_ERROR in method "+ this.getClass().getName() +" for user:  " 
+			            + username + "on destination host: "
+						+ host + " : " + e.toString();
+							_log.error(Msg,e);
+			_log.error(Msg,e);
+				throw new FilesKernelException(Msg,e);
+			}finally {
+	            if(session != null) session.disconnect();
+	            if(channelSftp != null) channelSftp.disconnect();
+	        }
+		   }
+				
+		return fileArrayList;
 	}
 
 	/**

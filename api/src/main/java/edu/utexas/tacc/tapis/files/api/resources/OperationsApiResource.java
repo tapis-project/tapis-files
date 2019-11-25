@@ -1,11 +1,35 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 
-import edu.utexas.tacc.tapis.files.lib.clients.FakeSystem;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+
+import javax.inject.Inject;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
+
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -13,19 +37,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
-import org.glassfish.jersey.media.multipart.FormDataParam;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import javax.ws.rs.*;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
 
 @Path("/ops")
 public class OperationsApiResource {
@@ -57,17 +68,36 @@ public class OperationsApiResource {
       @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
       @Context SecurityContext securityContext) throws NotFoundException {
     try {
+      
       // First do SK check on system/path or throw 403
+      // TODO Waiting on Security Kernel to implement isPermitted for Files	
 
-      // Fetch the system
-      FakeSystem system = systemsService.getSystemByID(systemId);
-
+     
+      // Fetch the system based on the systemId
+      // TODO System Service is being implemented. We are able to used some of fields of Systems that System service have already implemented.
+      System.out.println("Get System based on System ID:" + systemId);	
+      
+      //FakeSystem system = systemsService.getSystemByID(systemId);
+      TSystem sys = systemsService.getSystemByName(systemId);
+      
+      
+      
       // Fetch the creds
-
+      //TODO creds in system service and in SK are being implemented. After that it will be implemented here in files
+            
+      
       // build the client
-      IRemoteDataClient client = clientFactory.getRemoteDataClient(system);
+      log.debug("Get Remote Data Client");
+      //IRemoteDataClient client = clientFactory.getRemoteDataClient(system);
+      IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
+      client.connect();
+      
+      log.debug("Do the files lisiting for a specific path: " + path);
       List<FileInfo> listing = client.ls(path);
+      
+       //TODO Send the listing back in the response
       return Response.ok(listing).build();
+      
     } catch (IOException e) {
       log.error("Failed to list files", e);
       return Response.status(400).build();
