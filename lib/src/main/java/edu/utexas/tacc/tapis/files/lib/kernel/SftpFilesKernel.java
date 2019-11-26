@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.kernel;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
@@ -20,6 +21,7 @@ import com.jcraft.jsch.UserInfo;
 import com.jcraft.jsch.ChannelSftp.LsEntry;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 
 /**
  * @author ajamthe
@@ -255,18 +257,30 @@ public class SftpFilesKernel {
 	return false;
 		
 	}
-	public List<String> ls(String remotePath) throws FilesKernelException{
-		List<String> fileArrayList = new ArrayList();
+	public List<FileInfo> ls(String remotePath) throws FilesKernelException{
+		List<String> fileArrayList = new ArrayList<String>();
+		List<FileInfo> filesList = new ArrayList<FileInfo>();
+		
 		if (session != null && channelSftp != null) {
 			try {
 				System.out.println("remotePath: "+remotePath);
 				Vector filelist = channelSftp.ls(remotePath);
 	            for(int i=0; i<filelist.size();i++){
 	                LsEntry entry = (LsEntry) filelist.get(i);
-	                System.out.println(entry.getFilename());
+	                System.out.println("name: " + entry.getFilename() + " attr: "+ entry.getAttrs());
+	                FileInfo fileInfo = new FileInfo();
+	                fileInfo.setName(entry.getFilename());
+	                fileInfo.setSize(entry.getAttrs().getSize());
+	                fileInfo.setSystemId("");
+	                fileInfo.setLastModified(null);
+	                fileInfo.setPath(remotePath);
+	                filesList.add(fileInfo);
+	                //fileInfo.setLastModified(entry.getAttrs().getMtimeString());
+	                //System.out.println(entry.getFilename());
 	            }
-	             fileArrayList = new ArrayList<>(filelist);
-					return fileArrayList;
+	            // fileArrayList = new ArrayList<>(filelist);
+				//	return fileArrayList;
+	            return filesList;
 
 			} catch (SftpException e) {
 				String Msg = "FK_FILE_TRANSFER_ERROR in method "+ this.getClass().getName() +" for user:  " 
@@ -281,7 +295,7 @@ public class SftpFilesKernel {
 	        }
 		   }
 				
-		return fileArrayList;
+		return filesList;
 	}
 
 	/**

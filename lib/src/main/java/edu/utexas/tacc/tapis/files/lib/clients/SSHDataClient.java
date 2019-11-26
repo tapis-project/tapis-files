@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
@@ -41,15 +42,15 @@ public class SSHDataClient implements IRemoteDataClient {
 	}
 	@Override
 	public List<FileInfo> ls(String remotePath) throws IOException {
-		// TODO Auto-generated method stub
+		List<FileInfo> fileListing = new ArrayList<FileInfo>();
 		try {
-			List<String> fileLists = sftp.ls(remotePath);
-			System.out.println("File Lists from remote execution");
+			 fileListing = sftp.ls(remotePath);
+			System.out.println("File Lists from remote execution" + fileListing);
 		} catch (FilesKernelException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return null;
+		return fileListing;
 	}
 
 	@Override

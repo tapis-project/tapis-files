@@ -18,7 +18,10 @@ public class FileInfo   {
     this.size = listing.size();
     this.path = listing.key();
   }
-
+  
+  public FileInfo() {
+	  
+  }
   @JsonProperty("lastModified")
   private Instant lastModified = null;
 

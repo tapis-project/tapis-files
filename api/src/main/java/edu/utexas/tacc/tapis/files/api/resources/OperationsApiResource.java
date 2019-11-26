@@ -18,6 +18,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
@@ -25,10 +26,14 @@ import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.files.api.responses.RespFilesList;
+import edu.utexas.tacc.tapis.files.api.responses.results.ResultFilesList;
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.sharedapi.utils.RestUtils;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -94,14 +99,24 @@ public class OperationsApiResource {
       
       log.debug("Do the files lisiting for a specific path: " + path);
       List<FileInfo> listing = client.ls(path);
+      System.out.println("listing in API:" + listing);
       
-       //TODO Send the listing back in the response
-      return Response.ok(listing).build();
+       //TODO Send the listing back in the response in JSON format
+      ResultFilesList files = new ResultFilesList();
+      files.fileInfos = listing;
+     
+      RespFilesList resp1 = new RespFilesList(files);
+      System.out.println("Response: "+ resp1.result.fileInfos);
+      
+      return Response.status(Status.FOUND).entity(TapisRestUtils.createSuccessResponse(
+    	      "File listing PATH FOUND", true, resp1)).build();
+      //return Response.ok(listing).build();
       
     } catch (IOException e) {
       log.error("Failed to list files", e);
       return Response.status(400).build();
     }
+	
   }
 
   @POST
