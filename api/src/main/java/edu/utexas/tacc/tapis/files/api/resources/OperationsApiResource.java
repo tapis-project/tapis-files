@@ -93,7 +93,7 @@ public class OperationsApiResource {
       
       // build the client
       log.debug("Get Remote Data Client");
-      //IRemoteDataClient client = clientFactory.getRemoteDataClient(system);
+      
       IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
       client.connect();
       
@@ -101,8 +101,11 @@ public class OperationsApiResource {
       List<FileInfo> listing = client.ls(path);
       System.out.println("listing in API:" + listing);
       
+      client.disconnect();
+      
        //TODO Send the listing back in the response in JSON format
       ResultFilesList files = new ResultFilesList();
+      files.systemId = systemId;
       files.fileInfos = listing;
      
       RespFilesList resp1 = new RespFilesList(files);

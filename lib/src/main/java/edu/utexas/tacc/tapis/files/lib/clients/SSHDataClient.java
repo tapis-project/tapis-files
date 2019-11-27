@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,16 +22,8 @@ public class SSHDataClient implements IRemoteDataClient {
 	AccessMechanismEnum accessMechanism;
 	String remotePath;
 	SftpFilesKernel sftp;
+	String rootDir;
 	
-	/*public SSHDataClient(FakeSystem system) {
-		host = system.getHost();
-		port = system.getPort();
-		username = system.getUsername();
-		password = system.getPassword();
-		remotePath = system.getBucketName();
-		accessMechanism = system.getAccessMechanism();
-			
-	}*/
 	
 	public SSHDataClient(TSystem system) {
 		host = system.getHost();
@@ -38,14 +32,17 @@ public class SSHDataClient implements IRemoteDataClient {
 		password = system.getAccessCredential();
 		remotePath = system.getBucketName();
 		accessMechanism = system.getAccessMechanism();
+		rootDir = system.getRootDir();
 			
 	}
 	@Override
 	public List<FileInfo> ls(String remotePath) throws IOException {
 		List<FileInfo> fileListing = new ArrayList<FileInfo>();
 		try {
-			 fileListing = sftp.ls(remotePath);
-			System.out.println("File Lists from remote execution" + fileListing);
+			 Path remoteAbsolutePath = Paths.get(rootDir,remotePath);
+			 fileListing = sftp.ls(remoteAbsolutePath.toString());
+			 System.out.println("File Lists from remote execution" + fileListing);
+			 
 		} catch (FilesKernelException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -113,7 +110,7 @@ public class SSHDataClient implements IRemoteDataClient {
 
 	@Override
 	public void disconnect() {
-		// TODO Auto-generated method stub
+		sftp.closeSession();
 
 	}
 

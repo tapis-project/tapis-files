@@ -1,9 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.kernel;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Vector;
 
 import javax.validation.constraints.NotNull;
@@ -15,6 +20,7 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 import com.jcraft.jsch.UIKeyboardInteractive;
 import com.jcraft.jsch.UserInfo;
@@ -257,42 +263,60 @@ public class SftpFilesKernel {
 	return false;
 		
 	}
-	public List<FileInfo> ls(String remotePath) throws FilesKernelException{
-		List<String> fileArrayList = new ArrayList<String>();
+	
+	/**
+	 * Returns the files listing output on a remotePath
+	 * @param remotePath
+	 * @return list of FileInfo
+	 * @throws FilesKernelException
+	 */
+	public List<FileInfo> ls(@NotNull String remotePath) throws FilesKernelException{
+		
 		List<FileInfo> filesList = new ArrayList<FileInfo>();
 		
 		if (session != null && channelSftp != null) {
 			try {
-				System.out.println("remotePath: "+remotePath);
-				Vector filelist = channelSftp.ls(remotePath);
+				_log.debug("SFTPFilesKernel ls remotePath: " + remotePath);
+				Vector<?> filelist = channelSftp.ls(remotePath);
 	            for(int i=0; i<filelist.size();i++){
-	                LsEntry entry = (LsEntry) filelist.get(i);
-	                System.out.println("name: " + entry.getFilename() + " attr: "+ entry.getAttrs());
+	                LsEntry entry = (LsEntry)filelist.get(i);	
+	                SftpATTRS attrs = entry.getAttrs();
+	                
 	                FileInfo fileInfo = new FileInfo();
+	                if(entry.getFilename().equals(".") || entry.getFilename().equals("..")){
+	                	continue;
+	                }
+	                
 	                fileInfo.setName(entry.getFilename());
-	                fileInfo.setSize(entry.getAttrs().getSize());
-	                fileInfo.setSystemId("");
-	                fileInfo.setLastModified(null);
-	                fileInfo.setPath(remotePath);
+	                
+	                DateTimeFormatter dateTimeformatter = DateTimeFormatter.ofPattern( "EEE MMM d HH:mm:ss zzz uuuu" , Locale.US);
+	                ZonedDateTime lastModified = ZonedDateTime.parse(attrs.getMtimeString(), dateTimeformatter);
+	                fileInfo.setLastModified(lastModified.toInstant());
+	                
+	                fileInfo.setSize(attrs.getSize());
+	                
+	                if(attrs.isReg()) {	
+	                	Path fullPath = Paths.get(remotePath, entry.getFilename());
+	                	fileInfo.setPath(fullPath.toString());
+	                } else {
+	                	fileInfo.setPath(remotePath);
+	                }
+	                
 	                filesList.add(fileInfo);
-	                //fileInfo.setLastModified(entry.getAttrs().getMtimeString());
-	                //System.out.println(entry.getFilename());
+		                        
 	            }
-	            // fileArrayList = new ArrayList<>(filelist);
-				//	return fileArrayList;
+	        
 	            return filesList;
 
 			} catch (SftpException e) {
-				String Msg = "FK_FILE_TRANSFER_ERROR in method "+ this.getClass().getName() +" for user:  " 
-			            + username + "on destination host: "
-						+ host + " : " + e.toString();
+				String Msg = "FK_FILE_LISTING_ERROR in method "+ this.getClass().getName() +" for user:  " 
+			            + username + " on destination host: "
+						+ host + " path :"+ remotePath + " : " + e.toString();
 							_log.error(Msg,e);
 			_log.error(Msg,e);
 				throw new FilesKernelException(Msg,e);
-			}finally {
-	            if(session != null) session.disconnect();
-	            if(channelSftp != null) channelSftp.disconnect();
-	        }
+			 } 
+			
 		   }
 				
 		return filesList;

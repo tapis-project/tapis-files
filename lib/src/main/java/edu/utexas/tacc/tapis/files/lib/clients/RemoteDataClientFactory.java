@@ -11,7 +11,6 @@ import java.util.List;
 public class RemoteDataClientFactory implements IRemoteDataClientFactory {
 
   @Override
-  //public IRemoteDataClient getRemoteDataClient(@NotNull FakeSystem system) throws IOException{
   public IRemoteDataClient getRemoteDataClient(@NotNull TSystem system) throws IOException{
 
 	   List<TransferMechanismsEnum> protocol = system.getTransferMechanisms();
