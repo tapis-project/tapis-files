@@ -473,13 +473,6 @@
             "type" : "string"
           },
           "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
-        }, {
-          "name" : "Range",
-          "in" : "header",
-          "description" : "Range of bytes to send",
-          "schema" : {
-            "type" : "string"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -514,6 +507,17 @@
         "summary" : "Transfer data",
         "description" : "This creates a background task which will transfer files into the storage system",
         "operationId" : "createTransferTask",
+        "requestBody" : {
+          "description" : "Pet object that needs to be added to the store",
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -679,6 +683,28 @@
             "type" : "string",
             "description" : "The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED",
             "example" : "PENDING"
+          }
+        }
+      },
+      "TransferTaskRequest" : {
+        "required" : [ "destinationPath", "destinationSystemId", "sourcePath", "sourceSystemId" ],
+        "type" : "object",
+        "properties" : {
+          "sourceSystemId" : {
+            "type" : "string",
+            "description" : "ID of source system"
+          },
+          "sourcePath" : {
+            "type" : "string",
+            "description" : "Path to file/folder in source system"
+          },
+          "destinationSystemId" : {
+            "type" : "string",
+            "description" : "ID of destination system"
+          },
+          "destinationPath" : {
+            "type" : "string",
+            "description" : "Path to file/folder in destination system"
           }
         }
       }

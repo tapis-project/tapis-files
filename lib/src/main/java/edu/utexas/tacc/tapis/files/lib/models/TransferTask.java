@@ -14,9 +14,9 @@ public class TransferTask   {
     this.status = "PENDING";
   }
 
-  private String tenantId = null;
-  private String username = null;
-  private String sourceSystemId = null;
+  private String tenantId;
+  private String username;
+  private String sourceSystemId;
   private String sourcePath;
   private String destinationSystemId;
   private String destinationPath;

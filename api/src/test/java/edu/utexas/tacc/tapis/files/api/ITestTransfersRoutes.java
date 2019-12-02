@@ -1,8 +1,10 @@
 package edu.utexas.tacc.tapis.files.api;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
-import org.glassfish.jersey.test.JerseyTestNg.ContainerPerClassTest;
+import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.test.TestProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -11,12 +13,9 @@ import org.testng.annotations.Test;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Response;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 @Test(groups={"integration"})
-public class ITestSystemsRoutes extends ContainerPerClassTest{
+public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
 
     private Logger log = LoggerFactory.getLogger(ITestSystemsRoutes.class);
 
@@ -39,20 +38,29 @@ public class ITestSystemsRoutes extends ContainerPerClassTest{
     public void setUp() throws Exception {
         super.setUp();
     }
-    // This test fails with response code 500 
-    //disabling for now :ajamthe   
-    @Test(enabled=false)
-    public void testFilesList() {
 
-        Response response = target("/systems/system1?path=test")
-            .request()
-            .header("Authorization", jwt)
-            .get();
-        Assert.assertEquals(response.getStatus(), 200);
+    @Test
+    public void createTransferTask() {
+        TransferTaskRequest payload = new TransferTaskRequest();
+        payload.setSourceSystemId("sourceSystem");
+        payload.setSourcePath("sourcePath");
+        payload.setDestinationSystemId("destinationSystem");
+        payload.setDestinationPath("destinationPath");
+
+        Response response = target("/transfers")
+                .request()
+                .header("Authorization", jwt)
+                .post(Entity.json(payload));
     }
 
 
+    @Test
+    public void getTransferById() {
 
-
-
+        Response response = target("/systems/system1?path=test")
+                .request()
+                .header("Authorization", jwt)
+                .get();
+        Assert.assertEquals(response.getStatus(), 200);
+    }
 }

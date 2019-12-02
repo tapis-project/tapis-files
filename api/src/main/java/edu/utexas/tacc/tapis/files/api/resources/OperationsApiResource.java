@@ -155,6 +155,4 @@ public class OperationsApiResource {
       throws NotFoundException {
     return Response.ok().build();
   }
-
-
 }

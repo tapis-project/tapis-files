@@ -28,6 +28,11 @@
     
     <dependencies>
         <dependency>
+            <groupId>edu.utexas.tacc.tapis</groupId>
+            <artifactId>tapis-files-migrations</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
         </dependency>
