@@ -473,7 +473,14 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -493,7 +500,14 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TapisResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -505,7 +519,6 @@
         "description" : "This creates a background task which will transfer files into the storage system",
         "operationId" : "createTransferTask",
         "requestBody" : {
-          "description" : "Pet object that needs to be added to the store",
           "content" : {
             "application/json" : {
               "schema" : {
@@ -521,7 +534,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/TransferTask"
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
                 }
               }
             }
@@ -559,8 +572,7 @@
         "type" : "object",
         "properties" : {
           "status" : {
-            "type" : "integer",
-            "format" : "int32"
+            "type" : "string"
           },
           "message" : {
             "type" : "string"
@@ -666,6 +678,23 @@
           }
         }
       },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "TransferTask" : {
         "type" : "object",
         "properties" : {
@@ -701,6 +730,23 @@
             "type" : "string",
             "description" : "The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED",
             "example" : "PENDING"
+          }
+        }
+      },
+      "TransferTaskResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "$ref" : "#/components/schemas/TransferTask"
+          },
+          "version" : {
+            "type" : "string"
           }
         }
       },

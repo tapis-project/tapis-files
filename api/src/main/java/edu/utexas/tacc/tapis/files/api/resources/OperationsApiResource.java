@@ -68,10 +68,12 @@ public class OperationsApiResource {
             // build the client
             IRemoteDataClient client = clientFactory.getRemoteDataClient(system);
             List<FileInfo> listing = client.ls(path);
-            return Response.ok(listing).build();
+            TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse(listing);
+            return Response.ok(resp).build();
         } catch (IOException e) {
             log.error("Failed to list files", e);
-            return Response.status(400).build();
+            TapisResponse resp = TapisResponse.createErrorResponse("Could not list files");
+            return Response.status(400).entity(resp).build();
         }
     }
 

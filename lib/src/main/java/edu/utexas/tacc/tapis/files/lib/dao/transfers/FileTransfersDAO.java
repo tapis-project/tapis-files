@@ -38,6 +38,33 @@ public class FileTransfersDAO implements IFileTransferDAO {
     }
   }
 
+  public TransferTask updateTransferTask(@NotNull TransferTask task) throws DAOException {
+    Connection connection = HikariConnectionPool.getConnection();
+    try {
+      String stmt =
+              "UPDATE transfer_tasks " +
+              " SET source_system_id = ?, " +
+              "     source_path = ?, " +
+              "     destination_system_id = ?, " +
+              "     destination_path = ?, " +
+              "     status = ? " +
+              "WHERE uuid = ? ";
+      QueryRunner runner = new QueryRunner();
+      int insert = runner.update(connection, stmt,
+              task.getSourceSystemId(), task.getSourcePath(),
+              task.getDestinationSystemId(), task.getDestinationPath(),
+              task.getStatus(),
+              task.getUuid());
+
+      TransferTask insertedTask = getTransferTask(task.getUuid());
+      return insertedTask;
+    } catch (SQLException ex) {
+      throw new DAOException(ex.getErrorCode());
+    } finally {
+      DbUtils.closeQuietly(connection);
+    }
+  }
+
   public TransferTask createTransferTask(@NotNull TransferTask task) throws DAOException {
 
     Connection connection = HikariConnectionPool.getConnection();
