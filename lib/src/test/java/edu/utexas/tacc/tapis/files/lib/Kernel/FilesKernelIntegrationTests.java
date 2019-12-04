@@ -5,12 +5,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 
 import org.testng.Assert;
 import org.testng.annotations.BeforeSuite;
@@ -78,7 +80,7 @@ public class FilesKernelIntegrationTests {
 		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
 		boolean expected = true;
 		Assert.assertEquals(actual, expected);
-
+		sftp.closeSession();
 	}
 
 	/**
@@ -102,7 +104,7 @@ public class FilesKernelIntegrationTests {
 		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
 		boolean expected = true;
 		Assert.assertEquals(actual, expected);
-
+		sftp.closeSession();
 
 	}
 	
@@ -122,7 +124,8 @@ public class FilesKernelIntegrationTests {
 		SftpFilesKernel sftp = new SftpFilesKernel(host, user, Integer.parseInt(port), privateKey, publicKey, passphrase, identity);
 		sftp.initSession();
 		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
-	 }
+		sftp.closeSession();
+	}
 
 	/**
 	 * This is a negative test is for sftp file transfer when public auth method is
@@ -141,6 +144,7 @@ public class FilesKernelIntegrationTests {
 		SftpFilesKernel sftp = new SftpFilesKernel(host, user, Integer.parseInt(port), privateKey, publicKey, passphrase, identity);
 		sftp.initSession();
 		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		sftp.closeSession();
 
 	}
 
@@ -170,6 +174,7 @@ public class FilesKernelIntegrationTests {
 		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
 		boolean expected = true;
 		Assert.assertEquals(actual, expected);
+		sftp.closeSession();
 
 	}
 
@@ -195,6 +200,7 @@ public class FilesKernelIntegrationTests {
 		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
 		boolean expected = true;
 		Assert.assertEquals(actual, expected);
+		 sftp.closeSession();
 
 	}
 
@@ -217,6 +223,7 @@ public class FilesKernelIntegrationTests {
 		SftpFilesKernel sftp = new SftpFilesKernel(host, Integer.parseInt(port), user, password);
 		sftp.initSession();
 		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		sftp.closeSession();
 
 	}
 
@@ -239,6 +246,7 @@ public class FilesKernelIntegrationTests {
 		SftpFilesKernel sftp = new SftpFilesKernel(host, Integer.parseInt(port), user, password);
 		sftp.initSession();
 		boolean actual = sftp.transferFile(LOCALFILE, REMOTEFILE);
+		sftp.closeSession();
 
 	}
 	
@@ -259,6 +267,7 @@ public class FilesKernelIntegrationTests {
 		SftpFilesKernel sftp = new SftpFilesKernel(host, Integer.parseInt(port), user, password);
 		sftp.initSession();
 		sftp.transferFile(LOCALFILE, REMOTEFILE);
+		sftp.closeSession();
 
 	}
 
@@ -280,8 +289,35 @@ public class FilesKernelIntegrationTests {
 		SftpFilesKernel sftp = new SftpFilesKernel(host, Integer.parseInt(port), user, password);
 		sftp.initSession();
 		sftp.transferFile(LOCALFILE, REMOTEFILE);
+		sftp.closeSession();
 
 	}
 	
+	/* ********************************************************************** */
+	/* Integration tests for ls  */
+	/* ********************************************************************** */
 
+	/**
+	 * This is a positive test is for SSH ls operation when password auth method
+	 * is used This returns a list of files information
+	 * 
+	 * @throws FilesKernelException
+	 */
+	
+	@Test
+	private void lsPasswordSuccessTest() throws FilesKernelException {
+		String user = "root";
+		String host = "localhost";
+		String port = "2222";
+		String password = "root";
+		String remotePath = "/home/L1/L2/test2";
+		SftpFilesKernel sftp = new SftpFilesKernel(host, Integer.parseInt(port), user, password);
+		sftp.initSession();
+	    List<FileInfo> fileList = sftp.ls(remotePath);
+	    FileInfo testFileInfo = fileList.get(0);
+	    Assert.assertEquals(testFileInfo.getName(),"test1.txt" );
+	    Assert.assertEquals(testFileInfo.getPath(),"/home/L1/L2/test2/test1.txt");
+	    sftp.closeSession();
+
+	}
 }

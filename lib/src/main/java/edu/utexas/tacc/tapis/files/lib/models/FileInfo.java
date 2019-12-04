@@ -18,7 +18,10 @@ public class FileInfo   {
     this.size = listing.size();
     this.path = listing.key();
   }
-
+  
+  public FileInfo() {
+	  
+  }
   @JsonProperty("lastModified")
   private Instant lastModified = null;
 
@@ -28,9 +31,7 @@ public class FileInfo   {
   @JsonProperty("path")
   private String path = null;
 
-  @JsonProperty("systemId")
-  private String systemId = null;
-
+  
   @JsonProperty("size")
   private Long size = null;
 
@@ -81,21 +82,6 @@ public class FileInfo   {
 
 
   /**
-   * Get systemId
-   * @return systemId
-   **/
-  @JsonProperty("systemId")
-  @Schema(description = "")
-  public String getSystemId() {
-    return systemId;
-  }
-
-  public void setSystemId(String systemId) {
-    this.systemId = systemId;
-  }
-
-
-  /**
    * size in kB
    * @return size
    **/
@@ -122,13 +108,12 @@ public class FileInfo   {
     return Objects.equals(this.lastModified, fileInfo.lastModified) &&
         Objects.equals(this.name, fileInfo.name) &&
         Objects.equals(this.path, fileInfo.path) &&
-        Objects.equals(this.systemId, fileInfo.systemId) &&
         Objects.equals(this.size, fileInfo.size);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(lastModified, name, path, systemId, size);
+    return Objects.hash(lastModified, name, path, size);
   }
 
 
@@ -140,7 +125,6 @@ public class FileInfo   {
     sb.append("    lastModified: ").append(toIndentedString(lastModified)).append("\n");
     sb.append("    name: ").append(toIndentedString(name)).append("\n");
     sb.append("    path: ").append(toIndentedString(path)).append("\n");
-    sb.append("    systemId: ").append(toIndentedString(systemId)).append("\n");
     sb.append("    size: ").append(toIndentedString(size)).append("\n");
     sb.append("}");
     return sb.toString();
