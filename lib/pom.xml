@@ -68,7 +68,7 @@
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-jaxrs2</artifactId>
         </dependency>
-        
+       
     	<dependency>
     		<groupId>com.squareup.okhttp3</groupId>
     		<artifactId>okhttp</artifactId>
@@ -88,6 +88,12 @@
         <artifactId>systems-client</artifactId>
         <version>${tapis-client-java.version}</version>
       </dependency>
+
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>

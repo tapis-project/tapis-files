@@ -28,6 +28,10 @@ import org.slf4j.LoggerFactory;
 
 import edu.utexas.tacc.tapis.files.api.responses.RespFilesList;
 import edu.utexas.tacc.tapis.files.api.responses.results.ResultFilesList;
+
+import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
+import edu.utexas.tacc.tapis.files.lib.clients.FakeSystem;
+
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -37,7 +41,6 @@ import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -55,23 +58,24 @@ public class OperationsApiResource {
 
   private Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
 
+  private static class FileListingResponse extends TapisResponse<List<FileInfo>>{}
 
   @GET
   @Path("/{systemId}")
   @Produces({ "application/json" })
   @Operation(summary = "List files/objects in a storage system.", description = "List files in a bucket", tags={ "file operations" })
   @ApiResponses(value = {
-      @ApiResponse(
-          responseCode = "200",
-          description = "A list of files",
-          content = @Content(array = @ArraySchema(schema = @Schema(implementation = FileInfo.class)))
-      )
+          @ApiResponse(
+                  responseCode = "200",
+                  description = "A list of files",
+                  content = @Content(schema = @Schema(implementation = FileListingResponse.class))
+          )
   })
   public Response listFiles(
-      @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
-      @Parameter(description = "path relative to root of bucket/folder", example = EXAMPLE_PATH) @QueryParam("path") String path,
-      @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
-      @Context SecurityContext securityContext) throws NotFoundException {
+          @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
+          @Parameter(description = "path relative to root of bucket/folder", example = EXAMPLE_PATH) @QueryParam("path") String path,
+          @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
+          @Context SecurityContext securityContext) throws NotFoundException {
     try {
       
       // First do SK check on system/path or throw 403
@@ -102,25 +106,28 @@ public class OperationsApiResource {
       System.out.println("listing in API:" + listing);
       
       client.disconnect();
+    
       
-       //TODO Send the listing back in the response in JSON format
-      ResultFilesList files = new ResultFilesList();
-      files.systemId = systemId;
-      files.fileInfos = listing;
-     
-      RespFilesList resp1 = new RespFilesList(files);
-      System.out.println("Response: "+ resp1.result.fileInfos);
+      TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("File listing PATH FOUND",listing);
+      return Response.status(Status.FOUND).entity(resp).build();
       
-      return Response.status(Status.FOUND).entity(TapisRestUtils.createSuccessResponse(
-    	      "File listing PATH FOUND", true, resp1)).build();
-      //return Response.ok(listing).build();
+      //return Response.status(Status.FOUND).entity(TapisRestUtils.createSuccessResponse(
+    //		    	      "File listing PATH FOUND", true, resp)).build();
+      
+      //return Response.status(Status.FOUND).entity(TapisRestUtils.createSuccessResponse(
+    //	      "File listing PATH FOUND", true, resp1)).build();
+      
       
     } catch (IOException e) {
       log.error("Failed to list files", e);
+      TapisResponse<String> resp = TapisResponse.createErrorResponse("Could not list files");
       return Response.status(400).build();
+        }
     }
+
+    
 	
-  }
+  
 
   @POST
   @Path("/{systemId}/{path}")

@@ -162,9 +162,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/FileInfo'
+                $ref: '#/components/schemas/FileListingResponse'
   /permissions/{systemId}/{path}:
     get:
       tags:
@@ -359,6 +357,10 @@ paths:
       responses:
         200:
           description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
     delete:
       tags:
       - transfers
@@ -375,6 +377,10 @@ paths:
       responses:
         200:
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TapisResponse'
   /transfers:
     post:
       tags:
@@ -384,7 +390,6 @@ paths:
         storage system
       operationId: createTransferTask
       requestBody:
-        description: Pet object that needs to be added to the store
         content:
           application/json:
             schema:
@@ -396,7 +401,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TransferTask'
+                $ref: '#/components/schemas/TransferTaskResponse'
 components:
   schemas:
     FileInfo:
@@ -415,6 +420,19 @@ components:
           type: integer
           description: size in kB
           format: int64
+    FileListingResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileInfo'
+        version:
+          type: string
     FormDataContentDisposition:
       type: object
       properties:
@@ -482,6 +500,17 @@ components:
           description: Time in seconds of expiration. minimum=1, maximum=604800 (1
             week)
           format: int32
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string
     TransferTask:
       type: object
       properties:
@@ -510,6 +539,17 @@ components:
           description: The status of the task, such as PENDING, IN_PROGRESS, COMPLETED,
             CANCELLED
           example: PENDING
+    TransferTaskResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
     TransferTaskRequest:
       required:
       - destinationPath
