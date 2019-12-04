@@ -19,8 +19,12 @@ public class FileTransfersDAO implements IFileTransferDAO {
   private RowProcessor rowProcessor = new BasicRowProcessor(new GenerousBeanProcessor());
 
   public TransferTask getTransferTask(@NotNull String uuid) throws DAOException {
-    UUID taskUUID = UUID.fromString(uuid);
-    return getTransferTask(taskUUID);
+    try {
+      UUID taskUUID = UUID.fromString(uuid);
+      return getTransferTask(taskUUID);
+    } catch (IllegalArgumentException e) {
+      throw new DAOException(0);
+    }
   }
 
   public TransferTask getTransferTask(@NotNull  UUID taskUUID) throws DAOException {

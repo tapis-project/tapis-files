@@ -11,7 +11,7 @@ public class TransferTask   {
 
   public TransferTask() {
     this.uuid = UUID.randomUUID();
-    this.status = "PENDING";
+    this.status = TransferTaskStatus.ACCEPTED.name();
   }
 
   private String tenantId;

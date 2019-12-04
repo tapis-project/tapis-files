@@ -344,8 +344,8 @@ paths:
     get:
       tags:
       - transfers
-      summary: Get the status of a transfer task
-      operationId: getTransferTaskStatus
+      summary: Get a transfer task
+      operationId: getTransferTask
       parameters:
       - name: transferTaskId
         in: path
@@ -500,17 +500,6 @@ components:
           description: Time in seconds of expiration. minimum=1, maximum=604800 (1
             week)
           format: int32
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
     TransferTask:
       type: object
       properties:
@@ -570,3 +559,14 @@ components:
         destinationPath:
           type: string
           description: Path to file/folder in destination system
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string

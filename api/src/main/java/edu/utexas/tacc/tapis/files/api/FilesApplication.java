@@ -4,6 +4,8 @@ import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
 import edu.utexas.tacc.tapis.files.api.resources.*;
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper;
+import edu.utexas.tacc.tapis.sharedapi.providers.ValidationExceptionMapper;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
@@ -60,14 +62,17 @@ import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 public class FilesApplication extends ResourceConfig {
     public FilesApplication() {
 
+        // Need that for some reason for numtipart forms/ uploads
         register(MultiPartFeature.class);
-
         // Serialization
         register(JacksonFeature.class);
         // Custom Timestamp/Instant serialization
         register(ObjectMapperContextResolver.class);
         // Authentication Filter
         register(JWTValidateRequestFilter.class);
+        // ExceptionMappers, need both because ValidationMapper is +
+        register(TapisExceptionMapper.class);
+        register(ValidationExceptionMapper.class);
 
         //Our APIs
         register(ContentApiResource.class);
@@ -76,6 +81,7 @@ public class FilesApplication extends ResourceConfig {
         register(ShareApiResource.class);
         register(HealthApiResource.class);
         register(OperationsApiResource.class);
+
         //OpenAPI jazz
         register(OpenApiResource.class);
 

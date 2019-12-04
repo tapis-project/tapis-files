@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.validators.ValidUUID;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,6 +18,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.validation.Valid;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
@@ -34,7 +38,6 @@ public class TransfersApiResource {
 
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
 
-
     private boolean isPermitted(TransferTask task, AuthenticatedUser user) {
 
         if (!task.getUsername().equals(user.getName())) return false;
@@ -44,7 +47,7 @@ public class TransfersApiResource {
 
     @GET
     @Path("/{transferTaskId}/")
-    @Operation(summary = "Get the status of a transfer task", description = "", tags={ "transfers" })
+    @Operation(summary = "Get a transfer task", description = "", tags={ "transfers" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -52,22 +55,25 @@ public class TransfersApiResource {
                     content = @Content(schema = @Schema(implementation = TransferTaskResponse.class))
             )
     })
-    public Response getTransferTaskStatus(
-            @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_TASK_ID) @PathParam("transferTaskId") String transferTaskId,
+    public Response getTransferTask(
+            @ValidUUID
+            @Parameter(description = "Transfer task ID", required=true, example = EXAMPLE_TASK_ID)
+            @PathParam("transferTaskId") String transferTaskId,
             @Context SecurityContext securityContext) {
+
 
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
             TransferTask task = transfersDAO.getTransferTask(transferTaskId);
             if (task == null) {
-                return Response.status(404).build();
+                throw new NotFoundException("transfer task not found");
             }
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (DAOException e) {
             log.error("getTransferTaskStatus", e);
-            return Response.status(500).build();
+            throw new WebApplicationException("server error");
         }
     }
 
@@ -84,8 +90,9 @@ public class TransfersApiResource {
             )
     })
     public Response cancelTransferTask(
-            @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_TASK_ID) @PathParam("transferTaskId") String transferTaskId,
+            @ValidUUID @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_TASK_ID) @PathParam("transferTaskId") String transferTaskId,
             @Context SecurityContext securityContext) throws NotFoundException {
+
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
@@ -93,8 +100,7 @@ public class TransfersApiResource {
             TransferTask task;
             task = transfersDAO.getTransferTask(transferTaskId);
             if (task == null) {
-                resp = TapisResponse.createErrorResponse("Transfer task not found.");
-                return Response.ok(resp).status(404).build();
+                throw new NotFoundException("transfer task not found");
             }
             task.setStatus(TransferTaskStatus.CANCELLED.name());
             task = transfersDAO.updateTransferTask(task);
@@ -106,8 +112,8 @@ public class TransfersApiResource {
             return Response.ok(resp).build();
         } catch (DAOException e) {
             log.error("DELETE transferTask error", e);
+            throw new WebApplicationException("server error");
         }
-        return Response.ok().build();
     }
 
 
@@ -143,7 +149,7 @@ public class TransfersApiResource {
             return Response.ok(resp).build();
         } catch (DAOException e) {
             log.error("Could not create transfer task", e);
-            return Response.status(500).build();
+            throw new WebApplicationException("server error");
         }
     }
 }

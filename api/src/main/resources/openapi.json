@@ -459,8 +459,8 @@
     "/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
-        "summary" : "Get the status of a transfer task",
-        "operationId" : "getTransferTaskStatus",
+        "summary" : "Get a transfer task",
+        "operationId" : "getTransferTask",
         "parameters" : [ {
           "name" : "transferTaskId",
           "in" : "path",
@@ -678,23 +678,6 @@
           }
         }
       },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
       "TransferTask" : {
         "type" : "object",
         "properties" : {
@@ -769,6 +752,23 @@
           "destinationPath" : {
             "type" : "string",
             "description" : "Path to file/folder in destination system"
+          }
+        }
+      },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
           }
         }
       }
