@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -20,11 +21,13 @@ public class S3DataClient implements IRemoteDataClient {
     private S3Client client;
     private String bucket;
 
-    public S3DataClient(FakeSystem system) throws IOException {
+    //public S3DataClient(FakeSystem system) throws IOException {
+    public S3DataClient(TSystem system) throws IOException {
         this.bucket = system.getBucketName();
         try {
             URI endpoint = new URI(system.getHost() + ":" + system.getPort());
-            AwsCredentials credentials = AwsBasicCredentials.create(system.getUsername(), system.getPassword());
+            //AwsCredentials credentials = AwsBasicCredentials.create(system.getUsername(), system.getPassword());
+            AwsCredentials credentials = AwsBasicCredentials.create(system.getEffectiveUserId(), system.getAccessCredential());
             client = S3Client.builder()
                     .region(Region.AP_NORTHEAST_1)
                     .endpointOverride(endpoint)
