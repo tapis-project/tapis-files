@@ -50,6 +50,9 @@ public class FileInfo   {
   public void setLastModified(Instant lastModified) {
     this.lastModified = lastModified;
   }
+  public void setLastModified(String lastModified) {
+    this.lastModified = Instant.parse(lastModified);
+  }
 
   /**
    * Get name

@@ -83,12 +83,81 @@
         "operationId" : "healthCheck",
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HealthCheckResponse"
+                }
+              }
+            }
           }
         }
       }
     },
     "/ops/{systemId}/{path}" : {
+      "get" : {
+        "tags" : [ "file operations" ],
+        "summary" : "List files/objects in a storage system.",
+        "description" : "List files in a bucket",
+        "operationId" : "listFiles",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "system123"
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "path relative to root of bucket/folder",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "/folderA/folderB/"
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "pagination limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "example" : 100
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "pagination offset",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "example" : 1000
+        }, {
+          "name" : "meta",
+          "in" : "query",
+          "description" : "Return metadata also? This will slow down the request.",
+          "schema" : {
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "A list of files",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileListingResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "put" : {
         "tags" : [ "file operations" ],
         "summary" : "Rename a file or folder",
@@ -120,7 +189,14 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -169,17 +245,22 @@
         },
         "responses" : {
           "200" : {
-            "description" : "OK"
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
           }
         }
-      }
-    },
-    "/ops/{systemId}" : {
-      "get" : {
+      },
+      "delete" : {
         "tags" : [ "file operations" ],
-        "summary" : "List files/objects in a storage system.",
-        "description" : "List files in a bucket",
-        "operationId" : "listFiles",
+        "summary" : "Delete a file or folder",
+        "description" : "Delete a file in {systemID} at path {path}.",
+        "operationId" : "delete",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -187,31 +268,23 @@
           "required" : true,
           "schema" : {
             "type" : "string"
-          },
-          "example" : "system123"
+          }
         }, {
           "name" : "path",
-          "in" : "query",
-          "description" : "path relative to root of bucket/folder",
+          "in" : "path",
+          "description" : "File path",
+          "required" : true,
           "schema" : {
             "type" : "string"
-          },
-          "example" : "/folderA/folderB/"
-        }, {
-          "name" : "meta",
-          "in" : "query",
-          "description" : "Return metadata also? This will slow down the request.",
-          "schema" : {
-            "type" : "boolean"
           }
         } ],
         "responses" : {
           "200" : {
-            "description" : "A list of files",
+            "description" : "OK",
             "content" : {
-              "application/json" : {
+              "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/FileListingResponse"
+                  "$ref" : "#/components/schemas/FileStringResponse"
                 }
               }
             }
@@ -236,7 +309,7 @@
         }, {
           "name" : "path",
           "in" : "path",
-          "description" : "System ID",
+          "description" : "path",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -250,7 +323,7 @@
                 "schema" : {
                   "type" : "array",
                   "items" : {
-                    "$ref" : "#/components/schemas/FilePermission"
+                    "$ref" : "#/components/schemas/FilePermissionResponse"
                   }
                 }
               }
@@ -274,7 +347,7 @@
         }, {
           "name" : "path",
           "in" : "path",
-          "description" : "System ID",
+          "description" : "path",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -286,7 +359,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/FilePermission"
+                  "$ref" : "#/components/schemas/FilePermissionResponse"
                 }
               }
             }
@@ -309,7 +382,7 @@
         }, {
           "name" : "path",
           "in" : "path",
-          "description" : "System ID",
+          "description" : "path",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -329,7 +402,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/FilePermission"
+                  "$ref" : "#/components/schemas/FilePermissionResponse"
                 }
               }
             }
@@ -545,6 +618,40 @@
   },
   "components" : {
     "schemas" : {
+      "HealthCheckResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "FileStringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "FileInfo" : {
         "type" : "object",
         "properties" : {
@@ -556,9 +663,6 @@
             "type" : "string"
           },
           "path" : {
-            "type" : "string"
-          },
-          "systemId" : {
             "type" : "string"
           },
           "size" : {
@@ -635,6 +739,23 @@
           }
         }
       },
+      "FilePermissionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "$ref" : "#/components/schemas/FilePermission"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "SharedFileObject" : {
         "type" : "object",
         "properties" : {
@@ -678,6 +799,23 @@
           }
         }
       },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "TransferTask" : {
         "type" : "object",
         "properties" : {
@@ -705,9 +843,9 @@
             "format" : "uuid"
           },
           "created" : {
-            "type" : "string",
+            "type" : "integer",
             "description" : "Timestamp in UTC of task creation.",
-            "format" : "date-time"
+            "format" : "int64"
           },
           "status" : {
             "type" : "string",
@@ -752,23 +890,6 @@
           "destinationPath" : {
             "type" : "string",
             "description" : "Path to file/folder in destination system"
-          }
-        }
-      },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
           }
         }
       }

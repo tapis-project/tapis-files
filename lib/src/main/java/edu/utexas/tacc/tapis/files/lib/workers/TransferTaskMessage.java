@@ -73,4 +73,16 @@ public class TransferTaskMessage {
     public void setDestinationPath(String destinationPath) {
         this.destinationPath = destinationPath;
     }
+
+    @Override
+    public String toString() {
+        return "TransferTaskMessage{" +
+                "username='" + username + '\'' +
+                ", tenantId='" + tenantId + '\'' +
+                ", sourceSystemId='" + sourceSystemId + '\'' +
+                ", sourcePath='" + sourcePath + '\'' +
+                ", destinationSystemId='" + destinationSystemId + '\'' +
+                ", destinationPath='" + destinationPath + '\'' +
+                '}';
+    }
 }

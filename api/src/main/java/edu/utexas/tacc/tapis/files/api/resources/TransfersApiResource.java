@@ -4,8 +4,10 @@ import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.validators.ValidUUID;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +37,9 @@ public class TransfersApiResource {
 
     @Inject
     FileTransfersDAO transfersDAO;
+
+    @Inject
+    TransfersService transfersService;
 
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
 
@@ -91,7 +96,7 @@ public class TransfersApiResource {
     })
     public Response cancelTransferTask(
             @ValidUUID @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_TASK_ID) @PathParam("transferTaskId") String transferTaskId,
-            @Context SecurityContext securityContext) throws NotFoundException {
+            @Context SecurityContext securityContext) {
 
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
@@ -134,21 +139,24 @@ public class TransfersApiResource {
     })
     public Response createTransferTask(
             @Parameter(required = true) TransferTaskRequest transferTask,
-            @Context SecurityContext securityContext) throws NotFoundException {
+            @Context SecurityContext securityContext) {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        TransferTask task = new TransferTask();
-        task.setDestinationPath(transferTask.getDestinationPath());
-        task.setDestinationSystemId(transferTask.getDestinationSystemId());
-        task.setSourcePath(transferTask.getSourcePath());
-        task.setSourceSystemId(transferTask.getSourceSystemId());
-        task.setTenantId(user.getTenantId());
-        task.setUsername(user.getName());
         try {
-            TransferTask newTask = transfersDAO.createTransferTask(task);
-            TapisResponse resp = TransferTaskResponse.createSuccessResponse(newTask);
+            TransferTask task = transfersService.createTransfer(
+                    user.getName(),
+                    user.getTenantId(),
+                    transferTask.getSourceSystemId(),
+                    transferTask.getSourcePath(),
+                    transferTask.getDestinationSystemId(),
+                    transferTask.getDestinationPath()
+            );
+            TapisResponse resp = TransferTaskResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
-        } catch (DAOException e) {
-            log.error("Could not create transfer task", e);
+        } catch (ServiceException ex) {
+            log.error("createTransferTask", ex);
+            throw new WebApplicationException("server error");
+        } catch (Exception ex) {
+            log.error("createTransferTask", ex);
             throw new WebApplicationException("server error");
         }
     }

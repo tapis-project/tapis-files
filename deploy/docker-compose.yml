@@ -6,6 +6,15 @@ volumes:
 
 services:
 
+  rabbitmq:
+    image: rabbitmq:3.8-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=dev
+      - RABBITMQ_DEFAULT_PASS=dev
+      - RABBITMQ_DEFAULT_VHOST=dev
+    ports:
+      - 5672:5672
+
   postgres:
     image: postgres:11
     environment:

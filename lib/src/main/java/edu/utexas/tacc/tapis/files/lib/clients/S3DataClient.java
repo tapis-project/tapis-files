@@ -5,12 +5,16 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -50,6 +54,18 @@ public class S3DataClient implements IRemoteDataClient {
             files.add(new FileInfo(x));
         });
         return  files;
+    }
+
+    @Override
+    public FileInfo insert(String remotePath, InputStream fileStream) throws IOException {
+        PutObjectRequest req = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(remotePath)
+                .build();
+        client.putObject(req, RequestBody.fromBytes(fileStream.readAllBytes()));
+        List<FileInfo> files = ls(remotePath);
+        FileInfo file = files.get(0);
+        return file;
     }
 
     @Override

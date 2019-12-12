@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
 import edu.utexas.tacc.tapis.files.api.resources.*;
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper;
 import edu.utexas.tacc.tapis.sharedapi.providers.ValidationExceptionMapper;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
@@ -91,6 +92,7 @@ public class FilesApplication extends ResourceConfig {
             protected void configure() {
                 bindAsContract(FakeSystemsService.class);
                 bindAsContract(FileTransfersDAO.class);
+                bindAsContract(TransfersService.class);
             }
         });
 

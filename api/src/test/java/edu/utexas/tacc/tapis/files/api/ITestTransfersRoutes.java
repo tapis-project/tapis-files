@@ -20,11 +20,12 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.UUID;
 
 @Test(groups={"integration"})
 public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
 
-    private Logger log = LoggerFactory.getLogger(ITestSystemsRoutes.class);
+    private Logger log = LoggerFactory.getLogger(ITestTransfersRoutes.class);
     private String user1jwt;
     private String user2jwt;
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
@@ -89,6 +90,7 @@ public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
         Assert.assertEquals(newTask.getSourceSystemId(), "sourceSystem");
         Assert.assertEquals(newTask.getSourcePath(), "sourcePath");
         Assert.assertEquals(newTask.getUsername(), "test1");
+        Assert.assertEquals(newTask.getTenantId(), "dev");
         Assert.assertEquals(newTask.getStatus(), TransferTaskStatus.ACCEPTED.name());
     }
 
@@ -122,6 +124,23 @@ public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
 
         TransferTaskResponse data = response.readEntity(TransferTaskResponse.class);
         Assert.assertEquals(response.getStatus(), 400);
+        Assert.assertEquals(data.getStatus(), "error");
+    }
+
+    /**
+     * Valid UUID but not found should be 404
+     */
+    @Test
+    public void getTransfer404() {
+        String uuid = UUID.randomUUID().toString();
+        Response response = target("/transfers/" + uuid)
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .get();
+
+        TransferTaskResponse data = response.readEntity(TransferTaskResponse.class);
+        Assert.assertEquals(response.getStatus(), 404);
         Assert.assertEquals(data.getStatus(), "error");
     }
 

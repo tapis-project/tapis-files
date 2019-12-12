@@ -1,13 +1,13 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
-import edu.utexas.tacc.tapis.files.lib.kernel.RemoteExecFilesKernel;
 import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -48,6 +48,11 @@ public class SSHDataClient implements IRemoteDataClient {
 			e.printStackTrace();
 		}
 		return fileListing;
+	}
+
+	@Override
+	public FileInfo insert(String remotePath, InputStream fileStream) throws IOException {
+		return null;
 	}
 
 	@Override

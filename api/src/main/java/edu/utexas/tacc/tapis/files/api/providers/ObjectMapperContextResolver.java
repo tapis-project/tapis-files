@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.providers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
@@ -22,10 +23,7 @@ public class ObjectMapperContextResolver implements ContextResolver<ObjectMapper
   }
 
   private ObjectMapper createObjectMapper() {
-    ObjectMapper mapper = new ObjectMapper();
-    JavaTimeModule module = new JavaTimeModule();
-    mapper.registerModule(module);
-    mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+    ObjectMapper mapper = TapisObjectMapper.getMapper();
     return mapper;
   }
 }

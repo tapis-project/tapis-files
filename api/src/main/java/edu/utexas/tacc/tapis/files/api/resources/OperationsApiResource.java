@@ -6,16 +6,7 @@ import java.io.InputStream;
 import java.util.List;
 
 import javax.inject.Inject;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -49,117 +40,132 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @Path("/ops")
 public class OperationsApiResource {
 
-  private final String EXAMPLE_SYSTEM_ID = "system123";
-  private final String EXAMPLE_PATH = "/folderA/folderB/";
-  private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
+    private final String EXAMPLE_SYSTEM_ID = "system123";
+    private final String EXAMPLE_PATH = "/folderA/folderB/";
+    private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
 
-  @Inject
-  private FakeSystemsService systemsService;
+    @Inject
+    private FakeSystemsService systemsService;
 
-  private Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
+    private Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
 
-  private static class FileListingResponse extends TapisResponse<List<FileInfo>>{}
+    private static class FileListingResponse extends TapisResponse<List<FileInfo>>{}
+    private static class FileStringResponse extends TapisResponse<String>{}
 
-  @GET
-  @Path("/{systemId}")
-  @Produces({ "application/json" })
-  @Operation(summary = "List files/objects in a storage system.", description = "List files in a bucket", tags={ "file operations" })
-  @ApiResponses(value = {
-          @ApiResponse(
-                  responseCode = "200",
-                  description = "A list of files",
-                  content = @Content(schema = @Schema(implementation = FileListingResponse.class))
-          )
-  })
-  public Response listFiles(
-          @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
-          @Parameter(description = "path relative to root of bucket/folder", example = EXAMPLE_PATH) @QueryParam("path") String path,
-          @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
-          @Context SecurityContext securityContext) throws NotFoundException {
-    try {
-      
-      // First do SK check on system/path or throw 403
-      // TODO Waiting on Security Kernel to implement isPermitted for Files	
 
-     
-      // Fetch the system based on the systemId
-      // TODO System Service is being implemented. We are able to used some of fields of Systems that System service have already implemented.
-      System.out.println("Get System based on System ID:" + systemId);	
-      
-      //FakeSystem system = systemsService.getSystemByID(systemId);
-      TSystem sys = systemsService.getSystemByName(systemId);
-      
-      
-      
-      // Fetch the creds
-      //TODO creds in system service and in SK are being implemented. After that it will be implemented here in files
-            
-      
-      // build the client
-      log.debug("Get Remote Data Client");
-      
-      IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
-      client.connect();
-      
-      log.debug("Do the files lisiting for a specific path: " + path);
-      List<FileInfo> listing = client.ls(path);
-      System.out.println("listing in API:" + listing);
-      
-      client.disconnect();
-    
-      
-      TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("File listing PATH FOUND",listing);
-      return Response.status(Status.FOUND).entity(resp).build();
-      
-      //return Response.status(Status.FOUND).entity(TapisRestUtils.createSuccessResponse(
-    //		    	      "File listing PATH FOUND", true, resp)).build();
-      
-      //return Response.status(Status.FOUND).entity(TapisRestUtils.createSuccessResponse(
-    //	      "File listing PATH FOUND", true, resp1)).build();
-      
-      
-    } catch (IOException e) {
-      log.error("Failed to list files", e);
-      TapisResponse<String> resp = TapisResponse.createErrorResponse("Could not list files");
-      return Response.status(400).build();
+    @GET
+    @Path("/{systemId}/{path}")
+    @Produces({ "application/json" })
+    @Operation(summary = "List files/objects in a storage system.", description = "List files in a bucket", tags={ "file operations" })
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "A list of files",
+                    content = @Content(schema = @Schema(implementation = FileListingResponse.class))
+            )
+    })
+    public Response listFiles(
+            @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
+            @Parameter(description = "path relative to root of bucket/folder", example = EXAMPLE_PATH) @PathParam("path") String path,
+            @Parameter(description = "pagination limit", example = "100") @QueryParam("limit") int limit,
+            @Parameter(description = "pagination offset", example = "1000") @QueryParam("offset") int offset,
+            @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
+            @Context SecurityContext securityContext) throws NotFoundException {
+        try {
+
+            // First do SK check on system/path or throw 403
+            // TODO Waiting on Security Kernel to implement isPermitted for Files
+
+
+            // Fetch the system based on the systemId
+            // TODO System Service is being implemented. We are able to used some of fields of Systems that System service have already implemented.
+            System.out.println("Get System based on System ID:" + systemId);
+
+            //FakeSystem system = systemsService.getSystemByID(systemId);
+            TSystem sys = systemsService.getSystemByName(systemId);
+
+            // Fetch the creds
+            //TODO creds in system service and in SK are being implemented. After that it will be implemented here in files
+
+            // build the client
+            log.debug("Get Remote Data Client");
+
+            IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
+            client.connect();
+
+            log.debug("Do the files lisiting for a specific path: " + path);
+            List<FileInfo> listing = client.ls(path);
+            System.out.println("listing in API:" + listing);
+
+            client.disconnect();
+
+            TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
+            return Response.status(Status.OK).entity(resp).build();
+
+        } catch (IOException e) {
+            throw new WebApplicationException("server error");
         }
     }
 
-    
-	
-  
 
-  @POST
-  @Path("/{systemId}/{path}")
-  @Consumes({ "multipart/form-data" })
-  @Operation(summary = "Upload a file", description = "The file will be added at the {path} independent of the original file name", tags={ "file operations" })
-  @ApiResponses(value = {
-      @ApiResponse(
-          responseCode = "200",
-          description = "OK")
-  })
-  public Response uploadFile(
-      @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
-      @Parameter(description = "Path",required=true) @PathParam("path") String path,
-      @FormDataParam("fileName") InputStream fileNameInputStream,
-      @FormDataParam("fileName") FormDataContentDisposition fileNameDetail,
-      @Parameter(description = "String dump of a valid JSON object to be associated with the file" ) @HeaderParam("x-meta") String xMeta,
-      @Context SecurityContext securityContext) throws NotFoundException {
-    return Response.ok().build();
-  }
+    @POST
+    @Path("/{systemId}/{path}")
+    @Consumes({ "multipart/form-data" })
+    @Operation(summary = "Upload a file", description = "The file will be added at the {path} independent of the original file name", tags={ "file operations" })
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+                    description = "OK")
+    })
+    public Response uploadFile(
+            @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
+            @Parameter(description = "Path",required=true) @PathParam("path") String path,
+            @FormDataParam("fileName") InputStream fileNameInputStream,
+            @FormDataParam("fileName") FormDataContentDisposition fileNameDetail,
+            @Parameter(description = "String dump of a valid JSON object to be associated with the file" ) @HeaderParam("x-meta") String xMeta,
+            @Context SecurityContext securityContext) throws NotFoundException {
 
-  @PUT
-  @Path("/{systemId}/{path}")
-  @Operation(summary = "Rename a file or folder", description = "Move/Rename a file in {systemID} at path {path}.", tags={ "file operations" })
-  @ApiResponses(value = {
-      @ApiResponse(responseCode = "200", description = "OK")
-  })
-  public Response rename(
-      @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
-      @Parameter(description = "File path",required=true) @PathParam("path") String path,
-      @Parameter(description = "",required=true) @QueryParam("newName") String newName,
-      @Context SecurityContext securityContext)
-      throws NotFoundException {
-    return Response.ok().build();
-  }
+        TapisResponse resp = TapisResponse.createSuccessResponse("ok", "ok");
+        return Response.ok(resp).build();
+    }
+
+
+    @PUT
+    @Path("/{systemId}/{path}")
+    @Operation(summary = "Rename a file or folder", description = "Move/Rename a file in {systemID} at path {path}.", tags={ "file operations" })
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "OK",
+                    content = @Content(schema = @Schema(implementation = FileStringResponse.class))
+            )
+    })
+    public Response rename(
+            @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
+            @Parameter(description = "File path",required=true) @PathParam("path") String path,
+            @Parameter(description = "",required=true) @QueryParam("newName") String newName,
+            @Context SecurityContext securityContext)
+            throws NotFoundException {
+        TapisResponse resp = TapisResponse.createSuccessResponse("ok");
+        return Response.ok(resp).build();
+    }
+
+    @DELETE
+    @Path("/{systemId}/{path}")
+    @Operation(summary = "Delete a file or folder", description = "Delete a file in {systemID} at path {path}.", tags={ "file operations" })
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "OK",
+                    content = @Content(schema = @Schema(implementation = FileStringResponse.class))
+            )
+    })
+    public Response delete(
+            @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
+            @Parameter(description = "File path",required=true) @PathParam("path") String path,
+            @Context SecurityContext securityContext)
+            throws NotFoundException {
+        TapisResponse resp = TapisResponse.createSuccessResponse("ok");
+        return Response.ok(resp).build();
+    }
+
 }
