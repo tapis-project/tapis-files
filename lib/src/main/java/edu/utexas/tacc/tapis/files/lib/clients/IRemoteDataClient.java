@@ -13,8 +13,8 @@ public interface IRemoteDataClient {
     List<FileInfo> ls(String remotePath) throws IOException;
     void insert(String remotePath, InputStream fileStream) throws IOException;
     void mkdir(String remotePath) throws IOException;
-    void move(String srcSystem, String srcPath, String destSystem, String destPath) throws IOException;
-    void rename(String oldPath, String newPath) throws IOException;
+    void move(String oldPath, String newPath) throws IOException;
+//    void rename(String oldPath, String newPath) throws IOException;
     void copy(String currentPath, String newPath) throws IOException;
     void delete(String path) throws IOException;
     InputStream getStream(String path) throws IOException;

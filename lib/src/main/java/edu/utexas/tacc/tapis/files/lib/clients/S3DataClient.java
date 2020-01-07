@@ -19,6 +19,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotFoundException;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,7 +41,7 @@ public class S3DataClient implements IRemoteDataClient {
     private TSystem system;
     private String rootDir;
 
-    public S3DataClient(TSystem system) throws IOException {
+    public S3DataClient(@NotNull TSystem system) throws IOException {
         this.bucket = system.getBucketName();
         this.system = system;
         this.rootDir = system.getRootDir();
@@ -52,11 +54,6 @@ public class S3DataClient implements IRemoteDataClient {
                     .endpointOverride(endpoint)
                     .credentialsProvider(StaticCredentialsProvider.create(credentials))
                     .build();
-//            asyncClient = S3AsyncClient.builder()
-//                    .region(Region.US_EAST_1)
-//                    .endpointOverride(endpoint)
-//                    .credentialsProvider(StaticCredentialsProvider.create(credentials))
-//                    .build();
 
         } catch (URISyntaxException e) {
             throw new IOException("Could not create s3 client for system");
@@ -86,10 +83,11 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
 
-    //TODO: Add sanitization for paths for things like ~, ../../.. yada yada
 
     @Override
     public void mkdir(String path) throws IOException {
+        //TODO: Add sanitization for paths for things like ~, ../../.. yada yada
+
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         remotePath = DataClientUtils.ensureTrailingSlash(remotePath);
         PutObjectRequest req = PutObjectRequest.builder()
@@ -114,17 +112,12 @@ public class S3DataClient implements IRemoteDataClient {
         }
     }
 
-    @Override
-    public void move(String srcSystem, String srcPath, String destSystem, String destPath) {
-
-    }
 
     private void doRename(S3Object object, String newPath) throws IOException{
         //Copy object to new path
         copy(object.key(), newPath);
         //Delete old object
         delete(object.key());
-
     }
 
     /**
@@ -133,7 +126,7 @@ public class S3DataClient implements IRemoteDataClient {
      * @param newName
      */
     @Override
-    public void rename(String currentPath, String newName) {
+    public void move(String currentPath, String newName) {
 
         String oldRemotePath;
         oldRemotePath = FilenameUtils.normalizeNoEndSeparator(DataClientUtils.getRemotePath(rootDir, currentPath));
@@ -165,6 +158,8 @@ public class S3DataClient implements IRemoteDataClient {
                 .build();
         try {
             client.copyObject(req);
+        } catch (NoSuchKeyException ex) {
+            throw new NotFoundException();
         } catch (S3Exception ex) {
             log.error("S3DataClient::copy " + encodedSourcePath, ex);
             throw new IOException("Copy object failed at path " + encodedSourcePath);
@@ -184,26 +179,35 @@ public class S3DataClient implements IRemoteDataClient {
     public void delete(String path) throws IOException {
         try {
             String remotePath = DataClientUtils.getRemotePath(rootDir, path);
-            listWithIterator(remotePath).forEach(object->{
+            listWithIterator(remotePath).forEach(object -> {
+                //TODO: What to do if one fails?
                 try {
                     deleteObject(object.key());
                 } catch (S3Exception ex) {
 
-
                 }
             });
+        } catch (NoSuchKeyException ex) {
+            throw new NotFoundException();
         } catch (S3Exception ex) {
             throw new IOException("Could not delete object");
         }
     }
 
     @Override
-    public InputStream getStream(String path) throws IOException {
-        GetObjectRequest req = GetObjectRequest.builder()
-                .bucket(bucket)
-                .key(path)
-                .build();
-        return client.getObject(req, ResponseTransformer.toInputStream());
+    public InputStream getStream(String path) throws IOException, NotFoundException {
+        try {
+            GetObjectRequest req = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(path)
+                    .build();
+            return client.getObject(req, ResponseTransformer.toInputStream());
+        } catch (NoSuchKeyException ex) {
+            throw new NotFoundException();
+        } catch (S3Exception ex) {
+            log.error(ex.getMessage());
+            throw new IOException();
+        }
     }
 
     @Override

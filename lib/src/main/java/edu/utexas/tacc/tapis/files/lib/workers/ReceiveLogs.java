@@ -45,7 +45,7 @@ public class ReceiveLogs {
         ExecutorService executorService = Executors.newFixedThreadPool(20);
         Connection connection = RabbitMQConnection.getInstance();
 
-        for (int i=0; i<20; i++) {
+        for (int i=0; i<50; i++) {
             Channel channel = connection.createChannel();
             executorService.submit(new TestWorker(channel, i));
         }

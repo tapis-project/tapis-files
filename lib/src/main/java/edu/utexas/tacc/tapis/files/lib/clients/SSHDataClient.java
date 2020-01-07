@@ -61,13 +61,7 @@ public class SSHDataClient implements IRemoteDataClient {
 	}
 
 	@Override
-	public void move(String srcSystem, String srcPath, String destSystem, String destPath) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void rename(String oldPath, String newPath) {
+	public void move(String oldPath, String newPath) {
 		// TODO Auto-generated method stub
 
 	}

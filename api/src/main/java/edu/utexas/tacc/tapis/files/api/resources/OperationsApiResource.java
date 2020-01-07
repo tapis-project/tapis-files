@@ -101,13 +101,25 @@ public class OperationsApiResource {
     public Response uploadFile(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "Path",required=true) @PathParam("path") String path,
-            @FormDataParam("fileName") InputStream fileNameInputStream,
-            @FormDataParam("fileName") FormDataContentDisposition fileNameDetail,
+            @FormDataParam("file") InputStream fileInputStream,
+            @FormDataParam("file") FormDataContentDisposition fileNameDetail,
             @Parameter(description = "String dump of a valid JSON object to be associated with the file" ) @HeaderParam("x-meta") String xMeta,
             @Context SecurityContext securityContext) {
+        try {
+            //TODO: Permissions
+            TSystem sys = systemsService.getSystemByName(systemId);
+            // Fetch the creds
+            //TODO creds in system service and in SK are being implemented. After that it will be implemented here in files
 
-        TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-        return Response.ok(resp).build();
+            IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
+            client.connect();
+            client.insert(path, fileInputStream);
+            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+            return Response.ok(resp).build();
+        } catch (IOException ex) {
+            log.error(ex.getMessage());
+            throw new WebApplicationException();
+        }
     }
 
 
@@ -124,8 +136,7 @@ public class OperationsApiResource {
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "File path",required=true) @PathParam("path") String path,
             @Parameter(description = "The new name of the file/folder",required=true) @QueryParam("newName") String newName,
-            @Context SecurityContext securityContext)
-            throws NotFoundException {
+            @Context SecurityContext securityContext) {
 
         try {
             // Fetch the system based on the systemId
@@ -137,7 +148,7 @@ public class OperationsApiResource {
             IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
             client.connect();
 
-            client.rename(path, newName);
+            client.move(path, newName);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (IOException ex) {

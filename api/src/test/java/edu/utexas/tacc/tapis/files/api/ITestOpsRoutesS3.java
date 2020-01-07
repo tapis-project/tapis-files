@@ -7,14 +7,13 @@ import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 import org.apache.commons.codec.Charsets;
-import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.media.multipart.FormDataMultiPart;
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
+import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.test.TestProperties;
@@ -22,20 +21,19 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.*;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.signer.Aws4Signer;
-import software.amazon.awssdk.auth.signer.params.AwsS3V4SignerParams;
-import software.amazon.awssdk.http.SdkHttpFullRequest;
-import software.amazon.awssdk.http.SdkHttpMethod;
-import software.amazon.awssdk.regions.Region;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.net.URI;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -84,6 +82,11 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         return app;
     }
 
+    @Override
+    protected void configureClient(ClientConfig config) {
+        config.register(MultiPartFeature.class);
+    }
+
     private InputStream makeFakeFile(int size){
         byte[] b = new byte[size];
         new Random().nextBytes(b);
@@ -98,35 +101,35 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     }
 
 
-    private void createTestUserForMinio() throws Exception {
-        SdkHttpFullRequest awsDummyRequest = SdkHttpFullRequest.builder()
-                .method(SdkHttpMethod.GET)
-                .uri(new URI("http://localhost:9000/?system"))
-                .build();
-        Aws4Signer signer = Aws4Signer.create();
-        AwsS3V4SignerParams signerParams = AwsS3V4SignerParams.builder()
-                .signingName("s3")
-                .signingRegion(Region.US_EAST_1)
-                .awsCredentials(AwsBasicCredentials.create("test", "password"))
-                .build();
-        awsDummyRequest = signer.sign(awsDummyRequest, signerParams);
-
-        OkHttpClient client = new OkHttpClient();
-        RequestBody body = RequestBody.create("<setCredsReq><username>test</username><password>password</password></setCredsReq>", okhttp3.MediaType.get("text/xml"));
-        Request.Builder builder = new Request.Builder();
-        builder.url("http://localhost:9000/minio/admin/v2/add-user")
-                .put(body);
-        for (Map.Entry<String, List<String>> header : awsDummyRequest.headers().entrySet()) {
-            for(String entry: header.getValue()) {
-                builder.header(header.getKey(), entry);
-            }
-
-        }
-        builder.header("x-minio-operation", "creds");
-        Request request = builder.build();
-        Response response = client.newCall(request).execute();
-
-    }
+//    private void createTestUserForMinio() throws Exception {
+//        SdkHttpFullRequest awsDummyRequest = SdkHttpFullRequest.builder()
+//                .method(SdkHttpMethod.GET)
+//                .uri(new URI("http://localhost:9000/?system"))
+//                .build();
+//        Aws4Signer signer = Aws4Signer.create();
+//        AwsS3V4SignerParams signerParams = AwsS3V4SignerParams.builder()
+//                .signingName("s3")
+//                .signingRegion(Region.US_EAST_1)
+//                .awsCredentials(AwsBasicCredentials.create("test", "password"))
+//                .build();
+//        awsDummyRequest = signer.sign(awsDummyRequest, signerParams);
+//
+//        OkHttpClient client = new OkHttpClient();
+//        RequestBody body = RequestBody.create("<setCredsReq><username>test</username><password>password</password></setCredsReq>", okhttp3.MediaType.get("text/xml"));
+//        Request.Builder builder = new Request.Builder();
+//        builder.url("http://localhost:9000/minio/admin/v2/add-user")
+//                .put(body);
+//        for (Map.Entry<String, List<String>> header : awsDummyRequest.headers().entrySet()) {
+//            for(String entry: header.getValue()) {
+//                builder.header(header.getKey(), entry);
+//            }
+//
+//        }
+//        builder.header("x-minio-operation", "creds");
+//        Request request = builder.build();
+//        Response response = client.newCall(request).execute();
+//
+//    }
 
     @AfterClass
     public void tearDown() throws Exception {
@@ -252,6 +255,32 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testDeleteManyObjects(){
+
+    }
+
+    @Test
+    public void testInsertFile() throws Exception {
+        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        InputStream inputStream = makeFakeFile(10*1024);
+        File tempFile = File.createTempFile("tempfile", null);
+        tempFile.deleteOnExit();
+        FileOutputStream fos = new FileOutputStream(tempFile);
+        fos.write(inputStream.readAllBytes());
+        fos.close();
+        FileDataBodyPart filePart = new FileDataBodyPart("file", tempFile);
+        FormDataMultiPart form = new FormDataMultiPart();
+        FormDataMultiPart multiPart = (FormDataMultiPart) form.bodyPart(filePart);
+        FileStringResponse response = target("/ops/testSystem/test-inserted.txt")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .post(Entity.entity(multiPart, MediaType.MULTIPART_FORM_DATA_TYPE), FileStringResponse.class);
+
+        FileListResponse listing  = target("/ops/testSystem/test-inserted.txt")
+                .request()
+                .header("x-tapis-token", user1jwt)
+                .get(FileListResponse.class);
+        Assert.assertTrue(listing.getResult().size() == 1);
 
     }
 
