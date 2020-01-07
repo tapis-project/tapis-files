@@ -65,8 +65,7 @@ public class FilesApplication extends ResourceConfig {
 
         // Need that for some reason for numtipart forms/ uploads
         register(MultiPartFeature.class);
-        // Serialization
-        register(JacksonFeature.class);
+
         // Custom Timestamp/Instant serialization
         register(ObjectMapperContextResolver.class);
         // Authentication Filter

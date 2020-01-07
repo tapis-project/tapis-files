@@ -12,6 +12,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.apache.commons.codec.Charsets;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -21,10 +22,7 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.auth.signer.params.AwsS3V4SignerParams;
@@ -32,14 +30,12 @@ import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.regions.Region;
 
+import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -51,19 +47,23 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     private String user1jwt;
     private String user2jwt;
     private static class FileListResponse extends TapisResponse<List<FileInfo>> {}
+    private static class FileStringResponse extends TapisResponse<String>{}
     private TSystem testSystem;
 
     // mocking out the systems service
     private FakeSystemsService systemsService = Mockito.mock(FakeSystemsService.class);
 
     private ITestOpsRoutesS3() {
+        List<String> creds = new ArrayList<>();
+        creds.add("password");
         testSystem = new TSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
         testSystem.setName("testSystem");
         testSystem.setEffectiveUserId("user");
-        testSystem.setAccessCredential("password");
+        testSystem.setAccessCredential(creds);
+        testSystem.setRootDir("/");
         List<TSystem.TransferMechanismsEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMechanismsEnum.S3);
         testSystem.setTransferMechanisms(transferMechs);
@@ -112,7 +112,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         awsDummyRequest = signer.sign(awsDummyRequest, signerParams);
 
         OkHttpClient client = new OkHttpClient();
-        RequestBody body = RequestBody.create("<setCredsReq><username>test</username><password>password</password></setCredsReq>", okhttp3.MediaType.get("text/plain"));
+        RequestBody body = RequestBody.create("<setCredsReq><username>test</username><password>password</password></setCredsReq>", okhttp3.MediaType.get("text/xml"));
         Request.Builder builder = new Request.Builder();
         builder.url("http://localhost:9000/minio/admin/v2/add-user")
                 .put(body);
@@ -128,20 +128,19 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     }
 
+    @AfterClass
+    public void tearDown() throws Exception {
+        super.tearDown();
+        S3DataClient client = new S3DataClient(testSystem);
+        client.delete("/");
+
+    }
+
     @BeforeClass
-    private void setUpClass() throws Exception {
+    public void setUp() throws Exception {
+        super.setUp();
         user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
         user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
-    }
-
-    @BeforeTest
-    private void beforeTest() throws Exception {
-
-    }
-
-    @AfterTest
-    private void tearDownTest() throws Exception {
-
     }
 
 
@@ -158,5 +157,105 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         Assert.assertEquals(file.getName(), "testfile1.txt");
         Assert.assertEquals(file.getSize(), Long.valueOf(10 * 1024));
     }
+
+    @Test
+    public void testDelete() throws Exception {
+        S3DataClient client = new S3DataClient(testSystem);
+        addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "testfile2.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
+        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .delete(FileStringResponse.class);
+        //TODO: Add asserts
+        List<FileInfo> listing = client.ls("dir1/testfile3.txt");
+        Assert.assertEquals(listing.size(), 0);
+        List<FileInfo> l2 = client.ls("/");
+        Assert.assertTrue(l2.size() > 0);
+
+    }
+
+    @Test
+    public void testRenameFile() throws Exception {
+        S3DataClient client = new S3DataClient(testSystem);
+        addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "testfile2.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
+        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
+                .queryParam("newName", "renamed")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
+        //TODO: Add asserts
+        List<FileInfo> listing = client.ls("dir1/testfile3.txt");
+        Assert.assertEquals(listing.size(), 0);
+    }
+
+    @Test
+    public void testRenameManyObjects1() throws Exception{
+        S3DataClient client = new S3DataClient(testSystem);
+        addTestFilesToBucket(testSystem, "test1.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "test2.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/1.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/2.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10*1024);
+
+        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        FileStringResponse response = target("/ops/testSystem/dir1/")
+                .queryParam("newName", "renamed/")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
+        //TODO: Add asserts
+        List<FileInfo> listing = client.ls("dir1/");
+        Assert.assertEquals(listing.size(), 0);
+    }
+
+
+    /**
+     * Tests of objects deeper in the tree are renamed properly.
+     * @throws Exception
+     */
+    @Test
+    public void testRenameManyObjects2() throws Exception{
+        S3DataClient client = new S3DataClient(testSystem);
+        addTestFilesToBucket(testSystem, "test1.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "test2.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/1.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/2.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10*1024);
+
+        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        FileStringResponse response = target("/ops/testSystem/dir1/dir2/")
+                .queryParam("newName", "renamed")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
+        //TODO: Add asserts
+        List<FileInfo> listing = client.ls("dir1/1.txt");
+        Assert.assertEquals(listing.size(), 1);
+        listing = client.ls("dir1/renamed/2.txt");
+        Assert.assertEquals(listing.size(), 1);
+        listing = client.ls("dir1/dir2/2.txt");
+        Assert.assertEquals(listing.size(), 0);
+    }
+
+
+    @Test
+    public void testDeleteManyObjects(){
+
+    }
+
+    //TODO: Add tests for strange chars in filename or path.
+
 
 }

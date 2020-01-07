@@ -138,6 +138,7 @@ paths:
           type: string
       - name: newName
         in: query
+        description: The new name of the file/folder
         required: true
         schema:
           type: string
@@ -392,6 +393,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
+  /:
+    get:
+      operationId: test
+      responses:
+        200:
+          description: OK
   /transfers/{transferTaskId}:
     get:
       tags:
@@ -452,6 +459,27 @@ paths:
           description: OK
           content:
             application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
+  /transfers/{transferTaskId}/history:
+    get:
+      tags:
+      - transfers
+      summary: Get history of a transfer task
+      operationId: getTransferTaskHistory
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        200:
+          description: OK
+          content:
+            '*/*':
               schema:
                 $ref: '#/components/schemas/TransferTaskResponse'
 components:
@@ -583,17 +611,6 @@ components:
           description: Time in seconds of expiration. minimum=1, maximum=604800 (1
             week)
           format: int32
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
     TransferTask:
       type: object
       properties:
@@ -653,3 +670,14 @@ components:
         destinationPath:
           type: string
           description: Path to file/folder in destination system
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string

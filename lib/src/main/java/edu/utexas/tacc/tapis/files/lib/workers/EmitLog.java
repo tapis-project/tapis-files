@@ -7,7 +7,7 @@ public class EmitLog {
 
     public static void main(String[] argv) throws Exception {
 
-        for (var i=0; i<10; i++) {
+        for (var i=0; i<100; i++) {
             TransferTask task = new TransferTask();
             task.setUsername("test");
             task.setTenantId("testTenant");

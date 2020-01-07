@@ -16,7 +16,7 @@ import javax.validation.constraints.NotNull;
 public class ReceiveLogs {
     private static final Logger log = LoggerFactory.getLogger(ReceiveLogs.class);
     private static final String EXCHANGE_NAME = "tapis.files";
-    private static final String QUEUE_NAME = "transfers";
+    private static final String QUEUE_NAME = "files.transfers";
 
     private static class TestWorker implements Runnable {
 
@@ -33,10 +33,8 @@ public class ReceiveLogs {
             log.info(String.format("Worker %s", taskID));
             try {
                 channel.basicQos(1);
-                String queueName = channel.queueDeclare().getQueue();
-                channel.queueBind(queueName, EXCHANGE_NAME, "#");
                 Consumer consumer = new FileTransferConsumer(channel);
-                channel.basicConsume(queueName, false, consumer);
+                channel.basicConsume(QUEUE_NAME, false, consumer);
             } catch (IOException  ex) {
                 log.error("Error", ex);
             }
@@ -49,7 +47,6 @@ public class ReceiveLogs {
 
         for (int i=0; i<20; i++) {
             Channel channel = connection.createChannel();
-            channel.exchangeDeclare(EXCHANGE_NAME, "topic", true);
             executorService.submit(new TestWorker(channel, i));
         }
     }

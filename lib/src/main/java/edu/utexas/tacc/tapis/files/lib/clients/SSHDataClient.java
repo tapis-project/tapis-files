@@ -29,7 +29,7 @@ public class SSHDataClient implements IRemoteDataClient {
 		host = system.getHost();
 		port = system.getPort();
 		username = system.getEffectiveUserId();
-		password = system.getAccessCredential();
+		password = system.getAccessCredential().get(0);
 		remotePath = system.getBucketName();
 		accessMechanism = system.getAccessMechanism();
 		rootDir = system.getRootDir();
@@ -37,7 +37,7 @@ public class SSHDataClient implements IRemoteDataClient {
 	}
 	@Override
 	public List<FileInfo> ls(String remotePath) throws IOException {
-		List<FileInfo> fileListing = new ArrayList<FileInfo>();
+		List<FileInfo> fileListing = new ArrayList<>();
 		try {
 			 Path remoteAbsolutePath = Paths.get(rootDir,remotePath);
 			 fileListing = sftp.ls(remoteAbsolutePath.toString());
@@ -51,8 +51,13 @@ public class SSHDataClient implements IRemoteDataClient {
 	}
 
 	@Override
-	public FileInfo insert(String remotePath, InputStream fileStream) throws IOException {
-		return null;
+	public void mkdir(String remotePath) throws IOException {
+
+	}
+
+	@Override
+	public void insert(String remotePath, InputStream fileStream) throws IOException {
+
 	}
 
 	@Override
@@ -62,31 +67,31 @@ public class SSHDataClient implements IRemoteDataClient {
 	}
 
 	@Override
-	public void rename() {
+	public void rename(String oldPath, String newPath) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void copy() {
+	public void copy(String currentPath, String newPath) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void delete() {
+	public void delete(String path) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void getStream() {
+	public InputStream getStream(String path) {
 		// TODO Auto-generated method stub
-
+		return null;
 	}
 
 	@Override
-	public void download() {
+	public void download(String path) {
 		// TODO Auto-generated method stub
 
 	}

@@ -32,11 +32,10 @@ public class FileTransferConsumer extends DefaultConsumer {
         long deliveryTag = envelope.getDeliveryTag();
         try {
             TransferTask task = mapper.readValue(body, TransferTask.class);
-            log.info(task.toString());
             int sleep = new Random().nextInt(5000) + 100;
             Thread.sleep(sleep);
-            log.info("Task completed {}", task.getUuid().toString());
-            channel.basicAck(deliveryTag, false);
+            log.info("Task completed {} in {} seconds", task.getUuid(), sleep);
+            channel.basicAck(deliveryTag, true);
         } catch (Exception e) {
             log.error("", e);
             channel.basicAck(deliveryTag, false);

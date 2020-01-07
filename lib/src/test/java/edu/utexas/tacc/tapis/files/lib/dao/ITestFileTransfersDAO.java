@@ -44,7 +44,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         TransferTask t = dao.createTransferTask(task);
         TransferTask tNew = dao.getTransferTask(t.getUuid());
         Assert.assertEquals(tNew.getUuid(), task.getUuid());
-        Assert.assertEquals(tNew.getStatus(), "PENDING");
+        Assert.assertEquals(tNew.getStatus(), "ACCEPTED");
         Assert.assertNotEquals(tNew.getCreated(), null);
     }
 }

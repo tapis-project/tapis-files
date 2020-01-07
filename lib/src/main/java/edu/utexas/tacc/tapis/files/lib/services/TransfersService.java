@@ -20,7 +20,7 @@ public class TransfersService {
 
     private FileTransfersDAO dao;
     private final String EXCHANGE_NAME = "tapis.files";
-    private final String QUEUE_NAME = "transfers";
+    private final String QUEUE_NAME = "files.transfers";
     private Connection connection;
     private Channel channel;
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
@@ -31,7 +31,7 @@ public class TransfersService {
             Connection conn = RabbitMQConnection.getInstance();
             connection = conn;
             channel = conn.createChannel();
-            channel.exchangeDeclare(EXCHANGE_NAME, "topic", true);
+            channel.queueDeclare(QUEUE_NAME, true, false, false, null);
         } catch (IOException ex) {
             log.error(ex.getMessage());
             throw new ServiceException(ex.getMessage());
@@ -57,7 +57,7 @@ public class TransfersService {
     public void publishTransferTaskMessage(TransferTask task) throws ServiceException {
         try {
             String message  = mapper.writeValueAsString(task);
-            channel.basicPublish(EXCHANGE_NAME, "transfers", null, message.getBytes(StandardCharsets.UTF_8));
+            channel.basicPublish("", QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
         } catch (Exception ex) {
             log.error(ex.getMessage());
             throw new ServiceException(ex.getMessage());

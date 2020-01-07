@@ -43,11 +43,10 @@ public class TransfersApiResource {
 
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
 
-    private boolean isPermitted(TransferTask task, AuthenticatedUser user) {
+    private void isPermitted(TransferTask task, AuthenticatedUser user) throws NotAuthorizedException {
 
-        if (!task.getUsername().equals(user.getName())) return false;
-        if (!task.getTenantId().equals(user.getTenantId())) return false;
-        return true;
+        if (!task.getUsername().equals(user.getName())) throw new NotAuthorizedException("");
+        if (!task.getTenantId().equals(user.getTenantId())) throw new NotAuthorizedException("");
     }
 
     @GET
@@ -72,14 +71,37 @@ public class TransfersApiResource {
         try {
             TransferTask task = transfersDAO.getTransferTask(transferTaskId);
             if (task == null) {
-                throw new NotFoundException("transfer task not found");
+                throw new NotFoundException("Transfer task not found");
             }
+            isPermitted(task, user);
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (DAOException e) {
             log.error("getTransferTaskStatus", e);
             throw new WebApplicationException("server error");
         }
+    }
+
+    @GET
+    @Path("/{transferTaskId}/history/")
+    @Operation(summary = "Get history of a transfer task", description = "", tags={ "transfers" })
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "OK",
+                    content = @Content(schema = @Schema(implementation = TransferTaskResponse.class))
+            )
+    })
+    public Response getTransferTaskHistory(
+            @ValidUUID
+            @Parameter(description = "Transfer task ID", required=true, example = EXAMPLE_TASK_ID)
+            @PathParam("transferTaskId") String transferTaskId,
+            @Context SecurityContext securityContext) {
+
+
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+
+        return Response.ok().build();
     }
 
 

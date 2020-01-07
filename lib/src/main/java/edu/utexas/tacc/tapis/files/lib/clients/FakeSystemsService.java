@@ -68,7 +68,6 @@ public class FakeSystemsService {
 	  }
 
 	public TSystem getSystemByName(String systemId) {
-	  FakeSystem system = null;
 	  TSystem sys = null;
 	  try {
 		 sys = systemRESTCall("dev", systemId);
@@ -81,26 +80,5 @@ public class FakeSystemsService {
 	  return sys;
 	  
  }
-	
-	   /* return  new FakeSystem(
-	        "http://localhost",
-	        9000L,
-	        "user",
-	        "password",
-	        "S3",
-	        "test"
-	    );*/
-	  
-		//Parse the system info object and pass it to FakeSystem.
-		 /* return new FakeSystem(
-			        "localhost",
-			        2222L,
-			        "root",
-			        "root",
-			        "SSH",
-			        "/home/L1",
-			        AccessMechanism.SSH_PASSWORD
-			    );
-		 */
 	 
 }
