@@ -25,6 +25,7 @@ import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
@@ -51,6 +52,7 @@ public class TransfersApiResource {
 
     @GET
     @Path("/{transferTaskId}/")
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Get a transfer task", description = "", tags={ "transfers" })
     @ApiResponses(value = {
             @ApiResponse(
@@ -84,6 +86,7 @@ public class TransfersApiResource {
 
     @GET
     @Path("/{transferTaskId}/history/")
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Get history of a transfer task", description = "", tags={ "transfers" })
     @ApiResponses(value = {
             @ApiResponse(
@@ -107,7 +110,7 @@ public class TransfersApiResource {
 
     @DELETE
     @Path("/{transferTaskId}")
-    @Produces({ "application/json" })
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Stop/Cancel a transfer task", description = "", tags={ "transfers" })
     @ApiResponses(value = {
             @ApiResponse(
@@ -145,8 +148,8 @@ public class TransfersApiResource {
 
 
     @POST
-    @Produces({ "application/json" })
-    @Consumes({ "application/json" })
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Operation(
             summary = "Transfer data",
             description = "This creates a background task which will transfer files into the storage system",
@@ -160,7 +163,7 @@ public class TransfersApiResource {
             )
     })
     public Response createTransferTask(
-            @Parameter(required = true) TransferTaskRequest transferTask,
+            @Valid @Parameter(required = true) TransferTaskRequest transferTask,
             @Context SecurityContext securityContext) {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {

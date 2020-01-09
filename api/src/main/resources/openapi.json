@@ -95,6 +95,45 @@
         }
       }
     },
+    "/ops/{systemId}" : {
+      "post" : {
+        "tags" : [ "file operations" ],
+        "summary" : "Create a new directory",
+        "description" : "Creates a new directory in the path given in the payload",
+        "operationId" : "mkdir",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateDirectoryRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ops/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "file operations" ],
@@ -192,7 +231,7 @@
           "200" : {
             "description" : "OK",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/FileStringResponse"
                 }
@@ -205,7 +244,7 @@
         "tags" : [ "file operations" ],
         "summary" : "Upload a file",
         "description" : "The file will be added at the {path} independent of the original file name",
-        "operationId" : "uploadFile",
+        "operationId" : "insert",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -236,7 +275,7 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "fileName" : {
+                  "file" : {
                     "$ref" : "#/components/schemas/FormDataContentDisposition"
                   }
                 }
@@ -283,7 +322,7 @@
           "200" : {
             "description" : "OK",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/FileStringResponse"
                 }
@@ -476,7 +515,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/NewShareFile"
+                "$ref" : "#/components/schemas/ShareFileRequest"
               }
             }
           }
@@ -530,16 +569,6 @@
         }
       }
     },
-    "/" : {
-      "get" : {
-        "operationId" : "test",
-        "responses" : {
-          "200" : {
-            "description" : "OK"
-          }
-        }
-      }
-    },
     "/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -559,7 +588,7 @@
           "200" : {
             "description" : "OK",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/TransferTaskResponse"
                 }
@@ -645,7 +674,7 @@
           "200" : {
             "description" : "OK",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/TransferTaskResponse"
                 }
@@ -689,6 +718,17 @@
           },
           "version" : {
             "type" : "string"
+          }
+        }
+      },
+      "CreateDirectoryRequest" : {
+        "required" : [ "path" ],
+        "type" : "object",
+        "properties" : {
+          "path" : {
+            "pattern" : "gt|lt",
+            "type" : "string",
+            "description" : "Path of folder"
           }
         }
       },
@@ -822,7 +862,7 @@
           }
         }
       },
-      "NewShareFile" : {
+      "ShareFileRequest" : {
         "required" : [ "expiresIn", "username" ],
         "type" : "object",
         "properties" : {

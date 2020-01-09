@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api;
 
 
+import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
 import edu.utexas.tacc.tapis.files.api.resources.OperationsApiResource;
 import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
@@ -23,10 +24,12 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -281,7 +284,80 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .header("x-tapis-token", user1jwt)
                 .get(FileListResponse.class);
         Assert.assertTrue(listing.getResult().size() == 1);
+    }
 
+    @Test
+    public void testMkdir() throws Exception {
+        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        CreateDirectoryRequest payload = new CreateDirectoryRequest();
+        payload.setPath("/newDirectory");
+
+        FileStringResponse response = target("/ops/testSystem")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .post(Entity.json(payload), FileStringResponse.class);
+
+        FileListResponse listing  = target("/ops/testSystem/newDirectory")
+                .request()
+                .header("x-tapis-token", user1jwt)
+                .get(FileListResponse.class);
+
+        Assert.assertTrue(listing.getResult().size() == 1);
+    }
+
+
+
+    @DataProvider(name="mkdirDataProvider")
+    public Object[] mkdirDataProvider () {
+        return new String[]{
+                "//newDirectory///test",
+                "newDirectory///test/",
+                "newDirectory/test"
+        };
+    }
+    @Test(dataProvider = "mkdirDataProvider")
+    public void testMkdirWithSlashes(String path) throws Exception {
+        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        CreateDirectoryRequest payload = new CreateDirectoryRequest();
+        payload.setPath(path);
+
+        FileStringResponse response = target("/ops/testSystem")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .post(Entity.json(payload), FileStringResponse.class);
+
+        FileListResponse listing  = target("/ops/testSystem/newDirectory/test")
+                .request()
+                .header("x-tapis-token", user1jwt)
+                .get(FileListResponse.class);
+
+        Assert.assertTrue(listing.getResult().size() == 1);
+    }
+
+    @DataProvider(name="mkdirBadDataProvider")
+    public Object[] mkdirBadDataProvider () {
+        return new String[]{
+                "/newDirectory//../test",
+                "newDirectory/../../test/",
+                "../newDirectory/test",
+                "newDirectory/.test"
+        };
+    }
+    @Test(dataProvider = "mkdirBadDataProvider")
+    public void testMkdirWithBadData(String path) throws Exception {
+        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        CreateDirectoryRequest payload = new CreateDirectoryRequest();
+        payload.setPath(path);
+
+        Response response = target("/ops/testSystem")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .post(Entity.json(payload));
+
+        Assert.assertTrue(response.getStatus() == 400);
     }
 
     //TODO: Add tests for strange chars in filename or path.

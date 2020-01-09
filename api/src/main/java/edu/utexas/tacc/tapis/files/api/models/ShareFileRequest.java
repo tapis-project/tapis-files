@@ -5,14 +5,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import javax.validation.constraints.*;
 
-public class NewShareFile   {
+public class ShareFileRequest {
   @JsonProperty("username")
   private String username = null;
 
   @JsonProperty("expiresIn")
   private Integer expiresIn = null;
 
-  public NewShareFile username(String username) {
+  public ShareFileRequest username(String username) {
     this.username = username;
     return this;
   }
@@ -32,7 +32,7 @@ public class NewShareFile   {
     this.username = username;
   }
 
-  public NewShareFile expiresIn(Integer expiresIn) {
+  public ShareFileRequest expiresIn(Integer expiresIn) {
     this.expiresIn = expiresIn;
     return this;
   }
@@ -63,9 +63,9 @@ public class NewShareFile   {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    NewShareFile newShareFile = (NewShareFile) o;
-    return Objects.equals(this.username, newShareFile.username) &&
-        Objects.equals(this.expiresIn, newShareFile.expiresIn);
+    ShareFileRequest shareFileRequest = (ShareFileRequest) o;
+    return Objects.equals(this.username, shareFileRequest.username) &&
+        Objects.equals(this.expiresIn, shareFileRequest.expiresIn);
   }
 
   @Override

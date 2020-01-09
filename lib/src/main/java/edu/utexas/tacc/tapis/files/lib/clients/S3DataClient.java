@@ -3,25 +3,20 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.RegExUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -36,15 +31,14 @@ public class S3DataClient implements IRemoteDataClient {
 
     private Logger log = LoggerFactory.getLogger(S3DataClient.class);
     private S3Client client;
-    private S3AsyncClient asyncClient;
     private String bucket;
     private TSystem system;
     private String rootDir;
 
-    public S3DataClient(@NotNull TSystem system) throws IOException {
-        this.bucket = system.getBucketName();
-        this.system = system;
-        this.rootDir = system.getRootDir();
+    public S3DataClient(@NotNull TSystem remoteSystem) throws IOException {
+        system = remoteSystem;
+        bucket = system.getBucketName();
+        rootDir = system.getRootDir();
 
         try {
             URI endpoint = new URI(system.getHost() + ":" + system.getPort());

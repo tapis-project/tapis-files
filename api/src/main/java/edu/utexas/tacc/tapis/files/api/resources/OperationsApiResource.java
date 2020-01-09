@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 
+import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
 import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -19,21 +20,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.validation.Valid;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
-import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
 
 @Path("/ops")
 public class OperationsApiResource {
 
-    private final String EXAMPLE_SYSTEM_ID = "system123";
-    private final String EXAMPLE_PATH = "/folderA/folderB/";
+    private static final String EXAMPLE_SYSTEM_ID = "system123";
+    private static final String EXAMPLE_PATH = "/folderA/folderB/";
     private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
 
     @Inject
@@ -46,7 +49,7 @@ public class OperationsApiResource {
 
     @GET
     @Path("/{systemId}/{path:.+}")
-    @Produces({ "application/json" })
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "List files/objects in a storage system.", description = "List files in a bucket", tags={ "file operations" })
     @ApiResponses(value = {
             @ApiResponse(
@@ -87,10 +90,44 @@ public class OperationsApiResource {
         }
     }
 
+    @POST
+    @Path("/{systemId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Create a new directory", description = "Creates a new directory in the path given in the payload", tags={ "file operations" })
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+                    description = "OK")
+    })
+    public Response mkdir(
+            @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
+            @Valid @Parameter(required = true) CreateDirectoryRequest mkdirRequest,
+            @Context SecurityContext securityContext) {
+        try {
+            //TODO: Permissions
+            TSystem sys = systemsService.getSystemByName(systemId);
+            // Fetch the creds
+            //TODO creds in system service and in SK are being implemented. After that it will be implemented here in files
+            IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
+            client.mkdir(mkdirRequest.getPath());
+
+
+            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+            return Response.ok(resp).build();
+        } catch (IOException ex) {
+            log.error(ex.getMessage());
+            throw new WebApplicationException();
+        }
+    }
+
+
+
 
     @POST
     @Path("/{systemId}/{path:.+}")
-    @Consumes({ "multipart/form-data" })
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Operation(summary = "Upload a file", description = "The file will be added at the {path} independent of the original file name", tags={ "file operations" })
     @ApiResponses(value = {
             @ApiResponse(
@@ -98,7 +135,7 @@ public class OperationsApiResource {
                     content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
                     description = "OK")
     })
-    public Response uploadFile(
+    public Response insert(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "Path",required=true) @PathParam("path") String path,
             @FormDataParam("file") InputStream fileInputStream,
@@ -110,10 +147,17 @@ public class OperationsApiResource {
             TSystem sys = systemsService.getSystemByName(systemId);
             // Fetch the creds
             //TODO creds in system service and in SK are being implemented. After that it will be implemented here in files
-
             IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
-            client.connect();
-            client.insert(path, fileInputStream);
+
+            //If file in form is null then mkdir at the path given
+            if (fileInputStream == null) {
+                client.mkdir(path);
+            } else {
+                client.connect();
+                client.insert(path, fileInputStream);
+            }
+
+
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (IOException ex) {
@@ -126,6 +170,7 @@ public class OperationsApiResource {
     @PUT
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Rename a file or folder", description = "Move/Rename a file in {systemID} at path {path}.", tags={ "file operations" })
+    @Produces(MediaType.APPLICATION_JSON)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
                     description = "OK",
@@ -162,6 +207,7 @@ public class OperationsApiResource {
     @DELETE
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Delete a file or folder", description = "Delete a file in {systemID} at path {path}.", tags={ "file operations" })
+    @Produces(MediaType.APPLICATION_JSON)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
                     description = "OK",
