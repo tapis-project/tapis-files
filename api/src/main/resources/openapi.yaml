@@ -420,47 +420,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
-  /transfers/{transferTaskId}:
-    get:
-      tags:
-      - transfers
-      summary: Get a transfer task
-      operationId: getTransferTask
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
-        schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskResponse'
-    delete:
-      tags:
-      - transfers
-      summary: Stop/Cancel a transfer task
-      operationId: cancelTransferTask
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
-        schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TapisResponse'
   /transfers:
     post:
       tags:
@@ -503,6 +462,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferTaskResponse'
+  /transfers/{transferTaskId}:
+    get:
+      tags:
+      - transfers
+      summary: Get a transfer task
+      operationId: getTransferTask
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
+    delete:
+      tags:
+      - transfers
+      summary: Stop/Cancel a transfer task
+      operationId: cancelTransferTask
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TapisResponse'
 components:
   schemas:
     HealthCheckResponse:
@@ -533,7 +533,7 @@ components:
       type: object
       properties:
         path:
-          pattern: gt|lt
+          pattern: ^(?!.*\.).+
           type: string
           description: Path of folder
     FileInfo:

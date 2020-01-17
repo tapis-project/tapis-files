@@ -10,6 +10,8 @@ We need to create a test database and user for integration tests also. A dev dat
 is created automatically, but the test database will get wiped out after each test run. 
 
 
+##### Database setup
+
 Exec into the postgres container
 
 ```docker exec -it deploy_postgres_1 bash```
@@ -48,9 +50,7 @@ docker exec -it deploy_api_1 mvn -pl migrations flyway:migrate
 
 ### Hit the API
 You should also be able to hit the API from postman at 
-
-`localhost:8080/systems/`
-`localhost:8080/transfers/` 
+`localhost:8080/ops/{systemID}/{path}` 
 
 Profit
 
