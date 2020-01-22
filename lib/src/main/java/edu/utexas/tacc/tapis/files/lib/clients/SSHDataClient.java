@@ -11,7 +11,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem.AccessMechanismEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem.AccessMethodEnum;
 
 public class SSHDataClient implements IRemoteDataClient {
 	String host;
@@ -19,7 +19,7 @@ public class SSHDataClient implements IRemoteDataClient {
 	String username;
 	String password;
 	String path ;
-	AccessMechanismEnum accessMechanism;
+	AccessMethodEnum accessMethod;
 	String remotePath;
 	SftpFilesKernel sftp;
 	String rootDir;
@@ -29,11 +29,11 @@ public class SSHDataClient implements IRemoteDataClient {
 		host = system.getHost();
 		port = system.getPort();
 		username = system.getEffectiveUserId();
-		password = system.getAccessCredential().get(0);
+		password = system.getAccessCredential().getPassword().get(0);
 		remotePath = system.getBucketName();
-		accessMechanism = system.getAccessMechanism();
+		accessMethod = system.getAccessMethod();
 		rootDir = system.getRootDir();
-			
+		
 	}
 	@Override
 	public List<FileInfo> ls(String remotePath) throws IOException {
@@ -52,6 +52,15 @@ public class SSHDataClient implements IRemoteDataClient {
 
 	@Override
 	public void mkdir(String remotePath) throws IOException {
+	    try {
+            Path remoteAbsolutePath = Paths.get(rootDir,remotePath);
+            String mkdirStatus = sftp.mkdir(remoteAbsolutePath.toString());
+            System.out.println("File mkdir from remote execution" + mkdirStatus);
+            
+       } catch (FilesKernelException e) {
+           // TODO Auto-generated catch block
+           e.printStackTrace();
+       }
 
 	}
 
@@ -93,8 +102,8 @@ public class SSHDataClient implements IRemoteDataClient {
 	@Override
 	public void connect() {
 		// TODO Auto-generated method stub
-		switch(accessMechanism.getValue()) {
-		case "SSH_PASSWORD":
+		switch(accessMethod.getValue()) {
+		case "PASSWORD":
 			System.out.println("host: "+ host+ " port: "+ port+ " username: "+ username + " password: "+ password);
 			sftp = new SftpFilesKernel(host, port, username, password);
 			try {

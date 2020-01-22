@@ -64,6 +64,11 @@
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-json-jackson</artifactId>
         </dependency>
+        <dependency>
+    <groupId>javax.validation</groupId>
+    <artifactId>validation-api</artifactId>
+    <version>2.0.1.Final</version>
+</dependency>
     </dependencies>
 
     <build>
@@ -73,12 +78,12 @@
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-maven-plugin</artifactId>
                 <executions>
-                    <execution>
+                    <!--execution>
                         <phase>compile</phase>
                         <goals>
                             <goal>resolve</goal>
                         </goals>
-                    </execution>
+                    </execution-->
                 </executions>
                 <configuration>
                     <outputFileName>openapi</outputFileName>

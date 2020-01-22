@@ -14,6 +14,7 @@
     <version>1.0</version>
 
     <properties>
+         <tapis-client-java.version>1.1-SNAPSHOT</tapis-client-java.version> 
         <tapis-shared.version>1.1-SNAPSHOT</tapis-shared.version>
         <slf4j-api.version>1.7.28</slf4j-api.version>
         <!-- Skip integration tests by default -->
@@ -163,6 +164,21 @@
             <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>systems-client</artifactId>
             <version>1.1-SNAPSHOT</version>
+        </dependency>
+         <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>tokens-client</artifactId>
+      <version>${tapis-client-java.version}</version>
+    </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>tenants-client</artifactId>
+        <version>${tapis-client-java.version}</version>
+      </dependency>
+      <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>security-client</artifactId>
+            <version>${tapis-client-java.version}</version>
         </dependency>
 
     </dependencies>
