@@ -7,6 +7,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -14,6 +18,8 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem.AccessMethodEnum;
 
 public class SSHDataClient implements IRemoteDataClient {
+    
+    private Logger log = LoggerFactory.getLogger(SSHDataClient.class);
 	String host;
 	int port;
 	String username;
@@ -52,14 +58,15 @@ public class SSHDataClient implements IRemoteDataClient {
 
 	@Override
 	public void mkdir(String remotePath) throws IOException {
-	    try {
+	    	        
             Path remoteAbsolutePath = Paths.get(rootDir,remotePath);
+            log.debug("SSHDataClient: mkdir call abs path: " + remoteAbsolutePath);
+        try { 
             String mkdirStatus = sftp.mkdir(remoteAbsolutePath.toString());
-            System.out.println("File mkdir from remote execution" + mkdirStatus);
+            log.debug("File mkdir status from remote execution: " + mkdirStatus);
             
        } catch (FilesKernelException e) {
-           // TODO Auto-generated catch block
-           e.printStackTrace();
+          throw new IOException("mkdir failure", e);
        }
 
 	}
