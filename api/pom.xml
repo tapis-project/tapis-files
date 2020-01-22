@@ -78,12 +78,12 @@
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-maven-plugin</artifactId>
                 <executions>
-                    <!--execution>
+                    <execution>
                         <phase>compile</phase>
                         <goals>
                             <goal>resolve</goal>
                         </goals>
-                    </execution-->
+                    </execution>
                 </executions>
                 <configuration>
                     <outputFileName>openapi</outputFileName>
