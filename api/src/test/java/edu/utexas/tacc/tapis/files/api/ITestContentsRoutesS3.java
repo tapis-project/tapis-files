@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -59,15 +60,15 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     private FakeSystemsService systemsService = Mockito.mock(FakeSystemsService.class);
 
     private ITestContentsRoutesS3() {
-        List<String> creds = new ArrayList<>();
-        creds.add("password");
+        Credential creds = new Credential();
+        creds.addPasswordItem("password");
         testSystem = new TSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
         testSystem.setName("testSystem");
         testSystem.setEffectiveUserId("user");
-        testSystem.getAccessCredential().setPassword(creds);
+        testSystem.setAccessCredential(creds);
         testSystem.setRootDir("/");
         List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
