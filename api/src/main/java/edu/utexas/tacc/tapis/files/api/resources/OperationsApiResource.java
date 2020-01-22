@@ -7,13 +7,23 @@ import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.security.client.SKClient;
+//import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultAuthorized;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.tokens.client.TokensClient;
+//import edu.utexas.tacc.tapis.tokens.client.TokensClient;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
@@ -29,6 +39,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,6 +48,9 @@ public class OperationsApiResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
+    private static String SECURITY_KERNEL_BASE_URL = "https://dev.develop.tapis.io/v3";
+    private static String TOKEN_BASE_URL = "https://dev.develop.tapis.io";
+   
     private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
 
     @Inject
@@ -69,20 +83,45 @@ public class OperationsApiResource {
 
             // First do SK check on system/path or throw 403
             // TODO Waiting on Security Kernel to implement isPermitted for Files
-
-            // Fetch the system based on the systemId
-            TSystem sys = systemsService.getSystemByName(systemId);
-
-            // Fetch the creds
-            //TODO creds in system service and in SK are being implemented. After that it will be implemented here in files
-
-            IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
-            client.connect();
-
-            List<FileInfo> listing = client.ls(path);
-            client.disconnect();
-            TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
-            return Response.status(Status.OK).entity(resp).build();
+            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+            
+            SKClient skClient = new SKClient(SECURITY_KERNEL_BASE_URL,getSvcJWT());
+           
+            String permSpec = "files:" + user.getTenantId()+ ":*:"+ systemId + ":"+ path;
+            
+            
+            edu.utexas.tacc.tapis.security.client.gen.model.ResultAuthorized respSk= null;
+            try {
+                  respSk= skClient.isPermitted(user.getName(),permSpec); 
+                    
+                
+            } catch (TapisClientException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            
+            if(respSk.getIsAuthorized()) {
+                log.debug("The user "+ user.getName() + " is authorized to access " + path + " in the system " + systemId ); 
+                // Fetch the system based on the systemId
+                TSystem sys = systemsService.getSystemByName(systemId);
+    
+                // Fetch the creds
+                //TODO creds in system service and in SK are being implemented. After that it will be implemented here in files
+    
+                IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
+                client.connect();
+    
+                List<FileInfo> listing = client.ls(path);
+                client.disconnect();
+                TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
+                return Response.status(Status.OK).entity(resp).build();
+            }
+            else {
+                String msg = "The user "+ user.getName() + "  is NOT AUTHORIZED to access " + path + " in the system " + systemId;
+                log.debug(msg); 
+                TapisResponse<List<FileInfo>> resp = TapisResponse.createErrorResponse(msg);
+                return Response.status(Status.FORBIDDEN).entity(resp).build(); 
+            }
 
         } catch (IOException e) {
             log.error("listFiles", e);
@@ -237,5 +276,31 @@ public class OperationsApiResource {
         }
 
     }
+    
+    /* **********************************************/
+    /*             Private Methods                  */
+    /***********************************************/
+    String getSvcJWT(){
+        // Use the tokens service to get a user token
+        String tokensBaseURL = TOKEN_BASE_URL;
+        var tokClient = new TokensClient(tokensBaseURL);
+        String svcJWT = "";
+        try {
+           svcJWT = tokClient.getSvcToken("dev", "files");
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        System.out.println("Got svcJWT: " + svcJWT);
+        // Basic check of JWT
+        if (StringUtils.isBlank(svcJWT))
+        {
+          System.out.println("Token service returned invalid JWT");
+          System.exit(1);
+        }
+        return svcJWT;
+        }
+    
+    }
 
-}
+
