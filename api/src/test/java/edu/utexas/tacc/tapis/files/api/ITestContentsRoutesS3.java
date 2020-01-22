@@ -67,11 +67,11 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         testSystem.setBucketName("test");
         testSystem.setName("testSystem");
         testSystem.setEffectiveUserId("user");
-        testSystem.setAccessCredential(creds);
+        testSystem.getAccessCredential().setPassword(creds);
         testSystem.setRootDir("/");
-        List<TSystem.TransferMechanismsEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMechanismsEnum.S3);
-        testSystem.setTransferMechanisms(transferMechs);
+        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
+        transferMechs.add(TSystem.TransferMethodsEnum.S3);
+        testSystem.setTransferMethods(transferMechs);
     }
 
     @Override

@@ -61,7 +61,7 @@ public class FakeSystemsService {
     	    	// TODO Auto-generated catch block
     	    	e2.printStackTrace();
     	    }
-        _log.debug("host: "+ sys1.getHost() + "  effectiveUserId : "+ sys1.getEffectiveUserId() + "  accessMechanism: "+ sys1.getAccessMechanism());
+        _log.debug("host: "+ sys1.getHost() + "  effectiveUserId : "+ sys1.getEffectiveUserId() + "  accessMechanism: "+ sys1.getAccessMethod());
        
         
         return sys1;
