@@ -65,7 +65,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         testSystem.setBucketName("test");
         testSystem.setName("testSystem");
         testSystem.setEffectiveUserId("user");
-        testSystem.setAccessCredential(creds);
+        testSystem.getAccessCredential().setPassword(creds);
         testSystem.setRootDir("/");
         List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
