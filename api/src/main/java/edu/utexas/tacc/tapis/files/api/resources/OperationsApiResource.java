@@ -82,6 +82,7 @@ public class OperationsApiResource {
         try {
 
             // First do SK check on system/path or throw 403
+
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             
             SKClient skClient = new SKClient(SECURITY_KERNEL_BASE_URL,getSvcJWT());
