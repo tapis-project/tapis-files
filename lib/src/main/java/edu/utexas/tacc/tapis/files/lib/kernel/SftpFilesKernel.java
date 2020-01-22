@@ -313,8 +313,7 @@ public class SftpFilesKernel {
                         + username + " on destination host: "
                         + host + " path :"+ remotePath + " : " + e.toString();
                 _log.error(Msg,e);
-                _log.error(Msg,e);
-                throw new FilesKernelException(Msg,e);
+               throw new FilesKernelException(Msg,e);
             }
 
         }
@@ -322,38 +321,47 @@ public class SftpFilesKernel {
         return filesList;
     }
     
-    
-    
-    
-    ////// -----------
+    /**
+     * Returns the mkdir status on a remotePath
+     * @param remotePath
+     * @return mkdir status
+     * @throws FilesKernelException
+     */
     public String mkdir(@NotNull String remotePath) throws FilesKernelException{
-
-        //List<FileInfo> filesList = new ArrayList<FileInfo>();
 
         if (session != null && channelSftp != null) {
             try {
-                _log.debug("SFTPFilesKernel ls remotePath: " + remotePath);
-                channelSftp.mkdir(remotePath);
-                if(channelSftp.ls(remotePath).size()>0) {
-                    _log.debug("directory created");
-                } else {
-                    _log.debug("directory not created"); 
-                }
+                _log.debug("SFTPFilesKernel mkdir remotePath: " + remotePath);
                 
-                return "mkdir created";
-
+                channelSftp.mkdir(remotePath);
             } catch (SftpException e) {
                 String Msg = "FK_FILE_MKDIR_ERROR in method "+ this.getClass().getName() +" for user:  "
                         + username + " on destination host: "
                         + host + " path :"+ remotePath + " : " + e.toString();
                 _log.error(Msg,e);
-                _log.error(Msg,e);
+               
                 throw new FilesKernelException(Msg,e);
             }
+            
+            try {
+                if(channelSftp.ls(remotePath).size()>0) {
+                    _log.debug("directory created");
+                } else {
+                    _log.debug("directory not created"); 
+                }
+            } catch (SftpException e) {
+                String Msg = "FK_FILE_LISTING_ERROR in method "+ this.getClass().getName() +" for user:  "
+                        + username + " on destination host: "
+                        + host + " path :"+ remotePath + " : " + e.toString();
+                _log.error(Msg,e);
+               throw new FilesKernelException(Msg,e);
+            }
+            
+            return "mkdir created";
 
         }
 
-        return "";
+        return "Either session is null or channel is null";
     }
 
     /**

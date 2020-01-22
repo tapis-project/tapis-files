@@ -82,7 +82,6 @@ public class OperationsApiResource {
         try {
 
             // First do SK check on system/path or throw 403
-            // TODO Waiting on Security Kernel to implement isPermitted for Files
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             
             SKClient skClient = new SKClient(SECURITY_KERNEL_BASE_URL,getSvcJWT());
@@ -144,21 +143,57 @@ public class OperationsApiResource {
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Valid @Parameter(required = true) CreateDirectoryRequest mkdirRequest,
             @Context SecurityContext securityContext) {
+       
+        // First do SK check on system/path or throw 403
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+        
+        SKClient skClient = new SKClient(SECURITY_KERNEL_BASE_URL,getSvcJWT());
+       
+        String permSpec = "files:" + user.getTenantId()+ ":write:"+ systemId + ":"+ mkdirRequest.getPath();
+        
+        
+        edu.utexas.tacc.tapis.security.client.gen.model.ResultAuthorized respSk= null;
         try {
-            //TODO: Permissions
+              respSk= skClient.isPermitted(user.getName(),permSpec); 
+                
+            
+        } catch (TapisClientException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        if(respSk.getIsAuthorized()) {
             TSystem sys = systemsService.getSystemByName(systemId);
             // Fetch the creds
             //TODO creds in system service and in SK are being implemented. After that it will be implemented here in files
-            IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
-            client.mkdir(mkdirRequest.getPath());
+            IRemoteDataClient client = null;
+            try {
+                client = clientFactory.getRemoteDataClient(sys);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            log.debug("mkdir request path: " + mkdirRequest.getPath() );
+            client.connect();
+            try {
+                client.mkdir(mkdirRequest.getPath());
+            } catch (IOException e) {
+               TapisResponse resp = TapisResponse.createErrorResponse("mkdir failure");
+                return Response.status(Status.INTERNAL_SERVER_ERROR).entity(resp).build(); 
+            }
+            
+            client.disconnect();
 
-
-            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+            TapisResponse<String> resp = TapisResponse.createSuccessResponse("Successfully created the directory", "Directory created!");
             return Response.ok(resp).build();
-        } catch (IOException ex) {
-            log.error(ex.getMessage());
-            throw new WebApplicationException();
+            
+        }   else {
+            String msg = "The user "+ user.getName() + "  is NOT AUTHORIZED to access " + mkdirRequest.getPath() + " in the system " + systemId;
+            log.debug(msg); 
+            TapisResponse<List<FileInfo>> resp = TapisResponse.createErrorResponse(msg);
+            return Response.status(Status.FORBIDDEN).entity(resp).build(); 
         }
+       
     }
 
 
