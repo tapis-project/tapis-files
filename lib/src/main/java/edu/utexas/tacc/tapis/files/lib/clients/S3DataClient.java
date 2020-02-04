@@ -42,7 +42,7 @@ public class S3DataClient implements IRemoteDataClient {
 
         try {
             URI endpoint = new URI(system.getHost() + ":" + system.getPort());
-            AwsCredentials credentials = AwsBasicCredentials.create(system.getEffectiveUserId(), system.getAccessCredential().getPassword().get(0));
+            AwsCredentials credentials = AwsBasicCredentials.create(system.getEffectiveUserId(), system.getAccessCredential().getPassword());
             client = S3Client.builder()
                     .region(Region.AP_NORTHEAST_1)
                     .endpointOverride(endpoint)
@@ -210,7 +210,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void connect() {
+    public void connect() throws IOException{
 
     }
 

@@ -14,7 +14,7 @@
     <version>1.0</version>
 
     <properties>
-         <tapis-client-java.version>1.1-SNAPSHOT</tapis-client-java.version> 
+        <tapis-client-java.version>1.1-SNAPSHOT</tapis-client-java.version>
         <tapis-shared.version>1.1-SNAPSHOT</tapis-shared.version>
         <slf4j-api.version>1.7.28</slf4j-api.version>
         <!-- Skip integration tests by default -->
@@ -51,36 +51,36 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
-<!--            <plugin>-->
-<!--                <groupId>org.apache.maven.plugins</groupId>-->
-<!--                <artifactId>maven-shade-plugin</artifactId>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <phase>package</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>shade</goal>-->
-<!--                        </goals>-->
-<!--                        <configuration>-->
-<!--                            <filters>-->
-<!--                                <filter>-->
-<!--                                    <artifact>*:*</artifact>-->
-<!--                                    <excludes>-->
-<!--                                        <exclude>module-info.class</exclude>-->
-<!--                                        <exclude>META-INF/*.SF</exclude>-->
-<!--                                        <exclude>META-INF/*.DSA</exclude>-->
-<!--                                        <exclude>META-INF/*.RSA</exclude>-->
-<!--                                    </excludes>-->
-<!--                                </filter>-->
-<!--                            </filters>-->
-<!--                            <transformers>-->
-<!--                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
-<!--                                    <mainClass>edu.utexas.tacc.tapis.files.api.FilesApplication</mainClass>-->
-<!--                                </transformer>-->
-<!--                            </transformers>-->
-<!--                        </configuration>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
+            <!--            <plugin>-->
+            <!--                <groupId>org.apache.maven.plugins</groupId>-->
+            <!--                <artifactId>maven-shade-plugin</artifactId>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <phase>package</phase>-->
+            <!--                        <goals>-->
+            <!--                            <goal>shade</goal>-->
+            <!--                        </goals>-->
+            <!--                        <configuration>-->
+            <!--                            <filters>-->
+            <!--                                <filter>-->
+            <!--                                    <artifact>*:*</artifact>-->
+            <!--                                    <excludes>-->
+            <!--                                        <exclude>module-info.class</exclude>-->
+            <!--                                        <exclude>META-INF/*.SF</exclude>-->
+            <!--                                        <exclude>META-INF/*.DSA</exclude>-->
+            <!--                                        <exclude>META-INF/*.RSA</exclude>-->
+            <!--                                    </excludes>-->
+            <!--                                </filter>-->
+            <!--                            </filters>-->
+            <!--                            <transformers>-->
+            <!--                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
+            <!--                                    <mainClass>edu.utexas.tacc.tapis.files.api.FilesApplication</mainClass>-->
+            <!--                                </transformer>-->
+            <!--                            </transformers>-->
+            <!--                        </configuration>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
 
             <!-- Generate the openapi documentation from the code -->
             <plugin>
@@ -163,21 +163,26 @@
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>systems-client</artifactId>
-            <version>1.1-SNAPSHOT</version>
+            <version>${tapis-client-java.version}</version>
         </dependency>
-         <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>tokens-client</artifactId>
-      <version>${tapis-client-java.version}</version>
-    </dependency>
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>tenants-client</artifactId>
-        <version>${tapis-client-java.version}</version>
-      </dependency>
-      <dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tokens-client</artifactId>
+            <version>${tapis-client-java.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tenants-client</artifactId>
+            <version>${tapis-client-java.version}</version>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>security-client</artifactId>
+            <version>${tapis-client-java.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>files-client</artifactId>
             <version>${tapis-client-java.version}</version>
         </dependency>
 

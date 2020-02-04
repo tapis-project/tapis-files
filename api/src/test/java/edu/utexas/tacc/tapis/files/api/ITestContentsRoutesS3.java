@@ -2,16 +2,9 @@ package edu.utexas.tacc.tapis.files.api;
 
 
 import edu.utexas.tacc.tapis.files.api.resources.ContentApiResource;
-import edu.utexas.tacc.tapis.files.api.resources.OperationsApiResource;
-import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
-import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
 import org.apache.commons.codec.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
@@ -25,25 +18,15 @@ import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.signer.Aws4Signer;
-import software.amazon.awssdk.auth.signer.params.AwsS3V4SignerParams;
-import software.amazon.awssdk.http.SdkHttpFullRequest;
-import software.amazon.awssdk.http.SdkHttpMethod;
-import software.amazon.awssdk.regions.Region;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.InputStream;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
+import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -57,11 +40,11 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     private TSystem testSystem;
 
     // mocking out the systems service
-    private FakeSystemsService systemsService = Mockito.mock(FakeSystemsService.class);
+    private SystemsClient systemsService = Mockito.mock(SystemsClient.class);
 
     private ITestContentsRoutesS3() {
         Credential creds = new Credential();
-        creds.addPasswordItem("password");
+        creds.setAccessSecret("password");
         testSystem = new TSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
@@ -84,7 +67,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .register(new AbstractBinder() {
                     @Override
                     protected void configure() {
-                        bind(systemsService).to(FakeSystemsService.class);
+                        bind(systemsService).to(SystemsClient.class);
                     }
                 });
         return app;
@@ -124,7 +107,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testSimpleGetContents() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         Response response = target("/content/testSystem/testfile1.txt")
                 .request()
                 .header("x-tapis-token", user1jwt)
@@ -136,7 +119,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testNotFound() throws Exception {
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         Response response = target("/content/testSystem/NOT-THERE.txt")
                 .request()
                 .header("x-tapis-token", user1jwt)
@@ -148,7 +131,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     public void testGetContentsHeaders() throws Exception {
         // make sure content-type is application/octet-stream and filename is correct
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         Response response = target("/content/testSystem/testfile1.txt")
                 .request()
                 .header("x-tapis-token", user1jwt)
@@ -162,7 +145,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testBadRequest() throws Exception {
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         Response response = target("/content/testSystem/BAD-PATH/")
                 .request()
                 .header("x-tapis-token", user1jwt)

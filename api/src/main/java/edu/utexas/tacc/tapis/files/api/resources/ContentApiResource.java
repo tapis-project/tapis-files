@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.lib.clients.*;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,9 +30,6 @@ public class ContentApiResource {
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
     private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
-
-    @Inject private FakeSystemsService systemsService;
-
     private Logger log = LoggerFactory.getLogger(ContentApiResource.class);
 
     @GET
@@ -50,13 +49,8 @@ public class ContentApiResource {
             if (path.endsWith("/")) {
                 throw new BadRequestException("Only files can be served.");
             }
-
-            //TODO: permissions checks
-            TSystem sys = systemsService.getSystemByName(systemId);
-
-            IRemoteDataClient client = clientFactory.getRemoteDataClient(sys);
-            client.connect();
-            InputStream stream = client.getStream(path);
+            FileOpsService fileOpsService = new FileOpsService(systemId);
+            InputStream stream = fileOpsService.getStream(path);
             java.nio.file.Path filepath = Paths.get(path);
             String filename = filepath.getFileName().toString();
 
@@ -64,7 +58,7 @@ public class ContentApiResource {
                     .ok(stream, MediaType.APPLICATION_OCTET_STREAM)
                     .header("content-disposition", String.format("attachment; filename=%s", filename))
                     .build();
-        } catch (IOException ex) {
+        } catch (ServiceException ex) {
             log.error(ex.getMessage());
             throw new WebApplicationException();
         }

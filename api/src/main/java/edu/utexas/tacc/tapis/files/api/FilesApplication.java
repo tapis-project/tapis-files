@@ -1,12 +1,15 @@
 package edu.utexas.tacc.tapis.files.api;
 
+import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthzSystemPath;
 import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
 import edu.utexas.tacc.tapis.files.api.resources.*;
-import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
+import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper;
 import edu.utexas.tacc.tapis.sharedapi.providers.ValidationExceptionMapper;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.tokens.client.TokensClient;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
@@ -59,20 +62,14 @@ import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
         }
 )
 @ApplicationPath("/files")
-public class FilesApplication extends ResourceConfig {
+public class FilesApplication extends BaseResourceConfig {
+    /**
+     * BaseResourceConfig has all the extra jersey filters and our
+     * custom ones for JWT validation and AuthZ
+     */
+
     public FilesApplication() {
-
-        // Need that for some reason for numtipart forms/ uploads
-        register(MultiPartFeature.class);
-
-        // Custom Timestamp/Instant serialization
-        register(ObjectMapperContextResolver.class);
-        // Authentication Filter
-        register(JWTValidateRequestFilter.class);
-        // ExceptionMappers, need both because ValidationMapper is +
-        register(TapisExceptionMapper.class);
-        register(ValidationExceptionMapper.class);
-
+        super();
         //Our APIs
         register(ContentApiResource.class);
         register(TransfersApiResource.class);
@@ -88,9 +85,12 @@ public class FilesApplication extends ResourceConfig {
         register(new AbstractBinder() {
             @Override
             protected void configure() {
-                bindAsContract(FakeSystemsService.class);
                 bindAsContract(FileTransfersDAO.class);
                 bindAsContract(TransfersService.class);
+                bindAsContract(SKClient.class);
+                bindAsContract(SystemsClient.class);
+                bindAsContract(TokensClient.class);
+                bindAsContract(SKClient.class);
             }
         });
 

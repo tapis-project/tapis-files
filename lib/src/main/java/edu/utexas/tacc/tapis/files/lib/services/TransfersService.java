@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
+import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -4,9 +4,10 @@ package edu.utexas.tacc.tapis.files.api;
 import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
 import edu.utexas.tacc.tapis.files.api.resources.OperationsApiResource;
 import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
-import edu.utexas.tacc.tapis.files.lib.clients.FakeSystemsService;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.codec.Charsets;
@@ -52,13 +53,15 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     private static class FileStringResponse extends TapisResponse<String>{}
     private TSystem testSystem;
 
-    // mocking out the systems service
-    private FakeSystemsService systemsService = Mockito.mock(FakeSystemsService.class);
+    // mocking out the services
+    private SystemsClient systemsService = Mockito.mock(SystemsClient.class);
+    private SKClient skClient = Mockito.mock(SKClient.class);
+
 
     private ITestOpsRoutesS3() {
         //List<String> creds = new ArrayList<>();
         Credential creds = new Credential();
-        creds.addPasswordItem("password");
+        creds.setAccessKey("password");
         testSystem = new TSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
@@ -81,12 +84,14 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .register(new AbstractBinder() {
                     @Override
                     protected void configure() {
-                        bind(systemsService).to(FakeSystemsService.class);
+                        bind(systemsService).to(SystemsClient.class);
+                        bind(skClient).to(SKClient.class);
                     }
                 });
         return app;
     }
 
+    // Needed for the test client to be able to use Mutlipart/form posts;
     @Override
     protected void configureClient(ClientConfig config) {
         config.register(MultiPartFeature.class);
@@ -155,7 +160,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void  testGetS3List() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         FileListResponse response = target("/ops/testSystem/test")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -172,7 +177,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -192,7 +197,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
                 .queryParam("newName", "renamed")
                 .request()
@@ -214,7 +219,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10*1024);
 
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         FileStringResponse response = target("/ops/testSystem/dir1/")
                 .queryParam("newName", "renamed/")
                 .request()
@@ -241,7 +246,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10*1024);
 
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         FileStringResponse response = target("/ops/testSystem/dir1/dir2/")
                 .queryParam("newName", "renamed")
                 .request()
@@ -265,7 +270,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testInsertFile() throws Exception {
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         InputStream inputStream = makeFakeFile(10*1024);
         File tempFile = File.createTempFile("tempfile", null);
         tempFile.deleteOnExit();
@@ -290,7 +295,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testMkdir() throws Exception {
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath("/newDirectory");
 
@@ -320,7 +325,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     }
     @Test(dataProvider = "mkdirDataProvider")
     public void testMkdirWithSlashes(String path) throws Exception {
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath(path);
 
@@ -349,7 +354,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     }
     @Test(dataProvider = "mkdirBadDataProvider")
     public void testMkdirWithBadData(String path) throws Exception {
-        when(systemsService.getSystemByName(any())).thenReturn(testSystem);
+        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath(path);
 

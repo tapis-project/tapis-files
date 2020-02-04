@@ -35,7 +35,7 @@ public class SSHDataClient implements IRemoteDataClient {
 		host = system.getHost();
 		port = system.getPort();
 		username = system.getEffectiveUserId();
-		password = system.getAccessCredential().getPassword().get(0);
+		password = system.getAccessCredential().getPassword();
 		remotePath = system.getBucketName();
 		accessMethod = system.getAccessMethod();
 		rootDir = system.getRootDir();
@@ -47,11 +47,10 @@ public class SSHDataClient implements IRemoteDataClient {
 		try {
 			 Path remoteAbsolutePath = Paths.get(rootDir,remotePath);
 			 fileListing = sftp.ls(remoteAbsolutePath.toString());
-			 System.out.println("File Lists from remote execution" + fileListing);
-			 
 		} catch (FilesKernelException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error("SSH listing error", e);
+			throw new IOException("Error listing system/path");
 		}
 		return fileListing;
 	}

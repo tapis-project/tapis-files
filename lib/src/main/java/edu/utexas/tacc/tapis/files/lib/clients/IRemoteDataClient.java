@@ -19,6 +19,6 @@ public interface IRemoteDataClient {
     void delete(String path) throws IOException;
     InputStream getStream(String path) throws IOException;
     void download(String path) throws IOException;
-    void connect();
+    void connect() throws IOException;
     void disconnect();
 }
