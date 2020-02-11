@@ -89,7 +89,7 @@ public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
         Assert.assertNotNull(newTask.getCreated());
         Assert.assertEquals(newTask.getSourceSystemId(), "sourceSystem");
         Assert.assertEquals(newTask.getSourcePath(), "sourcePath");
-        Assert.assertEquals(newTask.getUsername(), "test1");
+        Assert.assertEquals(newTask.getUsername(), "testuser1");
         Assert.assertEquals(newTask.getTenantId(), "dev");
         Assert.assertEquals(newTask.getStatus(), TransferTaskStatus.ACCEPTED.name());
     }

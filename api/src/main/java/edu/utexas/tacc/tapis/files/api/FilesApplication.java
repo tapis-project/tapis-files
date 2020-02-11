@@ -1,13 +1,12 @@
 package edu.utexas.tacc.tapis.files.api;
 
-import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthzSystemPath;
-import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
+import edu.utexas.tacc.tapis.files.api.factories.FileOpsServiceFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
-import edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper;
-import edu.utexas.tacc.tapis.sharedapi.providers.ValidationExceptionMapper;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.tokens.client.TokensClient;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
@@ -18,16 +17,20 @@ import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.apache.commons.logging.Log;
 import org.glassfish.grizzly.http.server.HttpServer;
+import org.glassfish.hk2.api.Factory;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
-import org.glassfish.jersey.media.multipart.MultiPartFeature;
+import org.glassfish.jersey.process.internal.RequestScoped;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.ApplicationPath;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.UriInfo;
 import java.net.URI;
-import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
-
 
 
 // The path here is appended to the context root and
@@ -68,6 +71,7 @@ public class FilesApplication extends BaseResourceConfig {
      * custom ones for JWT validation and AuthZ
      */
 
+
     public FilesApplication() {
         super();
         //Our APIs
@@ -81,16 +85,17 @@ public class FilesApplication extends BaseResourceConfig {
         //OpenAPI jazz
         register(OpenApiResource.class);
 
+
         //For dependency injection into the Resource classes for testing.
         register(new AbstractBinder() {
             @Override
             protected void configure() {
+                bindFactory(FileOpsServiceFactory.class).to(FileOpsService.class).in(RequestScoped.class);
                 bindAsContract(FileTransfersDAO.class);
                 bindAsContract(TransfersService.class);
                 bindAsContract(SKClient.class);
                 bindAsContract(SystemsClient.class);
                 bindAsContract(TokensClient.class);
-                bindAsContract(SKClient.class);
             }
         });
 

@@ -45,7 +45,6 @@ public class TransfersApiResource {
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
 
     private void isPermitted(TransferTask task, AuthenticatedUser user) throws NotAuthorizedException {
-
         if (!task.getUsername().equals(user.getName())) throw new NotAuthorizedException("");
         if (!task.getTenantId().equals(user.getTenantId())) throw new NotAuthorizedException("");
     }

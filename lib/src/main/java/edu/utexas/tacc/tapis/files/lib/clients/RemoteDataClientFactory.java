@@ -23,9 +23,6 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
 		   system.setAccessCredential(creds);
 		   return new SSHDataClient(system);
 	   } else if (protocol.contains(TransferMethodsEnum.valueOf("S3"))){
-		   // FIXME: Remove the hardcorded password once the accessCredential is resolved in system Service
-		   creds.setAccessKey("password");
-           system.setAccessCredential(creds);
 		   return new S3DataClient(system);
 	   } else {
 		   throw new IOException("Invalid or protocol not supported");

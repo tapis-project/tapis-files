@@ -32,6 +32,8 @@ public class ContentApiResource {
     private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
     private Logger log = LoggerFactory.getLogger(ContentApiResource.class);
 
+    @Inject FileOpsService fileOpsService;
+
     @GET
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "content" })
@@ -49,7 +51,6 @@ public class ContentApiResource {
             if (path.endsWith("/")) {
                 throw new BadRequestException("Only files can be served.");
             }
-            FileOpsService fileOpsService = new FileOpsService(systemId);
             InputStream stream = fileOpsService.getStream(path);
             java.nio.file.Path filepath = Paths.get(path);
             String filename = filepath.getFileName().toString();

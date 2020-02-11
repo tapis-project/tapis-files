@@ -1,11 +1,14 @@
 package edu.utexas.tacc.tapis.files.api;
 
 
+import edu.utexas.tacc.tapis.files.api.factories.FileOpsServiceFactory;
 import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
 import edu.utexas.tacc.tapis.files.api.resources.OperationsApiResource;
 import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
@@ -17,6 +20,7 @@ import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
+import org.glassfish.jersey.process.internal.RequestScoped;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.test.TestProperties;
@@ -54,20 +58,20 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     private TSystem testSystem;
 
     // mocking out the services
-    private SystemsClient systemsService = Mockito.mock(SystemsClient.class);
+    private SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
     private SKClient skClient = Mockito.mock(SKClient.class);
 
 
     private ITestOpsRoutesS3() {
         //List<String> creds = new ArrayList<>();
         Credential creds = new Credential();
-        creds.setAccessKey("password");
+        creds.setAccessKey("user");
+        creds.setAccessSecret("password");
         testSystem = new TSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
         testSystem.setName("testSystem");
-        testSystem.setEffectiveUserId("user");
         testSystem.setAccessCredential(creds);
         testSystem.setRootDir("/");
         List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
@@ -80,14 +84,16 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
         ResourceConfig app = new BaseResourceConfig()
-                .register(OperationsApiResource.class)
                 .register(new AbstractBinder() {
                     @Override
                     protected void configure() {
-                        bind(systemsService).to(SystemsClient.class);
+                        bind(systemsClient).to(SystemsClient.class);
                         bind(skClient).to(SKClient.class);
+                        bindFactory(FileOpsServiceFactory.class).to(FileOpsService.class).in(RequestScoped.class);
+
                     }
                 });
+        app.register(OperationsApiResource.class);
         return app;
     }
 
@@ -110,37 +116,6 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         client.insert(fileName, f1);
     }
 
-
-//    private void createTestUserForMinio() throws Exception {
-//        SdkHttpFullRequest awsDummyRequest = SdkHttpFullRequest.builder()
-//                .method(SdkHttpMethod.GET)
-//                .uri(new URI("http://localhost:9000/?system"))
-//                .build();
-//        Aws4Signer signer = Aws4Signer.create();
-//        AwsS3V4SignerParams signerParams = AwsS3V4SignerParams.builder()
-//                .signingName("s3")
-//                .signingRegion(Region.US_EAST_1)
-//                .awsCredentials(AwsBasicCredentials.create("test", "password"))
-//                .build();
-//        awsDummyRequest = signer.sign(awsDummyRequest, signerParams);
-//
-//        OkHttpClient client = new OkHttpClient();
-//        RequestBody body = RequestBody.create("<setCredsReq><username>test</username><password>password</password></setCredsReq>", okhttp3.MediaType.get("text/xml"));
-//        Request.Builder builder = new Request.Builder();
-//        builder.url("http://localhost:9000/minio/admin/v2/add-user")
-//                .put(body);
-//        for (Map.Entry<String, List<String>> header : awsDummyRequest.headers().entrySet()) {
-//            for(String entry: header.getValue()) {
-//                builder.header(header.getKey(), entry);
-//            }
-//
-//        }
-//        builder.header("x-minio-operation", "creds");
-//        Request request = builder.build();
-//        Response response = client.newCall(request).execute();
-//
-//    }
-
     @AfterClass
     public void tearDown() throws Exception {
         super.tearDown();
@@ -154,13 +129,14 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         super.setUp();
         user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
         user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
+        log.info(user1jwt);
     }
 
 
     @Test
     public void  testGetS3List() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
         FileListResponse response = target("/ops/testSystem/test")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -177,7 +153,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
-        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
         FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -197,7 +173,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
-        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
         FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
                 .queryParam("newName", "renamed")
                 .request()
@@ -219,7 +195,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10*1024);
 
-        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
         FileStringResponse response = target("/ops/testSystem/dir1/")
                 .queryParam("newName", "renamed/")
                 .request()
@@ -246,7 +222,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10*1024);
 
-        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
         FileStringResponse response = target("/ops/testSystem/dir1/dir2/")
                 .queryParam("newName", "renamed")
                 .request()
@@ -270,7 +246,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testInsertFile() throws Exception {
-        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
         InputStream inputStream = makeFakeFile(10*1024);
         File tempFile = File.createTempFile("tempfile", null);
         tempFile.deleteOnExit();
@@ -295,7 +271,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testMkdir() throws Exception {
-        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath("/newDirectory");
 
@@ -325,7 +301,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     }
     @Test(dataProvider = "mkdirDataProvider")
     public void testMkdirWithSlashes(String path) throws Exception {
-        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath(path);
 
@@ -354,7 +330,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     }
     @Test(dataProvider = "mkdirBadDataProvider")
     public void testMkdirWithBadData(String path) throws Exception {
-        when(systemsService.getSystemByName(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath(path);
 

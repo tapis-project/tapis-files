@@ -22,16 +22,14 @@ import java.util.List;
 
 
 @Service
-public class FileOpsService {
+public class FileOpsService implements IFileOpsService {
     private Logger log = LoggerFactory.getLogger(FileOpsService.class);
 
     private IRemoteDataClient client;
     private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
 
     @Inject
-    private SystemsClient systemsClient;
-
-    public FileOpsService(String systemId) throws ServiceException {
+    public FileOpsService(SystemsClient systemsClient, String systemId) throws ServiceException {
 
         try {
             // Fetch the system based on the systemId
@@ -45,6 +43,9 @@ public class FileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("Could not connect to system");
+        } catch (Exception ex) {
+            log.error("ERROR", ex);
+            throw new ServiceException("");
         } finally {
             client.disconnect();
         }
@@ -65,6 +66,7 @@ public class FileOpsService {
         }
     }
 
+    @Override
     public List<FileInfo> ls(String path) throws ServiceException {
         try {
             List<FileInfo> listing = client.ls(path);
@@ -78,6 +80,7 @@ public class FileOpsService {
         }
     }
 
+    @Override
     public void mkdir(String path) throws ServiceException {
         try {
             client.mkdir(path);
@@ -89,6 +92,7 @@ public class FileOpsService {
         }
     }
 
+    @Override
     public void insert(String path, InputStream inputStream) throws ServiceException {
         try {
             client.insert(path, inputStream);
@@ -100,6 +104,7 @@ public class FileOpsService {
         }
     }
 
+    @Override
     public void move(String path, String newPath) throws ServiceException {
         try {
             client.move(path, newPath);
@@ -111,6 +116,7 @@ public class FileOpsService {
         }
     }
 
+    @Override
     public void delete(String path) throws ServiceException {
         try {
             client.delete(path);
@@ -122,6 +128,7 @@ public class FileOpsService {
         }
     }
 
+    @Override
     public InputStream getStream(String path) throws ServiceException {
         try {
             return client.getStream(path);

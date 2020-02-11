@@ -54,6 +54,9 @@ public class OperationsApiResource {
     private static class FileStringResponse extends TapisResponse<String>{}
 
 
+    @Inject FileOpsService fileOpsService;
+
+
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
     @Path("/{systemId}/{path:.+}")
@@ -76,7 +79,6 @@ public class OperationsApiResource {
 
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            FileOpsService fileOpsService = new FileOpsService(systemId);
             List<FileInfo> listing = fileOpsService.ls(path);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
@@ -106,7 +108,6 @@ public class OperationsApiResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         
         try {
-            FileOpsService fileOpsService = new FileOpsService(systemId);
             fileOpsService.mkdir(mkdirRequest.getPath());
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("Successfully created the directory", "Directory created!");
             return Response.ok(resp).build();
@@ -138,7 +139,6 @@ public class OperationsApiResource {
             @Parameter(description = "String dump of a valid JSON object to be associated with the file" ) @HeaderParam("x-meta") String xMeta,
             @Context SecurityContext securityContext) {
         try {
-            FileOpsService fileOpsService = new FileOpsService(systemId);
             fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
@@ -167,7 +167,6 @@ public class OperationsApiResource {
             @Context SecurityContext securityContext) {
 
         try {
-            FileOpsService fileOpsService = new FileOpsService(systemId);
             fileOpsService.move(path, newName);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
@@ -196,7 +195,6 @@ public class OperationsApiResource {
             @Context SecurityContext securityContext) {
         // Fetch the system based on the systemId
         try {
-            FileOpsService fileOpsService = new FileOpsService(systemId);
             fileOpsService.delete(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
