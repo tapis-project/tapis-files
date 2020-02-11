@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -43,24 +44,33 @@ public class TransfersService {
                                        String sourceSystemId, String sourcePath,
                                        String destinationSystemId, String destinationPath) throws ServiceException {
 
-        log.info(username);
         TransferTask task = new TransferTask(tenantId, username, sourceSystemId, sourcePath, destinationSystemId, destinationPath);
         try {
             task = dao.createTransferTask(task);
         } catch (DAOException ex) {
-            log.error("createTransfer", ex);
+            log.error("ERROR: createTransfer", ex);
             throw new ServiceException(ex.getMessage());
         }
         log.info(task.toString());
         return task;
     }
 
+    public void cancelTransfer(TransferTask task) throws ServiceException {
+        try {
+            task.setStatus(TransferTaskStatus.CANCELLED.name());
+            dao.updateTransferTask(task);
+        } catch (DAOException ex) {
+            log.error("ERROR: cancelTransfer", ex);
+            throw new ServiceException(ex.getMessage());
+        }
+    }
+
     public void publishTransferTaskMessage(TransferTask task) throws ServiceException {
         try {
             String message  = mapper.writeValueAsString(task);
             channel.basicPublish("", QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception ex) {
-            log.error(ex.getMessage());
+        } catch (IOException ex) {
+            log.error("ERROR: publishTransferTaskMessage", ex);
             throw new ServiceException(ex.getMessage());
         }
 

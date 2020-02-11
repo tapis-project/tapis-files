@@ -20,8 +20,6 @@ public class FileTransfersDAO implements IFileTransferDAO {
 
     private class TransferTaskRowProcessor extends BasicRowProcessor {
 
-
-
         @Override
         public Object toBean(ResultSet rs, Class type) throws SQLException {
             TransferTask task = new TransferTask();
