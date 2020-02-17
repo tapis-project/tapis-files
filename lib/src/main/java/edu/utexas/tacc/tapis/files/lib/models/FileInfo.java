@@ -1,15 +1,13 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
-import javax.validation.constraints.*;
-import javax.xml.bind.annotation.XmlRootElement;
 
-@XmlRootElement
 public class FileInfo   {
 
   public FileInfo(S3Object listing) {
@@ -35,6 +33,9 @@ public class FileInfo   {
   @JsonProperty("size")
   private Long size = null;
 
+  public boolean isDir() {
+    return this.path.endsWith("/");
+  }
 
 
   /**

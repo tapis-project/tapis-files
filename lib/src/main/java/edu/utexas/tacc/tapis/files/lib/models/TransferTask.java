@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Objects;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 public class TransferTask   {
 
+    private int id;
     private String tenantId;
     private String username;
     private String sourceSystemId;
@@ -18,15 +20,15 @@ public class TransferTask   {
     private String destinationSystemId;
     private String destinationPath;
     private UUID uuid;
-
+    private Long totalBytes;
+    private Long bytesTransferred;
+    private TransferTaskStatus status;
     private Instant created;
 
-    private String status ;
 
     public TransferTask() {
         this.uuid = UUID.randomUUID();
-        this.status = TransferTaskStatus.ACCEPTED.name();
-        this.created = Instant.now();
+        this.status = TransferTaskStatus.ACCEPTED;
     }
 
     public TransferTask(String tenantId, String username, String sourceSystemId, String sourcePath, String destinationSystemId, String destinationPath) {
@@ -37,8 +39,7 @@ public class TransferTask   {
         this.destinationSystemId = destinationSystemId;
         this.destinationPath = destinationPath;
         this.uuid = UUID.randomUUID();
-        this.status = TransferTaskStatus.ACCEPTED.name();
-        this.created = Instant.now();
+        this.status = TransferTaskStatus.ACCEPTED;
     }
 
     /**
@@ -49,6 +50,29 @@ public class TransferTask   {
     @Schema(description = "Unique ID of the task.")
     public UUID getUuid() {
         return uuid;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public int getId() {
+        return id;
+    }
+    public Long getTotalBytes() {
+        return totalBytes;
+    }
+
+    public void setTotalBytes(Long totalBytes) {
+        this.totalBytes = totalBytes;
+    }
+
+    public Long getBytesTransferred() {
+        return bytesTransferred;
+    }
+
+    public void setBytesTransferred(Long bytesTransferred) {
+        this.bytesTransferred = bytesTransferred;
     }
 
     public String getTenantId() {
@@ -124,11 +148,11 @@ public class TransferTask   {
      **/
     @JsonProperty("status")
     @Schema(example = "PENDING", description = "The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED")
-    public String getStatus() {
+    public TransferTaskStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(TransferTaskStatus status) {
         this.status = status;
     }
 

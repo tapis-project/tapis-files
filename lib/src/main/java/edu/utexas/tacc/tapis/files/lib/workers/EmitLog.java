@@ -3,11 +3,13 @@ package edu.utexas.tacc.tapis.files.lib.workers;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 
+import java.time.Instant;
+
 public class EmitLog {
 
     public static void main(String[] argv) throws Exception {
         TransfersService transfersService = new TransfersService();
-        for (var i=0; i<100; i++) {
+        for (var i=0; i<1000; i++) {
             TransferTask task = new TransferTask();
             task.setUsername("test");
             task.setTenantId("testTenant");
@@ -15,6 +17,7 @@ public class EmitLog {
             task.setSourcePath("sourcePath");
             task.setDestinationSystemId("destinationSystem");
             task.setDestinationPath("destinationPath");
+            task.setCreated(Instant.now());
             transfersService.publishTransferTaskMessage(task);
             System.out.println(" [x] Sent '" + "");
         }

@@ -131,7 +131,7 @@ public class TransfersApiResource {
             if (task == null) {
                 throw new NotFoundException("transfer task not found");
             }
-            task.setStatus(TransferTaskStatus.CANCELLED.name());
+            task.setStatus(TransferTaskStatus.CANCELLED);
             task = transfersDAO.updateTransferTask(task);
 
             // TODO: Have to cancel any existing transfers?

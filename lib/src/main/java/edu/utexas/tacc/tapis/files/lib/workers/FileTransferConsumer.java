@@ -9,36 +9,38 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 
 public class FileTransferConsumer extends DefaultConsumer {
+
     private static final Logger log = LoggerFactory.getLogger(FileTransferConsumer.class);
     private final Channel channel;
-    private final FileTransfersDAO dao;
+    private final ExecutorService executorService;
     private final ObjectMapper mapper = TapisObjectMapper.getMapper();
+    private final String QUEUE_NAME = "tapis.files.transfers";
 
-
-    public FileTransferConsumer(Channel channel) {
+    public FileTransferConsumer(Channel channel, ExecutorService threadExecutor) throws IOException {
         super(channel);
         this.channel = channel;
-        this.dao = new FileTransfersDAO();
+        this.executorService = threadExecutor;
+        channel.basicQos(1);
+        channel.basicConsume(QUEUE_NAME, false, this);
     }
 
+
     @Override
-    public void handleDelivery(String consumerTag, Envelope envelope,
-                               AMQP.BasicProperties properties, final byte[] body) throws IOException {
+    public void handleDelivery(String consumerTag,
+                               Envelope envelope,
+                               AMQP.BasicProperties properties,
+                               byte[] body) throws IOException {
         long deliveryTag = envelope.getDeliveryTag();
-        try {
-            TransferTask task = mapper.readValue(body, TransferTask.class);
-            int sleep = new Random().nextInt(5000) + 100;
-            Thread.sleep(sleep);
-            log.info("Task completed {} in {} seconds", task.getUuid(), sleep);
-            channel.basicAck(deliveryTag, true);
-        } catch (Exception e) {
-            log.error("", e);
-            channel.basicAck(deliveryTag, false);
-        }
+        TransferTask task = mapper.readValue(body, TransferTask.class);
+        log.info(task.toString());
+        Runnable taskRunner = new FileTransferTaskRunner(channel, deliveryTag, task);
+        executorService.submit(taskRunner);
+
     }
 }

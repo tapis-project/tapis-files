@@ -11,21 +11,19 @@ CREATE table transfer_tasks (
     source_path VARCHAR NOT NULL,
     destination_system_id VARCHAR NOT NULL,
     destination_path VARCHAR NOT NULL,
-    status VARCHAR(128) NOT NULL
+    status VARCHAR(128) NOT NULL,
+    bytes_transferred BIGINT NOT NULL default 0,
+    total_bytes BIGINT NOT NULL default 0
 );
 CREATE index on transfer_tasks(tenant_id, username, uuid);
 
 DROP TABLE IF EXISTS transfer_tasks_child CASCADE;
 CREATE TABLE transfer_tasks_child (
-    id serial PRIMARY KEY,
-    parent_task_id integer REFERENCES transfer_tasks(id),
-    tenant_id varchar(256) NOT NULL,
-    created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    username VARCHAR(256) NOT NULL,
-    source_path VARCHAR NOT NULL,
-    bytes_transferred BIGINT NOT NULL,
-    total_size BIGINT NOT NULL
-);
+    parent_task_id int REFERENCES transfer_tasks(id)
+
+) INHERITS(transfer_tasks);
+
+
 CREATE INDEX on transfer_tasks_child(tenant_id, username, parent_task_id);
 
 
