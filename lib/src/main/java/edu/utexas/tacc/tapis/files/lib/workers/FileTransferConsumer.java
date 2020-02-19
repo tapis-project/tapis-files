@@ -38,7 +38,6 @@ public class FileTransferConsumer extends DefaultConsumer {
                                byte[] body) throws IOException {
         long deliveryTag = envelope.getDeliveryTag();
         TransferTask task = mapper.readValue(body, TransferTask.class);
-        log.info(task.toString());
         Runnable taskRunner = new FileTransferTaskRunner(channel, deliveryTag, task);
         executorService.submit(taskRunner);
 

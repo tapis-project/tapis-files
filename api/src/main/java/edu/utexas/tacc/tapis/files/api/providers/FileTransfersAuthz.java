@@ -1,5 +1,8 @@
 package edu.utexas.tacc.tapis.files.api.providers;
+import com.jcraft.jsch.IO;
 import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -17,15 +20,13 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
 
-@FileOpsAuthorization
-public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
+@FileTransfersAuthorization
+public class FileTransfersAuthz implements ContainerRequestFilter {
 
     private Logger log = LoggerFactory.getLogger(FileOpsAuthzSystemPath.class);
     private AuthenticatedUser user;
-    // PERMSPEC is "files:tenant:r,rw,*:systemId:path
-    private String PERMSPEC = "files:%s:%s:%s:%s";
 
-    @Inject private SKClient skClient;
+    @Inject private TransfersService transfersService;
 
     @Context
     private ResourceInfo resourceInfo;
@@ -33,30 +34,26 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
 
-        FileOpsAuthorization requiredPerms = resourceInfo.getResourceMethod().getAnnotation(FileOpsAuthorization.class);
+
+        //TODO:
 
         user = (AuthenticatedUser) requestContext.getSecurityContext().getUserPrincipal();
         String username = user.getName();
         String tenantId = user.getTenantId();
         MultivaluedMap<String, String> params = requestContext.getUriInfo().getPathParameters();
-        log.info(params.toString());
-        String path = params.getFirst("path");
-        String systemId = params.getFirst("systemId");
+        String taskID = params.getFirst("transferTaskId");
 
-        //TODO: Empty path should be allowed, defaults to rootDir
-        if (path.isEmpty() || systemId.isEmpty()) {
-            throw new BadRequestException("bad request");
-        }
-        String permSpec = String.format(PERMSPEC, tenantId, requiredPerms.permsRequired().getLabel(), systemId, path);
         try {
-            boolean isPermitted = skClient.isPermitted(username, permSpec);
+            boolean isPermitted = transfersService.isPermitted(username, tenantId, taskID);
             if (!isPermitted) {
-                throw new NotAuthorizedException("Not authorized to access this file/folder");
+                throw new NotAuthorizedException("Not authorized to access this transfer");
             }
-        } catch (TapisClientException e) {
-            log.error("FileOpsAuthzSystemPath", e);
-            throw new WebApplicationException("Something went wrong...");
+
+        } catch (ServiceException ex) {
+            throw new IOException("Could not verify ownership of transfer task.");
         }
+
+
 
 
 

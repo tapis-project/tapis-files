@@ -14,7 +14,6 @@ import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
-import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,11 +22,12 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 
 import javax.inject.Inject;
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 @Service
-public class TransfersService {
+public class TransfersService implements ITransfersService {
     private Logger log = LoggerFactory.getLogger(TransfersService.class);
 
     @Inject
@@ -54,6 +54,21 @@ public class TransfersService {
         }
     }
 
+    public boolean isPermitted(String username, String tenantId, String transferTaskId) throws ServiceException {
+        try {
+            TransferTask task = dao.getTransferTask(transferTaskId);
+
+            if (task.getTenantId() != tenantId || task.getUsername() != username) {
+                return false;
+            }
+            return true;
+        } catch (DAOException ex) {
+            log.error("ERROR", ex);
+            throw new ServiceException(ex.getMessage());
+        }
+    }
+
+
     public TransferTask createTransfer(String username, String tenantId,
                                        String sourceSystemId, String sourcePath,
                                        String destinationSystemId, String destinationPath) throws ServiceException {
@@ -77,7 +92,7 @@ public class TransfersService {
         TransferTaskChild transferTaskChild = new TransferTaskChild(parentTask, sourcePath);
         // TODO: The remote clients could be cached to prevent thrashing on the systems service
         try {
-            TSystem sourceSystem = systemsClient.getSystemByName(parentTask.getSourceSystemId(), true);
+            TSystem sourceSystem = systemsClient.getSystemByName(parentTask.getSourceSystemId(), true, "ACCESS_TOKEN");
             IRemoteDataClient sourceClient = new RemoteDataClientFactory().getRemoteDataClient(sourceSystem);
 
             // If its a dir, keep going down the tree

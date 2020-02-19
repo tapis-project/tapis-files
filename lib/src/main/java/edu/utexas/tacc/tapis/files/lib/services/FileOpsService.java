@@ -33,7 +33,7 @@ public class FileOpsService implements IFileOpsService {
 
         try {
             // Fetch the system based on the systemId
-            TSystem sys = systemsClient.getSystemByName(systemId, true);
+            TSystem sys = systemsClient.getSystemByName(systemId, true, "ACCESS_KEY");
             // Fetch the creds
             client = clientFactory.getRemoteDataClient(sys);
             client.connect();

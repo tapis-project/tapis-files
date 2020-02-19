@@ -12,8 +12,6 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
-import edu.utexas.tacc.tapis.tokens.client.TokensClient;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
