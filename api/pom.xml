@@ -22,7 +22,6 @@
             <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>tapis-files-lib</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jersey.ext</groupId>

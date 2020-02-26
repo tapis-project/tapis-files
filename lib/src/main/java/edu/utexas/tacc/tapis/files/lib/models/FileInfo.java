@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.files.lib.models;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -33,6 +35,7 @@ public class FileInfo   {
   @JsonProperty("size")
   private Long size = null;
 
+  @JsonIgnore
   public boolean isDir() {
     return this.path.endsWith("/");
   }

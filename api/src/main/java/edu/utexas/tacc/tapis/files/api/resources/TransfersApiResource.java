@@ -1,12 +1,9 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
-import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
-import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
-import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.validators.ValidUUID;
@@ -28,6 +25,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import java.util.UUID;
 
 
 @Path("/transfers")
@@ -35,9 +33,6 @@ public class TransfersApiResource {
 
     private final String EXAMPLE_TASK_ID = "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c";
     private Logger log = LoggerFactory.getLogger(TransfersApiResource.class);
-
-    @Inject
-    FileTransfersDAO transfersDAO;
 
     @Inject
     TransfersService transfersService;
@@ -70,14 +65,11 @@ public class TransfersApiResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
-            TransferTask task = transfersDAO.getTransferTask(transferTaskId);
-            if (task == null) {
-                throw new NotFoundException("Transfer task not found");
-            }
+            TransferTask task = transfersService.getTransferTask(transferTaskId);
             isPermitted(task, user);
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
-        } catch (DAOException e) {
+        } catch (ServiceException e) {
             log.error("getTransferTaskStatus", e);
             throw new WebApplicationException("server error");
         }
@@ -125,22 +117,14 @@ public class TransfersApiResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
-            TapisResponse resp;
-            TransferTask task;
-            task = transfersDAO.getTransferTask(transferTaskId);
-            if (task == null) {
-                throw new NotFoundException("transfer task not found");
-            }
-            task.setStatus(TransferTaskStatus.CANCELLED);
-            task = transfersDAO.updateTransferTask(task);
-
-            // TODO: Have to cancel any existing transfers?
-
-            resp = TapisResponse.createSuccessResponse(task);
+            TransferTask task = transfersService.getTransferTask(transferTaskId);
+            isPermitted(task, user);
+            transfersService.cancelTransfer(task);
+            TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);
             resp.setMessage("Transfer deleted.");
             return Response.ok(resp).build();
-        } catch (DAOException e) {
-            log.error("DELETE transferTask error", e);
+        } catch (ServiceException e) {
+            log.error("ERROR: cancelTransferTask", e);
             throw new WebApplicationException("server error");
         }
     }
@@ -177,9 +161,6 @@ public class TransfersApiResource {
             TapisResponse resp = TransferTaskResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (ServiceException ex) {
-            log.error("createTransferTask", ex);
-            throw new WebApplicationException("server error");
-        } catch (Exception ex) {
             log.error("createTransferTask", ex);
             throw new WebApplicationException("server error");
         }

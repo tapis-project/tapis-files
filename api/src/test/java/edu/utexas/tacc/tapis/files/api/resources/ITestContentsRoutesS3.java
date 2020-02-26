@@ -1,9 +1,8 @@
-package edu.utexas.tacc.tapis.files.api;
+package edu.utexas.tacc.tapis.files.api.resources;
 
 
+import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.factories.FileOpsServiceFactory;
-import edu.utexas.tacc.tapis.files.api.resources.ContentApiResource;
-import edu.utexas.tacc.tapis.files.api.resources.OperationsApiResource;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
@@ -115,7 +114,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testSimpleGetContents() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
         Response response = target("/content/testSystem/testfile1.txt")
                 .request()
                 .header("X-Tapis-Token", user1jwt)
@@ -126,7 +125,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testNotFound() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
         Response response = target("/content/testSystem/NOT-THERE.txt")
                 .request()
                 .header("X-Tapis-Token", user1jwt)
@@ -138,7 +137,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     public void testGetContentsHeaders() throws Exception {
         // make sure content-type is application/octet-stream and filename is correct
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
         Response response = target("/content/testSystem/testfile1.txt")
                 .request()
                 .header("x-tapis-token", user1jwt)
@@ -150,7 +149,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testBadRequest() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
         Response response = target("/content/testSystem/BAD-PATH/")
                 .request()
                 .header("x-tapis-token", user1jwt)

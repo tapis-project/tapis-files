@@ -1,15 +1,15 @@
-package edu.utexas.tacc.tapis.files.api;
+package edu.utexas.tacc.tapis.files.api.resources;
 
 
+import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.factories.FileOpsServiceFactory;
 import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
-import edu.utexas.tacc.tapis.files.api.resources.OperationsApiResource;
-import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -33,6 +33,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -93,6 +94,18 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
                     }
                 });
+        // Initialize tenant manager singleton. This can be used by all subsequent application code, including filters.
+        try {
+            // The base url of the tenants service is a required input parameter.
+            // Retrieve the tenant list from the tenant service now to fail fast if we can't access the list.
+            TenantManager.getInstance("https://dev.develop.tapis.io/").getTenants();
+        } catch (Exception e) {
+            // This is a fatal error
+            System.out.println("**** FAILURE TO INITIALIZE: tapis-systemsapi ****");
+            e.printStackTrace();
+            throw e;
+        }
+
         app.register(OperationsApiResource.class);
         return app;
     }
@@ -129,14 +142,14 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         super.setUp();
         user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
         user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
-        log.info(user1jwt);
     }
 
 
     @Test
     public void  testGetS3List() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
         FileListResponse response = target("/ops/testSystem/test")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -148,18 +161,31 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     }
 
     @Test
+    public void  testGetS3ListNoAuthz() throws Exception {
+        addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(false);
+        Response response = target("/ops/testSystem/test")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", user1jwt)
+            .get();
+        Assert.assertEquals(403, response.getStatus());
+    }
+
+    @Test
     public void testDelete() throws Exception {
         S3DataClient client = new S3DataClient(testSystem);
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
         FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
                 .delete(FileStringResponse.class);
-        //TODO: Add asserts
         List<FileInfo> listing = client.ls("dir1/testfile3.txt");
         Assert.assertEquals(listing.size(), 0);
         List<FileInfo> l2 = client.ls("/");
@@ -173,7 +199,8 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
         FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
                 .queryParam("newName", "renamed")
                 .request()
@@ -195,7 +222,9 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10*1024);
 
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+
         FileStringResponse response = target("/ops/testSystem/dir1/")
                 .queryParam("newName", "renamed/")
                 .request()
@@ -222,7 +251,9 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10*1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10*1024);
 
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+
         FileStringResponse response = target("/ops/testSystem/dir1/dir2/")
                 .queryParam("newName", "renamed")
                 .request()
@@ -246,7 +277,9 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testInsertFile() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+
         InputStream inputStream = makeFakeFile(10*1024);
         File tempFile = File.createTempFile("tempfile", null);
         tempFile.deleteOnExit();
@@ -271,7 +304,9 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testMkdir() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath("/newDirectory");
 
@@ -301,7 +336,9 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     }
     @Test(dataProvider = "mkdirDataProvider")
     public void testMkdirWithSlashes(String path) throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath(path);
 
@@ -330,7 +367,9 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     }
     @Test(dataProvider = "mkdirBadDataProvider")
     public void testMkdirWithBadData(String path) throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath(path);
 

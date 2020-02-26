@@ -17,8 +17,6 @@
         <tapis-client-java.version>1.1-SNAPSHOT</tapis-client-java.version>
         <tapis-shared.version>1.1-SNAPSHOT</tapis-shared.version>
         <slf4j-api.version>1.7.28</slf4j-api.version>
-        <!-- Skip integration tests by default -->
-        <skipTests>true</skipTests>
     </properties>
 
     <profiles>
@@ -117,7 +115,6 @@
                     <systemProperties>
                         <APP_ENV>test</APP_ENV>
                     </systemProperties>
-                    <skipITs>${skipTests}</skipITs>
                 </configuration>
             </plugin>
 

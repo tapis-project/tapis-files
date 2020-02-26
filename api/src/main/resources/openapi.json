@@ -569,36 +569,6 @@
         }
       }
     },
-    "/transfers" : {
-      "post" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Transfer data",
-        "description" : "This creates a background task which will transfer files into the storage system",
-        "operationId" : "createTransferTask",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TransferTaskRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/transfers/{transferTaskId}/history" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -677,6 +647,36 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/TapisResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfers" : {
+      "post" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Transfer data",
+        "description" : "This creates a background task which will transfer files into the storage system",
+        "operationId" : "createTransferTask",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
                 }
               }
             }
@@ -882,6 +882,10 @@
       "TransferTask" : {
         "type" : "object",
         "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
           "tenantId" : {
             "type" : "string"
           },
@@ -900,20 +904,29 @@
           "destinationPath" : {
             "type" : "string"
           },
+          "totalBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bytesTransferred" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
           "uuid" : {
             "type" : "string",
             "description" : "Unique ID of the task.",
             "format" : "uuid"
           },
+          "status" : {
+            "type" : "string",
+            "description" : "The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED",
+            "example" : "PENDING",
+            "enum" : [ "ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELLED" ]
+          },
           "created" : {
             "type" : "integer",
             "description" : "Timestamp in UTC of task creation.",
             "format" : "int64"
-          },
-          "status" : {
-            "type" : "string",
-            "description" : "The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED",
-            "example" : "PENDING"
           }
         }
       },
@@ -928,6 +941,23 @@
           },
           "result" : {
             "$ref" : "#/components/schemas/TransferTask"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
           },
           "version" : {
             "type" : "string"
@@ -953,23 +983,6 @@
           "destinationPath" : {
             "type" : "string",
             "description" : "Path to file/folder in destination system"
-          }
-        }
-      },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
           }
         }
       }

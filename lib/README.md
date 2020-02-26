@@ -16,7 +16,7 @@ The message body is a serialized dump of a `TransferTask`
 
 3) ForEach item in the file listing
      Create a new `TransferTaskChild` and publish that message
-
+     
 4) The transfer task child workers receive that message on the `files.transfers.child` queue. 
 
 5) 
@@ -25,9 +25,13 @@ The message body is a serialized dump of a `TransferTask`
         forEach item in listing(child): 
             recursively call self (with new message and path of item)   
     - If child == file : 
-        create 2 RemoteDataClients, 1 for source 1 for dest
-        inStream = client1.getStream(path)
-        client2.insert(path, inStream)
+        - update the TransferTask `total_bytes` by += file.getSize() 
+        - create 2 RemoteDataClients, 1 for source 1 for dest
+        - inStream = client1.getStream(path)
+        - client2.insert(path, inStream)
+
+RabbitMQ setup is based loosely on 
+https://github.com/0x6e6562/hopper/blob/master/Work%20Distribution%20in%20RabbitMQ.markdown
 
 The application starts up an ExecutorPool with N threads for the TransferTask listeners and another
 ExecutorService with 10*N threads for the TransferTaskChild listeners. 

@@ -23,8 +23,10 @@ import com.rabbitmq.client.Connection;
 
 import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 @Service
 public class TransfersService implements ITransfersService {
@@ -44,9 +46,8 @@ public class TransfersService implements ITransfersService {
 
     public TransfersService() throws ServiceException {
         try {
-            Connection conn = RabbitMQConnection.getInstance();
-            connection = conn;
-            channel = conn.createChannel();
+            connection = RabbitMQConnection.getInstance();
+            channel = connection.createChannel();
             channel.queueDeclare(QUEUE_NAME, true, false, false, null);
         } catch (IOException ex) {
             log.error(ex.getMessage());
@@ -57,26 +58,40 @@ public class TransfersService implements ITransfersService {
     public boolean isPermitted(String username, String tenantId, String transferTaskId) throws ServiceException {
         try {
             TransferTask task = dao.getTransferTask(transferTaskId);
-
-            if (task.getTenantId() != tenantId || task.getUsername() != username) {
-                return false;
-            }
-            return true;
+            return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
         } catch (DAOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException(ex.getMessage());
         }
     }
 
+    public TransferTask getTransferTask(@NotNull String taskUUID) throws ServiceException, NotFoundException {
+        UUID taskId = UUID.fromString(taskUUID);
+        return getTransferTask(taskId);
+    }
 
-    public TransferTask createTransfer(String username, String tenantId,
+    public TransferTask getTransferTask(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
+        try {
+            TransferTask task = dao.getTransferTask(taskUUID);
+            if (task == null) {
+                throw new NotFoundException("No transfer task with this UUID found.");
+            }
+            return task;
+        } catch (DAOException ex) {
+            log.error("ERROR: getTransferTask", ex);
+            throw new ServiceException(ex.getMessage());
+        }
+    }
+
+
+    public TransferTask createTransfer(@NotNull  String username, @NotNull String tenantId,
                                        String sourceSystemId, String sourcePath,
                                        String destinationSystemId, String destinationPath) throws ServiceException {
 
         TransferTask task = new TransferTask(tenantId, username, sourceSystemId, sourcePath, destinationSystemId, destinationPath);
 
-        // TODO: The remote clients could be cached to prevent thrashing on the systems service
         try {
+            // TODO: check if requesting user has access to both the source and dest systems, throw an error back if not
             task = dao.createTransferTask(task);
             createTransferTaskChild(task, sourcePath);
             return task;
@@ -92,6 +107,7 @@ public class TransfersService implements ITransfersService {
         TransferTaskChild transferTaskChild = new TransferTaskChild(parentTask, sourcePath);
         // TODO: The remote clients could be cached to prevent thrashing on the systems service
         try {
+            // TODO: This is hard coded for ACCESS_TOKEN credentials!!!!
             TSystem sourceSystem = systemsClient.getSystemByName(parentTask.getSourceSystemId(), true, "ACCESS_TOKEN");
             IRemoteDataClient sourceClient = new RemoteDataClientFactory().getRemoteDataClient(sourceSystem);
 
@@ -119,7 +135,7 @@ public class TransfersService implements ITransfersService {
 
     }
 
-    public void cancelTransfer(@NotNull TransferTask task) throws ServiceException {
+    public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException {
         try {
             task.setStatus(TransferTaskStatus.CANCELLED);
             dao.updateTransferTask(task);

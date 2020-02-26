@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

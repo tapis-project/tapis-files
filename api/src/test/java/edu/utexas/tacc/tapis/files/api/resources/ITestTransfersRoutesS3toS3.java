@@ -1,12 +1,26 @@
-package edu.utexas.tacc.tapis.files.api;
+package edu.utexas.tacc.tapis.files.api.resources;
 
+import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
+import edu.utexas.tacc.tapis.files.api.factories.FileOpsServiceFactory;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
-import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
+import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.codec.Charsets;
+import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.glassfish.jersey.process.internal.RequestScoped;
+import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.test.TestProperties;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -17,24 +31,74 @@ import org.apache.commons.io.IOUtils;
 
 
 import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.Application;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
-@Test(groups={"integration"})
-public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
-    private Logger log = LoggerFactory.getLogger(ITestTransfersRoutes.class);
+@Test(groups={"integration"})
+public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTest {
+
+    private Logger log = LoggerFactory.getLogger(ITestTransfersRoutesS3toS3.class);
     private String user1jwt;
     private String user2jwt;
+    private TSystem testSystem;
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
+    // mocking out the services
+    private SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
+    private SKClient skClient = Mockito.mock(SKClient.class);
+
+    private ITestTransfersRoutesS3toS3() {
+        //List<String> creds = new ArrayList<>();
+        Credential creds = new Credential();
+        creds.setAccessKey("user");
+        creds.setAccessSecret("password");
+        testSystem = new TSystem();
+        testSystem.setHost("http://localhost");
+        testSystem.setPort(9000);
+        testSystem.setBucketName("test");
+        testSystem.setName("testSystem");
+        testSystem.setAccessCredential(creds);
+        testSystem.setRootDir("/");
+        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
+        transferMechs.add(TSystem.TransferMethodsEnum.S3);
+        testSystem.setTransferMethods(transferMechs);
+    }
 
     @Override
-    protected Application configure() {
+    protected ResourceConfig configure() {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
-        return new FilesApplication();
+        ResourceConfig app = new BaseResourceConfig()
+                .register(new AbstractBinder() {
+                    @Override
+                    protected void configure() {
+                        bind(systemsClient).to(SystemsClient.class);
+                        bind(skClient).to(SKClient.class);
+                        bind(TransfersService.class).to(TransfersService.class);
+                        bind(FileTransfersDAO.class).to(FileTransfersDAO.class);
+                        bindFactory(FileOpsServiceFactory.class).to(FileOpsService.class).in(RequestScoped.class);
+
+                    }
+                });
+        // Initialize tenant manager singleton. This can be used by all subsequent application code, including filters.
+        try {
+            // The base url of the tenants service is a required input parameter.
+            // Retrieve the tenant list from the tenant service now to fail fast if we can't access the list.
+            TenantManager.getInstance("https://dev.develop.tapis.io/").getTenants();
+        } catch (Exception e) {
+            // This is a fatal error
+            System.out.println("**** FAILURE TO INITIALIZE: tapis-systemsapi ****");
+            e.printStackTrace();
+            throw e;
+        }
+
+        app.register(TransfersApiResource.class);
+        return app;
     }
 
     @AfterClass
@@ -53,12 +117,13 @@ public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
      * Helper method to create transfer tasks
      * @return
      */
-    private TransferTask createTransferTask() {
+    private TransferTask createTransferTask() throws Exception {
         TransferTaskRequest payload = new TransferTaskRequest();
         payload.setSourceSystemId("sourceSystem");
         payload.setSourcePath("sourcePath");
         payload.setDestinationSystemId("destinationSystem");
         payload.setDestinationPath("destinationPath");
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
 
         Response createTaskResponse = target("/transfers")
                 .request()
@@ -82,7 +147,7 @@ public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
     }
 
     @Test
-    public void postTransferTask() {
+    public void postTransferTask() throws Exception{
         TransferTask newTask = createTransferTask();
 
         Assert.assertNotNull(newTask.getUuid());
@@ -91,11 +156,11 @@ public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
         Assert.assertEquals(newTask.getSourcePath(), "sourcePath");
         Assert.assertEquals(newTask.getUsername(), "testuser1");
         Assert.assertEquals(newTask.getTenantId(), "dev");
-        Assert.assertEquals(newTask.getStatus(), TransferTaskStatus.ACCEPTED.name());
+        Assert.assertEquals(newTask.getStatus(), TransferTaskStatus.ACCEPTED);
     }
 
     @Test
-    public void getTransferById() {
+    public void getTransferById() throws Exception {
 
         TransferTask t = createTransferTask();
 
@@ -145,7 +210,7 @@ public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
     }
 
     @Test
-    public void deleteTransfer() {
+    public void deleteTransfer() throws Exception {
         TransferTask t = createTransferTask();
         Response resp = target("/transfers/" + t.getUuid().toString())
                 .request()
@@ -154,9 +219,22 @@ public class ITestTransfersRoutes extends JerseyTestNg.ContainerPerClassTest {
                 .delete();
 
         TransferTask task = getTransferTask(t.getUuid().toString());
-        Assert.assertEquals(task.getStatus(), TransferTaskStatus.CANCELLED.name());
+        Assert.assertEquals(task.getStatus(), TransferTaskStatus.CANCELLED);
         Assert.assertEquals(resp.getStatus(), 200);
 
     }
+
+    @Test
+    public void deleteTransfer404() throws Exception {
+        Response resp = target("/transfers/" + UUID.randomUUID())
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .delete();
+
+        Assert.assertEquals(resp.getStatus(), 404);
+
+    }
+
 
 }

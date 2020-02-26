@@ -4,13 +4,11 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
 import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
-import edu.utexas.tacc.tapis.files.api.utils.TapisResponse;
-import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
-import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,7 +16,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
@@ -36,8 +33,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-//import edu.utexas.tacc.tapis.security.client.SKClient;
-//import edu.utexas.tacc.tapis.tokens.client.TokensClient;
 
 @Path("/ops")
 public class OperationsApiResource {

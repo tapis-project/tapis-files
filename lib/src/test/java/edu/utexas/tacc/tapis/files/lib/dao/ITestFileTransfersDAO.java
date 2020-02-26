@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.dao;
 import edu.utexas.tacc.tapis.files.lib.BaseDatabaseIntegrationTest;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import org.flywaydb.core.api.Location;
 import org.mockito.*;
 import org.testng.Assert;
@@ -44,7 +45,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         TransferTask t = dao.createTransferTask(task);
         TransferTask tNew = dao.getTransferTask(t.getUuid());
         Assert.assertEquals(tNew.getUuid(), task.getUuid());
-        Assert.assertEquals(tNew.getStatus(), "ACCEPTED");
+        Assert.assertEquals(tNew.getStatus(), TransferTaskStatus.ACCEPTED);
         Assert.assertNotEquals(tNew.getCreated(), null);
     }
 }

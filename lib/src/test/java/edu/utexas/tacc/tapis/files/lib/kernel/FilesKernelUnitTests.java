@@ -1,11 +1,9 @@
-package edu.utexas.tacc.tapis.files.lib.Kernel;
+package edu.utexas.tacc.tapis.files.lib.kernel;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
-import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
-import edu.utexas.tacc.tapis.files.lib.kernel.UserInfoImplementation;
 
 @Test(groups = {"unit"})
 public class FilesKernelUnitTests {

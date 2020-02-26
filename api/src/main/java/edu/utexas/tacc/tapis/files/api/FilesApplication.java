@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.tokens.client.TokensClient;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
@@ -100,6 +101,18 @@ public class FilesApplication extends BaseResourceConfig {
         });
 
 		setApplicationName("files");
+
+        // Initialize tenant manager singleton. This can be used by all subsequent application code, including filters.
+        try {
+            // The base url of the tenants service is a required input parameter.
+            // Retrieve the tenant list from the tenant service now to fail fast if we can't access the list.
+            TenantManager.getInstance("https://dev.develop.tapis.io").getTenants();
+        } catch (Exception e) {
+            // This is a fatal error
+            System.out.println("**** FAILURE TO INITIALIZE: tapis-systemsapi ****");
+            e.printStackTrace();
+            throw e;
+        }
 
     }
 

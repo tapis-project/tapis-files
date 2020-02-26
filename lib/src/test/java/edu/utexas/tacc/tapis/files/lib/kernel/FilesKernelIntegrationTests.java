@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.lib.Kernel;
+package edu.utexas.tacc.tapis.files.lib.kernel;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
-import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 
 import org.testng.Assert;
