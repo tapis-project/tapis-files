@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.api.factories.FileOpsServiceFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.codec.Charsets;
@@ -79,6 +80,17 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                     }
                 });
         app.register(ContentApiResource.class);
+        // Initialize tenant manager singleton. This can be used by all subsequent application code, including filters.
+        try {
+            // The base url of the tenants service is a required input parameter.
+            // Retrieve the tenant list from the tenant service now to fail fast if we can't access the list.
+            TenantManager.getInstance("https://dev.develop.tapis.io").getTenants();
+        } catch (Exception e) {
+            // This is a fatal error
+            System.out.println("**** FAILURE TO INITIALIZE: tapis-systemsapi ****");
+            e.printStackTrace();
+            throw e;
+        }
         return app;
     }
 
@@ -131,6 +143,21 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .header("X-Tapis-Token", user1jwt)
                 .get();
         Assert.assertEquals(response.getStatus(), 404);
+    }
+
+    @Test
+    public void testGetWithRange() throws Exception {
+        addTestFilesToBucket(testSystem, "words.txt", 10*1024);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+        Response response = target("/content/testSystem/words.txt")
+                .queryParam("range", "0,999")
+                .request()
+                .header("X-Tapis-Token", user1jwt)
+                .get();
+        Assert.assertEquals(response.getStatus(), 200);
+        byte[] contents = response.readEntity(byte[].class);
+        Assert.assertEquals(contents.length, 999);
     }
 
     @Test

@@ -93,6 +93,7 @@ public class S3DataClient implements IRemoteDataClient {
 
     @Override
     public void insert(String path, InputStream fileStream) throws IOException {
+        // TODO: This should use multipart on an InputStream ideally;
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         try {
             PutObjectRequest req = PutObjectRequest.builder()
@@ -188,6 +189,14 @@ public class S3DataClient implements IRemoteDataClient {
         }
     }
 
+
+    /**
+     * Returns the entire contents of an object as an InputStream
+     * @param path
+     * @return
+     * @throws IOException
+     * @throws NotFoundException
+     */
     @Override
     public InputStream getStream(String path) throws IOException, NotFoundException {
         try {
@@ -205,7 +214,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void download(String path) {
+    public void download(String path) throws IOException {
 
     }
 
@@ -219,4 +228,38 @@ public class S3DataClient implements IRemoteDataClient {
 
     }
 
+    @Override
+    public InputStream getBytesByRange(@NotNull String path, @NotNull long startByte, @NotNull long endByte) throws IOException{
+        try {
+            String brange = String.format("bytes={}-{}", startByte, endByte);
+            GetObjectRequest req = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .range(brange)
+                    .key(path)
+                    .build();
+            return client.getObject(req, ResponseTransformer.toInputStream());
+        } catch (NoSuchKeyException ex) {
+            throw new NotFoundException();
+        } catch (S3Exception ex) {
+            log.error(ex.getMessage());
+            throw new IOException();
+        }
+    }
+
+    @Override
+    public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
+
+    }
+
+    @Override
+    public void append(String path, InputStream byteStream) throws IOException {
+
+        // This is the tricky one...
+        // In order for hdf5 to work, will need this.
+    }
+
+    @Override
+    public InputStream more(String path) throws IOException {
+        return getBytesByRange(path, 0, 999);
+    }
 }

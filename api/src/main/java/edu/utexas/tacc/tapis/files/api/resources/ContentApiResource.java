@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 
 import javax.inject.Inject;
+import javax.validation.ValidationException;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -22,6 +23,7 @@ import javax.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 
 @Path("/content")
@@ -34,6 +36,46 @@ public class ContentApiResource {
 
     @Inject FileOpsService fileOpsService;
 
+    private static class ByteRange {
+        private long min;
+        private long max;
+        private ByteRange(long min, long max) throws ValidationException {
+            if (max < min) {
+                throw new ValidationException("invalid range.");
+            }
+            this.min = min;
+            this.max = max;
+        }
+
+        public long getMin() {
+            return min;
+        }
+
+        public void setMin(long min) {
+            this.min = min;
+        }
+
+        public long getMax() {
+            return max;
+        }
+
+        public void setMax(long max) {
+            this.max = max;
+        }
+
+        public static ByteRange fromParams(String qparms) {
+            // should look like "0,1000"
+            String[] params = qparms.split(",");
+
+            return new ByteRange(Long.parseLong(params[0]) , Long.parseLong(params[1]));
+
+        }
+    }
+
+    private ByteRange parseValidateRange(String input) {
+        return ByteRange.fromParams(input);
+    }
+
     @GET
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "content" })
@@ -43,15 +85,23 @@ public class ContentApiResource {
     public Response filesGetContents(
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
             @Parameter(description = "File path",required=true, example = EXAMPLE_PATH) @PathParam("path") String path,
-            @Parameter(description = "Range of bytes to send" ) @HeaderParam("Range") String range,
+            @Parameter(description = "Range of bytes to send", example = "range=0,999") @HeaderParam("range") String range,
             @Context SecurityContext securityContext) {
         try {
 
+            InputStream stream;
             // Ensure that the path is not a dir?
             if (path.endsWith("/")) {
                 throw new BadRequestException("Only files can be served.");
             }
-            InputStream stream = fileOpsService.getStream(path);
+
+            if (range != null) {
+                ByteRange brange = ByteRange.fromParams(range);
+                stream = fileOpsService.getBytes(path, brange.getMin(), brange.getMax());
+            } else {
+                stream = fileOpsService.getStream(path);
+            }
+
             java.nio.file.Path filepath = Paths.get(path);
             String filename = filepath.getFileName().toString();
 

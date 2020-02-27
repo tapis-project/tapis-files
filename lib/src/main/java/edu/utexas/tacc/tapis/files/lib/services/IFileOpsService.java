@@ -16,5 +16,5 @@ public interface IFileOpsService {
     void delete(String path) throws ServiceException;
     void insert(String path, InputStream in) throws ServiceException;
     InputStream getStream(String path) throws ServiceException;
-
+    InputStream getBytes(String path, long startByte, long endByte) throws ServiceException ;
 }
