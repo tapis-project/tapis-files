@@ -1,15 +1,12 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 
-import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
 import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
-import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
-import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,14 +19,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.validation.Valid;
+import javax.validation.constraints.Pattern;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
@@ -39,16 +35,11 @@ public class OperationsApiResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
-    private static String SECURITY_KERNEL_BASE_URL = "https://dev.develop.tapis.io/v3";
-    private static String TOKEN_BASE_URL = "https://dev.develop.tapis.io";
-    private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
     private Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
     private static class FileListingResponse extends TapisResponse<List<FileInfo>>{}
     private static class FileStringResponse extends TapisResponse<String>{}
 
-
     @Inject FileOpsService fileOpsService;
-
 
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
@@ -71,7 +62,6 @@ public class OperationsApiResource {
             @Context SecurityContext securityContext)  {
 
         try {
-            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             List<FileInfo> listing = fileOpsService.ls(path);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
@@ -82,10 +72,10 @@ public class OperationsApiResource {
     }
 
     @POST
-    @Path("/{systemId}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Create a new directory", description = "Creates a new directory in the path given in the payload", tags={ "file operations" })
+    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
+    @Path("/{systemId}/{path:.+}")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Operation(summary = "Upload a file", description = "The file will be added at the {path} independent of the original file name", tags={ "file operations" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -93,24 +83,18 @@ public class OperationsApiResource {
                     description = "OK")
     })
     public Response mkdir(
-            @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
-            @Valid @Parameter(required = true) CreateDirectoryRequest mkdirRequest,
+            @Parameter(description = "System ID", required=true) @PathParam("systemId") String systemId,
+            @Parameter(description = "Path", required=true) @Pattern(regexp = "^(?!.*\\.).+", message=". not allowed in path") @PathParam("path") String path,
             @Context SecurityContext securityContext) {
-       
-        // First do SK check on system/path or throw 403
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        
         try {
-            fileOpsService.mkdir(mkdirRequest.getPath());
-            TapisResponse<String> resp = TapisResponse.createSuccessResponse("Successfully created the directory", "Directory created!");
+            fileOpsService.mkdir(path);
+            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException ex) {
-            throw new WebApplicationException(ex.getMessage());
+            log.error(ex.getMessage());
+            throw new WebApplicationException();
         }
-
     }
-
-
 
 
     @POST
@@ -186,7 +170,6 @@ public class OperationsApiResource {
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "File path",required=false) @PathParam("path") String path,
             @Context SecurityContext securityContext) {
-        // Fetch the system based on the systemId
         try {
             fileOpsService.delete(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");

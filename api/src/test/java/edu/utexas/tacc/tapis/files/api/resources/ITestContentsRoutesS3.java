@@ -151,13 +151,31 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/content/testSystem/words.txt")
-                .queryParam("range", "0,999")
                 .request()
+                .header("range", "0,999")
                 .header("X-Tapis-Token", user1jwt)
                 .get();
         Assert.assertEquals(response.getStatus(), 200);
         byte[] contents = response.readEntity(byte[].class);
-        Assert.assertEquals(contents.length, 999);
+        Assert.assertEquals(contents.length, 1000);
+    }
+
+    @Test
+    public void testGetWithMore() throws Exception {
+        addTestFilesToBucket(testSystem, "words.txt", 10*1024);
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+        Response response = target("/content/testSystem/words.txt")
+                .request()
+                .header("more", "1")
+                .header("X-Tapis-Token", user1jwt)
+                .get();
+        Assert.assertEquals(response.getStatus(), 200);
+        String contents = response.readEntity(String.class);
+        System.out.println(contents);
+        Assert.assertEquals(response.getHeaders().getFirst("content-disposition"), "inline");
+        //TODO: Its hard to say how many chars should be in there, some UTF-8 chars are 1 byte, some are 4. Need to have a better fixture
+        Assert.assertTrue(contents.length() > 0);
     }
 
     @Test

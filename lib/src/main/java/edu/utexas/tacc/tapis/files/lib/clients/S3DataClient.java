@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -231,7 +232,7 @@ public class S3DataClient implements IRemoteDataClient {
     @Override
     public InputStream getBytesByRange(@NotNull String path, @NotNull long startByte, @NotNull long endByte) throws IOException{
         try {
-            String brange = String.format("bytes={}-{}", startByte, endByte);
+            String brange = String.format("bytes=%s-%s", startByte, endByte);
             GetObjectRequest req = GetObjectRequest.builder()
                     .bucket(bucket)
                     .range(brange)
@@ -248,18 +249,12 @@ public class S3DataClient implements IRemoteDataClient {
 
     @Override
     public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
-
+        throw new NotImplementedException("S3 does not support put by range operations");
     }
 
     @Override
     public void append(String path, InputStream byteStream) throws IOException {
-
-        // This is the tricky one...
-        // In order for hdf5 to work, will need this.
+        throw new NotImplementedException("S3 does not support append operations");
     }
 
-    @Override
-    public InputStream more(String path) throws IOException {
-        return getBytesByRange(path, 0, 999);
-    }
 }

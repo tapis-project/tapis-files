@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +17,8 @@ import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem.AccessMethodEnum;
+
+import javax.inject.Named;
 
 public class SSHDataClient implements IRemoteDataClient {
     
@@ -148,8 +151,4 @@ public class SSHDataClient implements IRemoteDataClient {
 
 	}
 
-	@Override
-	public InputStream more(String path) throws IOException {
-		return null;
-	}
 }

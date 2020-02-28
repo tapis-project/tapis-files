@@ -47,11 +47,18 @@ paths:
         schema:
           type: string
         example: /folderA/folderB/
-      - name: Range
+      - name: range
         in: header
         description: Range of bytes to send
         schema:
-          type: string
+          $ref: '#/components/schemas/HeaderByteRange'
+        example: range=0,999
+      - name: more
+        in: header
+        description: Send 1k of UTF-8 encoded string back starting at byte x, ex more=1024
+        schema:
+          type: integer
+          format: int64
       responses:
         200:
           description: OK
@@ -69,33 +76,6 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/HealthCheckResponse'
-  /ops/{systemId}:
-    post:
-      tags:
-      - file operations
-      summary: Create a new directory
-      description: Creates a new directory in the path given in the payload
-      operationId: mkdir
-      parameters:
-      - name: systemId
-        in: path
-        description: System ID
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateDirectoryRequest'
-        required: true
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FileStringResponse'
   /ops/{systemId}/{path}:
     get:
       tags:
@@ -420,27 +400,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
-  /transfers/{transferTaskId}/history:
-    get:
-      tags:
-      - transfers
-      summary: Get history of a transfer task
-      operationId: getTransferTaskHistory
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
-        schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskResponse'
   /transfers/{transferTaskId}:
     get:
       tags:
@@ -503,8 +462,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferTaskResponse'
+  /transfers/{transferTaskId}/history:
+    get:
+      tags:
+      - transfers
+      summary: Get history of a transfer task
+      operationId: getTransferTaskHistory
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
 components:
   schemas:
+    HeaderByteRange:
+      type: object
+      properties:
+        min:
+          type: integer
+          format: int64
+        max:
+          type: integer
+          format: int64
     HealthCheckResponse:
       type: object
       properties:
@@ -527,15 +516,6 @@ components:
           type: string
         version:
           type: string
-    CreateDirectoryRequest:
-      required:
-      - path
-      type: object
-      properties:
-        path:
-          pattern: ^(?!.*\.).+
-          type: string
-          description: Path of folder
     FileInfo:
       type: object
       properties:
@@ -694,17 +674,6 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
     TransferTaskRequest:
       required:
       - destinationPath
@@ -725,3 +694,14 @@ components:
         destinationPath:
           type: string
           description: Path to file/folder in destination system
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string

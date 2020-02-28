@@ -157,7 +157,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .get(FileListResponse.class);
         FileInfo file = response.getResult().get(0);
         Assert.assertEquals(file.getName(), "testfile1.txt");
-        Assert.assertEquals(file.getSize(), Long.valueOf(10 * 1024));
+        Assert.assertEquals(file.getSize(), 10 * 1024);
     }
 
     @Test
@@ -307,23 +307,42 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
 
-        CreateDirectoryRequest payload = new CreateDirectoryRequest();
-        payload.setPath("/newDirectory");
-
-        FileStringResponse response = target("/ops/testSystem")
+        FileStringResponse response = target("/ops/testSystem/newDirectory/")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
-                .post(Entity.json(payload), FileStringResponse.class);
+                .post(Entity.text(""), FileStringResponse.class);
 
         FileListResponse listing  = target("/ops/testSystem/newDirectory")
                 .request()
                 .header("x-tapis-token", user1jwt)
                 .get(FileListResponse.class);
 
-        Assert.assertTrue(listing.getResult().size() == 1);
+        Assert.assertEquals(listing.getResult().size(), 1);
+        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
+        Assert.assertEquals(listing.getResult().get(0).isDir(), true);
     }
 
+    @Test
+    public void testMkdirNoSlash() throws Exception {
+        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+
+        FileStringResponse response = target("/ops/testSystem/newDirectory")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .post(Entity.text(""), FileStringResponse.class);
+
+        FileListResponse listing  = target("/ops/testSystem/newDirectory")
+                .request()
+                .header("x-tapis-token", user1jwt)
+                .get(FileListResponse.class);
+
+        Assert.assertEquals(listing.getResult().size(), 1);
+        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
+        Assert.assertEquals(listing.getResult().get(0).isDir(), true);
+    }
 
 
     @DataProvider(name="mkdirDataProvider")
@@ -342,18 +361,18 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath(path);
 
-        FileStringResponse response = target("/ops/testSystem")
+        FileStringResponse response = target("/ops/testSystem/" + path)
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
-                .post(Entity.json(payload), FileStringResponse.class);
+                .post(Entity.text(""), FileStringResponse.class);
 
         FileListResponse listing  = target("/ops/testSystem/newDirectory/test")
                 .request()
                 .header("x-tapis-token", user1jwt)
                 .get(FileListResponse.class);
 
-        Assert.assertTrue(listing.getResult().size() == 1);
+        Assert.assertEquals(listing.getResult().size(),  1);
     }
 
     @DataProvider(name="mkdirBadDataProvider")
@@ -373,13 +392,13 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         CreateDirectoryRequest payload = new CreateDirectoryRequest();
         payload.setPath(path);
 
-        Response response = target("/ops/testSystem")
+        Response response = target("/ops/testSystem/" + path)
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
-                .post(Entity.json(payload));
+                .post(Entity.text(""), Response.class);
 
-        Assert.assertTrue(response.getStatus() == 400);
+        Assert.assertEquals(response.getStatus(), 400);
     }
 
     //TODO: Add tests for strange chars in filename or path.

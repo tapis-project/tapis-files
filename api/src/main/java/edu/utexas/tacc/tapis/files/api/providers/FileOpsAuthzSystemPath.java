@@ -3,6 +3,7 @@ import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,10 +44,14 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
         String path = params.getFirst("path");
         String systemId = params.getFirst("systemId");
 
-        //TODO: Empty path should be allowed, defaults to rootDir
-        if (path.isEmpty() || systemId.isEmpty()) {
-            throw new BadRequestException("bad request");
+        if (StringUtils.isEmpty(systemId)) {
+            throw new BadRequestException("systemID must be specified");
         }
+
+        if (StringUtils.isEmpty(path)) {
+            path = "/";
+        }
+
         String permSpec = String.format(PERMSPEC, tenantId, requiredPerms.permsRequired().getLabel(), systemId, path);
         try {
             boolean isPermitted = skClient.isPermitted(username, permSpec);

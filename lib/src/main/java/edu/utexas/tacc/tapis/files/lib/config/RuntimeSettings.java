@@ -53,6 +53,26 @@ public class RuntimeSettings {
         private String dbUsername = "test";
         private String dbPassword = "test";
         private String dbPort = "5432";
+
+        @Override
+        public String getDbHost() {
+            return dbHost;
+        }
+
+        @Override
+        public String getDbUsername() {
+            return dbUsername;
+        }
+
+        @Override
+        public String getDbPassword() {
+            return dbPassword;
+        }
+
+        @Override
+        public String getDbPort() {
+            return dbPort;
+        }
     }
 
     public static IRuntimeConfig get() {
@@ -61,6 +81,7 @@ public class RuntimeSettings {
         } else if (settings.get("APP_ENV", "dev").equalsIgnoreCase("test")) {
             return new TestConfig();
         } else {
+            //TODO:
             return new BaseConfig();
         }
     }
