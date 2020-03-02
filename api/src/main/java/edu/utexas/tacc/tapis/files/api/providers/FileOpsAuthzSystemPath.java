@@ -1,10 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.providers;
-import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
-import edu.utexas.tacc.tapis.security.client.SKClient;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
 
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
@@ -15,7 +10,15 @@ import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
-import java.io.IOException;
+
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.tokens.client.TokensClient;
 
 @FileOpsAuthorization
 public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
@@ -24,9 +27,15 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
     private AuthenticatedUser user;
     // PERMSPEC is "files:tenant:r,rw,*:systemId:path
     private String PERMSPEC = "files:%s:%s:%s:%s";
+    
+    //TODO move config file?
+    //get info from Tenant Manager??
+    private String SK_BASE_URL = "https://dev.develop.tapis.io/v3";
+    private String TOKEN_BASE_URL = "https://dev.develop.tapis.io";
 
     @Inject private SKClient skClient;
 
+  
     @Context
     private ResourceInfo resourceInfo;
 
@@ -39,7 +48,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
         String username = user.getName();
         String tenantId = user.getTenantId();
         MultivaluedMap<String, String> params = requestContext.getUriInfo().getPathParameters();
-        log.info(params.toString());
+        log.info("Parameters:" + params.toString());
         String path = params.getFirst("path");
         String systemId = params.getFirst("systemId");
 
@@ -48,11 +57,18 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
             throw new BadRequestException("bad request");
         }
         String permSpec = String.format(PERMSPEC, tenantId, requiredPerms.permsRequired().getLabel(), systemId, path);
+        skClient.setBasePath(path);
+        skClient.addDefaultHeader(SKClient.TAPIS_JWT_HEADER, getSvcJWT());
+        skClient.addDefaultHeader("X-Tapis-Tenant", tenantId);
+        skClient.addDefaultHeader("X-Tapis-User", username);
+        log.debug("permSpec: " + permSpec);
+        
         try {
             boolean isPermitted = skClient.isPermitted(username, permSpec);
             if (!isPermitted) {
                 throw new NotAuthorizedException("Not authorized to access this file/folder");
             }
+            log.debug("user is permitted to list files");
         } catch (TapisClientException e) {
             log.error("FileOpsAuthzSystemPath", e);
             throw new WebApplicationException("Something went wrong...");
@@ -61,4 +77,29 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
 
 
     }
+    
+    /* ********************************************* */
+    /*             Private Method                    */
+    /* ********************************************* */
+    String getSvcJWT(){
+        // Use the tokens service to get a user token
+        String tokensBaseURL = TOKEN_BASE_URL;
+        var tokClient = new TokensClient(tokensBaseURL);
+        String svcJWT = "";
+        try {
+           svcJWT = tokClient.getSvcToken("dev", "files");
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        System.out.println("Got svcJWT: " + svcJWT);
+        // Basic check of JWT
+        if (StringUtils.isBlank(svcJWT))
+        {
+          System.out.println("Token service returned invalid JWT");
+          System.exit(1);
+        }
+        return svcJWT;
+        }
 }
+
