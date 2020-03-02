@@ -33,7 +33,8 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
     private String SK_BASE_URL = "https://dev.develop.tapis.io/v3";
     private String TOKEN_BASE_URL = "https://dev.develop.tapis.io";
 
-    @Inject private SKClient skClient;
+    //@Inject private SKClient skClient;
+    private SKClient skClient = new SKClient(SK_BASE_URL,null); 
 
   
     @Context
@@ -57,11 +58,13 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
             throw new BadRequestException("bad request");
         }
         String permSpec = String.format(PERMSPEC, tenantId, requiredPerms.permsRequired().getLabel(), systemId, path);
-        skClient.setBasePath(path);
-        skClient.addDefaultHeader(SKClient.TAPIS_JWT_HEADER, getSvcJWT());
+        //skClient.setBasePath(path);
+        skClient.addDefaultHeader("X-Tapis-Token", getSvcJWT());
         skClient.addDefaultHeader("X-Tapis-Tenant", tenantId);
         skClient.addDefaultHeader("X-Tapis-User", username);
+        //skClient.setUserAgent("SKClient");
         log.debug("permSpec: " + permSpec);
+        log.debug("username: " + username);
         
         try {
             boolean isPermitted = skClient.isPermitted(username, permSpec);
