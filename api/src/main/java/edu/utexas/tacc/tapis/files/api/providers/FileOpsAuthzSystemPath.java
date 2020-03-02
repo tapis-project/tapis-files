@@ -35,6 +35,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
 
     //@Inject private SKClient skClient;
     private SKClient skClient = new SKClient(SK_BASE_URL,null); 
+
   
     @Context
     private ResourceInfo resourceInfo;
