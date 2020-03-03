@@ -90,9 +90,8 @@ public class SSHDataClient implements IRemoteDataClient {
         log.debug("SSHDataClient: move call abs old path: " + remoteAbsoluteOldPath);
         log.debug("SSHDataClient: move call abs new path: " + remoteAbsoluteNewPath);
     try { 
-       // String mkdirStatus = sftp.mkdir(remoteAbsolutePath.toString());
         String renameStatus = sftp.rename( remoteAbsoluteOldPath.toString(), remoteAbsoluteNewPath.toString());
-        log.debug("File mkdir status from remote execution: " + renameStatus);
+        log.debug("File rename status from remote execution: " + renameStatus);
         
    } catch (FilesKernelException e) {
        String msg = "SSH_RENAME_ERROR for system " + systemId + " old path: " + remoteAbsoluteOldPath 
