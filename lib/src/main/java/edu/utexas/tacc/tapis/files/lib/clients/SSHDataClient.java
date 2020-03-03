@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -29,6 +30,7 @@ public class SSHDataClient implements IRemoteDataClient {
 	String remotePath;
 	SftpFilesKernel sftp;
 	String rootDir;
+	String systemId;
 	
 	
 	public SSHDataClient(TSystem system) {
@@ -39,20 +41,23 @@ public class SSHDataClient implements IRemoteDataClient {
 		remotePath = system.getBucketName();
 		accessMethod = system.getAccessMethod();
 		rootDir = system.getRootDir();
+		systemId = system.getName();
 		
 	}
 	@Override
 	public List<FileInfo> ls(String remotePath) throws IOException {
-		List<FileInfo> fileListing = new ArrayList<>();
+		List<FileInfo> filesListing = new ArrayList<>();
+		Path remoteAbsolutePath = null;
 		try {
-			 Path remoteAbsolutePath = Paths.get(rootDir,remotePath);
-			 fileListing = sftp.ls(remoteAbsolutePath.toString());
-		} catch (FilesKernelException e) {
-			// TODO Auto-generated catch block
-			log.error("SSH listing error", e);
-			throw new IOException("Error listing system/path");
-		}
-		return fileListing;
+			 remoteAbsolutePath = Paths.get(rootDir,remotePath);
+			 filesListing = sftp.ls(remoteAbsolutePath.toString());
+		} catch (Exception e) {
+		    String msg = "SSH_LISTING_ERROR for system " + systemId + " path: " + remoteAbsolutePath 
+		                  + ": " + e.getMessage();
+			log.error(msg, e);
+			throw new IOException("File Listing Failed" + msg);
+		} 
+		return filesListing;
 	}
 
 	@Override
@@ -65,7 +70,10 @@ public class SSHDataClient implements IRemoteDataClient {
             log.debug("File mkdir status from remote execution: " + mkdirStatus);
             
        } catch (FilesKernelException e) {
-          throw new IOException("mkdir failure", e);
+           String msg = "SSH_MKDIR_ERROR for system " + systemId + " remote path: " + remoteAbsolutePath 
+                   +  " : " + e.getMessage();
+           log.error(msg, e);
+          throw new IOException("mkdir Failed: " + msg);
        }
 
 	}
@@ -76,10 +84,23 @@ public class SSHDataClient implements IRemoteDataClient {
 	}
 
 	@Override
-	public void move(String oldPath, String newPath) {
-		// TODO Auto-generated method stub
-
-	}
+	public void move(String oldPath, String newName) throws IOException {
+	    Path remoteAbsoluteOldPath = Paths.get(rootDir,oldPath);
+	    Path remoteAbsoluteNewPath = Paths.get(remoteAbsoluteOldPath.getParent().toString(), newName);
+        log.debug("SSHDataClient: move call abs old path: " + remoteAbsoluteOldPath);
+        log.debug("SSHDataClient: move call abs new path: " + remoteAbsoluteNewPath);
+    try { 
+       // String mkdirStatus = sftp.mkdir(remoteAbsolutePath.toString());
+        String renameStatus = sftp.rename( remoteAbsoluteOldPath.toString(), remoteAbsoluteNewPath.toString());
+        log.debug("File mkdir status from remote execution: " + renameStatus);
+        
+   } catch (FilesKernelException e) {
+       String msg = "SSH_RENAME_ERROR for system " + systemId + " old path: " + remoteAbsoluteOldPath 
+               + " to newPath: "+ remoteAbsoluteNewPath + " : " + e.getMessage();
+       log.debug(msg, e);
+      throw new IOException("Rename Failed: " + msg);
+   }
+}
 
 	@Override
 	public void copy(String currentPath, String newPath) {

@@ -19,7 +19,8 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
 	   Credential creds = new Credential();
 	   if(protocol.contains(TransferMethodsEnum.valueOf("SFTP"))) {
 		   // FIXME: Remove the hardcoded password once the accessCredential is resolved in system Service
-		   creds.setAccessKey("root");
+	       creds.setPassword("root");
+		   //creds.setAccessKey("root");
 		   system.setAccessCredential(creds);
 		   return new SSHDataClient(system);
 	   } else if (protocol.contains(TransferMethodsEnum.valueOf("S3"))){
