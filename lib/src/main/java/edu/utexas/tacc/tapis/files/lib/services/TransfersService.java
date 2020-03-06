@@ -108,7 +108,7 @@ public class TransfersService implements ITransfersService {
         // TODO: The remote clients could be cached to prevent thrashing on the systems service
         try {
             // TODO: This is hard coded for ACCESS_TOKEN credentials!!!!
-            TSystem sourceSystem = systemsClient.getSystemByName(parentTask.getSourceSystemId(), true, "ACCESS_TOKEN");
+            TSystem sourceSystem = systemsClient.getSystemByName(parentTask.getSourceSystemId());
             IRemoteDataClient sourceClient = new RemoteDataClientFactory().getRemoteDataClient(sourceSystem);
 
             // If its a dir, keep going down the tree

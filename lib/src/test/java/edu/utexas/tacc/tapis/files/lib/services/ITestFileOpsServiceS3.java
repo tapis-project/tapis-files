@@ -53,15 +53,15 @@ public class ITestFileOpsServiceS3 {
 
     @AfterTest
     public void tearDown() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
-        FileOpsService fileOpsService = new FileOpsService(systemsClient, "testSystem");
-//        fileOpsService.delete("/");
+        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        FileOpsService fileOpsService = new FileOpsService(testSystem);
+        fileOpsService.delete("/");
     }
 
     @Test
     public void testInsertAndGet() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
-        FileOpsService fileOpsService = new FileOpsService(systemsClient, "testSystem");
+        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        FileOpsService fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
         InputStream out = fileOpsService.getStream("test.txt");
@@ -70,8 +70,8 @@ public class ITestFileOpsServiceS3 {
 
     @Test
     public void testListing() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
-        FileOpsService fileOpsService = new FileOpsService(systemsClient, "testSystem");
+        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        FileOpsService fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
         List<FileInfo> listing = fileOpsService.ls("/");
@@ -81,8 +81,8 @@ public class ITestFileOpsServiceS3 {
 
     @Test
     public void testLargeFile() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
-        FileOpsService fileOpsService = new FileOpsService(systemsClient, "testSystem");
+        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        FileOpsService fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.insert("test.txt", in);
         List<FileInfo> listing = fileOpsService.ls("/");

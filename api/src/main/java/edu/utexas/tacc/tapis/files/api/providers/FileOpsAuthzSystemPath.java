@@ -1,14 +1,16 @@
 package edu.utexas.tacc.tapis.files.api.providers;
-import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.security.client.SKClient;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWTCache;
+import edu.utexas.tacc.tapis.sharedapi.security.TenantCache;
+import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.ContainerRequestContext;
@@ -17,6 +19,7 @@ import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
 @FileOpsAuthorization
 public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
@@ -27,6 +30,10 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
     private String PERMSPEC = "files:%s:%s:%s:%s";
 
     @Inject private SKClient skClient;
+
+    @Inject private ServiceJWTCache serviceJWTCache;
+
+    @Inject private TenantCache tenantCache;
 
     @Context
     private ResourceInfo resourceInfo;
@@ -44,25 +51,29 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
         String path = params.getFirst("path");
         String systemId = params.getFirst("systemId");
 
-        if (StringUtils.isEmpty(systemId)) {
-            throw new BadRequestException("systemID must be specified");
-        }
-
+        // Path might be optional, defaults to rootDir of system
         if (StringUtils.isEmpty(path)) {
             path = "/";
         }
-
+        path = "/" + path;
         String permSpec = String.format(PERMSPEC, tenantId, requiredPerms.permsRequired().getLabel(), systemId, path);
         try {
+            Tenant tenant = tenantCache.getCache().get(tenantId);
+            skClient.setBasePath(tenant.getBaseUrl() + "/v3");
+            skClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getCache().get(tenantId).getAccessToken().getAccessToken());
+            skClient.addDefaultHeader("x-tapis-user", username);
+            skClient.addDefaultHeader("x-tapis-tenant", tenantId);
             boolean isPermitted = skClient.isPermitted(username, permSpec);
             if (!isPermitted) {
-                throw new NotAuthorizedException("Not authorized to access this file/folder");
+               throw new NotAuthorizedException("Authorization failed.");
             }
-        } catch (TapisClientException e) {
+        } catch (TapisException e) {
             log.error("FileOpsAuthzSystemPath", e);
-            throw new WebApplicationException("Something went wrong...");
+            throw new WebApplicationException(e.getMessage());
+        } catch (ExecutionException e) {
+            log.error("FileOpsAuthzSystemPath", e);
+            throw new WebApplicationException();
         }
-
 
 
     }

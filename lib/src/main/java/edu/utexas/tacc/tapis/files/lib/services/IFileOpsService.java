@@ -2,13 +2,13 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import org.glassfish.jersey.spi.Contract;
 
 import javax.validation.constraints.NotNull;
 import java.io.InputStream;
 import java.util.List;
 
-@Contract
 public interface IFileOpsService {
 
     List<FileInfo> ls(@NotNull String path) throws ServiceException;

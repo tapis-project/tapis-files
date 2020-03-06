@@ -13,6 +13,7 @@ public class RuntimeSettings {
         private String rabbitMQUsername = settings.get("RABBITMQ_USERNAME", "dev");
         private String rabbitMQVHost = settings.get("RABBITMQ_VHOST", "dev");
         private String rabbitmqPassword = settings.get("RABBITMQ_PASSWORD", "dev");
+        private String servicePassword = settings.get("SERVICE_PASSWORD", "dev");
 
         public String getDbHost() {
             return dbHost;
@@ -45,6 +46,8 @@ public class RuntimeSettings {
         public String getRabbitmqPassword() {
             return rabbitmqPassword;
         }
+
+        public String getServicePassword() { return servicePassword; }
     }
 
 

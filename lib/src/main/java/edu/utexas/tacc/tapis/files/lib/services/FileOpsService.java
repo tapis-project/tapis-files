@@ -19,34 +19,27 @@ import java.io.InputStream;
 import java.util.List;
 
 
-@Service
 public class FileOpsService implements IFileOpsService {
     private Logger log = LoggerFactory.getLogger(FileOpsService.class);
 
     private IRemoteDataClient client;
     private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
 
+//    @Inject NotificationsServiceClient notificationsServiceClient;
+
+
     @Inject
-    public FileOpsService(SystemsClient systemsClient, String systemId) throws ServiceException {
+    public FileOpsService(TSystem system) throws ServiceException {
 
         try {
-            // TODO: THIS IS HARDCODED FOR ACCESS_KEY
-            // Fetch the system based on the systemId
-            TSystem sys = systemsClient.getSystemByName(systemId, true, "ACCESS_KEY");
-            // Fetch the creds
-            client = clientFactory.getRemoteDataClient(sys);
+            client = clientFactory.getRemoteDataClient(system);
             client.connect();
-        } catch (TapisClientException ex) {
-           log.error("ERROR", ex);
-           throw new ServiceException("");
         } catch (IOException ex) {
             log.error("ERROR", ex);
+            if (client != null) {
+                client.disconnect();
+            }
             throw new ServiceException("Could not connect to system");
-        } catch (Exception ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("");
-        } finally {
-            client.disconnect();
         }
     }
 

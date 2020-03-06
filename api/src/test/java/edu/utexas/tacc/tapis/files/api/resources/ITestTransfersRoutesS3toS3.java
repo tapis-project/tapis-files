@@ -1,13 +1,11 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
-import edu.utexas.tacc.tapis.files.api.factories.FileOpsServiceFactory;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
-import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
@@ -16,7 +14,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.codec.Charsets;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
-import org.glassfish.jersey.process.internal.RequestScoped;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.test.TestProperties;
@@ -79,9 +76,8 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
                     protected void configure() {
                         bind(systemsClient).to(SystemsClient.class);
                         bind(skClient).to(SKClient.class);
-                        bind(TransfersService.class).to(TransfersService.class);
-                        bind(FileTransfersDAO.class).to(FileTransfersDAO.class);
-                        bindFactory(FileOpsServiceFactory.class).to(FileOpsService.class).in(RequestScoped.class);
+                        bindAsContract(TransfersService.class);
+                        bindAsContract(FileTransfersDAO.class);
 
                     }
                 });
@@ -123,7 +119,7 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
         payload.setSourcePath("sourcePath");
         payload.setDestinationSystemId("destinationSystem");
         payload.setDestinationPath("destinationPath");
-        when(systemsClient.getSystemByName(any(String.class), any(Boolean.class), any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
 
         Response createTaskResponse = target("/transfers")
                 .request()

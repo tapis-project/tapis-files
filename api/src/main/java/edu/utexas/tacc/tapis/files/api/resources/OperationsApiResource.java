@@ -6,7 +6,14 @@ import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWTCache;
+import edu.utexas.tacc.tapis.sharedapi.security.TenantCache;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.validation.constraints.Max;
 import javax.validation.constraints.Pattern;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
@@ -28,6 +36,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import java.io.InputStream;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 
 @Path("/ops")
@@ -35,11 +44,35 @@ public class OperationsApiResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
-    private Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
+    private static final Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
     private static class FileListingResponse extends TapisResponse<List<FileInfo>>{}
     private static class FileStringResponse extends TapisResponse<String>{}
 
-    @Inject FileOpsService fileOpsService;
+    @Inject
+    ServiceJWTCache serviceJWTCache;
+
+    @Inject
+    TenantCache tenantCache;
+
+    /**
+     * Configure the systems client with the correct baseURL and token for the request.
+     * @param user
+     * @throws ServiceException
+     */
+    private SystemsClient configureSystemsClient(AuthenticatedUser user) throws ServiceException {
+        try {
+            String tenantId = user.getTenantId();
+            SystemsClient systemsClient = new SystemsClient();
+            systemsClient.setBasePath(tenantCache.getCache().get(tenantId).getBaseUrl());
+            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getCache().get(tenantId).getAccessToken().getAccessToken());
+            systemsClient.addDefaultHeader("x-tapis-user", user.getName());
+            systemsClient.addDefaultHeader("x-tapis-tenant", user.getTenantId());
+            return systemsClient;
+        } catch (ExecutionException ex) {
+            log.error("configureSystemsClient", ex);
+            throw new ServiceException("Something went wrong");
+        }
+    }
 
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
@@ -56,20 +89,25 @@ public class OperationsApiResource {
     public Response listFiles(
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
             @Parameter(description = "path relative to root of bucket/folder", example = EXAMPLE_PATH) @PathParam("path") String path,
-            @Parameter(description = "pagination limit", example = "100") @QueryParam("limit") int limit,
-            @Parameter(description = "pagination offset", example = "1000") @QueryParam("offset") int offset,
+            @Parameter(description = "pagination limit", example = "100") @QueryParam("limit") @Max(1000) int limit,
+            @Parameter(description = "pagination offset", example = "1000") @QueryParam("offset") Long offset,
             @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
             @Context SecurityContext securityContext)  {
 
         try {
+            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+            SystemsClient systemsClient = configureSystemsClient(user);
+            TSystem system = systemsClient.getSystemByName(systemId);
+            FileOpsService fileOpsService = new FileOpsService(system);
             List<FileInfo> listing = fileOpsService.ls(path);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
-        } catch (ServiceException e) {
+        } catch (ServiceException | TapisException e) {
             log.error("listFiles", e);
             throw new WebApplicationException("server error");
         }
     }
+
 
     @POST
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
@@ -87,12 +125,16 @@ public class OperationsApiResource {
             @Parameter(description = "Path", required=true) @Pattern(regexp = "^(?!.*\\.).+", message=". not allowed in path") @PathParam("path") String path,
             @Context SecurityContext securityContext) {
         try {
+            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+            SystemsClient systemsClient = configureSystemsClient(user);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
+            FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.mkdir(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException ex) {
-            log.error(ex.getMessage());
-            throw new WebApplicationException();
+        } catch (ServiceException | TapisClientException ex) {
+            log.error("mkdir", ex);
+            throw new WebApplicationException("Something went wrong...");
         }
     }
 
@@ -116,12 +158,19 @@ public class OperationsApiResource {
             @Parameter(description = "String dump of a valid JSON object to be associated with the file" ) @HeaderParam("x-meta") String xMeta,
             @Context SecurityContext securityContext) {
         try {
+            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+            SystemsClient systemsClient = configureSystemsClient(user);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
+            FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException ex) {
+        } catch (ServiceException | TapisClientException ex) {
             log.error(ex.getMessage());
             throw new WebApplicationException();
+        } catch (TapisException e) {
+            log.error("ERROR", e);
+            throw new WebApplicationException("Something went wrong...");
         }
     }
 
@@ -144,12 +193,19 @@ public class OperationsApiResource {
             @Context SecurityContext securityContext) {
 
         try {
+            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+            SystemsClient systemsClient = configureSystemsClient(user);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
+            FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.move(path, newName);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException ex) {
+        } catch (ServiceException | TapisClientException ex) {
             log.error("rename", ex);
             throw new WebApplicationException();
+        } catch (TapisException e) {
+            log.error("ERROR", e);
+            throw new WebApplicationException("Something went wrong...");
         }
 
 
@@ -171,12 +227,19 @@ public class OperationsApiResource {
             @Parameter(description = "File path",required=false) @PathParam("path") String path,
             @Context SecurityContext securityContext) {
         try {
+            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+            SystemsClient systemsClient = configureSystemsClient(user);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
+            FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.delete(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException ex) {
+        } catch (ServiceException | TapisClientException ex) {
             log.error("delete", ex);
             throw new WebApplicationException(ex.getMessage());
+        } catch (TapisException e) {
+            log.error("ERROR", e);
+            throw new WebApplicationException("Something went wrong...");
         }
 
     }

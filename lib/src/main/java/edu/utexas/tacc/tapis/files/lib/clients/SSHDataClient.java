@@ -16,7 +16,6 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem.AccessMethodEnum;
 
 import javax.inject.Named;
 
@@ -28,7 +27,7 @@ public class SSHDataClient implements IRemoteDataClient {
 	String username;
 	String password;
 	String path ;
-	AccessMethodEnum accessMethod;
+	TSystem.DefaultAccessMethodEnum accessMethod;
 	String remotePath;
 	SftpFilesKernel sftp;
 	String rootDir;
@@ -40,7 +39,7 @@ public class SSHDataClient implements IRemoteDataClient {
 		username = system.getEffectiveUserId();
 		password = system.getAccessCredential().getPassword();
 		remotePath = system.getBucketName();
-		accessMethod = system.getAccessMethod();
+		accessMethod = system.getDefaultAccessMethod();
 		rootDir = system.getRootDir();
 		
 	}

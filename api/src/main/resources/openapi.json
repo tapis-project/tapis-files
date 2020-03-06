@@ -71,7 +71,7 @@
         }, {
           "name" : "more",
           "in" : "header",
-          "description" : "Send 1k of UTF-8 encoded string back starting at byte x, ex more=1024",
+          "description" : "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1",
           "schema" : {
             "type" : "integer",
             "format" : "int64"
@@ -143,7 +143,7 @@
           "description" : "pagination offset",
           "schema" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int64"
           },
           "example" : 1000
         }, {

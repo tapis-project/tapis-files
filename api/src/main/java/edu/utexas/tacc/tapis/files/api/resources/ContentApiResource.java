@@ -1,9 +1,13 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
+import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.clients.*;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 
 import javax.inject.Inject;
+import javax.validation.constraints.Min;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -31,10 +36,11 @@ public class ContentApiResource {
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
     private Logger log = LoggerFactory.getLogger(ContentApiResource.class);
 
-    @Inject FileOpsService fileOpsService;
-
+    @Inject
+    SystemsClient systemsClient;
 
     @GET
+    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "content" })
     @ApiResponses(value = {
@@ -44,10 +50,12 @@ public class ContentApiResource {
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
             @Parameter(description = "File path",required=true, example = EXAMPLE_PATH) @PathParam("path") String path,
             @Parameter(description = "Range of bytes to send", example = "range=0,999") @HeaderParam("range") HeaderByteRange range,
-            @Parameter(description = "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1") @HeaderParam("more") Long moreStartPage,
+            @Parameter(description = "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1") @Min(1) @HeaderParam("more") Long moreStartPage,
             @Context SecurityContext securityContext) {
         try {
 
+            TSystem system = systemsClient.getSystemByName(systemId);
+            FileOpsService fileOpsService = new FileOpsService(system);
             InputStream stream;
             String mtype = MediaType.APPLICATION_OCTET_STREAM;
             String contentDisposition;
@@ -76,7 +84,7 @@ public class ContentApiResource {
                     .ok(stream, mtype)
                     .header("content-disposition", contentDisposition)
                     .build();
-        } catch (ServiceException ex) {
+        } catch (Exception ex) {
             log.error(ex.getMessage());
             throw new WebApplicationException();
         }
