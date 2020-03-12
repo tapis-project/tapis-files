@@ -168,9 +168,6 @@ public class OperationsApiResource {
         } catch (ServiceException | TapisClientException ex) {
             log.error(ex.getMessage());
             throw new WebApplicationException();
-        } catch (TapisException e) {
-            log.error("ERROR", e);
-            throw new WebApplicationException("Something went wrong...");
         }
     }
 
@@ -203,9 +200,6 @@ public class OperationsApiResource {
         } catch (ServiceException | TapisClientException ex) {
             log.error("rename", ex);
             throw new WebApplicationException();
-        } catch (TapisException e) {
-            log.error("ERROR", e);
-            throw new WebApplicationException("Something went wrong...");
         }
 
 
