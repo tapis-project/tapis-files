@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.clients.*;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import io.swagger.v3.oas.annotations.Operation;
@@ -62,7 +63,7 @@ public class ContentApiResource {
 
             // Ensure that the path is not a dir?
             if (path.endsWith("/")) {
-                throw new BadRequestException("Only files can be served.");
+                throw new TapisException("Only files can be served.");
             }
 
             java.nio.file.Path filepath = Paths.get(path);
@@ -84,6 +85,10 @@ public class ContentApiResource {
                     .ok(stream, mtype)
                     .header("content-disposition", contentDisposition)
                     .build();
+        } catch (TapisException ex) {
+            throw new BadRequestException("Only files can be served");
+        } catch (NotFoundException ex) {
+            throw ex;
         } catch (Exception ex) {
             log.error(ex.getMessage());
             throw new WebApplicationException();

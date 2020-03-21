@@ -9,8 +9,10 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
-import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWTCache;
-import edu.utexas.tacc.tapis.sharedapi.security.TenantCache;
+import edu.utexas.tacc.tapis.sharedapi.security.IServiceJWT;
+import edu.utexas.tacc.tapis.sharedapi.security.ITenantManager;
+import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWT;
+import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.tenants.client.TenantsClient;
 import edu.utexas.tacc.tapis.tokens.client.TokensClient;
@@ -29,6 +31,7 @@ import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Singleton;
 import javax.ws.rs.ApplicationPath;
 import java.net.URI;
 
@@ -102,8 +105,8 @@ public class FilesApplication extends BaseResourceConfig {
                 bindAsContract(SystemsClient.class);
                 bindAsContract(TokensClient.class);
                 bindAsContract(TenantsClient.class);
-                bindFactory(ServiceJWTCacheFactory.class).to(ServiceJWTCache.class);
-                bindFactory(TenantCacheFactory.class).to(TenantCache.class);
+                bind(IServiceJWT.class).to(ServiceJWT.class).in(Singleton.class);
+                bind(ITenantManager.class).to(TenantManager.class).in(Singleton.class);
             }
         });
 

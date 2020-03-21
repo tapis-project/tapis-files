@@ -4,16 +4,22 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.security.client.SKClient;
-import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWTCache;
-import edu.utexas.tacc.tapis.sharedapi.security.TenantCache;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
+import edu.utexas.tacc.tapis.sharedapi.security.IServiceJWT;
+import edu.utexas.tacc.tapis.sharedapi.security.ITenantManager;
+import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWT;
+import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.codec.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.test.TestProperties;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,9 +32,8 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
+
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -41,16 +46,15 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     private String user1jwt;
     private String user2jwt;
     private TSystem testSystem;
+    private Tenant tenant;
 
     // mocking out the services
-    private SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-    private SKClient skClient = Mockito.mock(SKClient.class);
-    private TenantCache tenantCache = Mockito.mock(TenantCache.class);
-    private ServiceJWTCache serviceJWTCache = Mockito.mock(ServiceJWTCache.class);
-//    private TenantManager tenantManager = Mockito.mock(TenantManager.class);
-//    private ServiceJWT serviceJWT = Mockito.mock(ServiceJWT.class);
+    private SystemsClient systemsClient;
+    private SKClient skClient;
+    private TenantManager tenantManager;
+    private ServiceJWT serviceJWT;
 
-    private ITestContentsRoutesS3() {
+    private ITestContentsRoutesS3() throws TapisException {
         //List<String> creds = new ArrayList<>();
         Credential creds = new Credential();
         creds.setAccessKey("user");
@@ -65,20 +69,35 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
         testSystem.setTransferMethods(transferMechs);
+
+        tenant = new Tenant();
+        tenant.setTenantId("testTenant");
+        tenant.setBaseUrl("test.tapis.io");
+        Map<String, Tenant> tenantMap = new HashMap<>();
+        tenantMap.put(tenant.getTenantId(), tenant);
+        when(tenantManager.getTenants()).thenReturn(tenantMap);
+        when(tenantManager.getTenant(any())).thenReturn(tenant);
+
     }
 
     @Override
     protected ResourceConfig configure() {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
+        tenantManager = Mockito.mock(TenantManager.class);
+        skClient = Mockito.mock(SKClient.class);
+        systemsClient = Mockito.mock(SystemsClient.class);
+        serviceJWT = Mockito.mock(ServiceJWT.class);
+
         ResourceConfig app = new BaseResourceConfig()
+                .register(new JWTValidateRequestFilter(tenantManager))
                 .register(new AbstractBinder() {
                     @Override
                     protected void configure() {
                         bind(systemsClient).to(SystemsClient.class);
                         bind(skClient).to(SKClient.class);
-                        bind(tenantCache).to(TenantCache.class);
-                        bind(serviceJWTCache).to(ServiceJWTCache.class);
+                        bind(tenantManager).to(ITenantManager.class);
+                        bind(serviceJWT).to(IServiceJWT.class);
                     }
                 });
         app.register(ContentApiResource.class);
@@ -119,7 +138,8 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     public void testSimpleGetContents() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
+
         Response response = target("/content/testSystem/testfile1.txt")
                 .request()
                 .header("X-Tapis-Token", user1jwt)
@@ -131,7 +151,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testNotFound() throws Exception {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/content/testSystem/NOT-THERE.txt")
                 .request()
                 .header("X-Tapis-Token", user1jwt)
@@ -143,7 +163,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     public void testGetWithRange() throws Exception {
         addTestFilesToBucket(testSystem, "words.txt", 10*1024);
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/content/testSystem/words.txt")
                 .request()
                 .header("range", "0,999")
@@ -158,7 +178,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     public void testGetWithMore() throws Exception {
         addTestFilesToBucket(testSystem, "words.txt", 10*1024);
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/content/testSystem/words.txt")
                 .request()
                 .header("more", "1")
@@ -177,7 +197,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         // make sure content-type is application/octet-stream and filename is correct
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/content/testSystem/testfile1.txt")
                 .request()
                 .header("x-tapis-token", user1jwt)
@@ -190,7 +210,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testBadRequest() throws Exception {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        when(skClient.isPermitted(any(String.class), any(String.class))).thenReturn(true);
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/content/testSystem/BAD-PATH/")
                 .request()
                 .header("x-tapis-token", user1jwt)

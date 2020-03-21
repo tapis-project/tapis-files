@@ -2,10 +2,9 @@ package edu.utexas.tacc.tapis.files.api.providers;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWTCache;
-import edu.utexas.tacc.tapis.sharedapi.security.TenantCache;
+import edu.utexas.tacc.tapis.sharedapi.security.IServiceJWT;
+import edu.utexas.tacc.tapis.sharedapi.security.ITenantManager;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +18,6 @@ import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 
 @FileOpsAuthorization
 public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
@@ -31,9 +29,9 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
 
     @Inject private SKClient skClient;
 
-    @Inject private ServiceJWTCache serviceJWTCache;
+    @Inject private IServiceJWT serviceJWTCache;
 
-    @Inject private TenantCache tenantCache;
+    @Inject private ITenantManager tenantCache;
 
     @Context
     private ResourceInfo resourceInfo;
@@ -58,21 +56,18 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
         path = "/" + path;
         String permSpec = String.format(PERMSPEC, tenantId, requiredPerms.permsRequired().getLabel(), systemId, path);
         try {
-            Tenant tenant = tenantCache.getCache().get(tenantId);
+            Tenant tenant = tenantCache.getTenant(tenantId);
             skClient.setBasePath(tenant.getBaseUrl() + "/v3");
-            skClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getCache().get(tenantId).getAccessToken().getAccessToken());
+            skClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
             skClient.addDefaultHeader("x-tapis-user", username);
             skClient.addDefaultHeader("x-tapis-tenant", tenantId);
-            boolean isPermitted = skClient.isPermitted(username, permSpec);
+            boolean isPermitted = skClient.isPermitted(tenantId, username, permSpec);
             if (!isPermitted) {
                throw new NotAuthorizedException("Authorization failed.");
             }
         } catch (TapisException e) {
             log.error("FileOpsAuthzSystemPath", e);
             throw new WebApplicationException(e.getMessage());
-        } catch (ExecutionException e) {
-            log.error("FileOpsAuthzSystemPath", e);
-            throw new WebApplicationException();
         }
 
 

@@ -114,6 +114,7 @@
                 <configuration>
                     <systemPropertyVariables>
                         <APP_ENV>test</APP_ENV>
+                        <tapis.envonly.skip.jwt.verify>true</tapis.envonly.skip.jwt.verify>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -147,11 +148,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.slf4j</groupId>-->
-<!--            <artifactId>slf4j-simple</artifactId>-->
-<!--            <version>${slf4j-api.version}</version>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>

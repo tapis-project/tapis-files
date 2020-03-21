@@ -9,9 +9,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWTCache;
-import edu.utexas.tacc.tapis.sharedapi.security.TenantCache;
+import edu.utexas.tacc.tapis.sharedapi.security.*;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,10 +47,10 @@ public class OperationsApiResource {
     private static class FileStringResponse extends TapisResponse<String>{}
 
     @Inject
-    ServiceJWTCache serviceJWTCache;
+    IServiceJWT serviceJWTCache;
 
     @Inject
-    TenantCache tenantCache;
+    ITenantManager tenantCache;
 
     /**
      * Configure the systems client with the correct baseURL and token for the request.
@@ -63,12 +61,12 @@ public class OperationsApiResource {
         try {
             String tenantId = user.getTenantId();
             SystemsClient systemsClient = new SystemsClient();
-            systemsClient.setBasePath(tenantCache.getCache().get(tenantId).getBaseUrl());
-            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getCache().get(tenantId).getAccessToken().getAccessToken());
+            systemsClient.setBasePath(tenantCache.getTenant(tenantId).getBaseUrl());
+            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
             systemsClient.addDefaultHeader("x-tapis-user", user.getName());
             systemsClient.addDefaultHeader("x-tapis-tenant", user.getTenantId());
             return systemsClient;
-        } catch (ExecutionException ex) {
+        } catch (TapisException ex) {
             log.error("configureSystemsClient", ex);
             throw new ServiceException("Something went wrong");
         }
@@ -231,11 +229,7 @@ public class OperationsApiResource {
         } catch (ServiceException | TapisClientException ex) {
             log.error("delete", ex);
             throw new WebApplicationException(ex.getMessage());
-        } catch (TapisException e) {
-            log.error("ERROR", e);
-            throw new WebApplicationException("Something went wrong...");
         }
-
     }
     
 }
