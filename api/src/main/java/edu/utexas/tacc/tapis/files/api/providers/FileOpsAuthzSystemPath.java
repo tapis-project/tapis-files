@@ -1,9 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.sharedapi.security.IServiceJWT;
-import edu.utexas.tacc.tapis.sharedapi.security.ITenantManager;
+import edu.utexas.tacc.tapis.sharedapi.security.*;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -29,9 +27,9 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
 
     @Inject private SKClient skClient;
 
-    @Inject private IServiceJWT serviceJWTCache;
+    @Inject private ServiceJWT serviceJWTCache;
 
-    @Inject private ITenantManager tenantCache;
+    @Inject private TenantManager tenantCache;
 
     @Context
     private ResourceInfo resourceInfo;

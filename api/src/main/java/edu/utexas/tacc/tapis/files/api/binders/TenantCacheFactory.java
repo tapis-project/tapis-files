@@ -13,7 +13,7 @@ public class TenantCacheFactory implements Factory<TenantManager> {
 
     private static final Logger log = LoggerFactory.getLogger(TenantCacheFactory.class);
 
-    private static IRuntimeConfig runtimeConfig = RuntimeSettings.get();
+    private IRuntimeConfig runtimeConfig = RuntimeSettings.get();
 
     @Override
     public TenantManager provide() {

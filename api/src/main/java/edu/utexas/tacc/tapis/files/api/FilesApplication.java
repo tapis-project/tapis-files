@@ -105,8 +105,8 @@ public class FilesApplication extends BaseResourceConfig {
                 bindAsContract(SystemsClient.class);
                 bindAsContract(TokensClient.class);
                 bindAsContract(TenantsClient.class);
-                bind(IServiceJWT.class).to(ServiceJWT.class).in(Singleton.class);
-                bind(ITenantManager.class).to(TenantManager.class).in(Singleton.class);
+                bindFactory(ServiceJWTCacheFactory.class).to(ServiceJWT.class).in(Singleton.class);
+                bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
             }
         });
 

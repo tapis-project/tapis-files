@@ -16,13 +16,15 @@ import javax.inject.Inject;
 public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
     private Logger log = LoggerFactory.getLogger(ServiceJWTCacheFactory.class);
 
-    IRuntimeConfig runtimeConfig = RuntimeSettings.get();
+    private IRuntimeConfig runtimeConfig = RuntimeSettings.get();
 
     @Override
     public ServiceJWT provide() {
         try {
             ServiceJWTParms params = new ServiceJWTParms();
             params.setServiceName("files");
+            params.setTenant("master");
+            params.setTokensBaseUrl("https://master.develop.tapis.io");
             return new ServiceJWT(params, runtimeConfig.getServicePassword());
         } catch (TapisException ex) {
             log.error("ERROR: could not get service JWT, exiting!", ex);
