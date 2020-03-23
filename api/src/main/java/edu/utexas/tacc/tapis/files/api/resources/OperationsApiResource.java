@@ -112,7 +112,7 @@ public class OperationsApiResource {
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
     @Path("/{systemId}/{path:.+}")
     @Consumes(MediaType.TEXT_PLAIN)
-    @Operation(summary = "Upload a file", description = "The file will be added at the {path} independent of the original file name", tags={ "file operations" })
+    @Operation(summary = "Create a directory", description = "Create a directory in the system at path", tags={ "file operations" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
