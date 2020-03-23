@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.kernel;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,6 +26,7 @@ import com.jcraft.jsch.SftpException;
 import com.jcraft.jsch.UIKeyboardInteractive;
 import com.jcraft.jsch.UserInfo;
 import com.jcraft.jsch.ChannelSftp.LsEntry;
+import com.jcraft.jsch.ChannelSftp.LsEntrySelector;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -269,60 +271,83 @@ public class SftpFilesKernel {
      * @param remotePath
      * @return list of FileInfo
      * @throws FilesKernelException
+     * @throws FileNotFoundException 
      */
-    public List<FileInfo> ls(@NotNull String remotePath) throws FilesKernelException{
+    public List<FileInfo> ls(@NotNull String remotePath) throws FilesKernelException, FileNotFoundException{
 
         List<FileInfo> filesList = new ArrayList<FileInfo>();
+        List<?> filelist = null;
 
         if (session != null && channelSftp != null) {
             try {
-                _log.debug("SFTPFilesKernel ls remotePath: " + remotePath);
-                List<?> filelist = channelSftp.ls(remotePath);
-                for(int i=0; i<filelist.size();i++){
-                    LsEntry entry = (LsEntry)filelist.get(i);
-                    SftpATTRS attrs = entry.getAttrs();
+                _log.debug("SFTPFilesKernel Listing ls remotePath: " + remotePath);
+                filelist = channelSftp.ls(remotePath);
+            } catch (SftpException e) {
+                if (e.getMessage().toLowerCase().contains("no such file")) {
+                    String msg = "FK_FILE_NOT_FOUND" + " for user: "
+                            + username + ", on destination host: "
+                            + host + ", path: "+ remotePath + ": " + e.getMessage();
+                    _log.error(msg, e);
+                    throw new FileNotFoundException(msg);
+                } else {
+                String msg = "FK_FILE_LISTING_ERROR in method "+ this.getClass().getName() +" for user: "
+                        + username + ", on destination host: "
+                        + host + ", path :"+ remotePath + " :  " + e.getMessage();
+                    _log.error(msg,e);
+                throw new FilesKernelException(msg,e);
+                }
+            }
+            
+            // For each entry in the fileList recieved, get the fileInfo object
+            for(int i=0; i<filelist.size();i++){
+                
+                LsEntry entry = (LsEntry)filelist.get(i);
+                
+                // Get the file attributes
+                SftpATTRS attrs = entry.getAttrs();
 
-                    FileInfo fileInfo = new FileInfo();
-                    if(entry.getFilename().equals(".") || entry.getFilename().equals("..")){
-                        continue;
-                    }
-
-                    fileInfo.setName(entry.getFilename());
-
-                    DateTimeFormatter dateTimeformatter = DateTimeFormatter.ofPattern( "EEE MMM d HH:mm:ss zzz uuuu" , Locale.US);
-                    ZonedDateTime lastModified = ZonedDateTime.parse(attrs.getMtimeString(), dateTimeformatter);
-                    fileInfo.setLastModified(lastModified.toInstant());
-
-                    fileInfo.setSize(attrs.getSize());
-
-                    if(attrs.isReg()) {
-                        Path fullPath = Paths.get(remotePath, entry.getFilename());
-                        fileInfo.setPath(fullPath.toString());
-                    } else {
-                        fileInfo.setPath(remotePath);
-                    }
-
-                    filesList.add(fileInfo);
-
+                FileInfo fileInfo = new FileInfo();
+                
+                // Ignore filename . and ..
+                if(entry.getFilename().equals(".") || entry.getFilename().equals("..")){
+                    continue;
                 }
 
-                return filesList;
+                fileInfo.setName(entry.getFilename());
 
-            } catch (SftpException e) {
-                String Msg = "FK_FILE_LISTING_ERROR in method "+ this.getClass().getName() +" for user:  "
-                        + username + " on destination host: "
-                        + host + " path :"+ remotePath + " : " + e.toString();
-                _log.error(Msg,e);
-               throw new FilesKernelException(Msg,e);
+                // Obtain the modified time for the file from the attribute
+                // and set lastModified field
+                DateTimeFormatter dateTimeformatter = DateTimeFormatter.ofPattern( "EEE MMM d HH:mm:ss zzz uuuu" , Locale.US);
+                ZonedDateTime lastModified = ZonedDateTime.parse(attrs.getMtimeString(), dateTimeformatter);
+                fileInfo.setLastModified(lastModified.toInstant());
+
+                fileInfo.setSize(attrs.getSize());
+                
+                //Check if the entry is a directory or file
+                if(attrs.isReg()) {
+                    Path fullPath = Paths.get(remotePath, entry.getFilename());
+                    fileInfo.setPath(fullPath.toString());
+                } else {
+                    fileInfo.setPath(remotePath);
+                }
+
+                filesList.add(fileInfo);
+
             }
 
+        } else {
+            String msg = "FK_FILE_SESSION_OR_CHANNEL_NULL_ERROR in method "+ this.getClass().getName() +" for user:  "
+                    + username + " on destination host: "
+                    + host + " path :"+ remotePath ;
+            _log.error(msg);
+           throw new FilesKernelException(msg);
         }
 
         return filesList;
     }
     
     /**
-     * Returns the mkdir status on a remotePath
+     * Creates a directory on a remotePath and returns the mkdir status 
      * @param remotePath
      * @return mkdir status
      * @throws FilesKernelException
@@ -333,7 +358,7 @@ public class SftpFilesKernel {
             try {
                 _log.debug("SFTPFilesKernel mkdir remotePath: " + remotePath);
                 
-                channelSftp.mkdir(remotePath);
+                channelSftp.mkdir(remotePath);  // do we need to set some permission on the directory??
             } catch (SftpException e) {
                 String Msg = "FK_FILE_MKDIR_ERROR in method "+ this.getClass().getName() +" for user:  "
                         + username + " on destination host: "
@@ -343,25 +368,101 @@ public class SftpFilesKernel {
                 throw new FilesKernelException(Msg,e);
             }
             
+            String mkdirStatus = "";
+            //check if the directory creation was successful
+            // if we are able to list the directory, the directory is created
             try {
-                if(channelSftp.ls(remotePath).size()>0) {
-                    _log.debug("directory created");
+                if(channelSftp.ls(remotePath).size() > 0) {
+                    mkdirStatus = "Directory" + remotePath + " was created";
+                    
                 } else {
-                    _log.debug("directory not created"); 
+                    mkdirStatus = "Directory" + remotePath + " was not created";
                 }
             } catch (SftpException e) {
-                String Msg = "FK_FILE_LISTING_ERROR in method "+ this.getClass().getName() +" for user:  "
+                String Msg = "FK_FILE_MKDIR_LISTING_ERROR in method "+ this.getClass().getName() +" for user:  "
                         + username + " on destination host: "
                         + host + " path :"+ remotePath + " : " + e.toString();
                 _log.error(Msg,e);
                throw new FilesKernelException(Msg,e);
             }
             
-            return "mkdir created";
+            return mkdirStatus;
 
+        } else {
+            String msg = "FK_FILE_SESSION_OR_CHANNEL_NULL_ERROR in method "+ this.getClass().getName() +" for user:  "
+                    + username + " on destination host: "
+                    + host + " path :"+ remotePath ;
+            _log.error(msg);
+           throw new FilesKernelException(msg);
+        }
+       
+    }
+    
+    
+    /**
+     * Rename/move file/directory to newPath
+     * Returns the mv/rename status
+     * @param oldPath
+     * @param newPath
+     * @return mv/rename status
+     * @throws FilesKernelException
+     * @throws FileNotFoundException 
+     */
+    public String rename(@NotNull String oldPath, @NotNull String newPath) throws FilesKernelException, FileNotFoundException{
+
+        if (session != null && channelSftp != null) {
+            try {
+                _log.debug("SFTPFilesKernel move oldPath: " + oldPath);
+                _log.debug("SFTPFilesKernel move newPath: " + newPath);
+                
+                channelSftp.rename(oldPath, newPath);
+               
+            } catch (SftpException e) {
+                if (e.getMessage().toLowerCase().contains("no such file")) {
+                    String msg = "FK_FILE_NOT_FOUND" + " for user: "
+                            + username + ", on destination host: "
+                            + host + ", path: "+ oldPath + ": " + e.getMessage();
+                    _log.error(msg, e);
+                    throw new FileNotFoundException(msg);
+                } else {
+                    String Msg = "FK_FILE_RENAME_ERROR in method "+ this.getClass().getName() +" for user:  "
+                            + username + " on destination host: "
+                            + host + " old path :"+ oldPath + " : " + " newPath: "+ newPath + ":" + e.getMessage();
+                    _log.error(Msg,e);
+                   
+                    throw new FilesKernelException(Msg,e);
+            }}
+            
+            String renameStatus = "";
+            try {
+                
+                if(channelSftp.stat(newPath) != null) {
+                    renameStatus = "Rename" + oldPath + " to " + " newPath"+  "was successful";
+                    
+                   
+                } else {
+                    renameStatus = "Rename" + oldPath + " to " + " newPath"+  "was not successful"; 
+                    
+                }
+            } catch (SftpException e) {
+                String Msg = "FK_FILE_RENAME_STAT_ERROR in method "+ this.getClass().getName() +" for user:  "
+                        + username + " on destination host: "
+                        + host + " old path :"+ oldPath + " : " + " newPath: "+ newPath + ":" + e.getMessage();
+                _log.error(Msg,e);
+               throw new FilesKernelException(Msg,e);
+            }
+            
+            return renameStatus;
+
+        } else {
+            String msg = "FK_FILE_SESSION_OR_CHANNEL_NULL_ERROR in method "+ this.getClass().getName() +" for user:  "
+                    + username + " on destination host: "
+                    + host + " old path :"+ oldPath + " newPath: " + newPath ;
+            _log.error(msg);
+           throw new FilesKernelException(msg);
         }
 
-        return "Either session is null or channel is null";
+        
     }
 
     /**

@@ -2,21 +2,20 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import javax.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.io.FilenameUtils;
-import org.jvnet.hk2.annotations.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
+
 
 
 public class FileOpsService implements IFileOpsService {
@@ -27,8 +26,6 @@ public class FileOpsService implements IFileOpsService {
 
 //    @Inject NotificationsServiceClient notificationsServiceClient;
 
-
-    @Inject
     public FileOpsService(TSystem system) throws ServiceException {
 
         try {
@@ -43,18 +40,20 @@ public class FileOpsService implements IFileOpsService {
         }
     }
 
+    public IRemoteDataClient getClient() {
+       return client;
+   }
+
     @Override
     public List<FileInfo> ls(String path) throws ServiceException {
         try {
             List<FileInfo> listing = client.ls(path);
             return listing;
         } catch (IOException ex) {
-            String message = "Listing failed";
+            String message = "Listing failed  : " + ex.getMessage();
             log.error("ERROR", ex);
             throw new ServiceException(message);
-        } finally {
-            client.disconnect();
-        }
+        } 
     }
 
     @Override
@@ -64,10 +63,8 @@ public class FileOpsService implements IFileOpsService {
             client.mkdir(cleanedPath);
         } catch (IOException ex) {
             log.error("ERROR", ex);
-            throw new ServiceException("mkdir failed");
-        } finally {
-            client.disconnect();
-        }
+            throw new ServiceException("mkdir failed : " + ex.getMessage());
+        } 
     }
 
     @Override
@@ -77,9 +74,7 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("insert failed");
-        } finally {
-            client.disconnect();
-        }
+        } 
     }
 
     @Override
@@ -88,10 +83,8 @@ public class FileOpsService implements IFileOpsService {
             client.move(path, newPath);
         } catch (IOException ex) {
             log.error("ERROR", ex);
-            throw new ServiceException("move/rename failed");
-        } finally {
-            client.disconnect();
-        }
+            throw new ServiceException("move/rename failed: " + ex.getMessage());
+        } 
     }
 
     @Override
@@ -101,9 +94,7 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("delete failed");
-        } finally {
-            client.disconnect();
-        }
+        } 
     }
 
     @Override
@@ -113,9 +104,7 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
-        } finally {
-            client.disconnect();
-        }
+        } 
     }
 
     @Override

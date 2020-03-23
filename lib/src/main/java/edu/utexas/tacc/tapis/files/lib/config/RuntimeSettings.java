@@ -53,9 +53,13 @@ public class RuntimeSettings {
 
     private static class TestConfig extends BaseConfig {
         private String dbHost = settings.get("DB_HOST", "localhost");
+        private String dbName = "test";
         private String dbUsername = "test";
         private String dbPassword = "test";
         private String dbPort = "5432";
+
+        @Override
+        public String getDbName() { return dbName; }
 
         @Override
         public String getDbHost() {

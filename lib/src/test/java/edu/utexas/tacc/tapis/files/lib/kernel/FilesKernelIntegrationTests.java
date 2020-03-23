@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.kernel;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -301,10 +302,11 @@ public class FilesKernelIntegrationTests {
 	 * is used This returns a list of files information
 	 * 
 	 * @throws FilesKernelException
+	 * @throws FileNotFoundException 
 	 */
 	
 	@Test
-	private void lsPasswordSuccessTest() throws FilesKernelException {
+	private void lsPasswordSuccessTest() throws FilesKernelException, FileNotFoundException {
 		String user = "root";
 		String host = "localhost";
 		String port = "2222";

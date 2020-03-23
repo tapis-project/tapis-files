@@ -47,25 +47,26 @@ public class OperationsApiResource {
     private static class FileStringResponse extends TapisResponse<String>{}
 
     @Inject
-    IServiceJWT serviceJWTCache;
+    ServiceJWT serviceJWTCache;
 
     @Inject
-    ITenantManager tenantCache;
+    TenantManager tenantCache;
+
+    @Inject
+    SystemsClient systemsClient;
 
     /**
      * Configure the systems client with the correct baseURL and token for the request.
      * @param user
      * @throws ServiceException
      */
-    private SystemsClient configureSystemsClient(AuthenticatedUser user) throws ServiceException {
+    private void configureSystemsClient(AuthenticatedUser user) throws ServiceException {
         try {
             String tenantId = user.getTenantId();
-            SystemsClient systemsClient = new SystemsClient();
             systemsClient.setBasePath(tenantCache.getTenant(tenantId).getBaseUrl());
             systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
             systemsClient.addDefaultHeader("x-tapis-user", user.getName());
             systemsClient.addDefaultHeader("x-tapis-tenant", user.getTenantId());
-            return systemsClient;
         } catch (TapisException ex) {
             log.error("configureSystemsClient", ex);
             throw new ServiceException("Something went wrong");
@@ -94,7 +95,7 @@ public class OperationsApiResource {
 
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            SystemsClient systemsClient = configureSystemsClient(user);
+            configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             List<FileInfo> listing = fileOpsService.ls(path);
@@ -124,8 +125,8 @@ public class OperationsApiResource {
             @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            SystemsClient systemsClient = configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId, null);
+            configureSystemsClient(user);
+            TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.mkdir(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
@@ -157,8 +158,8 @@ public class OperationsApiResource {
             @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            SystemsClient systemsClient = configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId, null);
+            configureSystemsClient(user);
+            TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
@@ -189,8 +190,8 @@ public class OperationsApiResource {
 
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            SystemsClient systemsClient = configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId, null);
+            configureSystemsClient(user);
+            TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.move(path, newName);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
@@ -220,8 +221,8 @@ public class OperationsApiResource {
             @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            SystemsClient systemsClient = configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId, null);
+            configureSystemsClient(user);
+            TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.delete(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");

@@ -2,16 +2,19 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWT;
 import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.codec.Charsets;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -30,9 +33,7 @@ import org.apache.commons.io.IOUtils;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -46,10 +47,13 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
     private TSystem testSystem;
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
     // mocking out the services
-    private SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-    private SKClient skClient = Mockito.mock(SKClient.class);
+    private SystemsClient systemsClient;
+    private SKClient skClient;
+    private TenantManager tenantManager;
+    private ServiceJWT serviceJWT;
+    private Tenant tenant;
 
-    private ITestTransfersRoutesS3toS3() {
+    private ITestTransfersRoutesS3toS3() throws Exception {
         //List<String> creds = new ArrayList<>();
         Credential creds = new Credential();
         creds.setAccessKey("user");
@@ -64,34 +68,40 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
         List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
         testSystem.setTransferMethods(transferMechs);
+
+        tenant = new Tenant();
+        tenant.setTenantId("testTenant");
+        tenant.setBaseUrl("test.tapis.io");
+        Map<String, Tenant> tenantMap = new HashMap<>();
+        tenantMap.put(tenant.getTenantId(), tenant);
+        when(tenantManager.getTenants()).thenReturn(tenantMap);
+        when(tenantManager.getTenant(any())).thenReturn(tenant);
     }
 
     @Override
     protected ResourceConfig configure() {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
+        forceSet(TestProperties.CONTAINER_PORT, "0");
+        tenantManager = Mockito.mock(TenantManager.class);
+        skClient = Mockito.mock(SKClient.class);
+        systemsClient = Mockito.mock(SystemsClient.class);
+        serviceJWT = Mockito.mock(ServiceJWT.class);
+
         ResourceConfig app = new BaseResourceConfig()
+                .register(new JWTValidateRequestFilter(tenantManager))
                 .register(new AbstractBinder() {
                     @Override
                     protected void configure() {
                         bind(systemsClient).to(SystemsClient.class);
                         bind(skClient).to(SKClient.class);
+                        bind(serviceJWT).to(ServiceJWT.class);
+                        bind(tenantManager).to(TenantManager.class);
                         bindAsContract(TransfersService.class);
                         bindAsContract(FileTransfersDAO.class);
 
                     }
                 });
-        // Initialize tenant manager singleton. This can be used by all subsequent application code, including filters.
-        try {
-            // The base url of the tenants service is a required input parameter.
-            // Retrieve the tenant list from the tenant service now to fail fast if we can't access the list.
-            TenantManager.getInstance("https://dev.develop.tapis.io/").getTenants();
-        } catch (Exception e) {
-            // This is a fatal error
-            System.out.println("**** FAILURE TO INITIALIZE: tapis-systemsapi ****");
-            e.printStackTrace();
-            throw e;
-        }
 
         app.register(TransfersApiResource.class);
         return app;

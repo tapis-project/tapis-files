@@ -72,7 +72,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
         tenant = new Tenant();
         tenant.setTenantId("testTenant");
-        tenant.setBaseUrl("test.tapis.io");
+        tenant.setBaseUrl("https://test.tapis.io");
         Map<String, Tenant> tenantMap = new HashMap<>();
         tenantMap.put(tenant.getTenantId(), tenant);
         when(tenantManager.getTenants()).thenReturn(tenantMap);
@@ -96,8 +96,8 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                     protected void configure() {
                         bind(systemsClient).to(SystemsClient.class);
                         bind(skClient).to(SKClient.class);
-                        bind(tenantManager).to(ITenantManager.class);
-                        bind(serviceJWT).to(IServiceJWT.class);
+                        bind(tenantManager).to(TenantManager.class);
+                        bind(serviceJWT).to(ServiceJWT.class);
                     }
                 });
         app.register(ContentApiResource.class);

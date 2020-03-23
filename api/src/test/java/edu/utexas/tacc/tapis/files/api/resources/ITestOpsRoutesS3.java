@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -30,10 +31,7 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.client.Entity;
@@ -57,14 +55,15 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     private static class FileListResponse extends TapisResponse<List<FileInfo>> {}
     private static class FileStringResponse extends TapisResponse<String>{}
     private TSystem testSystem;
-    private Tenant testTenant;
+    private Tenant tenant;
 
     // mocking out the services
-    private SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-    private SKClient skClient = Mockito.mock(SKClient.class);
-    private TenantManager tenantManager = Mockito.mock(TenantManager.class);
+    private SystemsClient systemsClient;
+    private SKClient skClient;
+    private TenantManager tenantManager;
+    private ServiceJWT serviceJWT;
 
-    private ITestOpsRoutesS3() {
+    private ITestOpsRoutesS3() throws Exception {
         Credential creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
@@ -79,27 +78,37 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
         testSystem.setTransferMethods(transferMechs);
 
-        testTenant = new Tenant();
-        testTenant.setTenantId("test");
-        testTenant.setBaseUrl("localhost");
+        tenant = new Tenant();
+        tenant.setTenantId("testTenant");
+        tenant.setBaseUrl("https://test.tapis.io");
+        Map<String, Tenant> tenantMap = new HashMap<>();
+        tenantMap.put(tenant.getTenantId(), tenant);
+        when(tenantManager.getTenants()).thenReturn(tenantMap);
+        when(tenantManager.getTenant(any())).thenReturn(tenant);
     }
 
     @Override
     protected ResourceConfig configure() {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
+        tenantManager = Mockito.mock(TenantManager.class);
+        skClient = Mockito.mock(SKClient.class);
+        systemsClient = Mockito.mock(SystemsClient.class);
+        serviceJWT = Mockito.mock(ServiceJWT.class);
+
         ResourceConfig app = new BaseResourceConfig()
+                .register(new JWTValidateRequestFilter(tenantManager))
                 .register(new AbstractBinder() {
                     @Override
                     protected void configure() {
                         bind(systemsClient).to(SystemsClient.class);
                         bind(skClient).to(SKClient.class);
                         bind(tenantManager).to(TenantManager.class);
+                        bind(serviceJWT).to(ServiceJWT.class);
                     }
                 });
 
         app.register(OperationsApiResource.class);
-        TenantManager.getInstance("https://dev.develop.tapis.io").getTenants();
         return app;
     }
 
@@ -122,9 +131,8 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         client.insert(fileName, f1);
     }
 
-    @AfterClass
+    @AfterMethod
     public void tearDown() throws Exception {
-        super.tearDown();
         S3DataClient client = new S3DataClient(testSystem);
         client.delete("/");
 
@@ -158,13 +166,13 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     public void  testGetS3ListNoAuthz() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        Response response = target("/ops/testSystem/test")
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(false);
+        Response response = target("/ops/testSystem/testfile1.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
             .get();
-        Assert.assertEquals(403, response.getStatus());
+        Assert.assertEquals(response.getStatus(), 403);
     }
 
     @Test
