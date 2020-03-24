@@ -5,6 +5,7 @@ public class RuntimeSettings {
     private static Settings settings = new Settings();
 
     static class BaseConfig implements IRuntimeConfig{
+
         private String dbHost = settings.get("DB_HOST", "localhost");
         private String dbName = settings.get("DB_NAME", "dev");
         private String dbUsername = settings.get("DB_USERNAME", "dev");
@@ -13,6 +14,9 @@ public class RuntimeSettings {
         private String rabbitMQUsername = settings.get("RABBITMQ_USERNAME", "dev");
         private String rabbitMQVHost = settings.get("RABBITMQ_VHOST", "dev");
         private String rabbitmqPassword = settings.get("RABBITMQ_PASSWORD", "dev");
+        private String servicePassword = settings.get("SERVICE_PASSWORD", "dev");
+        private String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://master.develop.tapis.io");
+        private String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://master.develop.tapis.io");
 
         public String getDbHost() {
             return dbHost;
@@ -45,14 +49,44 @@ public class RuntimeSettings {
         public String getRabbitmqPassword() {
             return rabbitmqPassword;
         }
+
+        public String getServicePassword() { return servicePassword; }
+
+        public String getTokensServiceURL() { return tokensServiceURL; }
+
+        public String getTenantsServiceURL() { return tenantsServiceURL; }
     }
 
 
     private static class TestConfig extends BaseConfig {
         private String dbHost = settings.get("DB_HOST", "localhost");
+        private String dbName = "test";
         private String dbUsername = "test";
         private String dbPassword = "test";
         private String dbPort = "5432";
+
+        @Override
+        public String getDbName() { return dbName; }
+
+        @Override
+        public String getDbHost() {
+            return dbHost;
+        }
+
+        @Override
+        public String getDbUsername() {
+            return dbUsername;
+        }
+
+        @Override
+        public String getDbPassword() {
+            return dbPassword;
+        }
+
+        @Override
+        public String getDbPort() {
+            return dbPort;
+        }
     }
 
     public static IRuntimeConfig get() {
@@ -61,6 +95,7 @@ public class RuntimeSettings {
         } else if (settings.get("APP_ENV", "dev").equalsIgnoreCase("test")) {
             return new TestConfig();
         } else {
+            //TODO:
             return new BaseConfig();
         }
     }

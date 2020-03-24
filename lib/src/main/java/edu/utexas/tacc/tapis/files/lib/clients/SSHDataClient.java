@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,8 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem.AccessMethodEnum;
+
+import javax.inject.Named;
 
 public class SSHDataClient implements IRemoteDataClient {
     
@@ -26,7 +28,7 @@ public class SSHDataClient implements IRemoteDataClient {
 	String username;
 	String password;
 	String path ;
-	AccessMethodEnum accessMethod;
+	TSystem.DefaultAccessMethodEnum accessMethod;
 	String remotePath;
 	SftpFilesKernel sftp;
 	String rootDir;
@@ -39,7 +41,7 @@ public class SSHDataClient implements IRemoteDataClient {
 		username = system.getEffectiveUserId();
 		password = system.getAccessCredential().getPassword();
 		remotePath = system.getBucketName();
-		accessMethod = system.getAccessMethod();
+		accessMethod = system.getDefaultAccessMethod();
 		rootDir = system.getRootDir();
 		systemId = system.getName();
 		
@@ -102,19 +104,19 @@ public class SSHDataClient implements IRemoteDataClient {
 }
 
 	@Override
-	public void copy(String currentPath, String newPath) {
+	public void copy(String currentPath, String newPath) throws IOException {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void delete(String path) {
+	public void delete(String path) throws IOException {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public InputStream getStream(String path) {
+	public InputStream getStream(String path) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -126,7 +128,7 @@ public class SSHDataClient implements IRemoteDataClient {
 	}
 
 	@Override
-	public void connect() {
+	public void connect() throws IOException {
 		// TODO Auto-generated method stub
 		switch(accessMethod.getValue()) {
 		case "PASSWORD":
@@ -150,6 +152,21 @@ public class SSHDataClient implements IRemoteDataClient {
 	@Override
 	public void disconnect() {
 		sftp.closeSession();
+
+	}
+
+	@Override
+	public InputStream getBytesByRange(String path, long startByte, long endByte) throws IOException{
+		return null;
+	}
+
+	@Override
+	public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
+
+	}
+
+	@Override
+	public void append(String path, InputStream byteStream) throws IOException {
 
 	}
 

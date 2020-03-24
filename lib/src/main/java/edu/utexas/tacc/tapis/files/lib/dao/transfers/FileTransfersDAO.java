@@ -197,6 +197,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
                     task.getStatus().name());
             return insertedTask;
         } catch (SQLException ex) {
+            log.error("ERROR", ex);
             throw new DAOException(ex.getErrorCode());
         } finally {
             DbUtils.closeQuietly(connection);

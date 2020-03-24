@@ -1,68 +1,48 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-
 import javax.inject.Inject;
-
-import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import org.apache.commons.io.FilenameUtils;
+import javax.validation.constraints.NotNull;
 
 
-@Service
+
 public class FileOpsService implements IFileOpsService {
     private Logger log = LoggerFactory.getLogger(FileOpsService.class);
 
     private IRemoteDataClient client;
     private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
 
-    @Inject
-    public FileOpsService(SystemsClient systemsClient, String systemId) throws ServiceException {
+//    @Inject NotificationsServiceClient notificationsServiceClient;
+
+    public FileOpsService(TSystem system) throws ServiceException {
 
         try {
-            // Fetch the system based on the systemId
-            TSystem sys = systemsClient.getSystemByName(systemId,false,"");
-            // Fetch the creds
-            client = clientFactory.getRemoteDataClient(sys);
+            client = clientFactory.getRemoteDataClient(system);
             client.connect();
-        } catch (TapisClientException ex) {
-           log.error("ERROR", ex);
-           throw new ServiceException("");
         } catch (IOException ex) {
             log.error("ERROR", ex);
+            if (client != null) {
+                client.disconnect();
+            }
             throw new ServiceException("Could not connect to system");
-        } catch (Exception ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("");
-        } 
-    }
-
-   public IRemoteDataClient getClient() {
-       return client;
-   }
-
-    public FileOpsService(IRemoteDataClient remoteClient) throws ServiceException {
-        client = remoteClient;
-        try {
-            client.connect();
-        } catch (IOException ex) {
-            client.disconnect();
-            log.error("ERROR", ex);
-            throw new ServiceException("Could not connect client");
-        } finally {
-            client.disconnect();
         }
     }
+
+    public IRemoteDataClient getClient() {
+       return client;
+   }
 
     @Override
     public List<FileInfo> ls(String path) throws ServiceException {
@@ -79,7 +59,8 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void mkdir(String path) throws ServiceException {
         try {
-            client.mkdir(path);
+            String cleanedPath = FilenameUtils.normalize(path);
+            client.mkdir(cleanedPath);
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("mkdir failed : " + ex.getMessage());
@@ -126,5 +107,28 @@ public class FileOpsService implements IFileOpsService {
         } 
     }
 
+    @Override
+    public InputStream getBytes(@NotNull String path, @NotNull long startByte, @NotNull long endByte) throws ServiceException  {
+        try {
+            return client.getBytesByRange(path, startByte, endByte);
+        } catch (IOException ex) {
+            log.error("ERROR", ex);
+            throw new ServiceException("get contents failed");
+        } finally {
+            client.disconnect();
+        }
+    }
 
+    @Override
+    public InputStream more(@NotNull String path, @NotNull long startPage)  throws ServiceException {
+        try {
+            long startByte = (startPage -1) * 1024;
+            return client.getBytesByRange(path, startByte, startByte + 1023);
+        } catch (IOException ex) {
+            log.error("ERROR", ex);
+            throw new ServiceException("get contents failed");
+        } finally {
+            client.disconnect();
+        }
+    }
 }

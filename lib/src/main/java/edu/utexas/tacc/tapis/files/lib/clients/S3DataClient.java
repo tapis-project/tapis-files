@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -93,6 +94,7 @@ public class S3DataClient implements IRemoteDataClient {
 
     @Override
     public void insert(String path, InputStream fileStream) throws IOException {
+        // TODO: This should use multipart on an InputStream ideally;
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         try {
             PutObjectRequest req = PutObjectRequest.builder()
@@ -188,6 +190,14 @@ public class S3DataClient implements IRemoteDataClient {
         }
     }
 
+
+    /**
+     * Returns the entire contents of an object as an InputStream
+     * @param path
+     * @return
+     * @throws IOException
+     * @throws NotFoundException
+     */
     @Override
     public InputStream getStream(String path) throws IOException, NotFoundException {
         try {
@@ -205,7 +215,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void download(String path) {
+    public void download(String path) throws IOException {
 
     }
 
@@ -217,6 +227,34 @@ public class S3DataClient implements IRemoteDataClient {
     @Override
     public void disconnect() {
 
+    }
+
+    @Override
+    public InputStream getBytesByRange(@NotNull String path, @NotNull long startByte, @NotNull long endByte) throws IOException{
+        try {
+            String brange = String.format("bytes=%s-%s", startByte, endByte);
+            GetObjectRequest req = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .range(brange)
+                    .key(path)
+                    .build();
+            return client.getObject(req, ResponseTransformer.toInputStream());
+        } catch (NoSuchKeyException ex) {
+            throw new NotFoundException();
+        } catch (S3Exception ex) {
+            log.error(ex.getMessage());
+            throw new IOException();
+        }
+    }
+
+    @Override
+    public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
+        throw new NotImplementedException("S3 does not support put by range operations");
+    }
+
+    @Override
+    public void append(String path, InputStream byteStream) throws IOException {
+        throw new NotImplementedException("S3 does not support append operations");
     }
 
 }

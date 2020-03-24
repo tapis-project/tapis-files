@@ -19,8 +19,6 @@ public class BaseResourceConfig extends ResourceConfig {
         register(JacksonFeature.class);
         // Custom Timestamp/Instant serialization
         register(ObjectMapperContextResolver.class);
-        // Authentication Filter
-        register(JWTValidateRequestFilter.class);
         // ExceptionMappers, need both because ValidationMapper is a custom Jersey thing and
         // can't be implemented in a generic mapper
         register(TapisExceptionMapper.class);

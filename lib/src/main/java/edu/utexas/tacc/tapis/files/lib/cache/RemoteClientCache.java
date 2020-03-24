@@ -10,10 +10,8 @@ public class RemoteClientCache {
 
     //  private static CacheLoader loader = new ClientSessionCacheLoader();
     private static final int CACHE_DURATION = 10;
-    private static RemovalListener<String, String> listener = new ClientSessionCacheRemovalListener();
     private static Cache<String, String> sessionCache =  CacheBuilder.newBuilder()
             .expireAfterWrite(CACHE_DURATION, TimeUnit.MINUTES)
-            .removalListener(listener)
             .build();
     private static final RemoteClientCache instance = new RemoteClientCache();
 

@@ -12,7 +12,7 @@ public class RabbitMQConnection {
 
     private static Connection INSTANCE;
 
-    public static Connection getInstance() throws IOException {
+    public static synchronized Connection getInstance() throws IOException {
         if (INSTANCE == null) {
             try {
                 ConnectionFactory factory = new ConnectionFactory();
