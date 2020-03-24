@@ -55,6 +55,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
         
         try {
             Tenant tenant = tenantCache.getTenant(tenantId);
+            skClient.setUserAgent("filesServiceClient");
             skClient.setBasePath(tenant.getBaseUrl() + "/v3");
             skClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
             skClient.addDefaultHeader("x-tapis-user", username);

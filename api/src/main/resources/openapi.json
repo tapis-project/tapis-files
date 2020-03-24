@@ -539,35 +539,6 @@
         }
       }
     },
-    "/transfers/{transferTaskId}/history" : {
-      "get" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Get history of a transfer task",
-        "operationId" : "getTransferTaskHistory",
-        "parameters" : [ {
-          "name" : "transferTaskId",
-          "in" : "path",
-          "description" : "Transfer task ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -640,6 +611,35 @@
           },
           "required" : true
         },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfers/{transferTaskId}/history" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get history of a transfer task",
+        "operationId" : "getTransferTaskHistory",
+        "parameters" : [ {
+          "name" : "transferTaskId",
+          "in" : "path",
+          "description" : "Transfer task ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -919,23 +919,6 @@
           }
         }
       },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
       "TransferTaskRequest" : {
         "required" : [ "destinationPath", "destinationSystemId", "sourcePath", "sourceSystemId" ],
         "type" : "object",
@@ -955,6 +938,23 @@
           "destinationPath" : {
             "type" : "string",
             "description" : "Path to file/folder in destination system"
+          }
+        }
+      },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
           }
         }
       }
