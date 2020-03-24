@@ -24,7 +24,7 @@ public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
             ServiceJWTParms params = new ServiceJWTParms();
             params.setServiceName("files");
             params.setTenant("master");
-            params.setTokensBaseUrl("https://master.develop.tapis.io");
+            params.setTokensBaseUrl(runtimeConfig.getTokensServiceURL());
             return new ServiceJWT(params, runtimeConfig.getServicePassword());
         } catch (TapisException ex) {
             log.error("ERROR: could not get service JWT, exiting!", ex);

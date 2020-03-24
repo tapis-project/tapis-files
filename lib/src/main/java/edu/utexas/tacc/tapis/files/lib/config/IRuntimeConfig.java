@@ -10,4 +10,6 @@ public interface IRuntimeConfig {
     String getRabbitMQVHost();
     String getRabbitmqPassword();
     String getServicePassword();
+    String getTokensServiceURL();
+    String getTenantsServiceURL();
 }

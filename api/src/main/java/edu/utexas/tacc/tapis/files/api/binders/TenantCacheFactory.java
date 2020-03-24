@@ -18,7 +18,7 @@ public class TenantCacheFactory implements Factory<TenantManager> {
     @Override
     public TenantManager provide() {
         try {
-            TenantManager tenantManager = TenantManager.getInstance("https://master.develop.tapis.io");
+            TenantManager tenantManager = TenantManager.getInstance(runtimeConfig.getTenantsServiceURL());
             tenantManager.getTenants();
             return tenantManager;
         } catch (Exception ex) {
