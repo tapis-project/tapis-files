@@ -21,7 +21,6 @@ import com.jcraft.jsch.ChannelSftp.LsEntry;
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 
-import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 import edu.utexas.tacc.tapis.files.lib.kernel.ProgressMonitor;
 import edu.utexas.tacc.tapis.files.lib.kernel.SSHConnection;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -55,7 +54,7 @@ public class SSHDataClient implements IRemoteDataClient {
      * @param remotePath
      * @return list of FileInfo
 	 * @throws IOException 
-     * @throws IOException
+     * @throws NotFoundException
      */
 	@Override
     public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException{
@@ -133,6 +132,7 @@ public class SSHDataClient implements IRemoteDataClient {
      * Creates a directory on a remotePath 
      * @return
      * @throws IOException
+     * @throws NotFoundException
      */
 	@Override
     public void mkdir(@NotNull String remotePath) throws IOException{
