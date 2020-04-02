@@ -8,9 +8,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 
+import javax.ws.rs.NotFoundException;
+
 public interface IRemoteDataClient {
 
-    List<FileInfo> ls(String remotePath) throws IOException;
+    List<FileInfo> ls(String remotePath) throws IOException, NotFoundException;
 
     /**
      * Insert will place the entire contents of an InputStream to the location
@@ -20,9 +22,9 @@ public interface IRemoteDataClient {
      * @throws IOException
      */
     void insert(String remotePath, InputStream fileStream) throws IOException;
-    void mkdir(String remotePath) throws IOException;
-    void move(String oldPath, String newPath) throws IOException;
-    void copy(String currentPath, String newPath) throws IOException;
+    void mkdir(String remotePath) throws IOException, NotFoundException;
+    void move(String oldPath, String newPath) throws IOException, NotFoundException;
+    void copy(String currentPath, String newPath) throws IOException, NotFoundException;
     void delete(String path) throws IOException;
 
     /**

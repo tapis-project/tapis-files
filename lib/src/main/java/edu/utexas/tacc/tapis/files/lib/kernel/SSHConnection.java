@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.lib.kernel;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +16,6 @@ import com.jcraft.jsch.Session;
 import com.jcraft.jsch.UIKeyboardInteractive;
 import com.jcraft.jsch.UserInfo;
 
-import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
 
 
 public class SSHConnection {
@@ -23,7 +24,8 @@ public class SSHConnection {
     /* **************************************************************************** */
 
     private static final int CONNECT_TIMEOUT_MILLIS = 15000; // 15 seconds
-    //private static final String CHANNEL_TYPE = "sftp";
+ 
+
     //
     // Indicates what to do if the server's host key changed or the server is
     // unknown.
@@ -52,21 +54,15 @@ public class SSHConnection {
     protected byte[] passPhrase;
     protected String identity;
     protected Session session;
-    
+    //protected Channel channel;
+
     // Local logger.
     private static final Logger _log = LoggerFactory.getLogger(SSHConnection.class);
 
     /* ********************************************************************** */
     /* Constructors */
     /* ********************************************************************** */
-    /*
-     * ----------------------------------------------------------------------------
-     */
-    /* constructor: */
-    /*
-     * ----------------------------------------------------------------------------
-     */
-    //  TODO: Fix //
+   
     /**
      * @param host Destination host name for files/dir copy
      * @param username user having access to the remote system
@@ -79,7 +75,7 @@ public class SSHConnection {
      * Private Key needs to be in SSLeay/traditional format
      */
     public SSHConnection(String host, String username, int port, byte[] privateKey, byte[] publicKey,
-                           byte[] passphrase, String identity) {
+            byte[] passphrase, String identity) {
         super();
         this.host = host;
         this.username = username;
@@ -123,11 +119,11 @@ public class SSHConnection {
     /* ********************************************************************** */
 
     /**
-     *
+     * Initializes session information and creates a SSH connection
      * @throws JSchException
      * @throws IOException
      */
-    public void initSession() throws FilesKernelException {
+    public void initSession() throws IOException {
 
         // Create a JSch object
         final JSch jsch = new JSch();
@@ -147,11 +143,11 @@ public class SSHConnection {
             session.setTimeout(CONNECT_TIMEOUT_MILLIS);
 
         } catch (JSchException e) {
-            String Msg = "FK_GET_SESSION_ERROR in method " + this.getClass().getName() +" for user:  "
+            String Msg = "SSH_CONNECTION_GET_SESSION_ERROR in method " + this.getClass().getName() +" for user:  "
                     + username + "on destination host: "
                     + host + " : " + e.toString();
             _log.error(Msg,e);
-            throw new FilesKernelException(Msg,e);
+            throw new IOException(Msg,e);
         }
 
         _log.debug("Try to connect to the host " + host + ":" + port + " with user " + username);
@@ -166,11 +162,11 @@ public class SSHConnection {
                 ui = new UserInfoImplementation(username, privateKey);
                 _log.debug("identity for public-key authentication successfully added");
             } catch (JSchException e) {
-                String Msg = "FK_ADD_KEY_ERROR in method "+ this.getClass().getName() +" for user:  "
+                String Msg = "SSH_CONNECTION_ADD_KEY_ERROR in method "+ this.getClass().getName() +" for user:  "
                         + username + "on destination host: "
                         + host + " : " + e.toString();
                 _log.error(Msg, e);
-                throw new FilesKernelException(Msg, e);
+                throw new IOException(Msg, e);
             }
 
         }
@@ -186,82 +182,113 @@ public class SSHConnection {
             session.connect();
             _log.info("Connection established");
         } catch (JSchException e) {
-            String Msg = "FK_CONEECT_SESSION_ERROR in method "+ this.getClass().getName() +" for user:  "
+            String Msg = "SSH_CONNECTION_CONEECT_SESSION_ERROR in method "+ this.getClass().getName() +" for user:  "
                     + username + "on destination host: "
                     + host + " : " + e.toString();
             _log.error(Msg,e);
-            throw new FilesKernelException(Msg,e);
+            throw new IOException(Msg,e);
         }
-        
+
 
     }
     
-    public Channel openAndConnectChannelSFTP() throws FilesKernelException {
-        String CHANNEL_TYPE = "sftp";
-        ChannelSftp channelSftp;
+   /**
+    * Opens a channel for the SSH connection
+    * @param channelType
+    * @return channel
+    * @throws IOException
+    */
+    public Channel openChannel(String channelType) throws IOException {
+        Channel channel = null;
+        try {
+            switch(channelType) {
+            case "sftp":
+                channel = (ChannelSftp) session.openChannel(channelType);
+            case "exec":
+                channel = (ChannelExec) session.openChannel(channelType);
+            case "shell":
+                channel = session.openChannel(channelType);
+            default:
+                _log.debug("SSH_UNSUPPORTED_CHANNEL");
+            }
+        } catch(JSchException e) {
+            
+            String Msg = "SSH_OPEN_"+ channelType.toUpperCase() + "_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  "
+                    + username + "on destination host: "
+                    + host + " port: " + port + " : " + e.toString();
+            _log.error(Msg,e);
+            throw new IOException(Msg,e);
+        }
+        return channel; 
         
-        try {
-            _log.debug("Trying to open sftp  Channel");
-            channelSftp = (ChannelSftp) session.openChannel(CHANNEL_TYPE);
-            _log.debug("Open STP Channel successful");
-        } catch (JSchException e) {
-            String Msg = "FK_OPEN_SFTP_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  "
-                    + username + "on destination host: "
-                    + host + " : " + e.toString();
-            _log.error(Msg,e);
-            throw new FilesKernelException(Msg,e);
-        }
-        try {
-            _log.debug("Trying to connect the sftp Channel");
-            channelSftp.connect();
-            _log.debug("Channel open OK");
-        } catch (JSchException e) {
-            String Msg = "FK_CONNECT_SFTP_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  "
-                    + username + "on destination host: "
-                    + host + " : " + e.toString();
-            _log.error(Msg,e);
-            throw new FilesKernelException(Msg,e);
-        }
-
-        return channelSftp;
     }
     
-    public Channel openAndConnectChannelEXEC() throws FilesKernelException {
-        String CHANNEL_TYPE = "exec";
-        ChannelExec channelExec;
+    /**
+     * Connects to the channel
+     * @param channel
+     * @throws IOException
+     */
+    public void connectChannel(Channel channel) throws IOException {
+        
         try {
-            _log.debug("Trying to open sftp  Channel");
-             channelExec= (ChannelExec)session.openChannel(CHANNEL_TYPE);
-             
-             
-            _log.debug("Open STP Channel successful");
+            _log.debug("Trying to connect to the channel");
+            channel.connect();
+            _log.debug("Channel connect ok");
         } catch (JSchException e) {
-            String Msg = "FK_OPEN_SFTP_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  "
+            String Msg = "SSH_CONNECTION_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  "
                     + username + "on destination host: "
-                    + host + " : " + e.toString();
+                    + host + " port: " + port + " : " + e.toString();
             _log.error(Msg,e);
-            throw new FilesKernelException(Msg,e);
+            throw new IOException(Msg,e);
         }
-        try {
-            _log.debug("Trying to connect the sftp Channel");
-            channelExec.connect();
-            _log.debug("Channel open OK");
-        } catch (JSchException e) {
-            String Msg = "FK_CONNECT_SFTP_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  "
-                    + username + "on destination host: "
-                    + host + " : " + e.toString();
-            _log.error(Msg,e);
-            throw new FilesKernelException(Msg,e);
-        }
-
-        return channelExec;
+     }
+    
+    /**
+     * Closes the channel
+     * @param channel
+     */
+    public void closeChannel(Channel channel) {
+        _log.debug("Trying to close  the channel");
+        
+        if (channel != null && channel.isConnected())
+            // Close channel
+            channel.disconnect();
+            
     }
+
+    /**
+     * Sets the command to be executed in the SSH exec channel    
+     * @param channel
+     * @param command
+     * @param in
+     * @param out
+     * @param err
+     * @return Channel
+     * @throws IOException
+     */
+    public Channel setCommandForExecChannel(Channel channel, String command, InputStream in, OutputStream out, OutputStream err ) throws IOException {
+        
+        ((ChannelExec)channel).setCommand(command);
+        channel.setInputStream(in);
+        channel.setOutputStream(out);
+        ((ChannelExec)channel).setErrStream(err);
+               
+        return channel;
+        
+    }
+
+   /**
+    * Closes the session  
+    */
     public void closeSession() {
-       
-        // Close session
         if (session != null && session.isConnected())
             session.disconnect();
     }
+
+    /**
+     * Gets the SSH Session
+     * @return
+     */
     public Session getSession(){
         return this.session;
     }
