@@ -65,8 +65,9 @@
             <artifactId>okhttp</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.rabbitmq</groupId>
-            <artifactId>amqp-client</artifactId>
+            <groupId>io.projectreactor.rabbitmq</groupId>
+            <artifactId>reactor-rabbitmq</artifactId>
+            <version>1.4.1.RELEASE</version>
         </dependency>
 
     </dependencies>
