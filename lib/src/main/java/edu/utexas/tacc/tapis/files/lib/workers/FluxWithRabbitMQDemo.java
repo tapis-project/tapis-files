@@ -1,8 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.workers;
 
-import com.rabbitmq.client.AMQP;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.Delivery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -10,16 +9,20 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Random;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class FluxWithRabbitMQDemo {
 
-    private static final String QUEUE = "demo.flux";
+    private static final String QUEUE = "demo.flux.child";
     private static final Logger log = LoggerFactory.getLogger(FluxWithRabbitMQDemo.class);
 
     private final Sender sender;
     private final Receiver receiver;
+    private final ObjectMapper mapper = new ObjectMapper();
+
 
     public FluxWithRabbitMQDemo() {
         ConnectionFactory connectionFactory = new ConnectionFactory();
@@ -37,18 +40,16 @@ public class FluxWithRabbitMQDemo {
         this.receiver = RabbitFlux.createReceiver(receiverOptions);
     }
 
-    private Mono<String> doWork(Delivery message) {
+    private Mono<String> doWork(AcknowledgableDelivery message) {
         try {
-            String taskId = new String(message.getBody());
-
-            log.info("Receiver Got message {}", taskId);
+            ObjectMapper mapper = new ObjectMapper();
+            ChildMessage childMessage = mapper.readValue(message.getBody(), ChildMessage.class);
             int sleep = new Random().nextInt(5000) + 100;
             Thread.sleep(sleep);
-            log.info("Receiver completed task {} in: {}", taskId, sleep);
-
-            return Mono.just(taskId + "::" + sleep);
-        } catch (InterruptedException ex) {
-
+            log.info("Receiver completed task {} in: {}", childMessage, sleep);
+            return Mono.just(childMessage.getId() + "::" + sleep);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return null;
     }
@@ -56,41 +57,81 @@ public class FluxWithRabbitMQDemo {
 
     public void run(int count) {
         ConsumeOptions options = new ConsumeOptions();
-        options.qos(1);
-        Flux<Delivery> messages = receiver.consumeAutoAck(QUEUE, options);
+        options.qos(500);
+        Flux<AcknowledgableDelivery> messages = receiver.consumeManualAck(QUEUE, options);
         messages.delaySubscription(sender.declareQueue(QueueSpecification.queue(QUEUE)))
-                .groupBy( (message) -> {
-                    int taskId = Integer.parseInt(new String(message.getBody()));
-                    return taskId > 100 ? "groupB" : "groupA";
+                .groupBy((message) -> {
+                    try {
+                        ChildMessage m = mapper.readValue(message.getBody(), ChildMessage.class);
+                        return m.getParentTaskId();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        return null;
+                    }
                 })
-                .map(g -> g.parallel().runOn(Schedulers.newElastic("groupByPool")))
-                .subscribe( (stream) -> {
-                    stream.subscribe(this::doWork);
+                .map(g ->  {
+                    log.info(g.key().toString());
+                    return g.parallel();
+                })
+                .subscribe((stream) -> {
+
+                    stream
+                            .runOn(Schedulers.newParallel("pool", 4))
+                            .doOnError(m -> {
+                                // sendToRetryQueue();
+                                log.error(m.toString());
+                            })
+                            .doOnComplete( () -> {
+                                log.info("Completed!");
+                            })
+                            .subscribe( (message) -> {
+                                this.doWork(message);
+                                message.ack();
+                            });
                 });
 
+        AtomicInteger counter = new AtomicInteger(0);
+        Flux<OutboundMessageResult> dataStream = sender.sendWithPublishConfirms(
+                Flux.range(1, count)
+                        .window(100)
+                        .concatMap( (g) -> {
+                            counter.getAndIncrement();
+                            return g.map( (i) -> {
+                                int parentTaskId = counter.get();
+                                ChildMessage childMessage = new ChildMessage(parentTaskId, i);
+                                OutboundMessage message = null;
+                                try {
+                                    String m = mapper.writeValueAsString(childMessage);
+                                    message = new OutboundMessage("", QUEUE, m.getBytes(StandardCharsets.UTF_8));
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                                return message;
+                            });
+                        }));
 
-        Flux<OutboundMessageResult> dataStream = sender.sendWithPublishConfirms(Flux.range(1, count)
-                .map(i -> new OutboundMessage("", QUEUE, (i.toString()).getBytes())));
 
         sender.declareQueue(QueueSpecification.queue(QUEUE))
                 .thenMany(dataStream)
-                .doOnError(e -> System.out.println("Send failed" + e))
+                .doOnError(e -> log.error("Send failed" + e))
                 .subscribe(m -> {
                     if (m != null) {
-                        log.info("Successfully sent message");
+//                        log.info("Successfully sent message");
                     }
                 });
 
-        try {
-            Thread.sleep(20000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        while (true) {
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException ex) {
+                log.error("killed", ex);
+            }
         }
 
     }
 
     public static void main(String[] args) throws Exception {
-        int count = 200;
+        int count = 500;
         FluxWithRabbitMQDemo sender = new FluxWithRabbitMQDemo();
         sender.run(count);
     }
