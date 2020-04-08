@@ -204,10 +204,13 @@ public class SSHConnection {
             switch(channelType) {
             case "sftp":
                 channel = (ChannelSftp) session.openChannel(channelType);
+                break;
             case "exec":
                 channel = (ChannelExec) session.openChannel(channelType);
+                break;
             case "shell":
                 channel = session.openChannel(channelType);
+                break;
             default:
                 _log.debug("SSH_UNSUPPORTED_CHANNEL");
             }

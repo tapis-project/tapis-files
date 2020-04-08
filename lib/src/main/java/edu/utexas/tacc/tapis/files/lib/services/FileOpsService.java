@@ -45,6 +45,11 @@ public class FileOpsService implements IFileOpsService {
    }
 
     @Override
+    public void disconnect() {
+        if (client != null) client.disconnect();
+    }
+
+    @Override
     public List<FileInfo> ls(String path) throws ServiceException {
         try {
             List<FileInfo> listing = client.ls(path);
@@ -54,10 +59,6 @@ public class FileOpsService implements IFileOpsService {
             String message = "Listing failed  : " + ex.getMessage();
             log.error("ERROR", ex);
             throw new ServiceException(message);
-        } finally {
-            if (client != null) {
-                client.disconnect();
-            }
         }
     }
 
@@ -69,10 +70,6 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("mkdir failed : " + ex.getMessage());
-        } finally {
-            if (client != null) {
-                client.disconnect();
-            }
         }
     }
 
@@ -83,10 +80,6 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("insert failed");
-        } finally {
-            if (client != null) {
-                client.disconnect();
-            }
         }
     }
 
@@ -97,10 +90,6 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("move/rename failed: " + ex.getMessage());
-        } finally {
-            if (client != null) {
-                client.disconnect();
-            }
         }
     }
 
@@ -121,10 +110,6 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
-        } finally {
-            if (client != null) {
-                client.disconnect();
-            }
         }
     }
 
@@ -135,10 +120,6 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
-        } finally {
-            if (client != null) {
-                client.disconnect();
-            }
         }
     }
 
@@ -150,10 +131,6 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
-        } finally {
-            if (client != null) {
-                client.disconnect();
-            }
         }
     }
 }

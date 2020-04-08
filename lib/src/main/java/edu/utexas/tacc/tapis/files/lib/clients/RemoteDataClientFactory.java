@@ -16,12 +16,7 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
   public IRemoteDataClient getRemoteDataClient(@NotNull TSystem system) throws IOException{
 
 	   List<TransferMethodsEnum> protocol = system.getTransferMethods();
-	   Credential creds = new Credential();
 	   if(protocol.contains(TransferMethodsEnum.valueOf("SFTP"))) {
-		   // FIXME: Remove the hardcoded password once the accessCredential is resolved in system Service
-	       creds.setPassword("root");
-		   //creds.setAccessKey("root");
-		   system.setAccessCredential(creds);
 		   return new SSHDataClient(system);
 	   } else if (protocol.contains(TransferMethodsEnum.valueOf("S3"))){
 		   return new S3DataClient(system);

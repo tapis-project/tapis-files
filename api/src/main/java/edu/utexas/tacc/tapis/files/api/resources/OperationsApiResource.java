@@ -92,13 +92,13 @@ public class OperationsApiResource {
             @Parameter(description = "pagination offset", example = "1000") @QueryParam("offset") Long offset,
             @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
             @Context SecurityContext securityContext)  {
-
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             List<FileInfo> listing = fileOpsService.ls(path);
+            fileOpsService.disconnect();
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
         } catch (ServiceException | TapisException e) {
@@ -129,6 +129,7 @@ public class OperationsApiResource {
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.mkdir(path);
+            fileOpsService.disconnect();
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | TapisClientException ex) {
@@ -162,6 +163,7 @@ public class OperationsApiResource {
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.insert(path, fileInputStream);
+            fileOpsService.disconnect();
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | TapisClientException ex) {
@@ -194,6 +196,7 @@ public class OperationsApiResource {
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.move(path, newName);
+            fileOpsService.disconnect();
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | TapisClientException ex) {
@@ -225,6 +228,7 @@ public class OperationsApiResource {
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.delete(path);
+            fileOpsService.disconnect();
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | TapisClientException ex) {
