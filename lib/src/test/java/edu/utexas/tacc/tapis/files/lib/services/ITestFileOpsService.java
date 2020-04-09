@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
  The user is set to be testuser
 */
 @Test(groups = {"integration"})
-public class ITestFileOpsServiceSSH {
+public class ITestFileOpsService {
 
     TSystem testSystemSSH;
     TSystem testSystemS3;
@@ -33,7 +33,7 @@ public class ITestFileOpsServiceSSH {
     private SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
 
 
-    private ITestFileOpsServiceSSH() {
+    private ITestFileOpsService() {
         Credential creds = new Credential();
         creds.setAccessKey("testuser");
         creds.setPassword("password");
@@ -50,8 +50,8 @@ public class ITestFileOpsServiceSSH {
         testSystemSSH.setTransferMethods(transferMechs);
 
         Credential creds2 = new Credential();
-        creds.setAccessKey("user");
-        creds.setAccessSecret("password");
+        creds2.setAccessKey("user");
+        creds2.setAccessSecret("password");
         testSystemS3 = new TSystem();
         testSystemS3.setHost("http://localhost");
         testSystemS3.setPort(9000);
@@ -60,22 +60,8 @@ public class ITestFileOpsServiceSSH {
         testSystemS3.setAccessCredential(creds2);
         testSystemS3.setRootDir("/");
         List<TSystem.TransferMethodsEnum> transferMechs2 = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.S3);
+        transferMechs2.add(TSystem.TransferMethodsEnum.S3);
         testSystemS3.setTransferMethods(transferMechs2);
-    }
-
-    @BeforeTest
-    public void setUp() {
-
-    }
-
-    @AfterTest
-    public void tearDown() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystemSSH);
-        FileOpsService fileOpsService = new FileOpsService(testSystemSSH);
-        fileOpsService.delete("/");
-        fileOpsService.disconnect();
-
     }
 
     @DataProvider(name="testSystems")
@@ -85,6 +71,22 @@ public class ITestFileOpsServiceSSH {
                 testSystemS3
         };
     }
+
+    @BeforeTest
+    public void setUp() {
+
+    }
+
+    @AfterTest()
+    public void tearDown() throws Exception {
+        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystemSSH);
+        FileOpsService fileOpsService = new FileOpsService(testSystemSSH);
+        fileOpsService.delete("/");
+        fileOpsService.disconnect();
+
+    }
+
+
     @Test(dataProvider = "testSystems")
     public void testInsertAndGet(TSystem testSystem) throws Exception {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
@@ -95,6 +97,7 @@ public class ITestFileOpsServiceSSH {
         Assert.assertTrue(out.readAllBytes().length == 10* 1024);
         fileOpsService.disconnect();
     }
+
 
     @Test(dataProvider = "testSystems")
     public void testListing(TSystem testSystem) throws Exception {
