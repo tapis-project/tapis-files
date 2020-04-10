@@ -1,12 +1,13 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.List;
 
 import javax.validation.constraints.NotNull;
 
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.input.AutoCloseInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +60,8 @@ public class FileOpsService implements IFileOpsService {
             String message = "Listing failed  : " + ex.getMessage();
             log.error("ERROR", ex);
             throw new ServiceException(message);
+        } finally {
+            client.disconnect();
         }
     }
 
@@ -70,6 +73,8 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("mkdir failed : " + ex.getMessage());
+        } finally {
+            client.disconnect();
         }
     }
 
@@ -80,6 +85,8 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("insert failed");
+        } finally {
+            client.disconnect();
         }
     }
 
@@ -90,6 +97,8 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("move/rename failed: " + ex.getMessage());
+        } finally {
+            client.disconnect();
         }
     }
 
@@ -100,16 +109,31 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("delete failed");
-        } 
+        } finally {
+            client.disconnect();
+        }
     }
 
+    /**
+     * In order to have the method auto disconnect the client, we have to copy the
+     * original InputStream from the client to another InputStream or else
+     * the finally block immediately disconnects.
+     *
+     * @param path String
+     * @return InputStream
+     * @throws ServiceException
+     */
     @Override
     public InputStream getStream(String path) throws ServiceException {
-        try {
-            return client.getStream(path);
+        // Try with resources to auto close the stream
+        try (InputStream fileStream = client.getStream(path)){
+            InputStream out = IOUtils.toBufferedInputStream(fileStream);
+            return out;
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
+        } finally {
+            client.disconnect();
         }
     }
 
@@ -120,6 +144,8 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
+        } finally {
+            client.disconnect();
         }
     }
 
@@ -131,6 +157,8 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
+        } finally {
+           client.disconnect();
         }
     }
 }
