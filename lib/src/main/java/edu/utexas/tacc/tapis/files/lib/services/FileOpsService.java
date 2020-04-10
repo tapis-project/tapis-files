@@ -127,8 +127,7 @@ public class FileOpsService implements IFileOpsService {
     public InputStream getStream(String path) throws ServiceException {
         // Try with resources to auto close the stream
         try (InputStream fileStream = client.getStream(path)){
-            InputStream out = IOUtils.toBufferedInputStream(fileStream);
-            return out;
+            return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
@@ -139,8 +138,8 @@ public class FileOpsService implements IFileOpsService {
 
     @Override
     public InputStream getBytes(@NotNull String path, @NotNull long startByte, @NotNull long endByte) throws ServiceException  {
-        try {
-            return client.getBytesByRange(path, startByte, endByte);
+        try (InputStream fileStream = client.getBytesByRange(path, startByte, endByte)) {
+            return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
@@ -151,9 +150,9 @@ public class FileOpsService implements IFileOpsService {
 
     @Override
     public InputStream more(@NotNull String path, @NotNull long startPage)  throws ServiceException {
-        try {
-            long startByte = (startPage -1) * 1024;
-            return client.getBytesByRange(path, startByte, startByte + 1023);
+        long startByte = (startPage -1) * 1024;
+        try (InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023)) {
+            return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
