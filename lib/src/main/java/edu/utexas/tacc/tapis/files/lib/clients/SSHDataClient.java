@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -13,6 +14,7 @@ import java.util.Locale;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 
+import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -313,7 +315,8 @@ public class SSHDataClient implements IRemoteDataClient {
         Path absPath = Paths.get(rootDir,path);
         ChannelSftp channelSftp = openAndConnectSFTPChannel(absPath.toString());
         try {
-            return channelSftp.get(absPath.toString());
+            InputStream inputStream = channelSftp.get(absPath.toString());
+            return inputStream;
         } catch (SftpException ex) {
             log.error("Error retrieving file to {}", systemId, ex);
             throw new IOException("Error retrieving file into " + systemId + " at path " + path);

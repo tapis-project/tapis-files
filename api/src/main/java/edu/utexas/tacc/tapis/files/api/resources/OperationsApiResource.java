@@ -34,8 +34,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import java.io.InputStream;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-
 
 @Path("/ops")
 public class OperationsApiResource {
