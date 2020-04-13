@@ -2,6 +2,13 @@ FROM rastasheep/ubuntu-sshd:18.04
 
 COPY ./deploy/ssh-machine.pub /root/.ssh/authorized_keys
 
+RUN useradd --create-home --shell /bin/bash testuser
+RUN echo 'testuser:password' | chpasswd
+RUN mkdir -p /home/testuser/.ssh/
+COPY ./deploy/ssh-machine.pub /home/testuser/.ssh/authorized_keys
+RUN chown -R testuser:testuser /home/testuser
+
 RUN mkdir -p /home/L1/L2/test2
 RUN mkdir -p /home/L1/test1
+
 COPY ./lib/src/test/resources/test1.txt /home/L1/L2/test2/test1.txt

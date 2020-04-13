@@ -34,8 +34,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import java.io.InputStream;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-
 
 @Path("/ops")
 public class OperationsApiResource {
@@ -92,7 +90,6 @@ public class OperationsApiResource {
             @Parameter(description = "pagination offset", example = "1000") @QueryParam("offset") Long offset,
             @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
             @Context SecurityContext securityContext)  {
-
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);

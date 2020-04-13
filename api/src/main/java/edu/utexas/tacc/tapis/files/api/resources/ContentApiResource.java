@@ -80,7 +80,7 @@ public class ContentApiResource {
             else {
                 stream = fileOpsService.getStream(path);
             }
-
+            fileOpsService.disconnect();
             return Response
                     .ok(stream, mtype)
                     .header("content-disposition", contentDisposition)
