@@ -73,7 +73,7 @@ public class OperationsApiResource {
 
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
-    @Path("/{systemId}/{path:.+}")
+    @Path("/{systemId}{p:/?}{path :(.*)}") // Path is optional here, have to do this regex madness.
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "List files/objects in a storage system.", description = "List files in a bucket", tags={ "file operations" })
     @ApiResponses(value = {
@@ -96,7 +96,6 @@ public class OperationsApiResource {
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             List<FileInfo> listing = fileOpsService.ls(path);
-            fileOpsService.disconnect();
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
         } catch (ServiceException | TapisException e) {
@@ -127,7 +126,6 @@ public class OperationsApiResource {
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.mkdir(path);
-            fileOpsService.disconnect();
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | TapisClientException ex) {
@@ -161,7 +159,6 @@ public class OperationsApiResource {
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.insert(path, fileInputStream);
-            fileOpsService.disconnect();
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | TapisClientException ex) {
@@ -194,7 +191,6 @@ public class OperationsApiResource {
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.move(path, newName);
-            fileOpsService.disconnect();
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | TapisClientException ex) {
@@ -226,7 +222,6 @@ public class OperationsApiResource {
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.delete(path);
-            fileOpsService.disconnect();
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | TapisClientException ex) {
