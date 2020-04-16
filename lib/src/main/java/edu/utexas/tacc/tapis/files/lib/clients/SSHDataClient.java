@@ -160,15 +160,16 @@ public class SSHDataClient implements IRemoteDataClient {
     private void insertOrAppend(@NotNull String path, @NotNull InputStream fileStream, @NotNull Boolean append) throws IOException, NotFoundException {
         Path absolutePath = Paths.get(rootDir, path).normalize();
         Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
-        Path parentPath = absolutePath.getParent();
+        Path parentPath = relativeRemotePath.getParent();
 
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
 
-        int channelOptions = append ? ChannelSftp.APPEND : ChannelSftp.RESUME;
+        int channelOptions = append ? ChannelSftp.APPEND : ChannelSftp.OVERWRITE;
 
         try {
             if (parentPath != null) this.mkdir(parentPath.toString());
-            channelSftp.cd(parentPath.toString());
+            channelSftp.cd(rootDir);
+            if (parentPath != null) channelSftp.cd(parentPath.toString());
             channelSftp.put(fileStream, absolutePath.getFileName().toString(), channelOptions);
         } catch (SftpException ex) {
             log.error("Error inserting file to {}", systemId, ex);
@@ -333,7 +334,7 @@ public class SSHDataClient implements IRemoteDataClient {
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
         try {
             InputStream inputStream = channelSftp.get(absPath.toString());
-            return inputStream;
+            return IOUtils.toBufferedInputStream(inputStream);
         } catch (SftpException ex) {
             log.error("Error retrieving file to {}", systemId, ex);
             throw new IOException("Error retrieving file into " + systemId + " at path " + path);

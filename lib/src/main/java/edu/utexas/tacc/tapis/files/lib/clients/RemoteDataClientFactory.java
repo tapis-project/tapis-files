@@ -1,13 +1,10 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import javax.validation.constraints.NotNull;
-
-import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem.TransferMethodsEnum;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class RemoteDataClientFactory implements IRemoteDataClientFactory {
