@@ -17,6 +17,7 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.codec.Charsets;
 import org.apache.commons.io.IOUtils;
+import org.apache.http.entity.ContentType;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
@@ -34,6 +35,7 @@ import org.testng.Assert;
 import org.testng.annotations.*;
 
 import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -152,7 +154,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        FileListResponse response = target("/ops/testSystem/test")
+        FileListResponse response = target("/ops/testSystem/")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
@@ -188,8 +190,10 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
                 .delete(FileStringResponse.class);
-        List<FileInfo> listing = client.ls("dir1/testfile3.txt");
-        Assert.assertEquals(listing.size(), 0);
+
+        Assert.assertThrows(NotFoundException.class, ()-> {
+            client.ls("/a/b/c/test.txt");
+        });
         List<FileInfo> l2 = client.ls("/");
         Assert.assertTrue(l2.size() > 0);
 
@@ -210,8 +214,9 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .header("x-tapis-token", user1jwt)
                 .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
         //TODO: Add asserts
-        List<FileInfo> listing = client.ls("dir1/testfile3.txt");
-        Assert.assertEquals(listing.size(), 0);
+        Assert.assertThrows(NotFoundException.class, ()-> {
+            client.ls("/a/b/c/test.txt");
+        });
     }
 
     @Test
@@ -234,8 +239,9 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .header("x-tapis-token", user1jwt)
                 .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
         //TODO: Add asserts
-        List<FileInfo> listing = client.ls("dir1/");
-        Assert.assertEquals(listing.size(), 0);
+        Assert.assertThrows(NotFoundException.class, ()-> {
+            client.ls("/a/b/c/test.txt");
+        });
     }
 
 
@@ -267,8 +273,9 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         Assert.assertEquals(listing.size(), 1);
         listing = client.ls("dir1/renamed/2.txt");
         Assert.assertEquals(listing.size(), 1);
-        listing = client.ls("dir1/dir2/2.txt");
-        Assert.assertEquals(listing.size(), 0);
+        Assert.assertThrows(NotFoundException.class, ()-> {
+            client.ls("/a/b/c/test.txt");
+        });
     }
 
 
@@ -312,17 +319,19 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         FileStringResponse response = target("/ops/testSystem/newDirectory/")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
+                .header("content-type", ContentType.TEXT_PLAIN)
                 .header("x-tapis-token", user1jwt)
                 .post(Entity.text(""), FileStringResponse.class);
 
         FileListResponse listing  = target("/ops/testSystem/newDirectory")
                 .request()
+                .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
                 .get(FileListResponse.class);
 
         Assert.assertEquals(listing.getResult().size(), 1);
         Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
-        Assert.assertEquals(listing.getResult().get(0).isDir(), true);
+        Assert.assertTrue(listing.getResult().get(0).isDir());
     }
 
     @Test
@@ -360,9 +369,6 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        CreateDirectoryRequest payload = new CreateDirectoryRequest();
-        payload.setPath(path);
-
         FileStringResponse response = target("/ops/testSystem/" + path)
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -390,9 +396,6 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     public void testMkdirWithBadData(String path) throws Exception {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-
-        CreateDirectoryRequest payload = new CreateDirectoryRequest();
-        payload.setPath(path);
 
         Response response = target("/ops/testSystem/" + path)
                 .request()

@@ -51,7 +51,7 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
-    public List<FileInfo> ls(String path) throws ServiceException {
+    public List<FileInfo> ls(@NotNull String path) throws ServiceException {
         try {
             List<FileInfo> listing = client.ls(path);
             
@@ -79,7 +79,7 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
-    public void insert(String path, InputStream inputStream) throws ServiceException {
+    public void insert(String path, @NotNull InputStream inputStream) throws ServiceException {
         try {
             client.insert(path, inputStream);
         } catch (IOException ex) {
@@ -103,7 +103,7 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
-    public void delete(String path) throws ServiceException {
+    public void delete(@NotNull String path) throws ServiceException {
         try {
             client.delete(path);
         } catch (IOException ex) {
@@ -137,8 +137,8 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
-    public InputStream getBytes(@NotNull String path, @NotNull long startByte, @NotNull long endByte) throws ServiceException  {
-        try (InputStream fileStream = client.getBytesByRange(path, startByte, endByte)) {
+    public InputStream getBytes(@NotNull String path, long startByte, long count) throws ServiceException  {
+        try (InputStream fileStream = client.getBytesByRange(path, startByte, count)) {
             return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
             log.error("ERROR", ex);
@@ -149,7 +149,7 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
-    public InputStream more(@NotNull String path, @NotNull long startPage)  throws ServiceException {
+    public InputStream more(@NotNull String path, long startPage)  throws ServiceException {
         long startByte = (startPage -1) * 1024;
         try (InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023)) {
             return IOUtils.toBufferedInputStream(fileStream);

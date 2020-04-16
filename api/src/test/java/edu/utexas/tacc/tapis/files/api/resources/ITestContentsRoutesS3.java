@@ -166,7 +166,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/content/testSystem/words.txt")
                 .request()
-                .header("range", "0,999")
+                .header("range", "0,1000")
                 .header("X-Tapis-Token", user1jwt)
                 .get();
         Assert.assertEquals(response.getStatus(), 200);
