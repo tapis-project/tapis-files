@@ -154,7 +154,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        FileListResponse response = target("/ops/testSystem")
+        FileListResponse response = target("/ops/testSystem/")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)

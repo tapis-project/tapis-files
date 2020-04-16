@@ -73,7 +73,7 @@ public class OperationsApiResource {
 
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
-    @Path("/{systemId}{p:/?}{path :(.*)}") // Path is optional here, have to do this regex madness.
+    @Path("/{systemId}/{path :(.*?)}") // Path is optional here, have to do this regex madness.
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "List files/objects in a storage system.", description = "List files in a bucket", tags={ "file operations" })
     @ApiResponses(value = {
@@ -85,7 +85,7 @@ public class OperationsApiResource {
     })
     public Response listFiles(
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
-            @Parameter(description = "path relative to root of bucket/folder", example = EXAMPLE_PATH) @PathParam("path") String path,
+            @Parameter(description = "path relative to root of bucket/folder", required=false, example = EXAMPLE_PATH) @PathParam("path") String path,
             @Parameter(description = "pagination limit", example = "100") @QueryParam("limit") @Max(1000) int limit,
             @Parameter(description = "pagination offset", example = "1000") @QueryParam("offset") Long offset,
             @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,

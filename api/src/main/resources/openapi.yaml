@@ -78,6 +78,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthCheckResponse'
   /ops/{systemId}/{path}:
+    get:
+      tags:
+      - file operations
+      summary: List files/objects in a storage system.
+      description: List files in a bucket
+      operationId: listFiles
+      parameters:
+      - name: systemId
+        in: path
+        description: System ID
+        required: true
+        schema:
+          type: string
+        example: system123
+      - name: path
+        in: path
+        description: path relative to root of bucket/folder
+        required: true
+        schema:
+          type: string
+        example: /folderA/folderB/
+      - name: limit
+        in: query
+        description: pagination limit
+        schema:
+          type: integer
+          format: int32
+        example: 100
+      - name: offset
+        in: query
+        description: pagination offset
+        schema:
+          type: integer
+          format: int64
+        example: 1000
+      - name: meta
+        in: query
+        description: Return metadata also? This will slow down the request.
+        schema:
+          type: boolean
+      responses:
+        200:
+          description: A list of files
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileListingResponse'
     put:
       tags:
       - file operations
@@ -177,54 +224,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileStringResponse'
-  /ops/{systemId}{p}{path}:
-    get:
-      tags:
-      - file operations
-      summary: List files/objects in a storage system.
-      description: List files in a bucket
-      operationId: listFiles
-      parameters:
-      - name: systemId
-        in: path
-        description: System ID
-        required: true
-        schema:
-          type: string
-        example: system123
-      - name: path
-        in: path
-        description: path relative to root of bucket/folder
-        required: true
-        schema:
-          type: string
-        example: /folderA/folderB/
-      - name: limit
-        in: query
-        description: pagination limit
-        schema:
-          type: integer
-          format: int32
-        example: 100
-      - name: offset
-        in: query
-        description: pagination offset
-        schema:
-          type: integer
-          format: int64
-        example: 1000
-      - name: meta
-        in: query
-        description: Return metadata also? This will slow down the request.
-        schema:
-          type: boolean
-      responses:
-        200:
-          description: A list of files
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FileListingResponse'
   /permissions/{systemId}/{path}:
     get:
       tags:
@@ -402,6 +401,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
+  /transfers:
+    post:
+      tags:
+      - transfers
+      summary: Transfer data
+      description: This creates a background task which will transfer files into the
+        storage system
+      operationId: createTransferTask
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferTaskRequest'
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
   /transfers/{transferTaskId}/history:
     get:
       tags:
@@ -464,27 +484,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TapisResponse'
-  /transfers:
-    post:
-      tags:
-      - transfers
-      summary: Transfer data
-      description: This creates a background task which will transfer files into the
-        storage system
-      operationId: createTransferTask
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TransferTaskRequest'
-        required: true
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskResponse'
 components:
   schemas:
     HeaderByteRange:
@@ -676,17 +675,6 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
     TransferTaskRequest:
       required:
       - destinationPath
@@ -707,3 +695,14 @@ components:
         destinationPath:
           type: string
           description: Path to file/folder in destination system
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string
