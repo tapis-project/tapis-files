@@ -115,7 +115,7 @@ public class FilesApplication extends BaseResourceConfig {
     }
 
     public static void main(String[] args) throws Exception {
-        final URI BASE_URI = URI.create("http://0.0.0.0:8080/files");
+        final URI BASE_URI = URI.create("http://0.0.0.0:8080/");
         FilesApplication config = new FilesApplication();
         final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(BASE_URI, config, false);
         server.start();

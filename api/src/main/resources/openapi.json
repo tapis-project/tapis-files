@@ -84,7 +84,7 @@
         }
       }
     },
-    "/v3/files/health/healthcheck" : {
+    "/v3/files/healthcheck" : {
       "get" : {
         "tags" : [ "health" ],
         "summary" : "Health check",
@@ -94,7 +94,7 @@
           "200" : {
             "description" : "OK",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/HealthCheckResponse"
                 }

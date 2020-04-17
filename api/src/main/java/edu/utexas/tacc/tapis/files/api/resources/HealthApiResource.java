@@ -9,16 +9,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import javax.annotation.security.PermitAll;
 import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-@Path("/v3/files/health")
+@Path("/v3/files/healthcheck")
 public class HealthApiResource {
 
     private static class HealthCheckResponse extends TapisResponse<String>{}
 
     @GET
     @PermitAll
-    @Path("/healthcheck")
+    @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Health check", description = "Health check", tags={ "health" })
     @ApiResponses(value = {
             @ApiResponse(
