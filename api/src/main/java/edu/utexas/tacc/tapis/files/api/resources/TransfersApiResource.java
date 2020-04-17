@@ -28,7 +28,7 @@ import javax.ws.rs.core.SecurityContext;
 import java.util.UUID;
 
 
-@Path("/transfers")
+@Path("/v3/files/transfers")
 public class TransfersApiResource {
 
     private final String EXAMPLE_TASK_ID = "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c";

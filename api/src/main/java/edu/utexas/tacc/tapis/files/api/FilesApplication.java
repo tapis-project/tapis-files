@@ -63,11 +63,11 @@ import java.net.URI;
                 ),
                 @Server(
                         description = "development",
-                        url = "https://dev.develop.tapis.io/v3"
+                        url = "https://dev.develop.tapis.io"
                 )
         }
 )
-@ApplicationPath("/files")
+@ApplicationPath("v3/files")
 public class FilesApplication extends BaseResourceConfig {
     /**
      * BaseResourceConfig has all the extra jersey filters and our

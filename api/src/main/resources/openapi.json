@@ -19,7 +19,7 @@
     "description" : "localhost",
     "variables" : { }
   }, {
-    "url" : "https://dev.develop.tapis.io/v3",
+    "url" : "https://dev.develop.tapis.io",
     "description" : "development",
     "variables" : { }
   } ],
@@ -36,7 +36,7 @@
     "name" : "transfers"
   } ],
   "paths" : {
-    "/content/{systemId}/{path}" : {
+    "/v3/files/content/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "content" ],
         "summary" : "Retrieve a file from the files service",
@@ -84,7 +84,7 @@
         }
       }
     },
-    "/health/healthcheck" : {
+    "/v3/files/health/healthcheck" : {
       "get" : {
         "tags" : [ "health" ],
         "summary" : "Health check",
@@ -104,7 +104,7 @@
         }
       }
     },
-    "/ops/{systemId}/{path}" : {
+    "/v3/files/ops/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "file operations" ],
         "summary" : "List files/objects in a storage system.",
@@ -302,7 +302,7 @@
         }
       }
     },
-    "/permissions/{systemId}/{path}" : {
+    "/v3/files/permissions/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "permissions" ],
         "summary" : "List permissions on an file/folder",
@@ -420,7 +420,7 @@
         }
       }
     },
-    "/share/{systemId}/{path}" : {
+    "/v3/files/share/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "share" ],
         "summary" : "List the shares on a file resource. ",
@@ -539,37 +539,7 @@
         }
       }
     },
-    "/transfers" : {
-      "post" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Transfer data",
-        "description" : "This creates a background task which will transfer files into the storage system",
-        "operationId" : "createTransferTask",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TransferTaskRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/transfers/{transferTaskId}/history" : {
+    "/v3/files/transfers/{transferTaskId}/history" : {
       "get" : {
         "tags" : [ "transfers" ],
         "summary" : "Get history of a transfer task",
@@ -598,7 +568,7 @@
         }
       }
     },
-    "/transfers/{transferTaskId}" : {
+    "/v3/files/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
         "summary" : "Get a transfer task",
@@ -647,6 +617,36 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/TapisResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/transfers" : {
+      "post" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Transfer data",
+        "description" : "This creates a background task which will transfer files into the storage system",
+        "operationId" : "createTransferTask",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
                 }
               }
             }
@@ -919,6 +919,23 @@
           }
         }
       },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "TransferTaskRequest" : {
         "required" : [ "destinationPath", "destinationSystemId", "sourcePath", "sourceSystemId" ],
         "type" : "object",
@@ -938,23 +955,6 @@
           "destinationPath" : {
             "type" : "string",
             "description" : "Path to file/folder in destination system"
-          }
-        }
-      },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
           }
         }
       }

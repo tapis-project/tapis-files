@@ -35,7 +35,7 @@ import javax.ws.rs.core.SecurityContext;
 import java.io.InputStream;
 import java.util.List;
 
-@Path("/ops")
+@Path("/v3/files/ops")
 public class OperationsApiResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";
