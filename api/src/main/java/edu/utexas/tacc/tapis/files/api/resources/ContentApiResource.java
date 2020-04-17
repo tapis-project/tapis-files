@@ -30,7 +30,7 @@ import java.nio.file.Paths;
 import java.util.Objects;
 
 
-@Path("/content")
+@Path("/v3/files/content")
 public class ContentApiResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";

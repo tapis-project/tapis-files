@@ -18,7 +18,7 @@ import javax.ws.rs.*;
 import edu.utexas.tacc.tapis.files.lib.models.SharedFileObject;
 import edu.utexas.tacc.tapis.files.api.models.ShareFileRequest;
 
-@Path("/share")
+@Path("/v3/files/share")
 public class ShareApiResource  {
 
   @DELETE

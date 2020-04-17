@@ -11,7 +11,7 @@ import javax.annotation.security.PermitAll;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 
-@Path("/health")
+@Path("/v3/files/health")
 public class HealthApiResource {
 
     private static class HealthCheckResponse extends TapisResponse<String>{}
