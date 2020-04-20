@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.NotImplementedException;
@@ -18,6 +19,7 @@ import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -26,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 public class S3DataClient implements IRemoteDataClient {
@@ -35,6 +38,7 @@ public class S3DataClient implements IRemoteDataClient {
     private final String bucket;
     private final TSystem system;
     private final String rootDir;
+    private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
     public S3DataClient(@NotNull TSystem remoteSystem) throws IOException {
         system = remoteSystem;
@@ -59,6 +63,7 @@ public class S3DataClient implements IRemoteDataClient {
         ListObjectsV2Request req = ListObjectsV2Request.builder()
                 .bucket(bucket)
                 .prefix(path)
+                .maxKeys(MAX_LISTING_SIZE)
                 .build();
         ListObjectsV2Iterable resp = client.listObjectsV2Paginator(req);
         return resp.contents().stream();
@@ -83,10 +88,14 @@ public class S3DataClient implements IRemoteDataClient {
         }
     }
 
+    public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {
+        return this.ls(path, MAX_LISTING_SIZE, 0);
+    }
+
 
     @Override
-    public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {
-        //TODO: Implement limit/offset
+    public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException {
+
         String remoteAbsolutePath = DataClientUtils.getRemotePathForS3(rootDir, path);
 
 //        // If it looks like a file, just try to get the HEAD info
@@ -97,10 +106,11 @@ public class S3DataClient implements IRemoteDataClient {
 //           return out;
 //        }
         Stream<S3Object> response = listWithIterator(remoteAbsolutePath);
+        response.limit(limit).skip(offset);
         List<FileInfo> files = new ArrayList<>();
-        response.forEach(x->{
-                    files.add(new FileInfo(x));
-                });
+        response.forEach((S3Object x) -> {
+            files.add(new FileInfo(x));
+        });
         if (files.size() == 0) {
             throw new NotFoundException("No file at path " + path);
         }
@@ -110,8 +120,6 @@ public class S3DataClient implements IRemoteDataClient {
 
     @Override
     public void mkdir(@NotNull String path) throws IOException {
-        //TODO: Add sanitization for paths for things like ~, ../../.. yada yada
-
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         remotePath = DataClientUtils.ensureTrailingSlash(remotePath);
         PutObjectRequest req = PutObjectRequest.builder()

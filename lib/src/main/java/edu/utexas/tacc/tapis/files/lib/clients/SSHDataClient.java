@@ -11,6 +11,7 @@ import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 
 import com.jcraft.jsch.*;
+import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -34,6 +35,8 @@ public class SSHDataClient implements IRemoteDataClient {
     private SSHConnection sshConnection;
     private final String rootDir;
     private final String systemId;
+    private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
+
 
     public SSHDataClient(TSystem system) {
         host = system.getHost();
@@ -45,6 +48,12 @@ public class SSHDataClient implements IRemoteDataClient {
         systemId = system.getName();
     }
 
+
+
+    public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
+        return this.ls(remotePath, MAX_LISTING_SIZE, 0);
+    }
+
     /**
      * Returns the files listing output on a remotePath
      *
@@ -54,7 +63,7 @@ public class SSHDataClient implements IRemoteDataClient {
      * @throws NotFoundException
      */
     @Override
-    public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
+    public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
 
         List<FileInfo> filesList = new ArrayList<>();
         List<?> filelist;

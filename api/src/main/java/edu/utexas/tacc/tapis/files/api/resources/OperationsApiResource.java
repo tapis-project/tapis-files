@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.Pattern;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
@@ -34,6 +35,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Objects;
 
 @Path("/v3/files/ops")
 public class OperationsApiResource {
@@ -86,8 +88,8 @@ public class OperationsApiResource {
     public Response listFiles(
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
             @Parameter(description = "path relative to root of bucket/folder", required=false, example = EXAMPLE_PATH) @PathParam("path") String path,
-            @Parameter(description = "pagination limit", example = "100") @QueryParam("limit") @Max(1000) int limit,
-            @Parameter(description = "pagination offset", example = "1000") @QueryParam("offset") Long offset,
+            @Parameter(description = "pagination limit", example = "100") @DefaultValue("1000") @QueryParam("limit") @Max(1000) int limit,
+            @Parameter(description = "pagination offset", example = "1000") @DefaultValue("0") @QueryParam("offset") @Min(0) long offset,
             @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
             @Context SecurityContext securityContext)  {
         try {
@@ -95,7 +97,7 @@ public class OperationsApiResource {
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId);
             FileOpsService fileOpsService = new FileOpsService(system);
-            List<FileInfo> listing = fileOpsService.ls(path);
+            List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
         } catch (ServiceException | TapisException e) {
