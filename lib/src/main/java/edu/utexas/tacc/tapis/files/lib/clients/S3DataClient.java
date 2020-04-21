@@ -118,14 +118,19 @@ public class S3DataClient implements IRemoteDataClient {
 
 
     @Override
-    public void mkdir(@NotNull String path) throws IOException {
+    public void mkdir(@NotNull String path) throws IOException, NotFoundException {
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         remotePath = DataClientUtils.ensureTrailingSlash(remotePath);
-        PutObjectRequest req = PutObjectRequest.builder()
-                .bucket(bucket)
-                .key(remotePath)
-                .build();
-        client.putObject(req, RequestBody.fromString(""));
+        try {
+            PutObjectRequest req = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(remotePath)
+                    .build();
+            client.putObject(req, RequestBody.fromString(""));
+        } catch (S3Exception ex) {
+            log.error("S3DataClient.mkdir", ex);
+            throw new IOException("Could not create directory.");
+        }
     }
 
     @Override
@@ -157,7 +162,7 @@ public class S3DataClient implements IRemoteDataClient {
      * @param newName
      */
     @Override
-    public void move(@NotNull String currentPath, @NotNull String newName) {
+    public void move(@NotNull String currentPath, @NotNull String newName) throws IOException, NotFoundException {
 
         String oldRemotePath;
         oldRemotePath = FilenameUtils.normalizeNoEndSeparator(DataClientUtils.getRemotePath(rootDir, currentPath));
@@ -179,7 +184,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException {
+    public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
         String encodedSourcePath = bucket + "/" + DataClientUtils.getRemotePath(rootDir, currentPath);
         String remoteDestinationPath = DataClientUtils.getRemotePathForS3(rootDir, newPath);
         CopyObjectRequest req = CopyObjectRequest.builder()
@@ -265,7 +270,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException{
+    public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException, NotFoundException{
         try {
             // S3 api includes the final byte, different than posix, so we subtract one to get the proper count.
             String brange = String.format("bytes=%s-%s", startByte, startByte + count - 1);
