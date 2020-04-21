@@ -4,7 +4,9 @@ import java.io.*;
 import java.util.List;
 
 import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotFoundException;
 
+import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.AutoCloseInputStream;
@@ -18,12 +20,12 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 
 
-
 public class FileOpsService implements IFileOpsService {
     private Logger log = LoggerFactory.getLogger(FileOpsService.class);
 
     private IRemoteDataClient client;
     private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
+    private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
 //    @Inject NotificationsServiceClient notificationsServiceClient;
 
@@ -51,10 +53,15 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
-    public List<FileInfo> ls(@NotNull String path) throws ServiceException {
+    public List<FileInfo> ls(@NotNull String path) throws ServiceException, NotFoundException {
+        return this.ls(path, MAX_LISTING_SIZE, 0);
+
+    }
+
+    @Override
+    public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws ServiceException, NotFoundException {
         try {
-            List<FileInfo> listing = client.ls(path);
-            
+            List<FileInfo> listing = client.ls(path, limit, offset);
             return listing;
         } catch (IOException ex) {
             String message = "Listing failed  : " + ex.getMessage();

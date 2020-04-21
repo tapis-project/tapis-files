@@ -154,7 +154,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        FileListResponse response = target("/ops/testSystem/")
+        FileListResponse response = target("/v3/files/ops/testSystem/")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
@@ -165,11 +165,38 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     }
 
     @Test
+    public void  testGetS3ListWithLimitAndOffset() throws Exception {
+        addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "testfile2.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "testfile3.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "testfile4.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "testfile5.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "testfile6.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "testfile7.txt", 10*1024);
+        addTestFilesToBucket(testSystem, "testfile8.txt", 10*1024);
+
+        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
+
+        FileListResponse response = target("/v3/files/ops/testSystem/")
+                .queryParam("limit", "2")
+                .queryParam("offset", "2")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .get(FileListResponse.class);
+        List<FileInfo> listing = response.getResult();
+        Assert.assertEquals(listing.size(), 2);
+        Assert.assertEquals(listing.get(0).getName(), "testfile3.txt");
+    }
+
+
+    @Test
     public void  testGetS3ListNoAuthz() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(false);
-        Response response = target("/ops/testSystem/testfile1.txt")
+        Response response = target("/v3/files/ops/testSystem/testfile1.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
@@ -185,7 +212,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
+        FileStringResponse response = target("/v3/files/ops/testSystem/dir1/testfile3.txt")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
@@ -207,7 +234,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10*1024);
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        FileStringResponse response = target("/ops/testSystem/dir1/testfile3.txt")
+        FileStringResponse response = target("/v3/files/ops/testSystem/dir1/testfile3.txt")
                 .queryParam("newName", "renamed")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -232,7 +259,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        FileStringResponse response = target("/ops/testSystem/dir1/")
+        FileStringResponse response = target("/v3/files/ops/testSystem/dir1/")
                 .queryParam("newName", "renamed/")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -262,7 +289,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        FileStringResponse response = target("/ops/testSystem/dir1/dir2/")
+        FileStringResponse response = target("/v3/files/ops/testSystem/dir1/dir2/")
                 .queryParam("newName", "renamed")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -298,13 +325,13 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         FileDataBodyPart filePart = new FileDataBodyPart("file", tempFile);
         FormDataMultiPart form = new FormDataMultiPart();
         FormDataMultiPart multiPart = (FormDataMultiPart) form.bodyPart(filePart);
-        FileStringResponse response = target("/ops/testSystem/test-inserted.txt")
+        FileStringResponse response = target("/v3/files/ops/testSystem/test-inserted.txt")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
                 .post(Entity.entity(multiPart, MediaType.MULTIPART_FORM_DATA_TYPE), FileStringResponse.class);
 
-        FileListResponse listing  = target("/ops/testSystem/test-inserted.txt")
+        FileListResponse listing  = target("/v3/files/ops/testSystem/test-inserted.txt")
                 .request()
                 .header("x-tapis-token", user1jwt)
                 .get(FileListResponse.class);
@@ -316,14 +343,14 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        FileStringResponse response = target("/ops/testSystem/newDirectory/")
+        FileStringResponse response = target("/v3/files/ops/testSystem/newDirectory/")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("content-type", ContentType.TEXT_PLAIN)
                 .header("x-tapis-token", user1jwt)
                 .post(Entity.text(""), FileStringResponse.class);
 
-        FileListResponse listing  = target("/ops/testSystem/newDirectory")
+        FileListResponse listing  = target("/v3/files/ops/testSystem/newDirectory")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
@@ -339,13 +366,13 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        FileStringResponse response = target("/ops/testSystem/newDirectory")
+        FileStringResponse response = target("/v3/files/ops/testSystem/newDirectory")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
                 .post(Entity.text(""), FileStringResponse.class);
 
-        FileListResponse listing  = target("/ops/testSystem/newDirectory")
+        FileListResponse listing  = target("/v3/files/ops/testSystem/newDirectory")
                 .request()
                 .header("x-tapis-token", user1jwt)
                 .get(FileListResponse.class);
@@ -369,13 +396,13 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        FileStringResponse response = target("/ops/testSystem/" + path)
+        FileStringResponse response = target("/v3/files/ops/testSystem/" + path)
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
                 .post(Entity.text(""), FileStringResponse.class);
 
-        FileListResponse listing  = target("/ops/testSystem/newDirectory/test")
+        FileListResponse listing  = target("/v3/files/ops/testSystem/newDirectory/test")
                 .request()
                 .header("x-tapis-token", user1jwt)
                 .get(FileListResponse.class);
@@ -397,7 +424,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        Response response = target("/ops/testSystem/" + path)
+        Response response = target("/v3/files/ops/testSystem/" + path)
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)

@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -11,7 +12,9 @@ import javax.ws.rs.NotFoundException;
 
 public interface IRemoteDataClient {
 
+    // without limit/offset, just a helper method for convenience
     List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException;
+    List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException;
 
     /**
      * Insert will place the entire contents of an InputStream to the location

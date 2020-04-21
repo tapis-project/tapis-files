@@ -131,7 +131,7 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
         payload.setDestinationPath("destinationPath");
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
 
-        Response createTaskResponse = target("/transfers")
+        Response createTaskResponse = target("/v3/files/transfers")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
@@ -141,7 +141,7 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
     }
 
     private TransferTask getTransferTask(String taskUUID) {
-        TransferTaskResponse getTaskResponse = target("/transfers/" +taskUUID)
+        TransferTaskResponse getTaskResponse = target("/v3/files/transfers/" +taskUUID)
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
@@ -187,7 +187,7 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
     @Test
     public void getTransfer400() {
 
-        Response response = target("/transfers/INVALID")
+        Response response = target("/v3/files/transfers/INVALID")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
@@ -204,7 +204,7 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
     @Test
     public void getTransfer404() {
         String uuid = UUID.randomUUID().toString();
-        Response response = target("/transfers/" + uuid)
+        Response response = target("/v3/files/transfers/" + uuid)
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
@@ -218,7 +218,7 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
     @Test
     public void deleteTransfer() throws Exception {
         TransferTask t = createTransferTask();
-        Response resp = target("/transfers/" + t.getUuid().toString())
+        Response resp = target("/v3/files/transfers/" + t.getUuid().toString())
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
@@ -232,7 +232,7 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
 
     @Test
     public void deleteTransfer404() throws Exception {
-        Response resp = target("/transfers/" + UUID.randomUUID())
+        Response resp = target("/v3/files/transfers/" + UUID.randomUUID())
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)

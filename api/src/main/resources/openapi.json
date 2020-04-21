@@ -134,7 +134,8 @@
           "description" : "pagination limit",
           "schema" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "default" : 1000
           },
           "example" : 100
         }, {
@@ -143,7 +144,8 @@
           "description" : "pagination offset",
           "schema" : {
             "type" : "integer",
-            "format" : "int64"
+            "format" : "int64",
+            "default" : 0
           },
           "example" : 1000
         }, {
