@@ -62,7 +62,6 @@ public class FileOpsService implements IFileOpsService {
     public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws ServiceException, NotFoundException {
         try {
             List<FileInfo> listing = client.ls(path, limit, offset);
-            
             return listing;
         } catch (IOException ex) {
             String message = "Listing failed  : " + ex.getMessage();

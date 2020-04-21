@@ -106,9 +106,8 @@ public class S3DataClient implements IRemoteDataClient {
 //           return out;
 //        }
         Stream<S3Object> response = listWithIterator(remoteAbsolutePath);
-        response.limit(limit).skip(offset);
         List<FileInfo> files = new ArrayList<>();
-        response.forEach((S3Object x) -> {
+        response.skip(offset).limit(limit).forEach((S3Object x) -> {
             files.add(new FileInfo(x));
         });
         if (files.size() == 0) {
