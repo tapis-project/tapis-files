@@ -85,12 +85,9 @@ public class ITestFileOpsService {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystemSSH);
         FileOpsService fileOpsService = new FileOpsService(testSystemSSH);
         fileOpsService.delete("/");
-        fileOpsService.disconnect();
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystemS3);
         fileOpsService = new FileOpsService(testSystemS3);
         fileOpsService.delete("/");
-        fileOpsService.disconnect();
-
     }
 
     @Test(dataProvider = "testSystems")
@@ -100,11 +97,8 @@ public class ITestFileOpsService {
         fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
-        // Connection closes, so have to init again until caching is sorted out
-        fileOpsService = new FileOpsService(testSystem);
         List<FileInfo> listing = fileOpsService.ls("/test.txt");
         Assert.assertEquals(listing.size(), 1);
-        fileOpsService = new FileOpsService(testSystem);
         fileOpsService.delete("/test.txt");
         Assert.assertThrows(NotFoundException.class, ()-> {
             FileOpsService fos = new FileOpsService(testSystem);
@@ -119,11 +113,8 @@ public class ITestFileOpsService {
         fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("a/b/c/test.txt", in);
-        // Connection closes, so have to init again until caching is sorted out
-        fileOpsService = new FileOpsService(testSystem);
         List<FileInfo> listing = fileOpsService.ls("/a/b/c/test.txt");
         Assert.assertEquals(listing.size(), 1);
-        fileOpsService = new FileOpsService(testSystem);
         fileOpsService.delete("/a/b/");
         Assert.assertThrows(NotFoundException.class, ()-> {
             FileOpsService fos = new FileOpsService(testSystem);
@@ -139,8 +130,6 @@ public class ITestFileOpsService {
         FileOpsService fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
-        // Connection closes, so have to init again until caching is sorted out
-        fileOpsService = new FileOpsService(testSystem);
         InputStream out = fileOpsService.getStream("test.txt");
         Assert.assertEquals(out.readAllBytes().length,10* 1024);
         out.close();
@@ -153,8 +142,6 @@ public class ITestFileOpsService {
         FileOpsService fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
-        // Connection closes, so have to init again until caching is sorted out
-        fileOpsService = new FileOpsService(testSystem);
         List<FileInfo> listing = fileOpsService.ls("/test.txt");
         Assert.assertTrue(listing.size() == 1);
         Assert.assertTrue(listing.get(0).getName().equals("test.txt"));
@@ -167,13 +154,10 @@ public class ITestFileOpsService {
         FileOpsService fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.insert("test.txt", in);
-        // Connection closes, so have to init again until caching is sorted out
-        fileOpsService = new FileOpsService(testSystem);
         List<FileInfo> listing = fileOpsService.ls("/test.txt");
         Assert.assertTrue(listing.size() == 1);
         Assert.assertTrue(listing.get(0).getName().equals("test.txt"));
         Assert.assertEquals(listing.get(0).getSize(), 100 * 1000 * 1024L);
-
     }
 
     @Test(dataProvider = "testSystems")
@@ -182,8 +166,6 @@ public class ITestFileOpsService {
         FileOpsService fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.insert("test.txt", in);
-        // Connection closes, so have to init again until caching is sorted out
-        fileOpsService = new FileOpsService(testSystem);
         InputStream result = fileOpsService.getBytes("test.txt", 0, 1000);
         Assert.assertEquals(result.readAllBytes().length, 1000);
     }

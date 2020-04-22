@@ -34,6 +34,11 @@ import java.util.stream.Stream;
 public class S3DataClient implements IRemoteDataClient {
 
     private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
+
+    public S3Client getClient() {
+        return client;
+    }
+
     private final S3Client client;
     private final String bucket;
     private final TSystem system;
