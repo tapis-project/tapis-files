@@ -48,8 +48,6 @@ public class SSHDataClient implements IRemoteDataClient {
         systemId = system.getName();
     }
 
-
-
     public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
         return this.ls(remotePath, MAX_LISTING_SIZE, 0);
     }
