@@ -5,6 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class SSHConnection {
@@ -13,14 +15,13 @@ public class SSHConnection {
     /* **************************************************************************** */
 
     private static final int CONNECT_TIMEOUT_MILLIS = 15000; // 15 seconds
-
+    private final ConcurrentHashMap<Channel, Integer> channelsHash = new ConcurrentHashMap<Channel, Integer>();
+    private final Set<Channel> channels = channelsHash.newKeySet();
 
     //
     // Indicates what to do if the server's host key changed or the server is
-    // unknown.
-    // One of yes (refuse connection), ask (ask the user whether to add/change the
-    // key) and no
-    // (always insert the new key).
+    // unknown. One of yes (refuse connection), ask (ask the user whether to add/change the
+    // key) and no (always insert the new key).
     private static final String STRICT_HOSTKEY_CHECKIN_KEY = "StrictHostKeyChecking";
     private static final String STRICT_HOSTKEY_CHECKIN_VALUE = "no";
 
@@ -63,7 +64,6 @@ public class SSHConnection {
         this.identity = identity;
         authMethod = AuthMethod.PUBLICKEY_AUTH;
         initSession();
-
     }
 
     /**
@@ -85,9 +85,6 @@ public class SSHConnection {
         initSession();
     }
 
-    /* ********************************************************************** */
-    /*                      Public Methods */
-    /* ********************************************************************** */
 
     /**
      * Initializes session information and creates a SSH connection
@@ -114,16 +111,15 @@ public class SSHConnection {
             session.setTimeout(CONNECT_TIMEOUT_MILLIS);
 
         } catch (JSchException e) {
-            String Msg = "SSH_CONNECTION_GET_SESSION_ERROR in method " + this.getClass().getName() + " for user:  "
+            String msg = "SSH_CONNECTION_GET_SESSION_ERROR in method " + this.getClass().getName() + " for user:  "
                     + username + "on destination host: "
                     + host + " : " + e.toString();
-            log.error(Msg, e);
-            throw new IOException(Msg, e);
+            log.error(msg, e);
+            throw new IOException(msg, e);
         }
 
         UserInfo ui;
         if (authMethod == AuthMethod.PUBLICKEY_AUTH) {
-            // Adds an identity to be used for public-key authentication
             try {
                 jsch.addIdentity(identity, privateKey, publicKey, passPhrase);
             } catch (JSchException e) {
@@ -134,9 +130,7 @@ public class SSHConnection {
                 throw new IOException(msg, e);
             }
         } else {
-            // Adds password to be used for password based authentication
             session.setPassword(password);
-            // Create a object of Userinfo Implementation class to get the user info
             ui = new UserInfoImplementation(username, password);
             session.setUserInfo(ui);
         }
@@ -161,7 +155,7 @@ public class SSHConnection {
      * @return channel
      * @throws IOException
      */
-    public Channel openChannel(String channelType) throws IOException {
+    public synchronized Channel openChannel(String channelType) throws IOException {
         Channel channel;
         try {
             switch (channelType) {
@@ -190,19 +184,11 @@ public class SSHConnection {
 
     }
 
-    /**
-     * Closes the session
-     */
     public void closeSession() {
         if (session != null && session.isConnected())
             session.disconnect();
     }
 
-    /**
-     * Gets the SSH Session
-     *
-     * @return
-     */
     public Session getSession() {
         return this.session;
     }

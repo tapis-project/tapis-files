@@ -24,12 +24,12 @@ public class FileOpsService implements IFileOpsService {
 
     private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
     private IRemoteDataClient client;
-    private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
     public FileOpsService(TSystem system) throws ServiceException {
 
         try {
+            RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
             client = clientFactory.getRemoteDataClient(system);
             client.connect();
         } catch (IOException ex) {

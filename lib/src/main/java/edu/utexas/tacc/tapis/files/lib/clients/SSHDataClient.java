@@ -7,6 +7,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 
@@ -29,19 +30,17 @@ public class SSHDataClient implements IRemoteDataClient {
 
     private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
     private final String host;
-    private final int port;
     private final String username;
-    private SSHConnection sshConnection;
+    private final SSHConnection sshConnection;
     private final String rootDir;
     private final String systemId;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
     private static final String NOT_FOUND_MESSAGE =  "File not found for user: %s on host %s at path %s";
     private static final String GENERIC_ERROR_MESSAGE =  "Error: Something went wrong for user: %s on host %s at path %s";
 
-
+    @Inject
     public SSHDataClient(@NotNull TSystem system) throws IOException {
         host = system.getHost();
-        port = system.getPort();
         username = system.getEffectiveUserId();
         rootDir = Paths.get(system.getRootDir()).normalize().toString();
         systemId = system.getName();
@@ -385,31 +384,6 @@ public class SSHDataClient implements IRemoteDataClient {
         } finally {
             channel.disconnect();
         }
-//        JSch jsch = new JSch();
-//        try {
-//            Properties config = new Properties();
-//            config.put("StrictHostKeyChecking", "no");
-//            Session session = jsch.getSession("testuser", "localhost", 2222);
-//            session.setPassword("password");
-//            session.setConfig(config);
-//            session.connect();
-//            ChannelExec channelExec = (ChannelExec)session.openChannel("exec");
-//            InputStream in = channelExec.getInputStream();
-//            channelExec.setCommand("ls -la");
-//            channelExec.connect();
-//            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-//            String line;
-//            int index = 0;
-//
-//            while ((line = reader.readLine()) != null) {
-//                System.out.println(++index + " : " + line);
-//            }
-//            channelExec.disconnect();
-//            session.disconnect();
-//            return in;
-//        } catch (JSchException e) {
-//            throw new IOException();
-//        }
     }
 
     @Override

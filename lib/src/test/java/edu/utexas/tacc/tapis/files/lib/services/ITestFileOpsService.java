@@ -1,12 +1,19 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.Utils;
+import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import org.glassfish.hk2.api.ServiceLocator;
+import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
+import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
@@ -29,14 +36,24 @@ import static org.mockito.Mockito.when;
 */
 @Test(groups = {"integration"})
 public class ITestFileOpsService {
-
+    FileOpsService fileOpsService;
     TSystem testSystemSSH;
     TSystem testSystemS3;
     // mocking out the services
-    private SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-
+    private final SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
 
     private ITestFileOpsService() {
+        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
+//        ServiceLocatorUtilities.addClasses(locator, SSHDataClient.class);
+        ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
+            @Override
+            protected void configure() {
+                bind(new SSHConnectionCache(10)).to(SSHConnectionCache.class);
+                bind(RemoteDataClientFactory.class).to(IRemoteDataClientFactory.class);
+            }
+        });
+        locator.inject(this);
+        fileOpsService = locator.getService(FileOpsService.class);
         Credential creds = new Credential();
         creds.setAccessKey("testuser");
         creds.setPassword("password");
@@ -83,7 +100,6 @@ public class ITestFileOpsService {
     @AfterTest()
     public void tearDown() throws Exception {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystemSSH);
-        FileOpsService fileOpsService = new FileOpsService(testSystemSSH);
         fileOpsService.delete("/");
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystemS3);
         fileOpsService = new FileOpsService(testSystemS3);
@@ -93,7 +109,6 @@ public class ITestFileOpsService {
     @Test(dataProvider = "testSystems")
     public void testInsertAndDelete(TSystem testSystem) throws Exception {
         when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        FileOpsService fileOpsService;
         fileOpsService = new FileOpsService(testSystem);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
