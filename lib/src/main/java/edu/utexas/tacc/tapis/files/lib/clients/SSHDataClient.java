@@ -35,6 +35,7 @@ public class SSHDataClient implements IRemoteDataClient {
     private SSHConnection sshConnection;
     private final String rootDir;
     private final String systemId;
+    private final TSystem system;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
 
@@ -46,6 +47,7 @@ public class SSHDataClient implements IRemoteDataClient {
         accessMethod = system.getDefaultAccessMethod();
         rootDir = Paths.get(system.getRootDir()).normalize().toString();
         systemId = system.getName();
+        this.system = system;
     }
 
     public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
@@ -365,7 +367,9 @@ public class SSHDataClient implements IRemoteDataClient {
                 sshConnection.initSession();
                 break;
             }
-            case "SSH_KEYS":
+            case "PKI_KEYS":
+                sshConnection = new SSHConnection(host, port, username, system.getAccessCredential().getPublicKey(), system.getAccessCredential().getPrivateKey());
+                sshConnection.initSession();
                 //
             default:
                 //dosomething

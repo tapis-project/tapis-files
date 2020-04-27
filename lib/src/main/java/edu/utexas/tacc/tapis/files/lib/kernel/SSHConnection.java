@@ -49,9 +49,8 @@ public class SSHConnection {
     protected final String username;
     protected final AuthMethod authMethod;
     protected String password;
-    protected byte[] privateKey;
-    protected byte[] publicKey;
-    protected byte[] passPhrase;
+    protected String privateKey;
+    protected String publicKey;
     protected String identity;
     protected Session session;
     //protected Channel channel;
@@ -74,16 +73,13 @@ public class SSHConnection {
      * This will set authMethod to PUBLICKEY_AUTH
      * Private Key needs to be in SSLeay/traditional format
      */
-    public SSHConnection(String host, String username, int port, byte[] privateKey, byte[] publicKey,
-            byte[] passphrase, String identity) {
+    public SSHConnection(String host, int port, String username,  String publicKey, String privateKey) {
         super();
         this.host = host;
         this.username = username;
         this.port = port > 0 ? port : 22;
         this.privateKey = privateKey;
         this.publicKey = publicKey;
-        this.passPhrase = passPhrase;
-        this.identity = identity;
         authMethod = AuthMethod.PUBLICKEY_AUTH;
     }
 
@@ -158,9 +154,10 @@ public class SSHConnection {
         if (authMethod == AuthMethod.PUBLICKEY_AUTH) {
             // Adds an identity to be used for public-key authentication
             try {
-                jsch.addIdentity(identity, privateKey, publicKey, passPhrase);
-                ui = new UserInfoImplementation(username, privateKey);
-                _log.debug("identity for public-key authentication successfully added");
+                jsch.addIdentity(host,  privateKey.getBytes(), publicKey.getBytes(), (byte[]) null);
+//                session.setConfig("PreferredAuthentications", "publickey");
+//                ui = new UserInfoImplementation(username, privateKey);
+//                session.setUserInfo(ui);
             } catch (JSchException e) {
                 String Msg = "SSH_CONNECTION_ADD_KEY_ERROR in method "+ this.getClass().getName() +" for user:  "
                         + username + "on destination host: "
@@ -171,9 +168,7 @@ public class SSHConnection {
 
         }
         else {
-            // Adds password to be used for password based authentication
             session.setPassword(password);
-            // Create a object of Userinfo Implementation class to get the user info
             ui = new UserInfoImplementation(username, password);
             session.setUserInfo(ui);
         }
