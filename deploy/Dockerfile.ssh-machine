@@ -4,4 +4,7 @@ RUN useradd --create-home --shell /bin/bash testuser
 RUN echo 'testuser:password' | chpasswd
 RUN mkdir -p /home/testuser/.ssh/
 COPY ./deploy/test-machine.pub /home/testuser/.ssh/authorized_keys
+RUN chmod 600 /home/testuser/.ssh/authorized_keys
+RUN mkdir -p /data/home/testuser/
 RUN chown -R testuser:testuser /home/testuser
+RUN chown -R testuser:testuser /data/home/testuser/

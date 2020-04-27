@@ -13,6 +13,7 @@ import javax.ws.rs.NotFoundException;
 import com.jcraft.jsch.*;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,8 +31,6 @@ public class SSHDataClient implements IRemoteDataClient {
     private final String host;
     private final int port;
     private final String username;
-    private final String password;
-    private final TSystem.DefaultAccessMethodEnum accessMethod;
     private SSHConnection sshConnection;
     private final String rootDir;
     private final String systemId;
@@ -43,8 +42,6 @@ public class SSHDataClient implements IRemoteDataClient {
         host = system.getHost();
         port = system.getPort();
         username = system.getEffectiveUserId();
-        password = system.getAccessCredential().getPassword();
-        accessMethod = system.getDefaultAccessMethod();
         rootDir = Paths.get(system.getRootDir()).normalize().toString();
         systemId = system.getName();
         this.system = system;
@@ -134,8 +131,8 @@ public class SSHDataClient implements IRemoteDataClient {
 
         Path remote = Paths.get(remotePath);
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
-
         try {
+            channelSftp.cd(rootDir);
             for (Path part : remote) {
                 try {
                     channelSftp.cd(part.toString());
@@ -361,18 +358,20 @@ public class SSHDataClient implements IRemoteDataClient {
     @Override
     public void connect() throws IOException {
 
-        switch (accessMethod.getValue()) {
-            case "PASSWORD": {
+        switch (system.getDefaultAccessMethod().getValue()) {
+            case "PASSWORD":
+                String password = system.getAccessCredential().getPassword();
                 sshConnection = new SSHConnection(host, port, username, password);
                 sshConnection.initSession();
                 break;
-            }
             case "PKI_KEYS":
-                sshConnection = new SSHConnection(host, port, username, system.getAccessCredential().getPublicKey(), system.getAccessCredential().getPrivateKey());
+                String pubKey = system.getAccessCredential().getPublicKey();
+                String privateKey = system.getAccessCredential().getPrivateKey();
+                sshConnection = new SSHConnection(host, port, username, pubKey, privateKey);
                 sshConnection.initSession();
-                //
+                break;
             default:
-                //dosomething
+                throw new NotImplementedException("Access method not supported");
         }
 
     }

@@ -39,11 +39,11 @@ public class ITestFileOpsService {
 
     private ITestFileOpsService() throws IOException {
         String privateKey = IOUtils.toString(
-                this.getClass().getResourceAsStream("src/test/resources/test-machine"),
+                this.getClass().getResourceAsStream("/test-machine"),
                 StandardCharsets.UTF_8
         );
         String publicKey = IOUtils.toString(
-                this.getClass().getResourceAsStream("src/test/resources/test-machine.pub"),
+                this.getClass().getResourceAsStream("/test-machine.pub"),
                 StandardCharsets.UTF_8
         );
         //SSH system with username/password
@@ -54,7 +54,7 @@ public class ITestFileOpsService {
         testSystemSSH.setAccessCredential(creds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
-        testSystemSSH.setRootDir("/home/testuser/");
+        testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setName("testSystem");
         testSystemSSH.setEffectiveUserId("testuser");
         testSystemSSH.setDefaultAccessMethod(TSystem.DefaultAccessMethodEnum.PASSWORD);
@@ -66,11 +66,11 @@ public class ITestFileOpsService {
         creds = new Credential();
         creds.setPublicKey(publicKey);
         creds.setPrivateKey(privateKey);
-        TSystem testSystemPKI = new TSystem();
+        testSystemPKI = new TSystem();
         testSystemPKI.setAccessCredential(creds);
         testSystemPKI.setHost("localhost");
         testSystemPKI.setPort(2222);
-        testSystemPKI.setRootDir("/home/testuser/");
+        testSystemPKI.setRootDir("/data/home/testuser/");
         testSystemPKI.setName("testSystem");
         testSystemPKI.setEffectiveUserId("testuser");
         testSystemPKI.setDefaultAccessMethod(TSystem.DefaultAccessMethodEnum.PKI_KEYS);
