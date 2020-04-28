@@ -15,6 +15,7 @@ import com.jcraft.jsch.*;
 import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,17 +35,21 @@ public class SSHDataClient implements IRemoteDataClient {
     private final SSHConnection sshConnection;
     private final String rootDir;
     private final String systemId;
+    private final TSystem system;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
     private static final String NOT_FOUND_MESSAGE =  "File not found for user: %s on host %s at path %s";
     private static final String GENERIC_ERROR_MESSAGE =  "Error: Something went wrong for user: %s on host %s at path %s";
 
     @Inject
-    public SSHDataClient(@NotNull TSystem system) throws IOException {
-        host = system.getHost();
-        username = system.getEffectiveUserId();
-        rootDir = Paths.get(system.getRootDir()).normalize().toString();
-        systemId = system.getName();
-        sshConnection = SSHConnectionCache.getConnection(system, username);
+    public SSHDataClient(@NotNull TSystem sys) throws IOException {
+        String rdir = sys.getRootDir();
+        rdir = StringUtils.isBlank(rdir) ? "/" : rdir;
+        rootDir = Paths.get(rdir).normalize().toString();
+        host = sys.getHost();
+        username = sys.getEffectiveUserId();
+        systemId = sys.getName();
+        sshConnection = SSHConnectionCache.getConnection(sys, username);
+        system = sys;
     }
 
     public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
@@ -124,8 +129,8 @@ public class SSHDataClient implements IRemoteDataClient {
 
         Path remote = Paths.get(remotePath);
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
-
         try {
+            channelSftp.cd(rootDir);
             for (Path part : remote) {
                 try {
                     channelSftp.cd(part.toString());
@@ -351,6 +356,21 @@ public class SSHDataClient implements IRemoteDataClient {
         } catch (JSchException ex) {
             log.error("Error connecting to SSH session", ex);
             throw new IOException("Error connecting to SSH session");
+//        switch (system.getDefaultAccessMethod().getValue()) {
+//            case "PASSWORD":
+//                String password = system.getAccessCredential().getPassword();
+//                sshConnection = new SSHConnection(host, port, username, password);
+//                sshConnection.initSession();
+//                break;
+//            case "PKI_KEYS":
+//                String pubKey = system.getAccessCredential().getPublicKey();
+//                String privateKey = system.getAccessCredential().getPrivateKey();
+//                sshConnection = new SSHConnection(host, port, username, pubKey, privateKey);
+//                sshConnection.initSession();
+//                break;
+//            default:
+//                throw new NotImplementedException("Access method not supported");
+//>>>>>>> master
         }
 
     }

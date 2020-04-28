@@ -95,14 +95,14 @@ public class OperationsApiResource {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
             FileOpsService fileOpsService = new FileOpsService(system);
             List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
         } catch (ServiceException | TapisException e) {
             log.error("listFiles", e);
-            throw new WebApplicationException("server error");
+            throw new WebApplicationException(e.getMessage());
         }
     }
 
@@ -125,7 +125,7 @@ public class OperationsApiResource {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.mkdir(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
@@ -158,7 +158,7 @@ public class OperationsApiResource {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
@@ -190,7 +190,7 @@ public class OperationsApiResource {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.move(path, newName);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
@@ -221,7 +221,7 @@ public class OperationsApiResource {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
             FileOpsService fileOpsService = new FileOpsService(system);
             fileOpsService.delete(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");

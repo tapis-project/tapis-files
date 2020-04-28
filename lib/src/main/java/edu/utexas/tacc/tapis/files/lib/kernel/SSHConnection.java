@@ -26,19 +26,17 @@ public class SSHConnection {
     private static final String STRICT_HOSTKEY_CHECKIN_VALUE = "no";
 
     private enum AuthMethod {PUBLICKEY_AUTH, PASSWORD_AUTH}
+    private static final Logger log = LoggerFactory.getLogger(SSHConnection.class);
 
     private final String host;
     private final int port;
     private final String username;
     private final AuthMethod authMethod;
     private String password;
-    private byte[] privateKey;
-    private byte[] publicKey;
-    private byte[] passPhrase;
+    private String privateKey;
+    private String publicKey;
     private String identity;
     private Session session;
-
-    private static final Logger log = LoggerFactory.getLogger(SSHConnection.class);
 
 
     /**
@@ -52,16 +50,13 @@ public class SSHConnection {
      *                   This will set authMethod to PUBLICKEY_AUTH
      *                   Private Key needs to be in SSLeay/traditional format
      */
-    public SSHConnection(String host, String username, int port, byte[] privateKey, byte[] publicKey,
-                         byte[] passphrase, String identity)  throws IOException {
+    public SSHConnection(String host, String username, int port, String publicKey, String privateKey)  throws IOException {
         super();
         this.host = host;
         this.username = username;
         this.port = port > 0 ? port : 22;
         this.privateKey = privateKey;
         this.publicKey = publicKey;
-        this.passPhrase = passphrase;
-        this.identity = identity;
         authMethod = AuthMethod.PUBLICKEY_AUTH;
         initSession();
     }
@@ -91,7 +86,7 @@ public class SSHConnection {
      *
      * @throws IOException
      */
-    private void initSession() throws IOException {
+    public void initSession() throws IOException {
 
         // Create a JSch object
         final JSch jsch = new JSch();
@@ -121,7 +116,7 @@ public class SSHConnection {
         UserInfo ui;
         if (authMethod == AuthMethod.PUBLICKEY_AUTH) {
             try {
-                jsch.addIdentity(identity, privateKey, publicKey, passPhrase);
+                jsch.addIdentity(identity, privateKey.getBytes(), publicKey.getBytes(), (byte[]) null);
             } catch (JSchException e) {
                 String msg = "SSH_CONNECTION_ADD_KEY_ERROR in method " + this.getClass().getName() + " for user:  "
                         + username + "on destination host: "

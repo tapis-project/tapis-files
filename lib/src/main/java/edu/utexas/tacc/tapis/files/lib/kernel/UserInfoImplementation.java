@@ -49,9 +49,7 @@ public class UserInfoImplementation implements UserInfo, UIKeyboardInteractive {
         this.passwd = passwd;
 
     }
-    /* ---------------------------------------------------------------------------- */
-    /* constructor:                                                                 */
-    /* ---------------------------------------------------------------------------- */
+
     public UserInfoImplementation(String username, byte[] privateKey) {
         this.username = username;
         this.privateKey = privateKey;
