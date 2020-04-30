@@ -7,15 +7,12 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 
 import com.jcraft.jsch.*;
-import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,15 +37,14 @@ public class SSHDataClient implements IRemoteDataClient {
     private static final String NOT_FOUND_MESSAGE =  "File not found for user: %s on host %s at path %s";
     private static final String GENERIC_ERROR_MESSAGE =  "Error: Something went wrong for user: %s on host %s at path %s";
 
-    @Inject
-    public SSHDataClient(@NotNull TSystem sys) throws IOException {
+    public SSHDataClient(@NotNull TSystem sys, SSHConnection sshCon) {
         String rdir = sys.getRootDir();
         rdir = StringUtils.isBlank(rdir) ? "/" : rdir;
         rootDir = Paths.get(rdir).normalize().toString();
         host = sys.getHost();
         username = sys.getEffectiveUserId();
         systemId = sys.getName();
-        sshConnection = SSHConnectionCache.getConnection(sys, username);
+        sshConnection = sshCon;
         system = sys;
     }
 
@@ -356,21 +352,6 @@ public class SSHDataClient implements IRemoteDataClient {
         } catch (JSchException ex) {
             log.error("Error connecting to SSH session", ex);
             throw new IOException("Error connecting to SSH session");
-//        switch (system.getDefaultAccessMethod().getValue()) {
-//            case "PASSWORD":
-//                String password = system.getAccessCredential().getPassword();
-//                sshConnection = new SSHConnection(host, port, username, password);
-//                sshConnection.initSession();
-//                break;
-//            case "PKI_KEYS":
-//                String pubKey = system.getAccessCredential().getPublicKey();
-//                String privateKey = system.getAccessCredential().getPrivateKey();
-//                sshConnection = new SSHConnection(host, port, username, pubKey, privateKey);
-//                sshConnection.initSession();
-//                break;
-//            default:
-//                throw new NotImplementedException("Access method not supported");
-//>>>>>>> master
         }
 
     }

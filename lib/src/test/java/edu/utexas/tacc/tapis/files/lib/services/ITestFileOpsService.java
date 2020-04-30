@@ -2,9 +2,9 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
-import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 
+
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
@@ -13,19 +13,20 @@ import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.apache.commons.io.IOUtils;
+import org.jvnet.testing.hk2testng.HK2;
 import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
+import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -40,21 +41,10 @@ public class ITestFileOpsService {
     TSystem testSystemSSH;
     TSystem testSystemS3;
     TSystem testSystemPKI;
-    // mocking out the services
-    private final SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
+
+    @Inject private RemoteDataClientFactory remoteDataClientFactory;
 
     private ITestFileOpsService() throws IOException {
-        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
-//        ServiceLocatorUtilities.addClasses(locator, SSHDataClient.class);
-        ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
-            @Override
-            protected void configure() {
-                bind(new SSHConnectionCache()).to(SSHConnectionCache.class);
-                bind(RemoteDataClientFactory.class).to(IRemoteDataClientFactory.class);
-            }
-        });
-        locator.inject(this);
-        fileOpsService = locator.getService(FileOpsService.class);
         String privateKey = IOUtils.toString(
                 this.getClass().getResourceAsStream("/test-machine"),
                 StandardCharsets.UTF_8
@@ -120,6 +110,18 @@ public class ITestFileOpsService {
         };
     }
 
+    @BeforeSuite
+    public void doBeforeSuite() {
+        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
+        ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
+            @Override
+            protected void configure() {
+                bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                bindAsContract(RemoteDataClientFactory.class);
+            }
+        });
+    }
+
     @BeforeTest()
     public void setUp() {
 
@@ -127,40 +129,37 @@ public class ITestFileOpsService {
 
     @AfterTest()
     public void tearDown() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystemSSH);
+        fileOpsService = new FileOpsService(testSystemSSH, "testuser" );
         fileOpsService.delete("/");
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystemS3);
-        fileOpsService = new FileOpsService(testSystemS3);
+        fileOpsService = new FileOpsService(testSystemS3, "testuser");
         fileOpsService.delete("/");
     }
 
     @Test(dataProvider = "testSystems")
     public void testInsertAndDelete(TSystem testSystem) throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        fileOpsService = new FileOpsService(testSystem);
+        fileOpsService = new FileOpsService(testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
         List<FileInfo> listing = fileOpsService.ls("/test.txt");
         Assert.assertEquals(listing.size(), 1);
         fileOpsService.delete("/test.txt");
         Assert.assertThrows(NotFoundException.class, ()-> {
-            FileOpsService fos = new FileOpsService(testSystem);
+            FileOpsService fos = new FileOpsService(testSystem, "testuser");
             fos.ls("/test.txt");
         });
     }
 
     @Test(dataProvider = "testSystems")
     public void testInsertAndDeleteNested(TSystem testSystem) throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
         FileOpsService fileOpsService;
-        fileOpsService = new FileOpsService(testSystem);
+        fileOpsService = new FileOpsService(testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("a/b/c/test.txt", in);
         List<FileInfo> listing = fileOpsService.ls("/a/b/c/test.txt");
         Assert.assertEquals(listing.size(), 1);
         fileOpsService.delete("/a/b/");
         Assert.assertThrows(NotFoundException.class, ()-> {
-            FileOpsService fos = new FileOpsService(testSystem);
+            FileOpsService fos = new FileOpsService(testSystem,"testuser" );
             fos.ls("/a/b/c/test.txt");
         });
     }
@@ -169,8 +168,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testInsertAndGet(TSystem testSystem) throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        FileOpsService fileOpsService = new FileOpsService(testSystem);
+        FileOpsService fileOpsService = new FileOpsService(testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
         InputStream out = fileOpsService.getStream("test.txt");
@@ -181,8 +179,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testListing(TSystem testSystem) throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        FileOpsService fileOpsService = new FileOpsService(testSystem);
+        FileOpsService fileOpsService = new FileOpsService(testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
         List<FileInfo> listing = fileOpsService.ls("/test.txt");
@@ -193,8 +190,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testInsertLargeFile(TSystem testSystem) throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        FileOpsService fileOpsService = new FileOpsService(testSystem);
+        FileOpsService fileOpsService = new FileOpsService(testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.insert("test.txt", in);
         List<FileInfo> listing = fileOpsService.ls("/test.txt");
@@ -205,8 +201,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testGetBytesByRange(TSystem testSystem) throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
-        FileOpsService fileOpsService = new FileOpsService(testSystem);
+        FileOpsService fileOpsService = new FileOpsService(testSystem, "testuser");
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.insert("test.txt", in);
         InputStream result = fileOpsService.getBytes("test.txt", 0, 1000);

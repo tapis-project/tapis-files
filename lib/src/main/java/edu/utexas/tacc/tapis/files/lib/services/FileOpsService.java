@@ -3,13 +3,13 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import java.io.*;
 import java.util.List;
 
+import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.input.AutoCloseInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,12 +25,16 @@ public class FileOpsService implements IFileOpsService {
     private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
     private IRemoteDataClient client;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
+    private String username;
+    private TSystem system;
 
-    public FileOpsService(TSystem system) throws ServiceException {
+    @Inject
+    RemoteDataClientFactory remoteDataClientFactory;
+
+    public FileOpsService(TSystem system, String username) throws ServiceException {
 
         try {
-            RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
-            client = clientFactory.getRemoteDataClient(system);
+            client = remoteDataClientFactory.getRemoteDataClient(system, username);
             client.connect();
         } catch (IOException ex) {
             log.error("ERROR", ex);
@@ -42,8 +46,8 @@ public class FileOpsService implements IFileOpsService {
     }
 
     public IRemoteDataClient getClient() {
-       return client;
-   }
+        return client;
+    }
 
     @Override
     public void disconnect() {
@@ -53,7 +57,6 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public List<FileInfo> ls(@NotNull String path) throws ServiceException, NotFoundException {
         return this.ls(path, MAX_LISTING_SIZE, 0);
-
     }
 
     @Override
@@ -119,9 +122,9 @@ public class FileOpsService implements IFileOpsService {
      * @throws ServiceException
      */
     @Override
-    public InputStream getStream(String path) throws ServiceException, NotFoundException{
+    public InputStream getStream(String path) throws ServiceException, NotFoundException {
         // Try with resources to auto close the stream
-        try (InputStream fileStream = client.getStream(path)){
+        try (InputStream fileStream = client.getStream(path)) {
             return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
             log.error("ERROR", ex);
@@ -130,7 +133,7 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
-    public InputStream getBytes(@NotNull String path, long startByte, long count) throws ServiceException, NotFoundException  {
+    public InputStream getBytes(@NotNull String path, long startByte, long count) throws ServiceException, NotFoundException {
         try (InputStream fileStream = client.getBytesByRange(path, startByte, count)) {
             return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
@@ -140,8 +143,8 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
-    public InputStream more(@NotNull String path, long startPage)  throws ServiceException, NotFoundException {
-        long startByte = (startPage -1) * 1024;
+    public InputStream more(@NotNull String path, long startPage) throws ServiceException, NotFoundException {
+        long startByte = (startPage - 1) * 1024;
         try (InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023)) {
             return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {

@@ -35,7 +35,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import java.io.InputStream;
 import java.util.List;
-import java.util.Objects;
 
 @Path("/v3/files/ops")
 public class OperationsApiResource {
@@ -96,7 +95,7 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
+            FileOpsService fileOpsService = new FileOpsService(system, user.getOboUser());
             List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
@@ -126,7 +125,7 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
+            FileOpsService fileOpsService = new FileOpsService(system, user.getOboUser());
             fileOpsService.mkdir(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
@@ -159,7 +158,7 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
+            FileOpsService fileOpsService = new FileOpsService(system, user.getOboUser());
             fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
@@ -191,7 +190,7 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
+            FileOpsService fileOpsService = new FileOpsService(system, user.getOboUser());
             fileOpsService.move(path, newName);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
@@ -222,7 +221,7 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
+            FileOpsService fileOpsService = new FileOpsService(system, user.getOboUser());
             fileOpsService.delete(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
