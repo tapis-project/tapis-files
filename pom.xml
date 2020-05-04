@@ -130,7 +130,6 @@
                     </environmentVariables>
                 </configuration>
             </plugin>
-
         </plugins>
         <finalName>tapis-files</finalName>
     </build>

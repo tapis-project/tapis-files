@@ -1,57 +1,38 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import java.io.*;
-import java.util.List;
-
-import javax.inject.Inject;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.NotFoundException;
-
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
 
 
 public class FileOpsService implements IFileOpsService {
 
     private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
-    private IRemoteDataClient client;
+    private final IRemoteDataClient client;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
-    private String username;
-    private TSystem system;
 
-    @Inject
-    RemoteDataClientFactory remoteDataClientFactory;
-
-    public FileOpsService(TSystem system, String username) throws ServiceException {
-
+    public FileOpsService(@NotNull IRemoteDataClient client) throws ServiceException {
         try {
-            client = remoteDataClientFactory.getRemoteDataClient(system, username);
-            client.connect();
+            this.client = client;
+            this.client.connect();
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            if (client != null) {
-                client.disconnect();
-            }
             throw new ServiceException("Could not connect to system");
         }
     }
 
     public IRemoteDataClient getClient() {
         return client;
-    }
-
-    @Override
-    public void disconnect() {
-        if (client != null) client.disconnect();
     }
 
     @Override

@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -39,6 +41,9 @@ public class ContentApiResource {
     @Inject
     SystemsClient systemsClient;
 
+    @Inject
+    RemoteDataClientFactory remoteDataClientFactory;
+
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
     @Path("/{systemId}/{path:.+}")
@@ -55,7 +60,8 @@ public class ContentApiResource {
         try {
             AuthenticatedUser user  = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsClient.getSystemByName(systemId);
-            FileOpsService fileOpsService = new FileOpsService(system, user.getOboUser());
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);
             InputStream stream;
             String mtype = MediaType.APPLICATION_OCTET_STREAM;
             String contentDisposition;
@@ -79,7 +85,6 @@ public class ContentApiResource {
             else {
                 stream = fileOpsService.getStream(path);
             }
-            fileOpsService.disconnect();
             return Response
                     .ok(stream, mtype)
                     .header("content-disposition", contentDisposition)

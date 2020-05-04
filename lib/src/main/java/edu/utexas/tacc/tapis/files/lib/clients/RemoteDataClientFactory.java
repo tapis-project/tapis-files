@@ -11,7 +11,6 @@ import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.util.List;
 
-@Service
 public class RemoteDataClientFactory implements IRemoteDataClientFactory {
 
     private final SSHConnectionCache sshConnectionCache;

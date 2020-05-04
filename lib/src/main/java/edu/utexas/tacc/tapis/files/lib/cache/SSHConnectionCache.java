@@ -9,6 +9,7 @@ import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.time.Duration;
@@ -25,7 +26,6 @@ import java.util.concurrent.*;
  *
  * The cache key is a combination of systemId + username
  */
-@Service
 public class SSHConnectionCache {
 
     private static final Logger log = LoggerFactory.getLogger(SSHConnectionCache.class);

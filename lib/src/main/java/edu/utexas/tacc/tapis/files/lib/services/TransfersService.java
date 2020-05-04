@@ -108,12 +108,9 @@ public class TransfersService implements ITransfersService {
     //TODO: Need to make this retryable since the listing might fail
     public void createTransferTaskChild(@NotNull TransferTask parentTask, @NotNull String sourcePath) throws ServiceException {
         TransferTaskChild transferTaskChild = new TransferTaskChild(parentTask, sourcePath);
-        // TODO: The remote clients could be cached to prevent thrashing on the systems service
         try {
-            // TODO: This is hard coded for ACCESS_TOKEN credentials!!!!
             TSystem sourceSystem = systemsClient.getSystemByName(parentTask.getSourceSystemId());
             IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, transferTaskChild.getUsername());
-
             // If its a dir, keep going down the tree
             if (sourcePath.endsWith("/")) {
                 // For every item in the inital listing, create a childTask

@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
@@ -34,6 +36,7 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -99,6 +102,8 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
                         bind(tenantManager).to(TenantManager.class);
                         bindAsContract(TransfersService.class);
                         bindAsContract(FileTransfersDAO.class);
+                        bindAsContract(RemoteDataClientFactory.class);
+                        bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
 
                     }
                 });

@@ -21,5 +21,4 @@ public interface IFileOpsService {
     InputStream getStream(String path) throws ServiceException, NotFoundException;
     InputStream getBytes(String path, long startByte, long endByte) throws ServiceException, NotFoundException;
     InputStream more(String path, long startByte) throws ServiceException;
-    void disconnect();
 }

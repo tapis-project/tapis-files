@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
+import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -44,6 +46,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -107,6 +110,8 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                         bind(skClient).to(SKClient.class);
                         bind(tenantManager).to(TenantManager.class);
                         bind(serviceJWT).to(ServiceJWT.class);
+                        bindAsContract(RemoteDataClientFactory.class);
+                        bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                     }
                 });
 

@@ -10,6 +10,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 
+/**
+ * A SSHConnection is basically a wrapper around a Jsch session. Channels that are in use
+ * are stored in a concurrent Set data structure. If that set is empty, the session can be safely
+ * closed. The openChannel and returnChannel methods are synchronized for thread safety. These objects are
+ * stored in the Cache
+ */
 public class SSHConnection {
 
     private static final int CONNECT_TIMEOUT_MILLIS = 15000; // 15 seconds
@@ -37,6 +43,15 @@ public class SSHConnection {
     private String publicKey;
     private Session session;
 
+    /**
+     * Public/Private key auth
+     * @param host Hostname
+     * @param username username of user on the remote system
+     * @param port Port to connect to, defaults to 22
+     * @param publicKey The public key
+     * @param privateKey The private key
+     * @throws IOException Throws an exception if the session can't connect or a channel could not be opened.
+     */
     public SSHConnection(String host, String username, int port, String publicKey, String privateKey)  throws IOException {
         this.host = host;
         this.username = username;
@@ -47,6 +62,14 @@ public class SSHConnection {
         initSession();
     }
 
+    /**
+     * Username/password auth
+     * @param host
+     * @param port
+     * @param username
+     * @param password
+     * @throws IOException
+     */
     public SSHConnection(String host, int port, String username, String password) throws IOException {
         this.host = host;
         this.port = port > 0 ? port : 22;
@@ -60,18 +83,16 @@ public class SSHConnection {
         return channels.size();
     }
 
-    public void initSession() throws IOException {
+    private void initSession() throws IOException {
         final JSch jsch = new JSch();
         try {
             session = jsch.getSession(username, host, port);
             session.setConfig(STRICT_HOSTKEY_CHECKIN_KEY, STRICT_HOSTKEY_CHECKIN_VALUE);
-            session.setConfig("PreferredAuthentications", "password,publickey,keyboard-interactive");
+            session.setConfig("PreferredAuthentications", "password,publickey");
             session.setTimeout(CONNECT_TIMEOUT_MILLIS);
 
         } catch (JSchException e) {
-            String msg = "SSH_CONNECTION_GET_SESSION_ERROR in method " + this.getClass().getName() + " for user:  "
-                    + username + "on destination host: "
-                    + host + " : " + e.toString();
+            String msg = String.format("SSH_CONNECTION_GET_SESSION_ERROR for user %s on host %s", username, host);
             throw new IOException(msg, e);
         }
 
@@ -79,9 +100,7 @@ public class SSHConnection {
             try {
                 jsch.addIdentity(host, privateKey.getBytes(), publicKey.getBytes(), (byte[]) null);
             } catch (JSchException e) {
-                String msg = "SSH_CONNECTION_ADD_KEY_ERROR in method " + this.getClass().getName() + " for user:  "
-                        + username + "on destination host: "
-                        + host + " : " + e.toString();
+                String msg = String.format("SSH_CONNECTION_ADD_KEY_ERROR for user %s on host %s", username, host);
                 throw new IOException(msg, e);
             }
         } else {
@@ -94,21 +113,28 @@ public class SSHConnection {
         try {
             session.connect();
         } catch (JSchException e) {
-            String msg = "SSH_CONNECTION_CONNECT_SESSION_ERROR in method " + this.getClass().getName() + " for user:  "
-                    + username + "on destination host: "
-                    + host + " : " + e.toString();
+            String msg = String.format("SSH_CONNECT_SESSION_ERROR for user %s on host %s", username, host);
             throw new IOException(msg, e);
         }
-
-
     }
 
+    /**
+     * Synchronized to allow for thread safety, this method closes a channel and removes it from the
+     * set of open channels.
+     * @param channel returns and closes a channel from the pool
+     */
     public synchronized void returnChannel(Channel channel) {
         channels.remove(channel);
         channel.disconnect();
     }
 
-
+    /**
+     * Create and open a channel on the session, placing it into the concurrent set of channels
+     * that are active on the session.
+     * @param channelType One of "sftp", "exec" or "shell"
+     * @return Channel
+     * @throws IOException
+     */
     public synchronized Channel openChannel(String channelType) throws IOException {
         Channel channel;
         try {
@@ -129,10 +155,7 @@ public class SSHConnection {
             return channel;
 
         } catch (JSchException e) {
-
-            String msg = "SSH_OPEN_" + channelType.toUpperCase() + "_CHANNEL_ERROR in method " + this.getClass().getName() + " for user:  "
-                    + username + "on destination host: "
-                    + host + " port: " + port + " : " + e.toString();
+            String msg = String.format("SSH_OPEN_CHANNEL_ERROR for user %s on host %s", username, host);
             throw new IOException(msg, e);
         }
 

@@ -34,7 +34,6 @@ public class SSHConnectionCacheLoader extends CacheLoader<SSHConnectionCacheKey,
                         port,
                         username,
                         password);
-                sshConnection.initSession();
                 return sshConnection;
             case PKI_KEYS:
                 String pubKey = system.getAccessCredential().getPublicKey();
@@ -42,7 +41,6 @@ public class SSHConnectionCacheLoader extends CacheLoader<SSHConnectionCacheKey,
                 port = system.getPort();
                 if (port <= 0) port = 22;
                 sshConnection = new SSHConnection(system.getHost(), username, port, pubKey, privateKey);
-                sshConnection.initSession();
                 return sshConnection;
             default:
                 String msg = String.format("Access method of %s is not valid.", accessMethodEnum.getValue());
