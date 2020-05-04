@@ -13,8 +13,6 @@ import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.apache.commons.io.IOUtils;
-import org.jvnet.testing.hk2testng.HK2;
-import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
