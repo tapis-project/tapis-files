@@ -16,7 +16,7 @@ import javax.inject.Inject;
 public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
     private Logger log = LoggerFactory.getLogger(ServiceJWTCacheFactory.class);
 
-    private IRuntimeConfig runtimeConfig = RuntimeSettings.get();
+    private final IRuntimeConfig runtimeConfig = RuntimeSettings.get();
 
     @Override
     public ServiceJWT provide() {
@@ -34,7 +34,5 @@ public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
     }
 
     @Override
-    public void dispose(ServiceJWT serviceJWTManager) {
-
-    }
+    public void dispose(ServiceJWT serviceJWTManager) {}
 }

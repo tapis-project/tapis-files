@@ -1,61 +1,43 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import java.io.*;
-import java.util.List;
-
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.NotFoundException;
-
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.input.AutoCloseInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
 
 
 public class FileOpsService implements IFileOpsService {
-    private Logger log = LoggerFactory.getLogger(FileOpsService.class);
 
-    private IRemoteDataClient client;
-    private RemoteDataClientFactory clientFactory = new RemoteDataClientFactory();
+    private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
+    private final IRemoteDataClient client;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
-//    @Inject NotificationsServiceClient notificationsServiceClient;
-
-    public FileOpsService(TSystem system) throws ServiceException {
-
+    public FileOpsService(@NotNull IRemoteDataClient client) throws ServiceException {
         try {
-            client = clientFactory.getRemoteDataClient(system);
-            client.connect();
+            this.client = client;
+            this.client.connect();
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            if (client != null) {
-                client.disconnect();
-            }
             throw new ServiceException("Could not connect to system");
         }
     }
 
     public IRemoteDataClient getClient() {
-       return client;
-   }
-
-    @Override
-    public void disconnect() {
-        if (client != null) client.disconnect();
+        return client;
     }
 
     @Override
     public List<FileInfo> ls(@NotNull String path) throws ServiceException, NotFoundException {
         return this.ls(path, MAX_LISTING_SIZE, 0);
-
     }
 
     @Override
@@ -67,8 +49,6 @@ public class FileOpsService implements IFileOpsService {
             String message = "Listing failed  : " + ex.getMessage();
             log.error("ERROR", ex);
             throw new ServiceException(message);
-        } finally {
-            client.disconnect();
         }
     }
 
@@ -80,8 +60,6 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("mkdir failed : " + ex.getMessage());
-        } finally {
-            client.disconnect();
         }
     }
 
@@ -92,32 +70,26 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("insert failed");
-        } finally {
-            client.disconnect();
         }
     }
 
     @Override
-    public void move(String path, String newPath) throws ServiceException {
+    public void move(String path, String newPath) throws ServiceException, NotFoundException {
         try {
             client.move(path, newPath);
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("move/rename failed: " + ex.getMessage());
-        } finally {
-            client.disconnect();
         }
     }
 
     @Override
-    public void delete(@NotNull String path) throws ServiceException {
+    public void delete(@NotNull String path) throws ServiceException, NotFoundException {
         try {
             client.delete(path);
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("delete failed");
-        } finally {
-            client.disconnect();
         }
     }
 
@@ -131,40 +103,34 @@ public class FileOpsService implements IFileOpsService {
      * @throws ServiceException
      */
     @Override
-    public InputStream getStream(String path) throws ServiceException {
+    public InputStream getStream(String path) throws ServiceException, NotFoundException {
         // Try with resources to auto close the stream
-        try (InputStream fileStream = client.getStream(path)){
+        try (InputStream fileStream = client.getStream(path)) {
             return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
-        } finally {
-            client.disconnect();
         }
     }
 
     @Override
-    public InputStream getBytes(@NotNull String path, long startByte, long count) throws ServiceException  {
+    public InputStream getBytes(@NotNull String path, long startByte, long count) throws ServiceException, NotFoundException {
         try (InputStream fileStream = client.getBytesByRange(path, startByte, count)) {
             return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
-        } finally {
-            client.disconnect();
         }
     }
 
     @Override
-    public InputStream more(@NotNull String path, long startPage)  throws ServiceException {
-        long startByte = (startPage -1) * 1024;
+    public InputStream more(@NotNull String path, long startPage) throws ServiceException, NotFoundException {
+        long startByte = (startPage - 1) * 1024;
         try (InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023)) {
             return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
-        } finally {
-           client.disconnect();
         }
     }
 }

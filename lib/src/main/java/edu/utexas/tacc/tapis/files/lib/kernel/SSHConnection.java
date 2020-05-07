@@ -1,173 +1,110 @@
 package edu.utexas.tacc.tapis.files.lib.kernel;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
+import com.jcraft.jsch.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.jcraft.jsch.Channel;
-import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.Session;
-import com.jcraft.jsch.UIKeyboardInteractive;
-import com.jcraft.jsch.UserInfo;
+import java.io.IOException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 
-
+/**
+ * A SSHConnection is basically a wrapper around a Jsch session. Channels that are in use
+ * are stored in a concurrent Set data structure. If that set is empty, the session can be safely
+ * closed. The openChannel and returnChannel methods are synchronized for thread safety. These objects are
+ * stored in the Cache
+ */
 public class SSHConnection {
-    /* **************************************************************************** */
-    /*                                   Constants                                  */
-    /* **************************************************************************** */
 
     private static final int CONNECT_TIMEOUT_MILLIS = 15000; // 15 seconds
- 
 
-    //
+    // A concurrent set that will be used to store the channels that are open
+    // on the SSH session.
+    private final Set<Channel> channels = ConcurrentHashMap.newKeySet();
+
+
     // Indicates what to do if the server's host key changed or the server is
-    // unknown.
-    // One of yes (refuse connection), ask (ask the user whether to add/change the
-    // key) and no
-    // (always insert the new key).
-    private static final String STRICT_HOSTKEY_CHECKIN_KEY = "StrictHostKeyChecking";;
+    // unknown. One of yes (refuse connection), ask (ask the user whether to add/change the
+    // key) and no (always insert the new key).
+    private static final String STRICT_HOSTKEY_CHECKIN_KEY = "StrictHostKeyChecking";
     private static final String STRICT_HOSTKEY_CHECKIN_VALUE = "no";
 
-    /* **************************************************************************** */
-    /*                                   Enum                                    */
-    /* **************************************************************************** */
-    private enum AuthMethod {PUBLICKEY_AUTH, PASSWORD_AUTH};
+    private enum AuthMethod {PUBLICKEY_AUTH, PASSWORD_AUTH}
+    private static final Logger log = LoggerFactory.getLogger(SSHConnection.class);
 
-    /* **************************************************************************** */
-    /*                                    Fields                                    */
-    /* **************************************************************************** */
+    private final String host;
+    private final int port;
+    private final String username;
+    private final AuthMethod authMethod;
+    private String password;
+    private String privateKey;
+    private String publicKey;
+    private Session session;
 
-    protected final String host;
-    protected final int port;
-    protected final String username;
-    protected final AuthMethod authMethod;
-    protected String password;
-    protected String privateKey;
-    protected String publicKey;
-    protected String identity;
-    protected Session session;
-    //protected Channel channel;
-
-    // Local logger.
-    private static final Logger _log = LoggerFactory.getLogger(SSHConnection.class);
-
-    /* ********************************************************************** */
-    /* Constructors */
-    /* ********************************************************************** */
-   
     /**
-     * @param host Destination host name for files/dir copy
-     * @param username user having access to the remote system
-     * @param port connection port number. If user defined port is greater
-     * than 0 then set it or default to 22.
-     * @param publicKey public Key of the user
-     * @param privateKey private key of the user This constructor will get called
-     * if user chooses ssh keys to authenticate to remote host
-     * This will set authMethod to PUBLICKEY_AUTH
-     * Private Key needs to be in SSLeay/traditional format
+     * Public/Private key auth
+     * @param host Hostname
+     * @param username username of user on the remote system
+     * @param port Port to connect to, defaults to 22
+     * @param publicKey The public key
+     * @param privateKey The private key
+     * @throws IOException Throws an exception if the session can't connect or a channel could not be opened.
      */
-    public SSHConnection(String host, int port, String username,  String publicKey, String privateKey) {
-        super();
+    public SSHConnection(String host, String username, int port, String publicKey, String privateKey)  throws IOException {
         this.host = host;
         this.username = username;
         this.port = port > 0 ? port : 22;
         this.privateKey = privateKey;
         this.publicKey = publicKey;
         authMethod = AuthMethod.PUBLICKEY_AUTH;
+        initSession();
     }
 
-    /*
-     * ----------------------------------------------------------------------------
-     */
-    /* constructor: */
-    /*
-     * ----------------------------------------------------------------------------
-     */
-
     /**
-     * @param host Destination host name for files/dir copy
-     * @param port connection port number. If user defined port is greater
-     *                 than 0 then set it or default to 22.
-     * @param username user having access to the remote system
-     * @param password password This constructor will get called if user chooses
-     *                 password to authenticate to remote host This will set the
-     *                 authMethod to "passwordAuth";
+     * Username/password auth
+     * @param host
+     * @param port
+     * @param username
+     * @param password
+     * @throws IOException
      */
-    public SSHConnection(String host, int port, String username, String password) {
-        super();
+    public SSHConnection(String host, int port, String username, String password) throws IOException {
         this.host = host;
         this.port = port > 0 ? port : 22;
         this.username = username;
         this.password = password;
         authMethod = AuthMethod.PASSWORD_AUTH;
-
+        initSession();
     }
 
-    /* ********************************************************************** */
-    /*                      Public Methods */
-    /* ********************************************************************** */
+    public int getChannelCount() {
+        return channels.size();
+    }
 
-    /**
-     * Initializes session information and creates a SSH connection
-     * @throws JSchException
-     * @throws IOException
-     */
-    public void initSession() throws IOException {
-
-        // Create a JSch object
+    private void initSession() throws IOException {
         final JSch jsch = new JSch();
-
-        // Instantiates the Session object with username and host.
-        // The TCP port defined by user will be used in making the connection.
-        // Port 22 is the default port.
-        // TCP connection must not be established until Session#connect()
-        // returns instance of session class
         try {
             session = jsch.getSession(username, host, port);
-            // Once getSession is successful set the configuration
-            // STRICT_HOSTKEY_CHECKIN_KEY is set to "no"
-            // Connection time out is set to 15 seconds
             session.setConfig(STRICT_HOSTKEY_CHECKIN_KEY, STRICT_HOSTKEY_CHECKIN_VALUE);
-            session.setConfig("PreferredAuthentications", "password,publickey,keyboard-interactive");
+            session.setConfig("PreferredAuthentications", "password,publickey");
             session.setTimeout(CONNECT_TIMEOUT_MILLIS);
 
         } catch (JSchException e) {
-            String Msg = "SSH_CONNECTION_GET_SESSION_ERROR in method " + this.getClass().getName() +" for user:  "
-                    + username + "on destination host: "
-                    + host + " : " + e.toString();
-            _log.error(Msg,e);
-            throw new IOException(Msg,e);
+            String msg = String.format("SSH_CONNECTION_GET_SESSION_ERROR for user %s on host %s", username, host);
+            throw new IOException(msg, e);
         }
-
-        _log.debug("Try to connect to the host " + host + ":" + port + " with user " + username);
-
-        UserInfo ui = null;
-        UIKeyboardInteractive interactive = null;
 
         if (authMethod == AuthMethod.PUBLICKEY_AUTH) {
-            // Adds an identity to be used for public-key authentication
             try {
-                jsch.addIdentity(host,  privateKey.getBytes(), publicKey.getBytes(), (byte[]) null);
-//                session.setConfig("PreferredAuthentications", "publickey");
-//                ui = new UserInfoImplementation(username, privateKey);
-//                session.setUserInfo(ui);
+                jsch.addIdentity(host, privateKey.getBytes(), publicKey.getBytes(), (byte[]) null);
             } catch (JSchException e) {
-                String Msg = "SSH_CONNECTION_ADD_KEY_ERROR in method "+ this.getClass().getName() +" for user:  "
-                        + username + "on destination host: "
-                        + host + " : " + e.toString();
-                _log.error(Msg, e);
-                throw new IOException(Msg, e);
+                String msg = String.format("SSH_CONNECTION_ADD_KEY_ERROR for user %s on host %s", username, host);
+                throw new IOException(msg, e);
             }
-
-        }
-        else {
+        } else {
+            UserInfo ui;
             session.setPassword(password);
             ui = new UserInfoImplementation(username, password);
             session.setUserInfo(ui);
@@ -175,119 +112,61 @@ public class SSHConnection {
 
         try {
             session.connect();
-            _log.info("Connection established");
         } catch (JSchException e) {
-            String Msg = "SSH_CONNECTION_CONEECT_SESSION_ERROR in method "+ this.getClass().getName() +" for user:  "
-                    + username + "on destination host: "
-                    + host + " : " + e.toString();
-            _log.error(Msg,e);
-            throw new IOException(Msg,e);
+            String msg = String.format("SSH_CONNECT_SESSION_ERROR for user %s on host %s", username, host);
+            throw new IOException(msg, e);
         }
-
-
     }
-    
-   /**
-    * Opens a channel for the SSH connection
-    * @param channelType
-    * @return channel
-    * @throws IOException
-    */
-    public Channel openChannel(String channelType) throws IOException {
-        Channel channel = null;
-        try {
-            switch(channelType) {
-            case "sftp":
-                channel = (ChannelSftp) session.openChannel(channelType);
-                break;
-            case "exec":
-                channel = (ChannelExec) session.openChannel(channelType);
-                break;
-            case "shell":
-                channel = session.openChannel(channelType);
-                break;
-            default:
-                _log.debug("SSH_UNSUPPORTED_CHANNEL");
-            }
-        } catch(JSchException e) {
-            
-            String Msg = "SSH_OPEN_"+ channelType.toUpperCase() + "_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  "
-                    + username + "on destination host: "
-                    + host + " port: " + port + " : " + e.toString();
-            _log.error(Msg,e);
-            throw new IOException(Msg,e);
-        }
-        return channel; 
-        
-    }
-    
+
     /**
-     * Connects to the channel
-     * @param channel
-     * @throws IOException
+     * Synchronized to allow for thread safety, this method closes a channel and removes it from the
+     * set of open channels.
+     * @param channel returns and closes a channel from the pool
      */
-    public void connectChannel(Channel channel) throws IOException {
-        
-        try {
-            _log.debug("Trying to connect to the channel");
-            channel.connect();
-            _log.debug("Channel connect ok");
-        } catch (JSchException e) {
-            String Msg = "SSH_CONNECTION_CHANNEL_ERROR in method "+ this.getClass().getName() +" for user:  "
-                    + username + "on destination host: "
-                    + host + " port: " + port + " : " + e.toString();
-            _log.error(Msg,e);
-            throw new IOException(Msg,e);
-        }
-     }
-    
-    /**
-     * Closes the channel
-     * @param channel
-     */
-    public void closeChannel(Channel channel) {
-        _log.debug("Trying to close  the channel");
-        
-        if (channel != null && channel.isConnected())
-            // Close channel
-            channel.disconnect();
-            
+    public synchronized void returnChannel(Channel channel) {
+        channels.remove(channel);
+        channel.disconnect();
     }
 
     /**
-     * Sets the command to be executed in the SSH exec channel    
-     * @param channel
-     * @param command
-     * @param in
-     * @param out
-     * @param err
+     * Create and open a channel on the session, placing it into the concurrent set of channels
+     * that are active on the session.
+     * @param channelType One of "sftp", "exec" or "shell"
      * @return Channel
      * @throws IOException
      */
-    public Channel setCommandForExecChannel(Channel channel, String command, InputStream in, OutputStream out, OutputStream err ) throws IOException {
-        
-        ((ChannelExec)channel).setCommand(command);
-        channel.setInputStream(in);
-        channel.setOutputStream(out);
-        ((ChannelExec)channel).setErrStream(err);
-               
-        return channel;
-        
+    public synchronized Channel openChannel(String channelType) throws IOException {
+        Channel channel;
+        try {
+            switch (channelType) {
+                case "sftp":
+                    channel = (ChannelSftp) session.openChannel(channelType);
+                    break;
+                case "exec":
+                    channel = (ChannelExec) session.openChannel(channelType);
+                    break;
+                case "shell":
+                    channel = session.openChannel(channelType);
+                    break;
+                default:
+                    throw new IOException("Invalid channel type");
+            }
+            channels.add(channel);
+            return channel;
+
+        } catch (JSchException e) {
+            String msg = String.format("SSH_OPEN_CHANNEL_ERROR for user %s on host %s", username, host);
+            throw new IOException(msg, e);
+        }
+
     }
 
-   /**
-    * Closes the session  
-    */
     public void closeSession() {
         if (session != null && session.isConnected())
             session.disconnect();
     }
 
-    /**
-     * Gets the SSH Session
-     * @return
-     */
-    public Session getSession(){
+    public Session getSession() {
         return this.session;
     }
 

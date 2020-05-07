@@ -19,7 +19,6 @@ public class DataClientUtils {
     public static String getRemotePathForS3(@NotNull String rootDir, @NotNull String path) {
         String remotePath = getRemotePath(rootDir, path);
         return StringUtils.stripStart(remotePath, "/");
-
     }
 
     public static String ensureTrailingSlash(@NotNull String path) {

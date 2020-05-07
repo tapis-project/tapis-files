@@ -13,7 +13,6 @@ import javax.ws.rs.NotFoundException;
 import com.jcraft.jsch.*;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,22 +28,24 @@ public class SSHDataClient implements IRemoteDataClient {
 
     private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
     private final String host;
-    private final int port;
     private final String username;
-    private SSHConnection sshConnection;
+    private final SSHConnection sshConnection;
     private final String rootDir;
     private final String systemId;
     private final TSystem system;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
+    private static final String NOT_FOUND_MESSAGE =  "File not found for user: %s on host %s at path %s";
+    private static final String GENERIC_ERROR_MESSAGE =  "Error: Something went wrong for user: %s on host %s at path %s";
 
-
-    public SSHDataClient(TSystem system) {
-        host = system.getHost();
-        port = system.getPort();
-        username = system.getEffectiveUserId();
-        rootDir = Paths.get(system.getRootDir()).normalize().toString();
-        systemId = system.getName();
-        this.system = system;
+    public SSHDataClient(@NotNull TSystem sys, SSHConnection sshCon) {
+        String rdir = sys.getRootDir();
+        rdir = StringUtils.isBlank(rdir) ? "/" : rdir;
+        rootDir = Paths.get(rdir).normalize().toString();
+        host = sys.getHost();
+        username = sys.getEffectiveUserId();
+        systemId = sys.getName();
+        sshConnection = sshCon;
+        system = sys;
     }
 
     public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
@@ -69,24 +70,19 @@ public class SSHDataClient implements IRemoteDataClient {
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
 
         try {
-            log.debug("SSH DataClient Listing ls path: " + absolutePath.toString());
             filelist = channelSftp.ls(absolutePath.toString());
         } catch (SftpException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
-                String msg = "SSH_DATACLIENT_FILE_NOT_FOUND" + " for user: "
-                        + username + ", on host: "
-                        + host + ", path: " + absolutePath.toString() + ": " + e.getMessage();
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, remotePath);
                 log.error(msg, e);
                 throw new NotFoundException(msg);
             } else {
-                String msg = "SSH_DATACLIENT_FILE_LISTING_ERROR in method " + this.getClass().getName() + " for user: "
-                        + username + ", on host: "
-                        + host + ", path :" + absolutePath.toString() + " :  " + e.getMessage();
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, remotePath);
                 log.error(msg, e);
-                throw new IOException(msg, e);
+                throw new IOException(msg);
             }
         } finally {
-            sshConnection.closeChannel(channelSftp);
+            channelSftp.disconnect();
         }
 
         // For each entry in the fileList received, get the fileInfo object
@@ -122,9 +118,7 @@ public class SSHDataClient implements IRemoteDataClient {
     /**
      * Creates a directory on a remotePath relative to rootDir
      *
-     * @return
      * @throws IOException
-     * @throws NotFoundException
      */
     @Override
     public void mkdir(@NotNull String remotePath) throws IOException {
@@ -143,21 +137,16 @@ public class SSHDataClient implements IRemoteDataClient {
             }
         } catch (SftpException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
-                String msg = "SSH_DATACLIENT_FILE_NOT_FOUND" + " for user: "
-                        + username + ", on host: "
-                        + host + ", path: " + remote.toString() + ": " + e.getMessage();
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, remotePath);
                 log.error(msg, e);
                 throw new NotFoundException(msg);
             } else {
-                String Msg = "SSH_DATACLIENT_MKDIR_ERROR in method " + this.getClass().getName() + " for user:  "
-                        + username + " on host: "
-                        + host + " path :" + remote.toString() + " : " + e.toString();
-                log.error(Msg, e);
-
-                throw new IOException(Msg, e);
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, remotePath);
+                log.error(msg, e);
+                throw new IOException(msg, e);
             }
         } finally {
-            sshConnection.closeChannel(channelSftp);
+            channelSftp.disconnect();
         }
 
     }
@@ -181,7 +170,7 @@ public class SSHDataClient implements IRemoteDataClient {
             log.error("Error inserting file to {}", systemId, ex);
             throw new IOException("Error inserting file into " + systemId);
         } finally {
-            sshConnection.closeChannel(channelSftp);
+            channelSftp.disconnect();
         }
     }
 
@@ -206,8 +195,6 @@ public class SSHDataClient implements IRemoteDataClient {
 
         Path absoluteOldPath = Paths.get(rootDir, oldPath);
         Path absoluteNewPath = Paths.get(absoluteOldPath.getParent().toString(), newPath);
-        log.debug("SSH DataClient move: oldPath: " + absoluteOldPath.toString());
-        log.debug("SSH DataClient move: newPath: " + absoluteNewPath.toString());
 
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
 
@@ -215,20 +202,16 @@ public class SSHDataClient implements IRemoteDataClient {
             channelSftp.rename(absoluteOldPath.toString(), absoluteNewPath.toString());
         } catch (SftpException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
-                String msg = "SSH_DATACLIENT_FILE_NOT_FOUND" + " for user: "
-                        + username + ", on host: "
-                        + host + ", path: " + absoluteOldPath.toString() + ": " + e.getMessage();
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, oldPath);
                 log.error(msg, e);
                 throw new NotFoundException(msg);
             } else {
-                String Msg = "SSH_DATACLIENT_RENAME_ERROR in method " + this.getClass().getName() + " for user:  "
-                        + username + " on host: "
-                        + host + " old path :" + absoluteOldPath.toString() + " : " + " newPath: " + absoluteNewPath.toString() + ":" + e.getMessage();
-                log.error(Msg, e);
-                throw new IOException(Msg, e);
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, oldPath);
+                log.error(msg, e);
+                throw new IOException(msg, e);
             }
         } finally {
-            sshConnection.closeChannel(channelSftp);
+            channelSftp.disconnect();
         }
     }
 
@@ -245,29 +228,20 @@ public class SSHDataClient implements IRemoteDataClient {
 
         Path absoluteCurrentPath = Paths.get(rootDir, currentPath);
         Path absoluteNewPath = Paths.get(rootDir, newPath);
-        log.debug("SSH DataClient copy: currentPath: " + absoluteCurrentPath.toString());
-        log.debug("SSH DataClient copy: newPath: " + absoluteNewPath.toString());
-
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
 
         try {
             ProgressMonitor progress = new ProgressMonitor();
             channelSftp.put(absoluteCurrentPath.toString(), absoluteNewPath.toString(), progress);
-
         } catch (SftpException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
-                String msg = "SSH_DATACLIENT_FILE_NOT_FOUND" + " for user: "
-                        + username + ", on host: "
-                        + host + ", path: " + absoluteCurrentPath.toString() + ": " + e.getMessage();
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, currentPath);
                 log.error(msg, e);
                 throw new NotFoundException(msg);
             } else {
-                String Msg = "SSH_DATACLIENT_FILE_COPY_ERROR in method " + this.getClass().getName() + " for user:  "
-                        + username + ", on host: "
-                        + host + ", from current path: " + absoluteCurrentPath.toString() + " to newPath " + absoluteNewPath.toString() + " : " + e.toString();
-                log.error(Msg, e);
-
-                throw new IOException(Msg, e);
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, currentPath);
+                log.error(msg, e);
+                throw new IOException(msg, e);
             }
         }
     }
@@ -286,7 +260,7 @@ public class SSHDataClient implements IRemoteDataClient {
         SftpATTRS attrs = channelSftp.stat(cleanedPath);
         if (attrs.isDir()) {
             Collection<LsEntry> files = channelSftp.ls(path);
-            if (files != null && files.size() > 0) {
+            if (files != null && !files.isEmpty()) {
                 for (LsEntry entry : files) {
                     if ((!entry.getFilename().equals(".")) && (!entry.getFilename().equals(".."))) {
                         recursiveDelete(channelSftp, path + "/" + entry.getFilename());
@@ -300,7 +274,7 @@ public class SSHDataClient implements IRemoteDataClient {
     }
 
     private void clearRootDir(ChannelSftp channel) {
-        Collection<LsEntry> files = null;
+        Collection<LsEntry> files;
         try {
             files = channel.ls(rootDir);
             if (files != null && files.size() > 0) {
@@ -328,9 +302,17 @@ public class SSHDataClient implements IRemoteDataClient {
                 recursiveDelete(channelSftp, absPath.toString());
             }
         } catch (SftpException e) {
-            throw new IOException("Could not delete file/folder at path " + absPath.toString());
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new IOException(msg, e);
+            }
         } finally {
-            sshConnection.closeChannel(channelSftp);
+            channelSftp.disconnect();
         }
     }
 
@@ -341,37 +323,35 @@ public class SSHDataClient implements IRemoteDataClient {
         try {
             InputStream inputStream = channelSftp.get(absPath.toString());
             return IOUtils.toBufferedInputStream(inputStream);
-        } catch (SftpException ex) {
-            log.error("Error retrieving file to {}", systemId, ex);
-            throw new IOException("Error retrieving file into " + systemId + " at path " + path);
+        } catch (SftpException e) {
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new IOException(msg, e);
+            }
         } finally {
-            sshConnection.closeChannel(channelSftp);
+            channelSftp.disconnect();
         }
     }
 
     @Override
     public void download(String path) {
         // TODO Auto-generated method stub
-
     }
 
     @Override
     public void connect() throws IOException {
-
-        switch (system.getDefaultAccessMethod().getValue()) {
-            case "PASSWORD":
-                String password = system.getAccessCredential().getPassword();
-                sshConnection = new SSHConnection(host, port, username, password);
-                sshConnection.initSession();
-                break;
-            case "PKI_KEYS":
-                String pubKey = system.getAccessCredential().getPublicKey();
-                String privateKey = system.getAccessCredential().getPrivateKey();
-                sshConnection = new SSHConnection(host, port, username, pubKey, privateKey);
-                sshConnection.initSession();
-                break;
-            default:
-                throw new NotImplementedException("Access method not supported");
+        try {
+            if (!sshConnection.getSession().isConnected()) {
+                sshConnection.getSession().connect();
+            }
+        } catch (JSchException ex) {
+            log.error("Error connecting to SSH session", ex);
+            throw new IOException("Error connecting to SSH session");
         }
 
     }
@@ -384,22 +364,26 @@ public class SSHDataClient implements IRemoteDataClient {
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
         Path absPath = Paths.get(rootDir, path);
-        StringBuilder outputBuffer = new StringBuilder();
-        StringBuilder print = new StringBuilder();
-        ChannelExec channel = openAndConnectCommandChannel();
-
+        ChannelExec channel = openCommandChannel();
+        //TODO: Really need to sanitize this command
         try {
             String command = String.format("dd if=%s ibs=1 skip=%s count=%s", absPath.toString(), startByte, count);
-            InputStream commandOutput = channel.getInputStream();
             channel.setCommand(command);
-            channel.setErrStream( System.err, true );
+            InputStream commandOutput = channel.getInputStream();
             channel.connect();
             return IOUtils.toBufferedInputStream(commandOutput);
-        } catch (JSchException ex) {
-            log.error("getBytesByRange error", ex);
-            throw new IOException("Could not retrieve bytes");
+        } catch (JSchException e) {
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new IOException(msg, e);
+            }
         } finally {
-            sshConnection.closeChannel(channel);
+            channel.disconnect();
         }
     }
 
@@ -413,40 +397,21 @@ public class SSHDataClient implements IRemoteDataClient {
         insertOrAppend(path, byteStream, true);
     }
 
-
-    /**
-     * Opens and connects to SSH SFTP channel for a SSH connection.
-     * path parameter is for logging purpose
-     *
-     * @return ChannelSftp
-     * @throws IOException
-     */
-
     private ChannelSftp openAndConnectSFTPChannel() throws IOException {
         String CHANNEL_TYPE = "sftp";
-        if (sshConnection.getSession() == null) {
-            String msg = "SSH_DATACLIENT_SESSION_NULL_ERROR in method " + this.getClass().getName() + " for user:  "
-                    + username + " on destination host: "
-                    + host;
-            log.error(msg);
-            throw new IOException("SSH session error");
-        }
-
         ChannelSftp channel = (ChannelSftp) sshConnection.openChannel(CHANNEL_TYPE);
-        sshConnection.connectChannel(channel);
-        return channel;
+
+        try {
+            channel.connect();
+            return channel;
+        } catch (JSchException e) {
+            log.error("ERROR: Could not open SSH channel");
+            throw new IOException("Could not open ssh connection");
+        }
     }
 
-    private ChannelExec openAndConnectCommandChannel() throws IOException {
+    private ChannelExec openCommandChannel() throws IOException {
         String CHANNEL_TYPE = "exec";
-        if (sshConnection.getSession() == null) {
-            String msg = "SSH_DATACLIENT_SESSION_NULL_ERROR in method " + this.getClass().getName() + " for user:  "
-                    + username + " on destination host: "
-                    + host;
-            log.error(msg);
-            throw new IOException("SSH session error");
-        }
-
         return (ChannelExec) sshConnection.openChannel(CHANNEL_TYPE);
     }
 

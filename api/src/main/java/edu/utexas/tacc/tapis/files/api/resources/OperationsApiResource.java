@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
@@ -33,9 +35,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.Objects;
 
 @Path("/v3/files/ops")
 public class OperationsApiResource {
@@ -54,6 +56,9 @@ public class OperationsApiResource {
 
     @Inject
     SystemsClient systemsClient;
+
+    @Inject
+    RemoteDataClientFactory remoteDataClientFactory;
 
     /**
      * Configure the systems client with the correct baseURL and token for the request.
@@ -96,11 +101,12 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);
             List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
-        } catch (ServiceException | TapisException e) {
+        } catch (ServiceException | IOException | TapisException e) {
             log.error("listFiles", e);
             throw new WebApplicationException(e.getMessage());
         }
@@ -126,11 +132,12 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);
             fileOpsService.mkdir(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | TapisClientException ex) {
+        } catch (ServiceException | IOException | TapisClientException ex) {
             log.error("mkdir", ex);
             throw new WebApplicationException("Something went wrong...");
         }
@@ -159,11 +166,11 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
-            fileOpsService.insert(path, fileInputStream);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | TapisClientException ex) {
+        } catch (ServiceException | IOException | TapisClientException ex) {
             log.error(ex.getMessage());
             throw new WebApplicationException();
         }
@@ -191,11 +198,11 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
-            fileOpsService.move(path, newName);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.move(path, newName);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | TapisClientException ex) {
+        } catch (ServiceException | IOException | TapisClientException ex) {
             log.error("rename", ex);
             throw new WebApplicationException();
         }
@@ -222,11 +229,11 @@ public class OperationsApiResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            FileOpsService fileOpsService = new FileOpsService(system);
-            fileOpsService.delete(path);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.delete(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | TapisClientException ex) {
+        } catch (ServiceException | IOException | TapisClientException ex) {
             log.error("delete", ex);
             throw new WebApplicationException(ex.getMessage());
         }
