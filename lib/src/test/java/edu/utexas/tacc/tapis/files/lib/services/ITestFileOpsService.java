@@ -89,9 +89,9 @@ public class ITestFileOpsService {
         creds.setAccessSecret("password");
         testSystemS3 = new TSystem();
         testSystemS3.setHost("http://localhost");
-        testSystemS3.setPort(9000);
         testSystemS3.setBucketName("test");
         testSystemS3.setName("testSystem");
+        testSystemS3.setPort(9000);
         testSystemS3.setAccessCredential(creds);
         testSystemS3.setRootDir("/");
         transferMechs = new ArrayList<>();
@@ -143,7 +143,7 @@ public class ITestFileOpsService {
         FileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls("/test.txt");
+        List<FileInfo> listing = fileOpsService.ls("test.txt");
         Assert.assertEquals(listing.size(), 1);
         fileOpsService.delete("/test.txt");
         Assert.assertThrows(NotFoundException.class, ()-> {
@@ -187,7 +187,7 @@ public class ITestFileOpsService {
         FileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls("/test.txt");
+        List<FileInfo> listing = fileOpsService.ls("test.txt");
         Assert.assertTrue(listing.size() == 1);
         Assert.assertTrue(listing.get(0).getName().equals("test.txt"));
 
@@ -199,7 +199,7 @@ public class ITestFileOpsService {
         FileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.insert("test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls("/test.txt");
+        List<FileInfo> listing = fileOpsService.ls("test.txt");
         Assert.assertTrue(listing.size() == 1);
         Assert.assertTrue(listing.get(0).getName().equals("test.txt"));
         Assert.assertEquals(listing.get(0).getSize(), 100 * 1000 * 1024L);
