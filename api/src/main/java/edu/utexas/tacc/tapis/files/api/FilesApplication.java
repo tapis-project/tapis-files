@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Singleton;
 import javax.ws.rs.ApplicationPath;
 import java.net.URI;
+import java.util.concurrent.TimeUnit;
 
 
 // The path here is appended to the context root and
@@ -104,8 +105,8 @@ public class FilesApplication extends BaseResourceConfig {
                 bindAsContract(SystemsClient.class);
                 bindAsContract(TokensClient.class);
                 bindAsContract(TenantsClient.class);
-                bindAsContract(SSHConnectionCache.class);
-                bindAsContract(RemoteDataClientFactory.class);
+                bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
                 bindFactory(ServiceJWTCacheFactory.class).to(ServiceJWT.class).in(Singleton.class);
                 bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
             }
