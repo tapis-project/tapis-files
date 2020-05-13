@@ -47,7 +47,7 @@ public class FileInfo   {
      * @return lastModified
      **/
     @JsonProperty("lastModified")
-    @Schema(description = "")
+    @Schema(type="string", format = "date-time")
     public Instant getLastModified() {
         return lastModified;
     }

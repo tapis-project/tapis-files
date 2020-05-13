@@ -710,8 +710,8 @@
         "type" : "object",
         "properties" : {
           "lastModified" : {
-            "type" : "integer",
-            "format" : "int64"
+            "type" : "string",
+            "format" : "date-time"
           },
           "name" : {
             "type" : "string"

@@ -142,7 +142,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testSimpleGetContents() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
@@ -155,7 +155,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testNotFound() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/v3/files/content/testSystem/NOT-THERE.txt")
                 .request()
@@ -167,7 +167,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testGetWithRange() throws Exception {
         addTestFilesToBucket(testSystem, "words.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/v3/files/content/testSystem/words.txt")
                 .request()
@@ -182,7 +182,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testGetWithMore() throws Exception {
         addTestFilesToBucket(testSystem, "words.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/v3/files/content/testSystem/words.txt")
                 .request()
@@ -201,7 +201,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     public void testGetContentsHeaders() throws Exception {
         // make sure content-type is application/octet-stream and filename is correct
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
                 .request()
@@ -214,7 +214,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testBadRequest() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         Response response = target("/v3/files/content/testSystem/BAD-PATH/")
                 .request()
