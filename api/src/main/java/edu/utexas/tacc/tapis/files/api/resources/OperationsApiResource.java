@@ -40,7 +40,7 @@ import java.io.InputStream;
 import java.util.List;
 
 @Path("/v3/files/ops")
-public class OperationsApiResource {
+public class OperationsApiResource extends BaseFilesResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
@@ -49,34 +49,10 @@ public class OperationsApiResource {
     private static class FileStringResponse extends TapisResponse<String>{}
 
     @Inject
-    ServiceJWT serviceJWTCache;
-
-    @Inject
-    TenantManager tenantCache;
-
-    @Inject
     SystemsClient systemsClient;
 
     @Inject
     RemoteDataClientFactory remoteDataClientFactory;
-
-    /**
-     * Configure the systems client with the correct baseURL and token for the request.
-     * @param user
-     * @throws ServiceException
-     */
-    private void configureSystemsClient(AuthenticatedUser user) throws ServiceException {
-        try {
-            String tenantId = user.getTenantId();
-            systemsClient.setBasePath(tenantCache.getTenant(tenantId).getBaseUrl());
-            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
-            systemsClient.addDefaultHeader("x-tapis-user", user.getName());
-            systemsClient.addDefaultHeader("x-tapis-tenant", user.getTenantId());
-        } catch (TapisException ex) {
-            log.error("configureSystemsClient", ex);
-            throw new ServiceException("Something went wrong");
-        }
-    }
 
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)

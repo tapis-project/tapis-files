@@ -32,7 +32,7 @@ import java.util.Objects;
 
 
 @Path("/v3/files/content")
-public class ContentApiResource {
+public class ContentApiResource extends BaseFilesResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
