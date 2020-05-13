@@ -60,7 +60,7 @@ public class ContentApiResource extends BaseFilesResource {
         try {
             AuthenticatedUser user  = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
             IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
             FileOpsService fileOpsService = new FileOpsService(client);
             InputStream stream;
