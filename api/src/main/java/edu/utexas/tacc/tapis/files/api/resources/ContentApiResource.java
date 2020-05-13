@@ -89,6 +89,7 @@ public class ContentApiResource extends BaseFilesResource {
             return Response
                     .ok(stream, mtype)
                     .header("content-disposition", contentDisposition)
+                    .header("cache-control", "max-age=3600")
                     .build();
         } catch (TapisException ex) {
             throw new BadRequestException("Only files can be served");
