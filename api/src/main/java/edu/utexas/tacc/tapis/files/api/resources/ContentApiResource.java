@@ -94,7 +94,7 @@ public class ContentApiResource {
         } catch (NotFoundException ex) {
             throw ex;
         } catch (Exception ex) {
-            log.error(ex.getMessage());
+            log.error("ERROR: filesGetContents", ex);
             throw new WebApplicationException();
         }
     }
