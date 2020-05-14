@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
+import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
@@ -33,6 +35,7 @@ import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 
@@ -98,6 +101,8 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                         bind(skClient).to(SKClient.class);
                         bind(tenantManager).to(TenantManager.class);
                         bind(serviceJWT).to(ServiceJWT.class);
+                        bindAsContract(RemoteDataClientFactory.class);
+                        bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                     }
                 });
         app.register(ContentApiResource.class);
@@ -137,10 +142,10 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testSimpleGetContents() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
 
-        Response response = target("/content/testSystem/testfile1.txt")
+        Response response = target("/v3/files/content/testSystem/testfile1.txt")
                 .request()
                 .header("X-Tapis-Token", user1jwt)
                 .get();
@@ -150,9 +155,9 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testNotFound() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        Response response = target("/content/testSystem/NOT-THERE.txt")
+        Response response = target("/v3/files/content/testSystem/NOT-THERE.txt")
                 .request()
                 .header("X-Tapis-Token", user1jwt)
                 .get();
@@ -162,11 +167,11 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testGetWithRange() throws Exception {
         addTestFilesToBucket(testSystem, "words.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        Response response = target("/content/testSystem/words.txt")
+        Response response = target("/v3/files/content/testSystem/words.txt")
                 .request()
-                .header("range", "0,999")
+                .header("range", "0,1000")
                 .header("X-Tapis-Token", user1jwt)
                 .get();
         Assert.assertEquals(response.getStatus(), 200);
@@ -177,9 +182,9 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     @Test
     public void testGetWithMore() throws Exception {
         addTestFilesToBucket(testSystem, "words.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        Response response = target("/content/testSystem/words.txt")
+        Response response = target("/v3/files/content/testSystem/words.txt")
                 .request()
                 .header("more", "1")
                 .header("X-Tapis-Token", user1jwt)
@@ -196,9 +201,9 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     public void testGetContentsHeaders() throws Exception {
         // make sure content-type is application/octet-stream and filename is correct
         addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        Response response = target("/content/testSystem/testfile1.txt")
+        Response response = target("/v3/files/content/testSystem/testfile1.txt")
                 .request()
                 .header("x-tapis-token", user1jwt)
                 .get();
@@ -209,9 +214,9 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
 
     @Test
     public void testBadRequest() throws Exception {
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        Response response = target("/content/testSystem/BAD-PATH/")
+        Response response = target("/v3/files/content/testSystem/BAD-PATH/")
                 .request()
                 .header("x-tapis-token", user1jwt)
                 .get();

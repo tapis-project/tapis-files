@@ -19,7 +19,7 @@
     "description" : "localhost",
     "variables" : { }
   }, {
-    "url" : "https://dev.develop.tapis.io/v3",
+    "url" : "https://dev.develop.tapis.io",
     "description" : "development",
     "variables" : { }
   } ],
@@ -36,7 +36,7 @@
     "name" : "transfers"
   } ],
   "paths" : {
-    "/content/{systemId}/{path}" : {
+    "/v3/files/content/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "content" ],
         "summary" : "Retrieve a file from the files service",
@@ -84,7 +84,7 @@
         }
       }
     },
-    "/health/healthcheck" : {
+    "/v3/files/healthcheck" : {
       "get" : {
         "tags" : [ "health" ],
         "summary" : "Health check",
@@ -94,7 +94,7 @@
           "200" : {
             "description" : "OK",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/HealthCheckResponse"
                 }
@@ -104,7 +104,7 @@
         }
       }
     },
-    "/ops/{systemId}/{path}" : {
+    "/v3/files/ops/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "file operations" ],
         "summary" : "List files/objects in a storage system.",
@@ -134,7 +134,8 @@
           "description" : "pagination limit",
           "schema" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int32",
+            "default" : 1000
           },
           "example" : 100
         }, {
@@ -143,7 +144,8 @@
           "description" : "pagination offset",
           "schema" : {
             "type" : "integer",
-            "format" : "int64"
+            "format" : "int64",
+            "default" : 0
           },
           "example" : 1000
         }, {
@@ -302,7 +304,7 @@
         }
       }
     },
-    "/permissions/{systemId}/{path}" : {
+    "/v3/files/permissions/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "permissions" ],
         "summary" : "List permissions on an file/folder",
@@ -420,7 +422,7 @@
         }
       }
     },
-    "/share/{systemId}/{path}" : {
+    "/v3/files/share/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "share" ],
         "summary" : "List the shares on a file resource. ",
@@ -539,7 +541,7 @@
         }
       }
     },
-    "/transfers/{transferTaskId}" : {
+    "/v3/files/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
         "summary" : "Get a transfer task",
@@ -595,7 +597,7 @@
         }
       }
     },
-    "/transfers" : {
+    "/v3/files/transfers" : {
       "post" : {
         "tags" : [ "transfers" ],
         "summary" : "Transfer data",
@@ -625,7 +627,7 @@
         }
       }
     },
-    "/transfers/{transferTaskId}/history" : {
+    "/v3/files/transfers/{transferTaskId}/history" : {
       "get" : {
         "tags" : [ "transfers" ],
         "summary" : "Get history of a transfer task",
@@ -708,8 +710,8 @@
         "type" : "object",
         "properties" : {
           "lastModified" : {
-            "type" : "integer",
-            "format" : "int64"
+            "type" : "string",
+            "format" : "date-time"
           },
           "name" : {
             "type" : "string"

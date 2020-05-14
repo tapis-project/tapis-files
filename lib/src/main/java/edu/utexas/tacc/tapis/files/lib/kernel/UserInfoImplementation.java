@@ -28,12 +28,6 @@ public class UserInfoImplementation implements UserInfo, UIKeyboardInteractive {
     private static final String[] KNOWN_MFA_PROMPTS = { "[sudo] password for: ", "TACC Token Code:",
             "select one of the following options", "Duo two-factor", "Yubikey for " };
 
-
-
-    /* **************************************************************************** */
-    /*                                    Fields                                    */
-    /* **************************************************************************** */
-
     public String method;
     private String passwd;
     public String username;
@@ -42,9 +36,6 @@ public class UserInfoImplementation implements UserInfo, UIKeyboardInteractive {
     private static final Logger _log = LoggerFactory.getLogger(UserInfoImplementation.class);
 
 
-    /* ********************************************************************** */
-    /* Constructors */
-    /* ********************************************************************** */
     /* ---------------------------------------------------------------------------- */
     /* constructor:                                                                 */
     /* ---------------------------------------------------------------------------- */
@@ -58,9 +49,7 @@ public class UserInfoImplementation implements UserInfo, UIKeyboardInteractive {
         this.passwd = passwd;
 
     }
-    /* ---------------------------------------------------------------------------- */
-    /* constructor:                                                                 */
-    /* ---------------------------------------------------------------------------- */
+
     public UserInfoImplementation(String username, byte[] privateKey) {
         this.username = username;
         this.privateKey = privateKey;

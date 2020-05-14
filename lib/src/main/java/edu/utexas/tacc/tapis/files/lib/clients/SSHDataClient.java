@@ -1,173 +1,420 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
-import org.jvnet.hk2.annotations.Service;
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotFoundException;
+
+import com.jcraft.jsch.*;
+import edu.utexas.tacc.tapis.files.lib.utils.Constants;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jcraft.jsch.ChannelSftp.LsEntry;
 
-import edu.utexas.tacc.tapis.files.lib.exceptions.FilesKernelException;
-import edu.utexas.tacc.tapis.files.lib.kernel.SftpFilesKernel;
+import edu.utexas.tacc.tapis.files.lib.kernel.ProgressMonitor;
+import edu.utexas.tacc.tapis.files.lib.kernel.SSHConnection;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 
-import javax.inject.Named;
-
 public class SSHDataClient implements IRemoteDataClient {
-    
-    private Logger log = LoggerFactory.getLogger(SSHDataClient.class);
-	String host;
-	int port;
-	String username;
-	String password;
-	String path ;
-	TSystem.DefaultAccessMethodEnum accessMethod;
-	String remotePath;
-	SftpFilesKernel sftp;
-	String rootDir;
-	String systemId;
-	
-	
-	public SSHDataClient(TSystem system) {
-		host = system.getHost();
-		port = system.getPort();
-		username = system.getEffectiveUserId();
-		password = system.getAccessCredential().getPassword();
-		remotePath = system.getBucketName();
-		accessMethod = system.getDefaultAccessMethod();
-		rootDir = system.getRootDir();
-		systemId = system.getName();
-		
-	}
-	@Override
-	public List<FileInfo> ls(String remotePath) throws IOException {
-		List<FileInfo> filesListing = new ArrayList<>();
-		Path remoteAbsolutePath = null;
-		try {
-			 remoteAbsolutePath = Paths.get(rootDir,remotePath);
-			 filesListing = sftp.ls(remoteAbsolutePath.toString());
-		} catch (Exception e) {
-		    String msg = "SSH_LISTING_ERROR for system " + systemId + " path: " + remoteAbsolutePath 
-		                  + ": " + e.getMessage();
-			log.error(msg, e);
-			throw new IOException("File Listing Failed" + msg);
-		} 
-		return filesListing;
-	}
 
-	@Override
-	public void mkdir(String remotePath) throws IOException {
-	    	        
-            Path remoteAbsolutePath = Paths.get(rootDir,remotePath);
-            log.debug("SSHDataClient: mkdir call abs path: " + remoteAbsolutePath);
-        try { 
-            String mkdirStatus = sftp.mkdir(remoteAbsolutePath.toString());
-            log.debug("File mkdir status from remote execution: " + mkdirStatus);
-            
-       } catch (FilesKernelException e) {
-           String msg = "SSH_MKDIR_ERROR for system " + systemId + " remote path: " + remoteAbsolutePath 
-                   +  " : " + e.getMessage();
-           log.error(msg, e);
-          throw new IOException("mkdir Failed: " + msg);
-       }
+    private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
+    private final String host;
+    private final String username;
+    private final SSHConnection sshConnection;
+    private final String rootDir;
+    private final String systemId;
+    private final TSystem system;
+    private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
+    private static final String NOT_FOUND_MESSAGE =  "File not found for user: %s on host %s at path %s";
+    private static final String GENERIC_ERROR_MESSAGE =  "Error: Something went wrong for user: %s on host %s at path %s";
 
-	}
+    public SSHDataClient(@NotNull TSystem sys, SSHConnection sshCon) {
+        String rdir = sys.getRootDir();
+        rdir = StringUtils.isBlank(rdir) ? "/" : rdir;
+        rootDir = Paths.get(rdir).normalize().toString();
+        host = sys.getHost();
+        username = sys.getEffectiveUserId();
+        systemId = sys.getName();
+        sshConnection = sshCon;
+        system = sys;
+    }
 
-	@Override
-	public void insert(String remotePath, InputStream fileStream) throws IOException {
+    public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
+        return this.ls(remotePath, MAX_LISTING_SIZE, 0);
+    }
 
-	}
+    /**
+     * Returns the files listing output on a remotePath
+     *
+     * @param remotePath
+     * @return list of FileInfo
+     * @throws IOException
+     * @throws NotFoundException
+     */
+    @Override
+    public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
 
-	@Override
-	public void move(String oldPath, String newName) throws IOException {
-	    Path remoteAbsoluteOldPath = Paths.get(rootDir,oldPath);
-	    Path remoteAbsoluteNewPath = Paths.get(remoteAbsoluteOldPath.getParent().toString(), newName);
-        log.debug("SSHDataClient: move call abs old path: " + remoteAbsoluteOldPath);
-        log.debug("SSHDataClient: move call abs new path: " + remoteAbsoluteNewPath);
-    try { 
-        String renameStatus = sftp.rename( remoteAbsoluteOldPath.toString(), remoteAbsoluteNewPath.toString());
-        log.debug("File rename status from remote execution: " + renameStatus);
-        
-   } catch (FilesKernelException e) {
-       String msg = "SSH_RENAME_ERROR for system " + systemId + " old path: " + remoteAbsoluteOldPath 
-               + " to newPath: "+ remoteAbsoluteNewPath + " : " + e.getMessage();
-       log.debug(msg, e);
-      throw new IOException("Rename Failed: " + msg);
-   }
-}
+        List<FileInfo> filesList = new ArrayList<>();
+        List<?> filelist;
+        Path absolutePath = Paths.get(rootDir, remotePath);
 
-	@Override
-	public void copy(String currentPath, String newPath) throws IOException {
-		// TODO Auto-generated method stub
+        ChannelSftp channelSftp = openAndConnectSFTPChannel();
 
-	}
+        try {
+            filelist = channelSftp.ls(absolutePath.toString());
+        } catch (SftpException e) {
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, remotePath);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, remotePath);
+                log.error(msg, e);
+                throw new IOException(msg);
+            }
+        } finally {
+            channelSftp.disconnect();
+        }
 
-	@Override
-	public void delete(String path) throws IOException {
-		// TODO Auto-generated method stub
+        // For each entry in the fileList received, get the fileInfo object
+        for (int i = 0; i < filelist.size(); i++) {
+            LsEntry entry = (LsEntry) filelist.get(i);
+            // Get the file attributes
+            SftpATTRS attrs = entry.getAttrs();
+            FileInfo fileInfo = new FileInfo();
+            // Ignore filename . and ..
+            if (entry.getFilename().equals(".") || entry.getFilename().equals("..")) {
+                continue;
+            }
+            fileInfo.setName(entry.getFilename());
+            // Obtain the modified time for the file from the attribute
+            // and set lastModified field
+            DateTimeFormatter dateTimeformatter = DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss zzz uuuu", Locale.US);
+            ZonedDateTime lastModified = ZonedDateTime.parse(attrs.getMtimeString(), dateTimeformatter);
+            fileInfo.setLastModified(lastModified.toInstant());
+            fileInfo.setSize(attrs.getSize());
+            //Check if the entry is a directory or a file
+            if (attrs.isReg()) {
+                Path fullPath = Paths.get(remotePath, entry.getFilename());
+                fileInfo.setPath(fullPath.toString());
+            } else {
+                fileInfo.setPath(remotePath);
+            }
+            filesList.add(fileInfo);
+        }
+        return filesList;
+    }
 
-	}
 
-	@Override
-	public InputStream getStream(String path) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    /**
+     * Creates a directory on a remotePath relative to rootDir
+     *
+     * @throws IOException
+     */
+    @Override
+    public void mkdir(@NotNull String remotePath) throws IOException {
 
-	@Override
-	public void download(String path) {
-		// TODO Auto-generated method stub
+        Path remote = Paths.get(remotePath);
+        ChannelSftp channelSftp = openAndConnectSFTPChannel();
+        try {
+            channelSftp.cd(rootDir);
+            for (Path part : remote) {
+                try {
+                    channelSftp.cd(part.toString());
+                } catch (SftpException ex) {
+                    channelSftp.mkdir(part.toString());  // do we need to set some permission on the directory??
+                    channelSftp.cd(part.toString());
+                }
+            }
+        } catch (SftpException e) {
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, remotePath);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, remotePath);
+                log.error(msg, e);
+                throw new IOException(msg, e);
+            }
+        } finally {
+            channelSftp.disconnect();
+        }
 
-	}
+    }
 
-	@Override
-	public void connect() throws IOException {
-		// TODO Auto-generated method stub
-		switch(accessMethod.getValue()) {
-		case "PASSWORD":
-			System.out.println("host: "+ host+ " port: "+ port+ " username: "+ username + " password: "+ password);
-			sftp = new SftpFilesKernel(host, port, username, password);
-			try {
-				sftp.initSession();
-			} catch (FilesKernelException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			
-		case "SSH_KEYS":
-			//
-		default:
-			//dosomething
-		}
 
-	}
+    private void insertOrAppend(@NotNull String path, @NotNull InputStream fileStream, @NotNull Boolean append) throws IOException, NotFoundException {
+        Path absolutePath = Paths.get(rootDir, path).normalize();
+        Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
+        Path parentPath = relativeRemotePath.getParent();
 
-	@Override
-	public void disconnect() {
-		sftp.closeSession();
+        ChannelSftp channelSftp = openAndConnectSFTPChannel();
 
-	}
+        int channelOptions = append ? ChannelSftp.APPEND : ChannelSftp.OVERWRITE;
 
-	@Override
-	public InputStream getBytesByRange(String path, long startByte, long endByte) throws IOException{
-		return null;
-	}
+        try {
+            if (parentPath != null) this.mkdir(parentPath.toString());
+            channelSftp.cd(rootDir);
+            if (parentPath != null) channelSftp.cd(parentPath.toString());
+            channelSftp.put(fileStream, absolutePath.getFileName().toString(), channelOptions);
+        } catch (SftpException ex) {
+            log.error("Error inserting file to {}", systemId, ex);
+            throw new IOException("Error inserting file into " + systemId);
+        } finally {
+            channelSftp.disconnect();
+        }
+    }
 
-	@Override
-	public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
 
-	}
+    @Override
+    public void insert(@NotNull String remotePath, @NotNull InputStream fileStream) throws IOException {
+        insertOrAppend(remotePath, fileStream, false);
+    }
 
-	@Override
-	public void append(String path, InputStream byteStream) throws IOException {
 
-	}
+    /**
+     * Rename/move oldPath to newPath
+     *
+     * @param oldPath
+     * @param newPath
+     * @return
+     * @throws IOException
+     * @throws NotFoundException
+     */
+    @Override
+    public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException {
+
+        Path absoluteOldPath = Paths.get(rootDir, oldPath);
+        Path absoluteNewPath = Paths.get(absoluteOldPath.getParent().toString(), newPath);
+
+        ChannelSftp channelSftp = openAndConnectSFTPChannel();
+
+        try {
+            channelSftp.rename(absoluteOldPath.toString(), absoluteNewPath.toString());
+        } catch (SftpException e) {
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, oldPath);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, oldPath);
+                log.error(msg, e);
+                throw new IOException(msg, e);
+            }
+        } finally {
+            channelSftp.disconnect();
+        }
+    }
+
+
+    /**
+     * @param currentPath
+     * @param newPath
+     * @return
+     * @throws IOException
+     * @throws NotFoundException
+     */
+    @Override
+    public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
+
+        Path absoluteCurrentPath = Paths.get(rootDir, currentPath);
+        Path absoluteNewPath = Paths.get(rootDir, newPath);
+        ChannelSftp channelSftp = openAndConnectSFTPChannel();
+
+        try {
+            ProgressMonitor progress = new ProgressMonitor();
+            channelSftp.put(absoluteCurrentPath.toString(), absoluteNewPath.toString(), progress);
+        } catch (SftpException e) {
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, currentPath);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, currentPath);
+                log.error(msg, e);
+                throw new IOException(msg, e);
+            }
+        }
+    }
+
+
+    /**
+     * Path is relative to rootDir
+     *
+     * @param channelSftp
+     * @param path
+     * @throws SftpException
+     */
+    private void recursiveDelete(ChannelSftp channelSftp, String path) throws SftpException {
+        String cleanedPath = Paths.get(path).normalize().toString();
+
+        SftpATTRS attrs = channelSftp.stat(cleanedPath);
+        if (attrs.isDir()) {
+            Collection<LsEntry> files = channelSftp.ls(path);
+            if (files != null && !files.isEmpty()) {
+                for (LsEntry entry : files) {
+                    if ((!entry.getFilename().equals(".")) && (!entry.getFilename().equals(".."))) {
+                        recursiveDelete(channelSftp, path + "/" + entry.getFilename());
+                    }
+                }
+            }
+            channelSftp.rmdir(path);
+        } else {
+            channelSftp.rm(path);
+        }
+    }
+
+    private void clearRootDir(ChannelSftp channel) {
+        Collection<LsEntry> files;
+        try {
+            files = channel.ls(rootDir);
+            if (files != null && files.size() > 0) {
+                for (LsEntry entry : files) {
+                    if ((!entry.getFilename().equals(".")) && (!entry.getFilename().equals(".."))) {
+                        recursiveDelete(channel, rootDir + "/" + entry.getFilename());
+                    }
+                }
+            }
+        } catch (SftpException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+
+    @Override
+    public void delete(@NotNull String path) throws IOException {
+        Path absPath = Paths.get(rootDir, path);
+        ChannelSftp channelSftp = openAndConnectSFTPChannel();
+        // If the path is "/", then just clear everything out of rootDir?
+        try {
+            if (absPath.equals(Paths.get(rootDir))) {
+                clearRootDir(channelSftp);
+            } else {
+                recursiveDelete(channelSftp, absPath.toString());
+            }
+        } catch (SftpException e) {
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new IOException(msg, e);
+            }
+        } finally {
+            channelSftp.disconnect();
+        }
+    }
+
+    @Override
+    public InputStream getStream(@NotNull String path) throws IOException {
+        Path absPath = Paths.get(rootDir, path);
+        ChannelSftp channelSftp = openAndConnectSFTPChannel();
+        try {
+            InputStream inputStream = channelSftp.get(absPath.toString());
+            return IOUtils.toBufferedInputStream(inputStream);
+        } catch (SftpException e) {
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new IOException(msg, e);
+            }
+        } finally {
+            channelSftp.disconnect();
+        }
+    }
+
+    @Override
+    public void download(String path) {
+        // TODO Auto-generated method stub
+    }
+
+    @Override
+    public void connect() throws IOException {
+        try {
+            if (!sshConnection.getSession().isConnected()) {
+                sshConnection.getSession().connect();
+            }
+        } catch (JSchException ex) {
+            log.error("Error connecting to SSH session", ex);
+            throw new IOException("Error connecting to SSH session");
+        }
+
+    }
+
+    @Override
+    public void disconnect() {
+        sshConnection.closeSession();
+    }
+
+    @Override
+    public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
+        Path absPath = Paths.get(rootDir, path);
+        ChannelExec channel = openCommandChannel();
+        //TODO: Really need to sanitize this command
+        try {
+            String command = String.format("dd if=%s ibs=1 skip=%s count=%s", absPath.toString(), startByte, count);
+            channel.setCommand(command);
+            InputStream commandOutput = channel.getInputStream();
+            channel.connect();
+            return IOUtils.toBufferedInputStream(commandOutput);
+        } catch (JSchException e) {
+            if (e.getMessage().toLowerCase().contains("no such file")) {
+                String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new NotFoundException(msg);
+            } else {
+                String msg = String.format(GENERIC_ERROR_MESSAGE, username, host, path);
+                log.error(msg, e);
+                throw new IOException(msg, e);
+            }
+        } finally {
+            channel.disconnect();
+        }
+    }
+
+    @Override
+    public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
+
+    }
+
+    @Override
+    public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
+        insertOrAppend(path, byteStream, true);
+    }
+
+    private ChannelSftp openAndConnectSFTPChannel() throws IOException {
+        String CHANNEL_TYPE = "sftp";
+        ChannelSftp channel = (ChannelSftp) sshConnection.openChannel(CHANNEL_TYPE);
+
+        try {
+            channel.connect();
+            return channel;
+        } catch (JSchException e) {
+            log.error("ERROR: Could not open SSH channel");
+            throw new IOException("Could not open ssh connection");
+        }
+    }
+
+    private ChannelExec openCommandChannel() throws IOException {
+        String CHANNEL_TYPE = "exec";
+        return (ChannelExec) sshConnection.openChannel(CHANNEL_TYPE);
+    }
+
+
 
 }

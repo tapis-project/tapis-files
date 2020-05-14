@@ -14,7 +14,7 @@ servers:
 - url: http://localhost:8080/
   description: localhost
   variables: {}
-- url: https://dev.develop.tapis.io/v3
+- url: https://dev.develop.tapis.io
   description: development
   variables: {}
 security:
@@ -25,7 +25,7 @@ tags:
 - name: permissions
 - name: transfers
 paths:
-  /content/{systemId}/{path}:
+  /v3/files/content/{systemId}/{path}:
     get:
       tags:
       - content
@@ -63,7 +63,7 @@ paths:
       responses:
         200:
           description: OK
-  /health/healthcheck:
+  /v3/files/healthcheck:
     get:
       tags:
       - health
@@ -74,10 +74,10 @@ paths:
         200:
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: '#/components/schemas/HealthCheckResponse'
-  /ops/{systemId}/{path}:
+  /v3/files/ops/{systemId}/{path}:
     get:
       tags:
       - file operations
@@ -105,6 +105,7 @@ paths:
         schema:
           type: integer
           format: int32
+          default: 1000
         example: 100
       - name: offset
         in: query
@@ -112,6 +113,7 @@ paths:
         schema:
           type: integer
           format: int64
+          default: 0
         example: 1000
       - name: meta
         in: query
@@ -224,7 +226,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileStringResponse'
-  /permissions/{systemId}/{path}:
+  /v3/files/permissions/{systemId}/{path}:
     get:
       tags:
       - permissions
@@ -314,7 +316,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FilePermissionResponse'
-  /share/{systemId}/{path}:
+  /v3/files/share/{systemId}/{path}:
     get:
       tags:
       - share
@@ -401,7 +403,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
-  /transfers/{transferTaskId}:
+  /v3/files/transfers/{transferTaskId}:
     get:
       tags:
       - transfers
@@ -442,7 +444,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TapisResponse'
-  /transfers:
+  /v3/files/transfers:
     post:
       tags:
       - transfers
@@ -463,7 +465,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferTaskResponse'
-  /transfers/{transferTaskId}/history:
+  /v3/files/transfers/{transferTaskId}/history:
     get:
       tags:
       - transfers
@@ -521,8 +523,8 @@ components:
       type: object
       properties:
         lastModified:
-          type: integer
-          format: int64
+          type: string
+          format: date-time
         name:
           type: string
         path:

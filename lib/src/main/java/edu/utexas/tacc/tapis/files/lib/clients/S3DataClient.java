@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.utils.Constants;
+import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.NotImplementedException;
@@ -13,11 +15,14 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.UriBuilder;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -26,29 +31,63 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 public class S3DataClient implements IRemoteDataClient {
 
-    private Logger log = LoggerFactory.getLogger(S3DataClient.class);
-    private S3Client client;
-    private String bucket;
-    private TSystem system;
-    private String rootDir;
+    private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
+
+    public S3Client getClient() {
+        return client;
+    }
+
+    private final S3Client client;
+    private final String bucket;
+    private final TSystem system;
+    private final String rootDir;
+    private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
     public S3DataClient(@NotNull TSystem remoteSystem) throws IOException {
         system = remoteSystem;
         bucket = system.getBucketName();
         rootDir = system.getRootDir();
 
+        // There are so many different flavors of s3 URLs we have to
+        // do the gymnastics below.
         try {
-            URI endpoint = new URI(system.getHost() + ":" + system.getPort());
+            URI endpoint;
+            String host = system.getHost();
+            URI tmpUri = new URI(host);
+            if (system.getPort() != null) {
+                endpoint =   UriBuilder.fromUri("")
+                        .scheme(tmpUri.getScheme())
+                        .host(tmpUri.getHost())
+                        .port(system.getPort())
+                        .path(tmpUri.getPath())
+                        .build();
+
+            } else {
+                endpoint = new URI(host);
+            }
+            String region = S3URLParser.getRegion(host);
+            Region reg;
+            if (region == null) {
+                reg = Region.US_EAST_1;
+            } else {
+                reg = Region.of(region);
+            }
             AwsCredentials credentials = AwsBasicCredentials.create(system.getAccessCredential().getAccessKey(), system.getAccessCredential().getAccessSecret());
-            client = S3Client.builder()
-                    .region(Region.AP_NORTHEAST_1)
-                    .endpointOverride(endpoint)
-                    .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                    .build();
+            S3ClientBuilder builder = S3Client.builder()
+                    .region(reg)
+                    .credentialsProvider(StaticCredentialsProvider.create(credentials));
+
+            // Have to do the endpoint override if its not a real AWS route, as in for a minio
+            // instance
+            if (!S3URLParser.isAWSUrl(host)) {
+                builder.endpointOverride(endpoint);
+            }
+            client = builder.build();
 
         } catch (URISyntaxException e) {
             throw new IOException("Could not create s3 client for system");
@@ -59,43 +98,81 @@ public class S3DataClient implements IRemoteDataClient {
         ListObjectsV2Request req = ListObjectsV2Request.builder()
                 .bucket(bucket)
                 .prefix(path)
+                .maxKeys(MAX_LISTING_SIZE)
                 .build();
         ListObjectsV2Iterable resp = client.listObjectsV2Paginator(req);
         return resp.contents().stream();
     }
 
+    private FileInfo listSingleObject(String path) throws S3Exception, NotFoundException {
+        try {
+            HeadObjectRequest req = HeadObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(path)
+                    .build();
+            HeadObjectResponse resp = client.headObject(req);
+            FileInfo f = new FileInfo();
+            f.setPath(path);
+            f.setLastModified(resp.lastModified());
+            f.setName(path);
+            f.setSize(resp.contentLength());
+            return f;
+        } catch (NoSuchKeyException ex) {
+            String msg = String.format("No such file at %s", path);
+            throw new NotFoundException(msg);
+        }
+    }
+
+    public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {
+        return this.ls(path, MAX_LISTING_SIZE, 0);
+    }
+
 
     @Override
-    public List<FileInfo> ls(String path) throws IOException {
-        //TODO: Implement limit/offset
+    public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException {
+
         String remoteAbsolutePath = DataClientUtils.getRemotePathForS3(rootDir, path);
+
+//        // If it looks like a file, just try to get the HEAD info
+//        if (!remoteAbsolutePath.endsWith("/")) {
+//           FileInfo info = listSingleObject(remoteAbsolutePath);
+//           List<FileInfo> out = new ArrayList<>();
+//           out.add(info);
+//           return out;
+//        }
         Stream<S3Object> response = listWithIterator(remoteAbsolutePath);
         List<FileInfo> files = new ArrayList<>();
-        response.forEach(x->{
-                    files.add(new FileInfo(x));
-                });
+        response.skip(offset).limit(limit).forEach((S3Object x) -> {
+            files.add(new FileInfo(x));
+        });
+        if (files.size() == 0) {
+            throw new NotFoundException("No file at path " + path);
+        }
         return  files;
     }
 
 
-
     @Override
-    public void mkdir(String path) throws IOException {
-        //TODO: Add sanitization for paths for things like ~, ../../.. yada yada
-
+    public void mkdir(@NotNull String path) throws IOException, NotFoundException {
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         remotePath = DataClientUtils.ensureTrailingSlash(remotePath);
-        PutObjectRequest req = PutObjectRequest.builder()
-                .bucket(bucket)
-                .key(remotePath)
-                .build();
-        client.putObject(req, RequestBody.fromString(""));
+        try {
+            PutObjectRequest req = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(remotePath)
+                    .build();
+            client.putObject(req, RequestBody.fromString(""));
+        } catch (S3Exception ex) {
+            log.error("S3DataClient.mkdir", ex);
+            throw new IOException("Could not create directory.");
+        }
     }
 
     @Override
-    public void insert(String path, InputStream fileStream) throws IOException {
+    public void insert(@NotNull String path, @NotNull InputStream fileStream) throws IOException {
         // TODO: This should use multipart on an InputStream ideally;
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
+        log.info(remotePath);
         try {
             PutObjectRequest req = PutObjectRequest.builder()
                     .bucket(bucket)
@@ -117,12 +194,11 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     /**
-     *
-     * @param currentPath
+     *  @param currentPath
      * @param newName
      */
     @Override
-    public void move(String currentPath, String newName) {
+    public void move(@NotNull String currentPath, @NotNull String newName) throws IOException, NotFoundException {
 
         String oldRemotePath;
         oldRemotePath = FilenameUtils.normalizeNoEndSeparator(DataClientUtils.getRemotePath(rootDir, currentPath));
@@ -144,7 +220,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void copy(String currentPath, String newPath) throws IOException {
+    public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
         String encodedSourcePath = bucket + "/" + DataClientUtils.getRemotePath(rootDir, currentPath);
         String remoteDestinationPath = DataClientUtils.getRemotePathForS3(rootDir, newPath);
         CopyObjectRequest req = CopyObjectRequest.builder()
@@ -172,7 +248,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void delete(String path) throws IOException {
+    public void delete(@NotNull String path) throws IOException, NotFoundException {
         try {
             String remotePath = DataClientUtils.getRemotePath(rootDir, path);
             listWithIterator(remotePath).forEach(object -> {
@@ -199,7 +275,7 @@ public class S3DataClient implements IRemoteDataClient {
      * @throws NotFoundException
      */
     @Override
-    public InputStream getStream(String path) throws IOException, NotFoundException {
+    public InputStream getStream(@NotNull String path) throws IOException, NotFoundException {
         try {
             GetObjectRequest req = GetObjectRequest.builder()
                     .bucket(bucket)
@@ -230,9 +306,10 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public InputStream getBytesByRange(@NotNull String path, @NotNull long startByte, @NotNull long endByte) throws IOException{
+    public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException, NotFoundException{
         try {
-            String brange = String.format("bytes=%s-%s", startByte, endByte);
+            // S3 api includes the final byte, different than posix, so we subtract one to get the proper count.
+            String brange = String.format("bytes=%s-%s", startByte, startByte + count - 1);
             GetObjectRequest req = GetObjectRequest.builder()
                     .bucket(bucket)
                     .range(brange)
@@ -253,7 +330,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void append(String path, InputStream byteStream) throws IOException {
+    public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
         throw new NotImplementedException("S3 does not support append operations");
     }
 

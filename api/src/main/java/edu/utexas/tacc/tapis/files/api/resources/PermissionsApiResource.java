@@ -19,7 +19,7 @@ import javax.ws.rs.*;
 import javax.validation.constraints.*;
 
 
-@Path("/permissions")
+@Path("/v3/files/permissions")
 public class PermissionsApiResource  {
 
     private static class FilePermissionResponse extends TapisResponse<FilePermission> {}

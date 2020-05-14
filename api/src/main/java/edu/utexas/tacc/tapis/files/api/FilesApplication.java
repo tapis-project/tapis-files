@@ -3,14 +3,14 @@ package edu.utexas.tacc.tapis.files.api;
 import edu.utexas.tacc.tapis.files.api.binders.ServiceJWTCacheFactory;
 import edu.utexas.tacc.tapis.files.api.binders.TenantCacheFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
+import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
-import edu.utexas.tacc.tapis.sharedapi.security.IServiceJWT;
-import edu.utexas.tacc.tapis.sharedapi.security.ITenantManager;
 import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWT;
 import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.glassfish.grizzly.http.server.HttpServer;
-import org.glassfish.hk2.api.Factory;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.slf4j.Logger;
@@ -34,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Singleton;
 import javax.ws.rs.ApplicationPath;
 import java.net.URI;
+import java.util.concurrent.TimeUnit;
 
 
 // The path here is appended to the context root and
@@ -63,11 +63,11 @@ import java.net.URI;
                 ),
                 @Server(
                         description = "development",
-                        url = "https://dev.develop.tapis.io/v3"
+                        url = "https://dev.develop.tapis.io"
                 )
         }
 )
-@ApplicationPath("/files")
+@ApplicationPath("v3/files")
 public class FilesApplication extends BaseResourceConfig {
     /**
      * BaseResourceConfig has all the extra jersey filters and our
@@ -76,7 +76,7 @@ public class FilesApplication extends BaseResourceConfig {
     private static final Logger log = LoggerFactory.getLogger(FilesApplication.class);
     private IRuntimeConfig runtimeConfig;
 
-    public FilesApplication() throws Exception{
+    public FilesApplication() {
         super();
 
         runtimeConfig = RuntimeSettings.get();
@@ -105,17 +105,17 @@ public class FilesApplication extends BaseResourceConfig {
                 bindAsContract(SystemsClient.class);
                 bindAsContract(TokensClient.class);
                 bindAsContract(TenantsClient.class);
+                bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
                 bindFactory(ServiceJWTCacheFactory.class).to(ServiceJWT.class).in(Singleton.class);
                 bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
             }
         });
-
 		setApplicationName("files");
-
     }
 
     public static void main(String[] args) throws Exception {
-        final URI BASE_URI = URI.create("http://0.0.0.0:8080/files");
+        final URI BASE_URI = URI.create("http://0.0.0.0:8080/");
         FilesApplication config = new FilesApplication();
         final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(BASE_URI, config, false);
         server.start();

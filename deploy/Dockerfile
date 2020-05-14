@@ -7,5 +7,4 @@ RUN yum install git -y
 COPY . .
 
 RUN mvn -pl api clean install --also-make -DskipTests
-
-CMD ["java", "-jar", "api/target/tapis-files.jar"]
+CMD ["java", "-cp", "api/target/tapis-files.jar:api/target/dependencies/*", "edu.utexas.tacc.tapis.files.api.FilesApplication"]

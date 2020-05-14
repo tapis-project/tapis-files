@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
@@ -25,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.Pattern;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
@@ -32,13 +35,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
-
-@Path("/ops")
-public class OperationsApiResource {
+@Path("/v3/files/ops")
+public class OperationsApiResource extends BaseFilesResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
@@ -47,35 +49,14 @@ public class OperationsApiResource {
     private static class FileStringResponse extends TapisResponse<String>{}
 
     @Inject
-    ServiceJWT serviceJWTCache;
-
-    @Inject
-    TenantManager tenantCache;
-
-    @Inject
     SystemsClient systemsClient;
 
-    /**
-     * Configure the systems client with the correct baseURL and token for the request.
-     * @param user
-     * @throws ServiceException
-     */
-    private void configureSystemsClient(AuthenticatedUser user) throws ServiceException {
-        try {
-            String tenantId = user.getTenantId();
-            systemsClient.setBasePath(tenantCache.getTenant(tenantId).getBaseUrl());
-            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
-            systemsClient.addDefaultHeader("x-tapis-user", user.getName());
-            systemsClient.addDefaultHeader("x-tapis-tenant", user.getTenantId());
-        } catch (TapisException ex) {
-            log.error("configureSystemsClient", ex);
-            throw new ServiceException("Something went wrong");
-        }
-    }
+    @Inject
+    RemoteDataClientFactory remoteDataClientFactory;
 
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
-    @Path("/{systemId}/{path:.+}")
+    @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "List files/objects in a storage system.", description = "List files in a bucket", tags={ "file operations" })
     @ApiResponses(value = {
@@ -87,23 +68,23 @@ public class OperationsApiResource {
     })
     public Response listFiles(
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
-            @Parameter(description = "path relative to root of bucket/folder", example = EXAMPLE_PATH) @PathParam("path") String path,
-            @Parameter(description = "pagination limit", example = "100") @QueryParam("limit") @Max(1000) int limit,
-            @Parameter(description = "pagination offset", example = "1000") @QueryParam("offset") Long offset,
+            @Parameter(description = "path relative to root of bucket/folder", required=false, example = EXAMPLE_PATH) @PathParam("path") String path,
+            @Parameter(description = "pagination limit", example = "100") @DefaultValue("1000") @QueryParam("limit") @Max(1000) int limit,
+            @Parameter(description = "pagination offset", example = "1000") @DefaultValue("0") @QueryParam("offset") @Min(0) long offset,
             @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
             @Context SecurityContext securityContext)  {
-
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
-            FileOpsService fileOpsService = new FileOpsService(system);
-            List<FileInfo> listing = fileOpsService.ls(path);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);
+            List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
             return Response.status(Status.OK).entity(resp).build();
-        } catch (ServiceException | TapisException e) {
+        } catch (ServiceException | IOException | TapisException e) {
             log.error("listFiles", e);
-            throw new WebApplicationException("server error");
+            throw new WebApplicationException(e.getMessage());
         }
     }
 
@@ -126,12 +107,13 @@ public class OperationsApiResource {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
-            FileOpsService fileOpsService = new FileOpsService(system);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);
             fileOpsService.mkdir(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | TapisClientException ex) {
+        } catch (ServiceException | IOException | TapisClientException ex) {
             log.error("mkdir", ex);
             throw new WebApplicationException("Something went wrong...");
         }
@@ -159,12 +141,12 @@ public class OperationsApiResource {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
-            FileOpsService fileOpsService = new FileOpsService(system);
-            fileOpsService.insert(path, fileInputStream);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | TapisClientException ex) {
+        } catch (ServiceException | IOException | TapisClientException ex) {
             log.error(ex.getMessage());
             throw new WebApplicationException();
         }
@@ -191,12 +173,12 @@ public class OperationsApiResource {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
-            FileOpsService fileOpsService = new FileOpsService(system);
-            fileOpsService.move(path, newName);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.move(path, newName);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | TapisClientException ex) {
+        } catch (ServiceException | IOException | TapisClientException ex) {
             log.error("rename", ex);
             throw new WebApplicationException();
         }
@@ -222,12 +204,12 @@ public class OperationsApiResource {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId);
-            FileOpsService fileOpsService = new FileOpsService(system);
-            fileOpsService.delete(path);
+            TSystem system = systemsClient.getSystemByName(systemId, null);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.delete(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | TapisClientException ex) {
+        } catch (ServiceException | IOException | TapisClientException ex) {
             log.error("delete", ex);
             throw new WebApplicationException(ex.getMessage());
         }

@@ -2,15 +2,19 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 
-import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.List;
+
+import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotFoundException;
 
 public interface IRemoteDataClient {
 
-    List<FileInfo> ls(String remotePath) throws IOException;
+    // without limit/offset, just a helper method for convenience
+    List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException;
+    List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException;
 
     /**
      * Insert will place the entire contents of an InputStream to the location
@@ -19,11 +23,11 @@ public interface IRemoteDataClient {
      * @param fileStream
      * @throws IOException
      */
-    void insert(String remotePath, InputStream fileStream) throws IOException;
-    void mkdir(String remotePath) throws IOException;
-    void move(String oldPath, String newPath) throws IOException;
-    void copy(String currentPath, String newPath) throws IOException;
-    void delete(String path) throws IOException;
+    void insert(@NotNull String remotePath, @NotNull InputStream fileStream) throws IOException;
+    void mkdir(@NotNull  String remotePath) throws IOException, NotFoundException;
+    void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException;
+    void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException;
+    void delete(@NotNull String path) throws IOException;
 
     /**
      * Returns a stream of the entire contents of a file.
@@ -31,9 +35,18 @@ public interface IRemoteDataClient {
      * @return
      * @throws IOException
      */
-    InputStream getStream(String path) throws IOException;
+    InputStream getStream(@NotNull String path) throws IOException;
 
-    InputStream getBytesByRange(String path, long startByte, long endByte) throws IOException;
+
+    /**
+     *
+     * @param path path to file
+     * @param startByte position of first byte to return
+     * @param count Number of bytes returned
+     * @return InputStream
+     * @throws IOException Generic IO Exception
+     */
+    InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException;
 
     /**
      * Not many fielsystems and/or file formats support this type of operation
@@ -52,7 +65,7 @@ public interface IRemoteDataClient {
      * @param byteStream
      * @throws IOException
      */
-    void append(String path, InputStream byteStream) throws IOException;
+    void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException;
     void download(String path) throws IOException;
 
     void connect() throws IOException;
