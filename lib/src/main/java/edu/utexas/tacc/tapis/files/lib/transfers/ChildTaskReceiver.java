@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.lib.workers;
+package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import com.rabbitmq.client.ConnectionFactory;
 import org.slf4j.Logger;
@@ -8,8 +8,6 @@ import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 
 import java.util.Random;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  *
@@ -45,9 +43,8 @@ public class ChildTaskReceiver {
                 .subscribe(m -> {
                     try {
                         LOGGER.info("Child received message {}", new String(m.getBody()));
-//                        int sleep = new Random().nextInt(5000) + 100;
-//                        Thread.sleep(sleep);
-                        Thread.sleep(5000);
+                        int sleep = new Random().nextInt(5000) + 100;
+                        Thread.sleep(sleep);
                         LOGGER.info("Child completed task {} in {} sec", new String(m.getBody()), 5000);
                     } catch (Exception ex) {
                         LOGGER.error("error");

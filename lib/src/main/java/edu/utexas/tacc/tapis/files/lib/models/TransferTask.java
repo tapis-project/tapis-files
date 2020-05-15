@@ -129,7 +129,7 @@ public class TransferTask   {
 
 
     @JsonProperty("created")
-    @Schema(description = "Timestamp in UTC of task creation.")
+    @Schema(description = "Timestamp in UTC of task creation.", format = "date-time")
     public Instant getCreated() {
         return created;
     }

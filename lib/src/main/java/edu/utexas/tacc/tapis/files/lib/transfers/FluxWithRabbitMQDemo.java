@@ -1,7 +1,8 @@
-package edu.utexas.tacc.tapis.files.lib.workers;
+package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.ConnectionFactory;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -11,7 +12,6 @@ import reactor.rabbitmq.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FluxWithRabbitMQDemo {
@@ -42,12 +42,14 @@ public class FluxWithRabbitMQDemo {
 
     private Mono<String> doWork(AcknowledgableDelivery message) {
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            ChildMessage childMessage = mapper.readValue(message.getBody(), ChildMessage.class);
-            int sleep = new Random().nextInt(5000) + 100;
-            Thread.sleep(sleep);
-            log.info("Receiver completed task {} in: {}", childMessage, sleep);
-            return Mono.just(childMessage.getId() + "::" + sleep);
+            throw new IOException("test");
+//            ObjectMapper mapper = new ObjectMapper();
+//            ChildMessage childMessage = mapper.readValue(message.getBody(), ChildMessage.class);
+//            int sleep = new Random().nextInt(5000) + 100;
+//            Thread.sleep(sleep);
+//            log.info("Receiver completed task {} in: {}", childMessage, sleep);
+//            message.ack();
+//            return Mono.just(childMessage.getId() + "::" + sleep);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -57,12 +59,12 @@ public class FluxWithRabbitMQDemo {
 
     public void run(int count) {
         ConsumeOptions options = new ConsumeOptions();
-        options.qos(500);
+        options.qos(1000);
         Flux<AcknowledgableDelivery> messages = receiver.consumeManualAck(QUEUE, options);
         messages.delaySubscription(sender.declareQueue(QueueSpecification.queue(QUEUE)))
-                .groupBy((message) -> {
+                .groupBy( message -> {
                     try {
-                        ChildMessage m = mapper.readValue(message.getBody(), ChildMessage.class);
+                        TransferTaskChild m = mapper.readValue(message.getBody(), TransferTaskChild.class);
                         return m.getParentTaskId();
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -76,49 +78,47 @@ public class FluxWithRabbitMQDemo {
                 .subscribe((stream) -> {
 
                     stream
-                            .runOn(Schedulers.newParallel("pool", 4))
-                            .doOnError(m -> {
-                                // sendToRetryQueue();
-                                log.error(m.toString());
-                            })
+                            .runOn(Schedulers.newBoundedElastic(6, 2, "pool"))
                             .doOnComplete( () -> {
                                 log.info("Completed!");
                             })
                             .subscribe( (message) -> {
-                                this.doWork(message);
                                 message.ack();
+                                this.doWork(message)
+                                        .doOnError( ex -> {log.error(ex.getMessage(), ex);})
+                                        .subscribe(log::info);
                             });
                 });
 
-        AtomicInteger counter = new AtomicInteger(0);
-        Flux<OutboundMessageResult> dataStream = sender.sendWithPublishConfirms(
-                Flux.range(1, count)
-                        .window(100)
-                        .concatMap( (g) -> {
-                            counter.getAndIncrement();
-                            return g.map( (i) -> {
-                                int parentTaskId = counter.get();
-                                ChildMessage childMessage = new ChildMessage(parentTaskId, i);
-                                OutboundMessage message = null;
-                                try {
-                                    String m = mapper.writeValueAsString(childMessage);
-                                    message = new OutboundMessage("", QUEUE, m.getBytes(StandardCharsets.UTF_8));
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                                return message;
-                            });
-                        }));
-
-
-        sender.declareQueue(QueueSpecification.queue(QUEUE))
-                .thenMany(dataStream)
-                .doOnError(e -> log.error("Send failed" + e))
-                .subscribe(m -> {
-                    if (m != null) {
-//                        log.info("Successfully sent message");
-                    }
-                });
+//        AtomicInteger counter = new AtomicInteger(0);
+//        Flux<OutboundMessageResult> dataStream = sender.sendWithPublishConfirms(
+//                Flux.range(1, count)
+//                        .window(10)
+//                        .concatMap( (g) -> {
+//                            counter.getAndIncrement();
+//                            return g.map( (i) -> {
+//                                int parentTaskId = counter.get();
+//                                TransferTaskChild childMessage = new TransferTaskChild(parentTaskId, i);
+//                                OutboundMessage message = null;
+//                                try {
+//                                    String m = mapper.writeValueAsString(childMessage);
+//                                    message = new OutboundMessage("", QUEUE, m.getBytes(StandardCharsets.UTF_8));
+//                                } catch (Exception e) {
+//                                    e.printStackTrace();
+//                                }
+//                                return message;
+//                            });
+//                        }));
+//
+//
+//        sender.declareQueue(QueueSpecification.queue(QUEUE))
+//                .thenMany(dataStream)
+//                .doOnError(e -> log.error("Send failed" + e))
+//                .subscribe(m -> {
+//                    if (m != null) {
+////                        log.info("Successfully sent message");
+//                    }
+//                });
 
         while (true) {
             try {

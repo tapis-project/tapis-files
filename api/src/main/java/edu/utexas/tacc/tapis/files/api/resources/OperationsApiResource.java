@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
@@ -77,7 +78,8 @@ public class OperationsApiResource extends BaseFilesResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, effectiveUserId);
             FileOpsService fileOpsService = new FileOpsService(client);
             List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok",listing);
@@ -108,7 +110,8 @@ public class OperationsApiResource extends BaseFilesResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, effectiveUserId);
             FileOpsService fileOpsService = new FileOpsService(client);
             fileOpsService.mkdir(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
@@ -142,7 +145,8 @@ public class OperationsApiResource extends BaseFilesResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, effectiveUserId);
             FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
@@ -174,7 +178,8 @@ public class OperationsApiResource extends BaseFilesResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, effectiveUserId);
             FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.move(path, newName);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
@@ -205,7 +210,8 @@ public class OperationsApiResource extends BaseFilesResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
+            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, effectiveUserId);
             FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.delete(path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();

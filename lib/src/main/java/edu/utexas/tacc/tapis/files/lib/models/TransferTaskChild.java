@@ -8,7 +8,7 @@ public class TransferTaskChild extends TransferTask{
 
     private int parentTaskId;
 
-    public TransferTaskChild(){};
+    public TransferTaskChild(){}
 
     public TransferTaskChild(@NotNull TransferTask transferTask, @NotNull String sourcePath) {
         this.setSourcePath(sourcePath);
@@ -29,5 +29,23 @@ public class TransferTaskChild extends TransferTask{
 
     public void setParentTaskId(int parentTaskId) {
         this.parentTaskId = parentTaskId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+
+        TransferTaskChild that = (TransferTaskChild) o;
+
+        return parentTaskId == that.parentTaskId;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = super.hashCode();
+        result = 31 * result + parentTaskId;
+        return result;
     }
 }
