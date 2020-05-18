@@ -3,12 +3,25 @@ package edu.utexas.tacc.tapis.files.lib.models;
 import javax.validation.constraints.NotNull;
 import java.math.BigInteger;
 import java.time.Instant;
+import java.util.UUID;
 
 public class TransferTaskChild extends TransferTask{
 
     private int parentTaskId;
 
-    public TransferTaskChild(){}
+    public TransferTaskChild(String tenantId, String username,
+                             String sourceSystemId, String sourcePath,
+                             String destinationSystemId, String destinationPath, int parentTaskId) {
+        this.tenantId = tenantId;
+        this.username = username;
+        this.sourceSystemId = sourceSystemId;
+        this.sourcePath = sourcePath;
+        this.destinationSystemId = destinationSystemId;
+        this.destinationPath = destinationPath;
+        this.uuid = UUID.randomUUID();
+        this.status = TransferTaskStatus.ACCEPTED;
+        this.parentTaskId = parentTaskId;
+    }
 
     public TransferTaskChild(@NotNull TransferTask transferTask, @NotNull String sourcePath) {
         this.setSourcePath(sourcePath);
@@ -23,7 +36,7 @@ public class TransferTaskChild extends TransferTask{
         this.setTotalBytes(0L);
     }
 
-    public int getParentTaskId() {
+    public long getParentTaskId() {
         return parentTaskId;
     }
 
