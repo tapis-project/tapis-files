@@ -17,7 +17,7 @@ public class DataClientUtils {
 
     public static String getRemotePathForS3(@NotNull String rootDir, @NotNull String path) {
         String remotePath = getRemotePath(rootDir, path);
-        if ((StringUtils.isEmpty(remotePath)) || remotePath.equals("/")) return "/";
+        if ((StringUtils.isEmpty(remotePath)) || remotePath.equals("/")) return "";
         return StringUtils.stripStart(remotePath, "/");
     }
 

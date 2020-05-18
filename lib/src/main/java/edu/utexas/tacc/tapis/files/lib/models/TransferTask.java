@@ -12,18 +12,18 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 public class TransferTask   {
 
-    private int id;
-    private String tenantId;
-    private String username;
-    private String sourceSystemId;
-    private String sourcePath;
-    private String destinationSystemId;
-    private String destinationPath;
-    private UUID uuid;
-    private Long totalBytes;
-    private Long bytesTransferred;
-    private TransferTaskStatus status;
-    private Instant created;
+    protected int id;
+    protected String tenantId;
+    protected String username;
+    protected String sourceSystemId;
+    protected String sourcePath;
+    protected String destinationSystemId;
+    protected String destinationPath;
+    protected UUID uuid;
+    protected Long totalBytes;
+    protected Long bytesTransferred;
+    protected TransferTaskStatus status;
+    protected Instant created;
 
 
     public TransferTask() {
@@ -173,7 +173,7 @@ public class TransferTask   {
 
     @Override
     public int hashCode() {
-        return Objects.hash(uuid, created, status);
+        return  Objects.hash(uuid, created, status);
     }
 
 
@@ -181,8 +181,9 @@ public class TransferTask   {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("class TransferTask {\n");
-
+        sb.append("    id: ").append(toIndentedString(id)).append("\n");
         sb.append("    uuid: ").append(toIndentedString(uuid)).append("\n");
+        sb.append("    tenantId: ").append(toIndentedString(tenantId)).append("\n");
         sb.append("    created: ").append(toIndentedString(created)).append("\n");
         sb.append("    status: ").append(toIndentedString(status)).append("\n");
         sb.append("}");

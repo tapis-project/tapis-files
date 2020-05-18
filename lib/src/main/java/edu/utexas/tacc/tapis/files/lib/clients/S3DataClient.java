@@ -59,7 +59,7 @@ public class S3DataClient implements IRemoteDataClient {
             URI endpoint;
             String host = system.getHost();
             URI tmpUri = new URI(host);
-            if (system.getPort() != null) {
+            if ((system.getPort() != null) && (system.getPort() > 0)) {
                 endpoint =   UriBuilder.fromUri("")
                         .scheme(tmpUri.getScheme())
                         .host(tmpUri.getHost())
@@ -77,7 +77,11 @@ public class S3DataClient implements IRemoteDataClient {
             } else {
                 reg = Region.of(region);
             }
-            AwsCredentials credentials = AwsBasicCredentials.create(system.getAccessCredential().getAccessKey(), system.getAccessCredential().getAccessSecret());
+
+            AwsCredentials credentials = AwsBasicCredentials.create(
+                system.getAccessCredential().getAccessKey(),
+                system.getAccessCredential().getAccessSecret()
+            );
             S3ClientBuilder builder = S3Client.builder()
                     .region(reg)
                     .credentialsProvider(StaticCredentialsProvider.create(credentials));

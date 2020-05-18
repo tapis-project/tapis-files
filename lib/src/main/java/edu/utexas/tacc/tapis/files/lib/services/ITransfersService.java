@@ -15,7 +15,7 @@ public interface ITransfersService {
 
     boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull String transferId) throws ServiceException;
 
-    void createTransferTaskChild(@NotNull TransferTask parentTask, @NotNull String sourcePath) throws ServiceException;
+    TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException;
 
     void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException;
 
@@ -23,7 +23,4 @@ public interface ITransfersService {
                                 String sourceSystemId, String sourcePath,
                                 String destinationSystemId, String destinationPath) throws ServiceException;
 
-    void publishTransferTaskChildMessage(@NotNull TransferTaskChild task) throws ServiceException;
-
-    void publishTransferTaskMessage(@NotNull TransferTask task) throws ServiceException;
 }

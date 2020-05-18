@@ -15,8 +15,8 @@ public class RuntimeSettings {
         private String rabbitMQVHost = settings.get("RABBITMQ_VHOST", "dev");
         private String rabbitmqPassword = settings.get("RABBITMQ_PASSWORD", "dev");
         private String servicePassword = settings.get("SERVICE_PASSWORD", "dev");
-        private String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://master.develop.tapis.io");
-        private String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://master.develop.tapis.io");
+        private String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
+        private String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
 
         public String getDbHost() {
             return dbHost;

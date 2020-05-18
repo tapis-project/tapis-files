@@ -11,6 +11,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
+import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -26,6 +27,7 @@ import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -35,14 +37,7 @@ public class TransfersService implements ITransfersService {
     @Inject
     private FileTransfersDAO dao;
 
-    @Inject
-    private SystemsClient systemsClient;
-
-    @Inject
-    private RemoteDataClientFactory remoteDataClientFactory;
-
-    private final String EXCHANGE_NAME = "tapis.files";
-    private final String QUEUE_NAME = "tapis.files.transfers";
+    private static final String QUEUE_NAME = "tapis.files.transfers";
     private Connection connection;
     private Channel channel;
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
@@ -53,7 +48,6 @@ public class TransfersService implements ITransfersService {
             channel = connection.createChannel();
             channel.queueDeclare(QUEUE_NAME, true, false, false, null);
         } catch (IOException ex) {
-            log.error(ex.getMessage());
             throw new ServiceException("Could not connect to RabbitMQ");
         }
     }
@@ -63,7 +57,6 @@ public class TransfersService implements ITransfersService {
             TransferTask task = dao.getTransferTask(transferTaskId);
             return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
         } catch (DAOException ex) {
-            log.error("ERROR", ex);
             throw new ServiceException(ex.getMessage());
         }
     }
@@ -81,7 +74,6 @@ public class TransfersService implements ITransfersService {
             }
             return task;
         } catch (DAOException ex) {
-            log.error("ERROR: getTransferTask", ex);
             throw new ServiceException(ex.getMessage());
         }
     }
@@ -96,43 +88,20 @@ public class TransfersService implements ITransfersService {
         try {
             // TODO: check if requesting user has access to both the source and dest systems, throw an error back if not
             task = dao.createTransferTask(task);
-            createTransferTaskChild(task, sourcePath);
             return task;
         } catch (DAOException ex) {
-            log.error("ERROR: createTransfer", ex);
             throw new ServiceException(ex.getMessage());
         }
     }
 
 
     //TODO: Need to make this retryable since the listing might fail
-    public void createTransferTaskChild(@NotNull TransferTask parentTask, @NotNull String sourcePath) throws ServiceException {
-        TransferTaskChild transferTaskChild = new TransferTaskChild(parentTask, sourcePath);
+    public TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException {
         try {
-            TSystem sourceSystem = systemsClient.getSystemByName(parentTask.getSourceSystemId());
-            IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, transferTaskChild.getUsername());
-            // If its a dir, keep going down the tree
-            if (sourcePath.endsWith("/")) {
-                // For every item in the inital listing, create a childTask
-                for(FileInfo item : sourceClient.ls(sourcePath)) {
-                    createTransferTaskChild(parentTask, item.getPath());
-                }
-            } else {
-                transferTaskChild = dao.createTransferTaskChild(parentTask, sourcePath);
-                // Publish message for workers to pick up and actually do the transfer
-                publishTransferTaskChildMessage(transferTaskChild);
-            }
+            return dao.insertChildTask(task);
         } catch (DAOException ex) {
-            log.error("ERROR: createTransfer", ex);
             throw new ServiceException(ex.getMessage());
-        } catch (TapisClientException ex) {
-            log.error("ERROR: createTransfer");
-            throw new ServiceException(ex.getMessage());
-        } catch (IOException ex) {
-            log.error("ERROR: createTransfer", ex);
-            throw new ServiceException("Remote client error");
         }
-
     }
 
     public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException {
@@ -140,32 +109,10 @@ public class TransfersService implements ITransfersService {
             task.setStatus(TransferTaskStatus.CANCELLED);
             dao.updateTransferTask(task);
         } catch (DAOException ex) {
-            log.error("ERROR: cancelTransfer", ex);
             throw new ServiceException(ex.getMessage());
         }
     }
 
-    public void publishTransferTaskChildMessage(@NotNull TransferTaskChild task) throws ServiceException {
-        try {
-            String message  = mapper.writeValueAsString(task);
-            channel.basicPublish("", QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
-        } catch (IOException ex) {
-            log.error("ERROR: publishTransferTaskMessage", ex);
-            throw new ServiceException(ex.getMessage());
-        }
-
-    }
-
-    public void publishTransferTaskMessage(@NotNull TransferTask task) throws ServiceException {
-        try {
-            String message  = mapper.writeValueAsString(task);
-            channel.basicPublish("", QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
-        } catch (IOException ex) {
-            log.error("ERROR: publishTransferTaskMessage", ex);
-            throw new ServiceException(ex.getMessage());
-        }
-
-    }
 
 
 }

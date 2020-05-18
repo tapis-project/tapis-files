@@ -11,19 +11,15 @@ import java.util.List;
 public class ParentTaskWorker {
 
     private TransferTask parentTask;
+
     private IRemoteDataClientFactory remoteDataClientFactory;
 
-    @Inject
-    public ParentTaskWorker(IRemoteDataClientFactory remoteDataClientFactory) {
-        this.remoteDataClientFactory = remoteDataClientFactory;
+    public ParentTaskWorker(TransferTask task) {
+        this.parentTask = task;
     }
 
     public TransferTask getParentTask() {
         return parentTask;
-    }
-
-    public void setParentTask(TransferTask parentTask) {
-        this.parentTask = parentTask;
     }
 
     public List<FileInfo> listAll() {

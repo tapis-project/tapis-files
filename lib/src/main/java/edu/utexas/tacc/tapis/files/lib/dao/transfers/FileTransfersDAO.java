@@ -204,31 +204,31 @@ public class FileTransfersDAO implements IFileTransferDAO {
         }
     }
 
-    public TransferTaskChild createTransferTaskChild(@NotNull TransferTask task, @NotNull String sourcePath) throws DAOException {
-
-        task.setStatus(TransferTaskStatus.ACCEPTED);
+    public TransferTaskChild insertChildTask(@NotNull TransferTaskChild task) throws DAOException {
         Connection connection = HikariConnectionPool.getConnection();
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
 
         try {
             BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
             String stmt = "INSERT into transfer_tasks_child " +
-                    " (tenant_id, username, source_system_id, source_path, destination_system_id, destination_path, status) " +
-                    " values (?, ?, ?, ?, ?, ?, ?) " +
-                    " RETURNING transfer_tasks_child.* ";
+              " (tenant_id, parent_task_id, username, source_system_id, source_path, destination_system_id, destination_path, status, bytes_transferred, total_bytes) " +
+              " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+              " RETURNING transfer_tasks_child.* ";
             QueryRunner runner = new QueryRunner();
             TransferTaskChild child = runner.query(connection, stmt, handler,
-                    task.getTenantId(),
-                    task.getUsername(),
-                    task.getSourceSystemId(),
-                    task.getSourcePath(),
-                    task.getDestinationSystemId(),
-                    task.getDestinationPath(),
-                    task.getStatus().name()
+              task.getTenantId(),
+              task.getParentTaskId(),
+              task.getUsername(),
+              task.getSourceSystemId(),
+              task.getSourcePath(),
+              task.getDestinationSystemId(),
+              task.getDestinationPath(),
+              task.getStatus().name(),
+              task.getBytesTransferred(),
+              task.getTotalBytes()
             );
 
-            TransferTaskChild insertedTask = getTransferTaskChild(task.getUuid());
-            return insertedTask;
+            return child;
         } catch (SQLException ex) {
             throw new DAOException(ex.getErrorCode());
         } finally {
