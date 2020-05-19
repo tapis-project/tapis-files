@@ -27,6 +27,19 @@ CREATE TABLE transfer_tasks_child (
 CREATE INDEX on transfer_tasks_child(tenant_id, username, parent_task_id);
 
 
+CREATE TABLE transfer_task_child_events (
+   id serial PRIMARY KEY,
+   tenant_id VARCHAR(265) NOT NULL,
+   child_task_id int REFERENCES transfer_tasks_child(id) ON DELETE CASCADE,
+   created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   uuid uuid NOT NULL DEFAULT uuid_generate_v4(),
+   event_name VARCHAR(265) NOT NULL,
+   data jsonb NOT NULL
+);
+CREATE INDEX on transfer_task_child_events(tenant_id, child_task_id);
+
+
+
 DROP TABLE IF EXISTS shares CASCADE;
 CREATE TABLE shares (
     id serial PRIMARY KEY,

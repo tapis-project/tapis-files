@@ -1,60 +1,72 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.ConnectionFactory;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 
-import java.util.Random;
+import javax.inject.Inject;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  *
  */
 public class ChildTaskReceiver {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ChildTaskReceiver.class);
+    private static final String CHILD_QUEUE = "tapis.files.transfers.child";
+    private static final Logger log = LoggerFactory.getLogger(ChildTaskReceiver.class);
+    private static final int MAX_RETRIES = 5;
 
     private final Receiver receiver;
     private final Sender sender;
-    private final String queueName;
+    private static final ObjectMapper mapper = new ObjectMapper();
 
-    public ChildTaskReceiver(String queueName) {
+    @Inject
+    IRemoteDataClientFactory remoteDataClientFactory;
+
+    @Inject
+    SystemsClientFactory systemsClientFactory;
+
+    public ChildTaskReceiver() {
         ConnectionFactory connectionFactory = new ConnectionFactory();
         connectionFactory.setUsername("dev");
         connectionFactory.setPassword("dev");
         connectionFactory.setVirtualHost("dev");
         connectionFactory.useNio();
         ReceiverOptions receiverOptions = new ReceiverOptions()
-                .connectionFactory(connectionFactory)
-                .connectionSubscriptionScheduler(Schedulers.boundedElastic());
-        SenderOptions senderOptions = new SenderOptions().connectionFactory(connectionFactory);
+          .connectionFactory(connectionFactory)
+          .connectionSubscriptionScheduler(Schedulers.newElastic("child-receiver"));
+        SenderOptions senderOptions = new SenderOptions()
+          .connectionFactory(connectionFactory)
+          .resourceManagementScheduler(Schedulers.newElastic("child-sender"));
         this.receiver = RabbitFlux.createReceiver(receiverOptions);
         this.sender = RabbitFlux.createSender(senderOptions);
-        this.queueName = queueName;
     }
 
-    public Disposable consume() {
-        ConsumeOptions options = new ConsumeOptions();
-        options.qos(1);
-        return receiver.consumeAutoAck(queueName, options)
-                .delaySubscription(sender.declareQueue(QueueSpecification.queue(queueName)))
-                .subscribe(m -> {
-                    try {
-                        LOGGER.info("Child received message {}", new String(m.getBody()));
-                        int sleep = new Random().nextInt(5000) + 100;
-                        Thread.sleep(sleep);
-                        LOGGER.info("Child completed task {} in {} sec", new String(m.getBody()), 5000);
-                    } catch (Exception ex) {
-                        LOGGER.error("error");
-                    }
-                });
-    }
 
-    public void close() {
-        this.sender.close();
-        this.receiver.close();
+
+
+    public static void main(String[] args) throws Exception {
+        ParentTaskReceiver receiver = new ParentTaskReceiver();
+        Thread thread = new Thread(receiver);
+        thread.start();
     }
 
 }

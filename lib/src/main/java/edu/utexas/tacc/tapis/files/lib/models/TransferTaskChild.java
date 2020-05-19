@@ -9,6 +9,8 @@ public class TransferTaskChild extends TransferTask{
 
     private int parentTaskId;
 
+    public TransferTaskChild() {}
+
     public TransferTaskChild(String tenantId, String username,
                              String sourceSystemId, String sourcePath,
                              String destinationSystemId, String destinationPath, int parentTaskId) {
