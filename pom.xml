@@ -30,6 +30,7 @@
                 <flyway.password>dev</flyway.password>
                 <flyway.url>jdbc:postgresql://postgres/dev</flyway.url>
                 <flyway.skip>true</flyway.skip>
+                <skipITs>true</skipITs>
             </properties>
         </profile>
         <profile>
@@ -120,6 +121,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
+                    <skip>${skipITs}</skip>
                     <systemPropertyVariables>
                         <tapis.envonly.skip.jwt.verify>true</tapis.envonly.skip.jwt.verify>
                     </systemPropertyVariables>
