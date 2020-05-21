@@ -64,9 +64,7 @@ public class ChildTaskReceiver {
 
 
     public static void main(String[] args) throws Exception {
-        ParentTaskReceiver receiver = new ParentTaskReceiver();
-        Thread thread = new Thread(receiver);
-        thread.start();
+
     }
 
 }

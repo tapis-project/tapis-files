@@ -11,6 +11,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
+import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -35,12 +36,6 @@ public class TransfersService implements ITransfersService {
 
     @Inject
     private FileTransfersDAO dao;
-
-    @Inject
-    private SystemsClient systemsClient;
-
-    @Inject
-    private RemoteDataClientFactory remoteDataClientFactory;
 
     private final String EXCHANGE_NAME = "tapis.files";
     private final String QUEUE_NAME = "tapis.files.transfers";
