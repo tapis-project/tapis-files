@@ -17,6 +17,7 @@
         <tapis-client-java.version>1.1-SNAPSHOT</tapis-client-java.version>
         <tapis-shared.version>1.1-SNAPSHOT</tapis-shared.version>
         <slf4j-api.version>1.7.28</slf4j-api.version>
+        <skipITs>true</skipITs>
     </properties>
 
     <profiles>
@@ -120,6 +121,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
+                    <skip>${skipITs}</skip>
                     <systemPropertyVariables>
                         <tapis.envonly.skip.jwt.verify>true</tapis.envonly.skip.jwt.verify>
                     </systemPropertyVariables>
