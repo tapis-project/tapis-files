@@ -63,4 +63,18 @@ public class TransferTaskChild extends TransferTask{
         result = 31 * result + parentTaskId;
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "TransferTaskChild{" +
+          "parentTaskId=" + parentTaskId +
+          ", id=" + id +
+          ", tenantId='" + tenantId + '\'' +
+          ", username='" + username + '\'' +
+          ", sourceSystemId='" + sourceSystemId + '\'' +
+          ", sourcePath='" + sourcePath + '\'' +
+          ", destinationSystemId='" + destinationSystemId + '\'' +
+          ", destinationPath='" + destinationPath + '\'' +
+          '}';
+    }
 }

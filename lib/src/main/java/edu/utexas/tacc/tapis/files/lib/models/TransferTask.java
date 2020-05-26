@@ -181,8 +181,9 @@ public class TransferTask   {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("class TransferTask {\n");
-
+        sb.append("    id: ").append(toIndentedString(id)).append("\n");
         sb.append("    uuid: ").append(toIndentedString(uuid)).append("\n");
+        sb.append("    tenantId: ").append(toIndentedString(tenantId)).append("\n");
         sb.append("    created: ").append(toIndentedString(created)).append("\n");
         sb.append("    status: ").append(toIndentedString(status)).append("\n");
         sb.append("}");

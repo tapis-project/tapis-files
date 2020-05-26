@@ -19,6 +19,7 @@ CREATE index on transfer_tasks(tenant_id, username, uuid);
 
 DROP TABLE IF EXISTS transfer_tasks_child CASCADE;
 CREATE TABLE transfer_tasks_child (
+    id serial PRIMARY KEY,
     parent_task_id int REFERENCES transfer_tasks(id)
 
 ) INHERITS(transfer_tasks);

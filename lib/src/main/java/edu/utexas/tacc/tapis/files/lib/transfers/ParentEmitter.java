@@ -35,11 +35,12 @@ public class ParentEmitter {
 
         Flux<OutboundMessage> messageFlux = Flux.range(1, count)
           .groupBy((i) -> {
-              return i / 10;
+              return i / 100;
           })
           .flatMap(group -> group.map(i -> {
               TransferTask task = new TransferTask();
               task.setId(i);
+              task.setUsername("user1");
               task.setTenantId("tenant-" + group.key());
               task.setStatus(TransferTaskStatus.ACCEPTED);
               task.setDestinationPath("/a/b/c");
@@ -62,7 +63,7 @@ public class ParentEmitter {
 
     public static void main(String[] args) {
         ParentEmitter e = new ParentEmitter();
-        e.run(10);
+        e.run(2000);
     }
 
 }

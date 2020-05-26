@@ -37,8 +37,7 @@ public class TransfersService implements ITransfersService {
     @Inject
     private FileTransfersDAO dao;
 
-    private final String EXCHANGE_NAME = "tapis.files";
-    private final String QUEUE_NAME = "tapis.files.transfers";
+    private static final String QUEUE_NAME = "tapis.files.transfers";
     private Connection connection;
     private Channel channel;
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
@@ -103,7 +102,6 @@ public class TransfersService implements ITransfersService {
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage());
         }
-
     }
 
     public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException {
@@ -115,25 +113,6 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public void publishTransferTaskChildMessage(@NotNull TransferTaskChild task) throws ServiceException {
-        try {
-            String message  = mapper.writeValueAsString(task);
-            channel.basicPublish("", QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
-        } catch (IOException ex) {
-            throw new ServiceException(ex.getMessage());
-        }
-
-    }
-
-    public void publishTransferTaskMessage(@NotNull TransferTask task) throws ServiceException {
-        try {
-            String message  = mapper.writeValueAsString(task);
-            channel.basicPublish("", QUEUE_NAME, null, message.getBytes(StandardCharsets.UTF_8));
-        } catch (IOException ex) {
-            throw new ServiceException(ex.getMessage());
-        }
-
-    }
 
 
 }

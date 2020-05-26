@@ -211,18 +211,21 @@ public class FileTransfersDAO implements IFileTransferDAO {
         try {
             BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
             String stmt = "INSERT into transfer_tasks_child " +
-              " (tenant_id, username, source_system_id, source_path, destination_system_id, destination_path, status) " +
-              " values (?, ?, ?, ?, ?, ?, ?) " +
+              " (tenant_id, parent_task_id, username, source_system_id, source_path, destination_system_id, destination_path, status, bytes_transferred, total_bytes) " +
+              " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
               " RETURNING transfer_tasks_child.* ";
             QueryRunner runner = new QueryRunner();
             TransferTaskChild child = runner.query(connection, stmt, handler,
               task.getTenantId(),
+              task.getParentTaskId(),
               task.getUsername(),
               task.getSourceSystemId(),
               task.getSourcePath(),
               task.getDestinationSystemId(),
               task.getDestinationPath(),
-              task.getStatus().name()
+              task.getStatus().name(),
+              task.getBytesTransferred(),
+              task.getTotalBytes()
             );
 
             return child;

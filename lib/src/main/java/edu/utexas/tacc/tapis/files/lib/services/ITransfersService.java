@@ -23,7 +23,4 @@ public interface ITransfersService {
                                 String sourceSystemId, String sourcePath,
                                 String destinationSystemId, String destinationPath) throws ServiceException;
 
-    void publishTransferTaskChildMessage(@NotNull TransferTaskChild task) throws ServiceException;
-
-    void publishTransferTaskMessage(@NotNull TransferTask task) throws ServiceException;
 }
