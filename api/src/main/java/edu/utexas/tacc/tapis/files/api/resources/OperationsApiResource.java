@@ -147,7 +147,8 @@ public class OperationsApiResource extends BaseFilesResource {
             TSystem system = systemsClient.getSystemByName(systemId, null);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, effectiveUserId);
-            FileOpsService fileOpsService = new FileOpsService(client);            fileOpsService.insert(path, fileInputStream);
+            FileOpsService fileOpsService = new FileOpsService(client);
+            fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException | TapisClientException ex) {
