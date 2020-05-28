@@ -166,6 +166,46 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not Found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -209,6 +249,46 @@
                 }
               }
             }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not Found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -233,22 +313,17 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "name" : "x-meta",
-          "in" : "header",
-          "description" : "String dump of a valid JSON object to be associated with the file",
-          "schema" : {
-            "type" : "string"
-          }
         } ],
         "requestBody" : {
           "content" : {
             "multipart/form-data" : {
               "schema" : {
+                "required" : [ "file" ],
                 "type" : "object",
                 "properties" : {
                   "file" : {
-                    "$ref" : "#/components/schemas/FormDataContentDisposition"
+                    "type" : "string",
+                    "format" : "binary"
                   }
                 }
               }
@@ -258,6 +333,36 @@
         "responses" : {
           "200" : {
             "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
             "content" : {
               "*/*" : {
                 "schema" : {
@@ -293,6 +398,46 @@
         "responses" : {
           "200" : {
             "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not Found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -742,42 +887,6 @@
             }
           },
           "version" : {
-            "type" : "string"
-          }
-        }
-      },
-      "FormDataContentDisposition" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "type" : "string"
-          },
-          "parameters" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "string"
-            }
-          },
-          "fileName" : {
-            "type" : "string"
-          },
-          "creationDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "modificationDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "readDate" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "size" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "name" : {
             "type" : "string"
           }
         }
