@@ -145,9 +145,9 @@ public class S3DataClient implements IRemoteDataClient {
         response.skip(offset).limit(limit).forEach((S3Object x) -> {
             files.add(new FileInfo(x));
         });
-        if (files.size() == 0) {
-            throw new NotFoundException("No file at path " + path);
-        }
+
+        // TODO: If there is no file at the path, throw NotFoundException
+
         return  files;
     }
 
