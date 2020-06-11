@@ -104,24 +104,20 @@ public class S3DataClient implements IRemoteDataClient {
         return resp.contents().stream();
     }
 
-    private FileInfo listSingleObject(String path) throws S3Exception, NotFoundException {
+    private void doesExist(String path) throws NotFoundException {
+        String remoteAbsolutePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         try {
             HeadObjectRequest req = HeadObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(path)
-                    .build();
-            HeadObjectResponse resp = client.headObject(req);
-            FileInfo f = new FileInfo();
-            f.setPath(path);
-            f.setLastModified(resp.lastModified());
-            f.setName(path);
-            f.setSize(resp.contentLength());
-            return f;
+                .bucket(bucket)
+                .key(remoteAbsolutePath)
+                .build();
+            client.headObject(req);
         } catch (NoSuchKeyException ex) {
             String msg = String.format("No such file at %s", path);
             throw new NotFoundException(msg);
         }
     }
+
 
     public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {
         return this.ls(path, MAX_LISTING_SIZE, 0);
@@ -133,21 +129,14 @@ public class S3DataClient implements IRemoteDataClient {
 
         String remoteAbsolutePath = DataClientUtils.getRemotePathForS3(rootDir, path);
 
-//        // If it looks like a file, just try to get the HEAD info
-//        if (!remoteAbsolutePath.endsWith("/")) {
-//           FileInfo info = listSingleObject(remoteAbsolutePath);
-//           List<FileInfo> out = new ArrayList<>();
-//           out.add(info);
-//           return out;
-//        }
         Stream<S3Object> response = listWithIterator(remoteAbsolutePath);
         List<FileInfo> files = new ArrayList<>();
         response.skip(offset).limit(limit).forEach((S3Object x) -> {
             files.add(new FileInfo(x));
         });
-
-        // TODO: If there is no file at the path, throw NotFoundException
-
+        if (files.isEmpty()) {
+            doesExist(remoteAbsolutePath);
+        }
         return  files;
     }
 
@@ -250,9 +239,10 @@ public class S3DataClient implements IRemoteDataClient {
     @Override
     public void delete(@NotNull String path) throws IOException, NotFoundException {
         try {
-            String remotePath = DataClientUtils.getRemotePath(rootDir, path);
+            String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
             listWithIterator(remotePath).forEach(object -> {
                 //TODO: What to do if one fails?
+                log.info(object.toString());
                 try {
                     deleteObject(object.key());
                 } catch (S3Exception ex) {

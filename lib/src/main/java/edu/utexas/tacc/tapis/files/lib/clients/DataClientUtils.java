@@ -13,11 +13,11 @@ public class DataClientUtils {
         String remotePath =  FilenameUtils.normalize(FilenameUtils.concat(rootDir, path));
         if (StringUtils.isEmpty(remotePath)) return "/";
         return remotePath;
-//        return URLEncoder.encode(stringPath, StandardCharsets.UTF_8);
     }
 
     public static String getRemotePathForS3(@NotNull String rootDir, @NotNull String path) {
         String remotePath = getRemotePath(rootDir, path);
+        if ((StringUtils.isEmpty(remotePath)) || remotePath.equals("/")) return "/";
         return StringUtils.stripStart(remotePath, "/");
     }
 

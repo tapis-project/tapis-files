@@ -225,7 +225,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .delete(FileStringResponse.class);
 
         Assert.assertThrows(NotFoundException.class, ()-> {
-            client.ls("/a/b/c/test.txt");
+            client.ls("a/b/c/test.txt");
         });
         List<FileInfo> l2 = client.ls("/");
         Assert.assertTrue(l2.size() > 0);
@@ -363,7 +363,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .get(FileListResponse.class);
 
         Assert.assertEquals(listing.getResult().size(), 1);
-        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
+        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory/");
         Assert.assertTrue(listing.getResult().get(0).isDir());
     }
 
@@ -384,7 +384,7 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
                 .get(FileListResponse.class);
 
         Assert.assertEquals(listing.getResult().size(), 1);
-        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
+        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory/");
         Assert.assertEquals(listing.getResult().get(0).isDir(), true);
     }
 

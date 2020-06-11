@@ -14,7 +14,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 public class FileInfo   {
 
     public FileInfo(S3Object listing) {
-        this.name = StringUtils.stripEnd(listing.key(), "/");
+        this.name = StringUtils.stripStart(listing.key(), "/");
         this.lastModified = listing.lastModified();
         this.size = listing.size();
         this.path = listing.key();
