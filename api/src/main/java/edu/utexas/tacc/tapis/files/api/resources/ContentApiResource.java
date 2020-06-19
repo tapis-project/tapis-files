@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -26,6 +27,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
 import java.util.Objects;
@@ -69,7 +71,7 @@ public class ContentApiResource extends BaseFilesResource {
 
             // Ensure that the path is not a dir?
             if (path.endsWith("/")) {
-                throw new TapisException("Only files can be served.");
+                throw new BadRequestException("Only files can be served.");
             }
 
             java.nio.file.Path filepath = Paths.get(path);
@@ -93,11 +95,8 @@ public class ContentApiResource extends BaseFilesResource {
                     .build();
         } catch (TapisException ex) {
             throw new BadRequestException("Only files can be served");
-        } catch (NotFoundException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            log.error("ERROR: filesGetContents", ex);
-            throw new WebApplicationException();
+        } catch (ServiceException | IOException ex) {
+            throw new WebApplicationException(ex);
         }
     }
 

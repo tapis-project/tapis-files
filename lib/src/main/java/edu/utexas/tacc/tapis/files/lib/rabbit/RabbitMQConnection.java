@@ -1,29 +1,20 @@
 package edu.utexas.tacc.tapis.files.lib.rabbit;
-
-import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-
-import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeoutException;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 
 public class RabbitMQConnection {
 
-    private static Connection INSTANCE;
+    private static ConnectionFactory INSTANCE;
+    private static IRuntimeConfig conf = RuntimeSettings.get();
 
-    public static synchronized Connection getInstance() throws IOException {
+    public static synchronized ConnectionFactory getInstance() {
         if (INSTANCE == null) {
-            try {
-                ConnectionFactory factory = new ConnectionFactory();
-                factory.setHost("localhost");
-                factory.setPassword("dev");
-                factory.setUsername("dev");
-                factory.setVirtualHost("dev");
-                INSTANCE = factory.newConnection();
-            } catch (TimeoutException ex) {
-                throw new IOException(ex.getMessage());
-            }
+                ConnectionFactory connectionFactory = new ConnectionFactory();
+                connectionFactory.setUsername(conf.getRabbitMQUsername());
+                connectionFactory.setPassword(conf.getRabbitmqPassword());
+                connectionFactory.setVirtualHost(conf.getRabbitMQVHost());
+                connectionFactory.useNio();
         }
         return INSTANCE;
     }

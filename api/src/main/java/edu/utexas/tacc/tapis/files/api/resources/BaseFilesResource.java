@@ -37,7 +37,8 @@ public abstract class BaseFilesResource {
             systemsClient.addDefaultHeader("x-tapis-user", user.getName());
             systemsClient.addDefaultHeader("x-tapis-tenant", user.getTenantId());
         } catch (TapisException ex) {
-            log.error("configureSystemsClient", ex);
+            String msg = "ERROR: configureSystems client failed for user: %s";
+            log.error(String.format(msg, user.toString()), ex);
             throw new ServiceException("Something went wrong");
         }
     }

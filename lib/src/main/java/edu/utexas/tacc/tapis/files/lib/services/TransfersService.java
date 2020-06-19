@@ -37,19 +37,10 @@ public class TransfersService implements ITransfersService {
     @Inject
     private FileTransfersDAO dao;
 
-    private static final String QUEUE_NAME = "tapis.files.transfers";
-    private Connection connection;
-    private Channel channel;
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
 
     public TransfersService() throws ServiceException {
-        try {
-            connection = RabbitMQConnection.getInstance();
-            channel = connection.createChannel();
-            channel.queueDeclare(QUEUE_NAME, true, false, false, null);
-        } catch (IOException ex) {
-            throw new ServiceException("Could not connect to RabbitMQ");
-        }
+
     }
 
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull String transferTaskId) throws ServiceException {

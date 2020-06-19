@@ -26,7 +26,7 @@ import java.util.concurrent.*;
  *
  * The cache key is a combination of systemId + username
  */
-public class SSHConnectionCache {
+public class SSHConnectionCache implements ISSHConnectionCache {
 
     private static final Logger log = LoggerFactory.getLogger(SSHConnectionCache.class);
     private static LoadingCache<SSHConnectionCacheKey, SSHConnection> sessionCache;
@@ -41,7 +41,6 @@ public class SSHConnectionCache {
                 .build(new SSHConnectionCacheLoader());
         ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
         executorService.scheduleWithFixedDelay( ()-> {
-            log.info("Refreshing the cache");
             sessionCache.asMap().forEach( (SSHConnectionCacheKey key, SSHConnection connection) -> {
                 if (connection.getChannelCount() == 0) {
                     connection.closeSession();

@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisClientException;
@@ -19,7 +20,9 @@ import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.GroupedFlux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.ParallelFlux;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 
@@ -28,7 +31,9 @@ import javax.inject.Named;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 /**
@@ -49,124 +54,86 @@ public class ParentTaskReceiver implements Runnable {
     private final Sender sender;
 
 
-    private IRemoteDataClientFactory remoteDataClientFactory;
-    private SystemsClientFactory systemsClientFactory;
-    private TransfersService transfersService;
+    private final IRemoteDataClientFactory remoteDataClientFactory;
+    private final SystemsClientFactory systemsClientFactory;
+    private final TransfersService transfersService;
 
     @Inject
     public ParentTaskReceiver(@NotNull SystemsClientFactory systemsClientFactory,
                               @NotNull RemoteDataClientFactory remoteDataClientFactory,
                               @NotNull TransfersService transfersService) {
-        ConnectionFactory connectionFactory = new ConnectionFactory();
-        connectionFactory.setUsername("dev");
-        connectionFactory.setPassword("dev");
-        connectionFactory.setVirtualHost("dev");
-        connectionFactory.useNio();
+        ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
         ReceiverOptions receiverOptions = new ReceiverOptions()
             .connectionFactory(connectionFactory)
             .connectionSubscriptionScheduler(Schedulers.newElastic("parent-receiver"));
         SenderOptions senderOptions = new SenderOptions()
             .connectionFactory(connectionFactory)
             .resourceManagementScheduler(Schedulers.newElastic("parent-sender"));
-        this.receiver = RabbitFlux.createReceiver(receiverOptions);
-        this.sender = RabbitFlux.createSender(senderOptions);
+        receiver = RabbitFlux.createReceiver(receiverOptions);
+        sender = RabbitFlux.createSender(senderOptions);
         this.remoteDataClientFactory = remoteDataClientFactory;
         this.systemsClientFactory = systemsClientFactory;
         this.transfersService = transfersService;
     }
 
-    private Mono<TransferTask> deserializeTransferTaskMessage(AcknowledgableDelivery message) {
-        try {
-            return Mono.just(mapper.readValue(message.getBody(), TransferTask.class));
-        } catch (IOException ex) {
-            log.error("invalid message", ex);
-            return Mono.empty();
-        }
-    }
+    private class MessagePair {
 
-    private Mono<String> groupByTenant( AcknowledgableDelivery message) {
-        try {
-            TransferTask task = mapper.readValue(message.getBody(), TransferTask.class);
-            return Mono.just(task.getTenantId());
-        } catch (IOException ex) {
-            log.error("invalid message", ex);
-            return Mono.empty();
+        private final AcknowledgableDelivery message;
+        private final TransferTask task;
+
+        public MessagePair(AcknowledgableDelivery message) throws IOException{
+            this.message = message;
+            this.task = deserializeTransferTaskMessage(message);
+        }
+
+        public AcknowledgableDelivery getMessage() {
+            return message;
+        }
+
+        public TransferTask getTask() {
+            return task;
         }
     }
+    
 
     public void run() {
+        streamMessages()
+            .flatMap(message -> {
+                try {
+                    return  Mono.just(new MessagePair(message));
+                } catch (IOException ex) {
+                    return Mono.error(ex);
+                }
+            })
+            .groupBy(this::groupByTenant)
+            .map(group -> group.parallel().runOn(Schedulers.newParallel("pool", 8)))
+            .subscribe(group -> this.processTenantGroup(group).subscribe());
+    }
+
+    private ParallelFlux<TransferTaskChild> processTenantGroup (ParallelFlux<MessagePair> tenantGroup) {
+        return tenantGroup
+            .flatMap(this::doRootListing)
+            .flatMap(this::saveAndPublishChildTask);
+    }
+
+    private TransferTask deserializeTransferTaskMessage(AcknowledgableDelivery message) throws IOException {
+        try {
+            return mapper.readValue(message.getBody(), TransferTask.class);
+        } catch (IOException ex) {
+            log.error("invalid message", ex);
+            throw ex;
+        }
+    }
+
+    private Mono<String> groupByTenant(MessagePair pair) {
+            return Mono.just(pair.getTask().getTenantId());
+    }
+
+    private Flux<AcknowledgableDelivery> streamMessages() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
         Flux<AcknowledgableDelivery> parentMessages = receiver.consumeManualAck(PARENT_QUEUE, options);
-        parentMessages.delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)))
-            .groupBy((message) -> {
-                try {
-                    TransferTask m = mapper.readValue(message.getBody(), TransferTask.class);
-                    return m.getTenantId();
-                } catch (IOException e) {
-                    return Mono.empty();
-                }
-            })
-            .map(group -> group.parallel().runOn(Schedulers.newParallel("pool")))
-            .subscribe(group -> {
-                // This will be a flux of messages for a particular tenant
-                group
-                    .flatMap(message ->
-                        this.fakeWork(message)
-                            .retryBackoff(MAX_RETRIES, Duration.ofSeconds(10), Duration.ofSeconds(300))
-                            .doOnError( throwable -> {
-                                //TODO: Mark transfer as FAILED
-                                message.nack(true);
-                                log.error("Could not complete task", throwable);
-                            })
-                    )
-                    .doOnError(throwable -> log.error("what", throwable))
-                    .flatMap(this::saveAndPublishChildTask)
-                    .doOnError(throwable -> log.error("wtf2", throwable))
-                    .subscribe();
-            });
-
-    }
-
-
-    private Flux<TransferTaskChild> fakeWork(AcknowledgableDelivery message) {
-
-        Mono.fromCallable(() -> {
-            try {
-                Thread.sleep(1000);
-                log.info("SLEPT");
-                return true;
-            } catch (InterruptedException ex) {
-                return false;
-            }
-        }).subscribeOn(Schedulers.boundedElastic()).subscribe();
-
-        TransferTask task;
-
-        try {
-            task = mapper.readValue(message.getBody(), TransferTask.class);
-            log.info(task.toString());
-        } catch (IOException ex) {
-            return Flux.error(ex);
-        }
-
-        TransferTask newTask;
-        try {
-            newTask = transfersService.createTransfer(
-                task.getUsername(),
-                task.getTenantId(),
-                task.getSourceSystemId(),
-                task.getSourcePath(),
-                task.getDestinationSystemId(),
-                task.getDestinationPath()
-            );
-        } catch (ServiceException ex) {
-            return Flux.error(ex);
-        }
-        message.ack();
-        TransferTaskChild taskChild = new TransferTaskChild(newTask, "/a/b/c");
-
-        return Flux.just(taskChild);
+        return parentMessages.delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
     }
 
     private Flux<TransferTaskChild> saveAndPublishChildTask(TransferTaskChild childTask) {
@@ -191,18 +158,11 @@ public class ParentTaskReceiver implements Runnable {
     }
 
 
-    private Flux<TransferTaskChild> doRootListing(AcknowledgableDelivery message) {
+    private Flux<TransferTaskChild> doRootListing(MessagePair pair) {
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
-        TransferTaskChild task;
-
-        try {
-            task = mapper.readValue(message.getBody(), TransferTaskChild.class);
-            log.info(task.toString());
-        } catch (IOException ex) {
-            return Flux.error(ex);
-        }
-
+        TransferTask task = pair.getTask();
+        AcknowledgableDelivery message = pair.getMessage();
         try {
             SystemsClient systemsClient = systemsClientFactory.getClient(task.getTenantId(), task.getUsername());
             sourceSystem = systemsClient.getSystemByName(task.getSourceSystemId(), null);

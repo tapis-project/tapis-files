@@ -86,7 +86,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
         try {
             BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
-            String query = "SELECT * FROM transfer_tasks_child where uuid= ?";
+            String query = FileTransfersDAOStatements.GET_CHILD_TASK_BY_ID;
             QueryRunner runner = new QueryRunner();
             return runner.query(connection, query, handler, taskUUID);
         } catch (SQLException ex) {
@@ -101,7 +101,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         try {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
-            String query = "SELECT * FROM transfer_tasks where uuid= ?";
+            String query = FileTransfersDAOStatements.GET_PARENT_TASK_BY_ID;
             QueryRunner runner = new QueryRunner();
             TransferTask task = runner.query(connection, query, handler, taskUUID);
             return task;
@@ -124,11 +124,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         try {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
-            String stmt =
-                    "UPDATE transfer_tasks " +
-                            " SET total_bytes += ?" +
-                            "WHERE uuid = ? " +
-                            "RETURNING transfer_tasks.*";
+            String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK_SIZE;
             QueryRunner runner = new QueryRunner();
             TransferTask updatedTask = runner.query(connection, stmt, handler,
                     newBytes,
@@ -148,15 +144,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         try {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
-            String stmt =
-                    "UPDATE transfer_tasks " +
-                            " SET source_system_id = ?, " +
-                            "     source_path = ?, " +
-                            "     destination_system_id = ?, " +
-                            "     destination_path = ?, " +
-                            "     status = ? " +
-                            "WHERE uuid = ? " +
-                            "RETURNING transfer_tasks.*";
+            String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK;
             QueryRunner runner = new QueryRunner();
             TransferTask updatedTask = runner.query(connection, stmt, handler,
                     task.getSourceSystemId(),
@@ -181,10 +169,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         try {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
-            String stmt = "INSERT into transfer_tasks " +
-                    "(uuid, tenant_id, username, source_system_id, source_path, destination_system_id, destination_path, status)" +
-                    "values (?, ?, ?, ?, ?, ?, ?, ?)" +
-                    "RETURNING transfer_tasks.*";
+            String stmt = FileTransfersDAOStatements.INSERT_PARENT_TASK;
             QueryRunner runner = new QueryRunner();
             TransferTask insertedTask = runner.query(connection, stmt, handler,
                     task.getUuid(),
@@ -197,7 +182,6 @@ public class FileTransfersDAO implements IFileTransferDAO {
                     task.getStatus().name());
             return insertedTask;
         } catch (SQLException ex) {
-            log.error("ERROR", ex);
             throw new DAOException(ex.getErrorCode());
         } finally {
             DbUtils.closeQuietly(connection);
@@ -210,10 +194,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
 
         try {
             BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
-            String stmt = "INSERT into transfer_tasks_child " +
-              " (tenant_id, parent_task_id, username, source_system_id, source_path, destination_system_id, destination_path, status, bytes_transferred, total_bytes) " +
-              " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-              " RETURNING transfer_tasks_child.* ";
+            String stmt = FileTransfersDAOStatements.INSERT_CHILD_TASK;
             QueryRunner runner = new QueryRunner();
             TransferTaskChild child = runner.query(connection, stmt, handler,
               task.getTenantId(),
