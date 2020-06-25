@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.utils;
 
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
@@ -22,7 +23,7 @@ public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
             params.setTenant("master");
             params.setTokensBaseUrl(runtimeConfig.getTokensServiceURL());
             return new ServiceJWT(params, runtimeConfig.getServicePassword());
-        } catch (TapisException ex) {
+        } catch (TapisException | TapisClientException ex) {
             log.error("ERROR: could not get service JWT, exiting!", ex);
             System.exit(1);
             return null;

@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
@@ -7,7 +8,6 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -15,10 +15,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import javax.inject.Inject;
 import javax.validation.constraints.Min;
@@ -93,7 +91,7 @@ public class ContentApiResource extends BaseFilesResource {
                     .header("content-disposition", contentDisposition)
                     .header("cache-control", "max-age=3600")
                     .build();
-        } catch (TapisException ex) {
+        } catch (TapisClientException ex) {
             throw new BadRequestException("Only files can be served");
         } catch (ServiceException | IOException ex) {
             throw new WebApplicationException(ex);

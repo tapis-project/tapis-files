@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.security.*;
@@ -64,7 +65,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
             if (!isPermitted) {
                throw new NotAuthorizedException("Authorization failed.");
             }
-        } catch (TapisException e) {
+        } catch (TapisException | TapisClientException e) {
             // This should only happen when there is a network issue.
             log.error("ERROR: Files authorization failed", e);
             throw new WebApplicationException(e.getMessage());
