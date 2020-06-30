@@ -9,21 +9,25 @@ import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.statefulj.persistence.annotations.State;
 
 public class TransferTask   {
 
-    protected int id;
-    protected String tenantId;
-    protected String username;
-    protected String sourceSystemId;
-    protected String sourcePath;
-    protected String destinationSystemId;
-    protected String destinationPath;
-    protected UUID uuid;
-    protected Long totalBytes;
-    protected Long bytesTransferred;
-    protected TransferTaskStatus status;
-    protected Instant created;
+    private int id;
+    private String tenantId;
+    private String username;
+    private String sourceSystemId;
+    private String sourcePath;
+    private String destinationSystemId;
+    private String destinationPath;
+    private UUID uuid;
+    private Long totalBytes;
+    private Long bytesTransferred;
+
+    @State
+    private TransferTaskStatus status;
+
+    private Instant created;
 
 
     public TransferTask() {

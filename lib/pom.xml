@@ -71,6 +71,10 @@
             <artifactId>okhttp</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.statefulj</groupId>
+            <artifactId>statefulj-fsm</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.projectreactor.rabbitmq</groupId>
             <artifactId>reactor-rabbitmq</artifactId>
             <version>1.4.1.RELEASE</version>

@@ -8,13 +8,13 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import javax.inject.Inject;
 import java.util.List;
 
-public class ParentTaskWorker {
+public class ParentTaskProcessor {
 
     private TransferTask parentTask;
 
     private IRemoteDataClientFactory remoteDataClientFactory;
 
-    public ParentTaskWorker(TransferTask task) {
+    public ParentTaskProcessor(TransferTask task) {
         this.parentTask = task;
     }
 
