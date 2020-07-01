@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -22,7 +23,7 @@ public class SSHConnection {
 
     // A concurrent set that will be used to store the channels that are open
     // on the SSH session.
-    private final Set<Channel> channels = ConcurrentHashMap.newKeySet();
+    private final Set<Channel> channels = new HashSet<>();
 
 
     // Indicates what to do if the server's host key changed or the server is
