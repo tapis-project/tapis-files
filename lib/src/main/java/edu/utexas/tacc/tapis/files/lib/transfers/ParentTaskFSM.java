@@ -22,8 +22,9 @@ public class ParentTaskFSM<T extends ITransfersFSMStatefulEntity> extends FSM<T>
     }
 
     private final State<TransferTask> ACCEPTED = new StateImpl<>(TransferTaskStatus.ACCEPTED.name());
-    private final State<TransferTask> INPROGRESS = new StateImpl<>(TransferTaskStatus.IN_PROGRESS.name());
+    private final State<TransferTask> STAGING = new StateImpl<>(TransferTaskStatus.STAGING.name());
     private final State<TransferTask> STAGED = new StateImpl<>(TransferTaskStatus.STAGED.name());
+    private final State<TransferTask> INPROGRESS = new StateImpl<>(TransferTaskStatus.IN_PROGRESS.name());
     private final State<TransferTask> PAUSED = new StateImpl<>(TransferTaskStatus.PAUSED.name());
     private final State<TransferTask> CANCELLED = new StateImpl<>(TransferTaskStatus.CANCELLED.name(), true);
     private final State<TransferTask> FAILED = new StateImpl<>(TransferTaskStatus.FAILED.name(), true);
@@ -33,17 +34,28 @@ public class ParentTaskFSM<T extends ITransfersFSMStatefulEntity> extends FSM<T>
     @PostConstruct
     private void init() {
         states.add(ACCEPTED);
+        states.add(STAGING);
         states.add(STAGED);
+        states.add(PAUSED);
         states.add(INPROGRESS);
         states.add(COMPLETED);
         states.add(CANCELLED);
         states.add(FAILED);
-        states.add(PAUSED);
 
         ACCEPTED.addTransition(TransfersFSMEvents.TO_CANCELLED.name(), CANCELLED);
-        ACCEPTED.addTransition(TransfersFSMEvents.TO_STAGED.name(), STAGED);
+        ACCEPTED.addTransition(TransfersFSMEvents.TO_STAGING.name(), STAGING);
         ACCEPTED.addTransition(TransfersFSMEvents.TO_FAILED.name(), FAILED);
         ACCEPTED.addTransition(TransfersFSMEvents.TO_PAUSED.name(), PAUSED);
+
+        // STAGING means that the listing is in progress, but has not completed
+        STAGING.addTransition(TransfersFSMEvents.TO_STAGED.name(), STAGED);
+        STAGING.addTransition(TransfersFSMEvents.TO_CANCELLED.name(), CANCELLED);
+        STAGING.addTransition(TransfersFSMEvents.TO_FAILED.name(), FAILED);
+        STAGING.addTransition(TransfersFSMEvents.TO_CANCELLED.name(), CANCELLED);
+        STAGING.addTransition(TransfersFSMEvents.TO_PAUSED.name(), PAUSED);
+
+
+
 
         // STAGED state means that the initial listing is complete and all records are in DB and in
         // a queue
@@ -58,29 +70,31 @@ public class ParentTaskFSM<T extends ITransfersFSMStatefulEntity> extends FSM<T>
         INPROGRESS.addTransition(TransfersFSMEvents.TO_CANCELLED.name(), CANCELLED);
         INPROGRESS.addTransition(TransfersFSMEvents.TO_PAUSED.name(), PAUSED);
 
-        CANCELLED.addTransition(TransfersFSMEvents.TO_INPROGRESS.name(), INPROGRESS);
-        FSM<TransferTask> transfersFSM = new FSM<>(new MemoryPersisterImpl<>(states, ACCEPTED));
+        PAUSED.addTransition(TransfersFSMEvents.TO_INPROGRESS.name(), INPROGRESS);
+        PAUSED.addTransition(TransfersFSMEvents.TO_CANCELLED.name(), CANCELLED);
+
+        FSM<TransferTask> fsm = new FSM<>(new MemoryPersisterImpl<>(states, ACCEPTED));
 
     }
 
 
 
 
-
-    @Override
-    public State<T> onEvent(T stateful, String event, Object... args) throws IllegalStateException {
-        // Attempt to transition to a new state given the current state
-        // and an event.
-        State<T> current = this.getCurrentState(stateful);
-
-        // Fetch the transition for this event from the current state
-        Transition<T> transition = this.getTransition(event, current);
-        try {
-            current = this.transition(stateful, current, event, transition, args);
-            return current;
-        } catch (RetryException e) {
-            String msg = "ERROR: ParentTransfer rety error";
-            throw new IllegalStateException(msg, e);
-        }
-    }
+//
+//    @Override
+//    public State<T> onEvent(T stateful, String event, Object... args) throws IllegalStateException {
+//        // Attempt to transition to a new state given the current state
+//        // and an event.
+//        State<T> current = this.getCurrentState(stateful);
+//
+//        // Fetch the transition for this event from the current state
+//        Transition<T> transition = this.getTransition(event, current);
+//        try {
+//            current = this.transition(stateful, current, event, transition, args);
+//            return current;
+//        } catch (RetryException e) {
+//            String msg = "ERROR: ParentTransfer rety error";
+//            throw new IllegalStateException(msg, e);
+//        }
+//    }
 }

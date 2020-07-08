@@ -2,7 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.transfers;
 
 public enum TransfersFSMEvents {
 
-    TO_ACCEPTED,
+    TO_STAGING,
     TO_STAGED,
     TO_INPROGRESS,
     TO_BLOCKED,
