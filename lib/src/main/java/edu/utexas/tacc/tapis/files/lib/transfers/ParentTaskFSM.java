@@ -54,9 +54,6 @@ public class ParentTaskFSM<T extends ITransfersFSMStatefulEntity> extends FSM<T>
         STAGING.addTransition(TransfersFSMEvents.TO_CANCELLED.name(), CANCELLED);
         STAGING.addTransition(TransfersFSMEvents.TO_PAUSED.name(), PAUSED);
 
-
-
-
         // STAGED state means that the initial listing is complete and all records are in DB and in
         // a queue
         STAGED.addTransition(TransfersFSMEvents.TO_INPROGRESS.name(), INPROGRESS);
@@ -77,24 +74,4 @@ public class ParentTaskFSM<T extends ITransfersFSMStatefulEntity> extends FSM<T>
 
     }
 
-
-
-
-//
-//    @Override
-//    public State<T> onEvent(T stateful, String event, Object... args) throws IllegalStateException {
-//        // Attempt to transition to a new state given the current state
-//        // and an event.
-//        State<T> current = this.getCurrentState(stateful);
-//
-//        // Fetch the transition for this event from the current state
-//        Transition<T> transition = this.getTransition(event, current);
-//        try {
-//            current = this.transition(stateful, current, event, transition, args);
-//            return current;
-//        } catch (RetryException e) {
-//            String msg = "ERROR: ParentTransfer rety error";
-//            throw new IllegalStateException(msg, e);
-//        }
-//    }
 }

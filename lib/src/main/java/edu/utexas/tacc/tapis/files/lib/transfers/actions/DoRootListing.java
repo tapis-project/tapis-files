@@ -8,7 +8,7 @@ import org.statefulj.fsm.model.Action;
 
 public class DoRootListing<T> implements Action<T> {
 
-    private Logger log = LoggerFactory.getLogger(TransfersService.class);
+    private static final Logger log = LoggerFactory.getLogger(DoRootListing.class);
 
     @Override
     public void execute(T stateful, String event, Object... args) throws RetryException {
