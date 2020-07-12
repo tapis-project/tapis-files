@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-public class TransferTask   {
+public class TransferTask implements ITransferTask {
 
     protected int id;
     protected String tenantId;
@@ -21,15 +21,17 @@ public class TransferTask   {
     protected Long totalBytes;
     protected Long bytesTransferred;
 
+
+    // status MUST be a string for the FSM to work, enum is not an option
     @State
-    protected TransferTaskStatus status;
+    protected String status;
 
     protected Instant created;
 
 
     public TransferTask() {
         this.uuid = UUID.randomUUID();
-        this.status = TransferTaskStatus.ACCEPTED;
+        this.status = TransferTaskStatus.ACCEPTED.name();
     }
 
     public TransferTask(String tenantId, String username, String sourceSystemId, String sourcePath, String destinationSystemId, String destinationPath) {
@@ -40,105 +42,128 @@ public class TransferTask   {
         this.destinationSystemId = destinationSystemId;
         this.destinationPath = destinationPath;
         this.uuid = UUID.randomUUID();
-        this.status = TransferTaskStatus.ACCEPTED;
+        this.status = TransferTaskStatus.ACCEPTED.name();
     }
 
     /**
      * Unique ID of the task.
      * @return uuid
      **/
+    @Override
     @JsonProperty("uuid")
     @Schema(description = "Unique ID of the task.")
     public UUID getUuid() {
         return uuid;
     }
 
+    @Override
     public void setId(int id) {
         this.id = id;
     }
 
+    @Override
     public int getId() {
         return id;
     }
+    @Override
     public Long getTotalBytes() {
         return totalBytes;
     }
 
+    @Override
     public void setTotalBytes(Long totalBytes) {
         this.totalBytes = totalBytes;
     }
 
+    @Override
     public Long getBytesTransferred() {
         return bytesTransferred;
     }
 
+    @Override
     public void setBytesTransferred(Long bytesTransferred) {
         this.bytesTransferred = bytesTransferred;
     }
 
+    @Override
     public String getTenantId() {
         return tenantId;
     }
 
+    @Override
     public void setTenantId(String tenantId) {
         this.tenantId = tenantId;
     }
 
+    @Override
     public String getUsername() {
         return username;
     }
 
+    @Override
     public void setUsername(String username) {
         this.username = username;
     }
 
+    @Override
     public String getSourceSystemId() {
         return sourceSystemId;
     }
 
+    @Override
     public void setSourceSystemId(String sourceSystemId) {
         this.sourceSystemId = sourceSystemId;
     }
 
+    @Override
     public String getSourcePath() {
         return sourcePath;
     }
 
+    @Override
     public void setSourcePath(String sourcePath) {
         this.sourcePath = sourcePath;
     }
 
+    @Override
     public String getDestinationSystemId() {
         return destinationSystemId;
     }
 
+    @Override
     public void setDestinationSystemId(String destinationSystemId) {
         this.destinationSystemId = destinationSystemId;
     }
 
+    @Override
     public String getDestinationPath() {
         return destinationPath;
     }
 
+    @Override
     public void setDestinationPath(String destinationPath) {
         this.destinationPath = destinationPath;
     }
 
+    @Override
     public void setUuid(UUID uuid) {
         this.uuid = uuid;
     }
 
 
+    @Override
     @JsonProperty("created")
     @Schema(description = "Timestamp in UTC of task creation.", format = "date-time")
     public Instant getCreated() {
         return created;
     }
 
+    @Override
     public void setCreated(Instant created) {
         this.created = created;
     }
 
+    @Override
     public void setCreated(String created) {
         this.created = Instant.parse(created);
     }
@@ -147,14 +172,16 @@ public class TransferTask   {
      * The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED
      * @return status
      **/
+    @Override
     @JsonProperty("status")
-    @Schema(example = "PENDING", description = "The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED")
-    public TransferTaskStatus getStatus() {
+    @Schema(example = "PENDING", description = "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED")
+    public String getStatus() {
         return status;
     }
 
-    public void setStatus(TransferTaskStatus status) {
-        this.status = status;
+    @Override
+    public void setStatus(String status) throws IllegalArgumentException {
+        this.status = TransferTaskStatus.valueOf(status).name();
     }
 
 

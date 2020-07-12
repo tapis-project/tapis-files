@@ -42,7 +42,6 @@ public class ParentEmitter {
               task.setId(i);
               task.setUsername("user1");
               task.setTenantId("tenant-" + group.key());
-              task.setStatus(TransferTaskStatus.ACCEPTED);
               task.setDestinationPath("/a/b/c");
               task.setSourcePath("/d/e/f");
               task.setSourceSystemId("systemA");

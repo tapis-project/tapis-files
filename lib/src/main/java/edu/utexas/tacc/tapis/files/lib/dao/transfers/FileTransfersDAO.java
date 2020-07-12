@@ -34,7 +34,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
             task.setDestinationPath(rs.getString("destination_path"));
             task.setCreated(rs.getTimestamp("created").toInstant());
             task.setUuid(UUID.fromString(rs.getString("uuid")));
-            task.setStatus(TransferTaskStatus.valueOf(rs.getString("status")));
+            task.setStatus(rs.getString("status"));
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             return task;
@@ -56,7 +56,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
             task.setDestinationPath(rs.getString("destination_path"));
             task.setCreated(rs.getTimestamp("created").toInstant());
             task.setUuid(UUID.fromString(rs.getString("uuid")));
-            task.setStatus(TransferTaskStatus.valueOf(rs.getString("status")));
+            task.setStatus(rs.getString("status"));
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             return task;
@@ -151,7 +151,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
                     task.getSourcePath(),
                     task.getDestinationSystemId(),
                     task.getDestinationPath(),
-                    task.getStatus().name(),
+                    task.getStatus(),
                     task.getUuid());
 
             return updatedTask;
@@ -164,7 +164,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
 
     public TransferTask createTransferTask(@NotNull TransferTask task) throws DAOException {
 
-        task.setStatus(TransferTaskStatus.ACCEPTED);
+        task.setStatus(TransferTaskStatus.ACCEPTED.name());
         Connection connection = HikariConnectionPool.getConnection();
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         try {
@@ -179,7 +179,8 @@ public class FileTransfersDAO implements IFileTransferDAO {
                     task.getSourcePath(),
                     task.getDestinationSystemId(),
                     task.getDestinationPath(),
-                    task.getStatus().name());
+                    task.getStatus()
+            );
             return insertedTask;
         } catch (SQLException ex) {
             throw new DAOException(ex.getErrorCode());
@@ -204,7 +205,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
               task.getSourcePath(),
               task.getDestinationSystemId(),
               task.getDestinationPath(),
-              task.getStatus().name(),
+              task.getStatus(),
               task.getBytesTransferred(),
               task.getTotalBytes()
             );

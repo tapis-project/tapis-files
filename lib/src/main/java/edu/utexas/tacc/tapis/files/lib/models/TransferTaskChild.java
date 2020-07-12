@@ -5,7 +5,7 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.util.UUID;
 
-public class TransferTaskChild extends TransferTask{
+public class TransferTaskChild extends TransferTask implements ITransferTask {
 
     private int parentTaskId;
 
@@ -21,7 +21,7 @@ public class TransferTaskChild extends TransferTask{
         this.destinationSystemId = destinationSystemId;
         this.destinationPath = destinationPath;
         this.uuid = UUID.randomUUID();
-        this.status = TransferTaskStatus.ACCEPTED;
+        this.status = TransferTaskStatus.ACCEPTED.name();
         this.parentTaskId = parentTaskId;
     }
 
@@ -31,7 +31,7 @@ public class TransferTaskChild extends TransferTask{
         this.setParentTaskId(transferTask.getId());
         this.setDestinationPath(transferTask.getDestinationPath());
         this.setDestinationSystemId(transferTask.getDestinationSystemId());
-        this.setStatus(TransferTaskStatus.ACCEPTED);
+        this.setStatus(TransferTaskStatus.ACCEPTED.name());
         this.setTenantId(transferTask.getTenantId());
         this.setUsername(transferTask.getUsername());
         this.setBytesTransferred(0L);
