@@ -43,14 +43,14 @@ public class TransfersApp {
             }
         });
         ParentTaskReceiver worker = locator.getService(ParentTaskReceiver.class);
-        Thread parentThread = new Thread(worker);
-        parentThread.start();
-
-
-        log.info("test");
-        ChildTaskReceiver childWorker = locator.getService(ChildTaskReceiver.class);
-        Thread childThread = new Thread(childWorker);
-        childThread.start();
+//        Thread parentThread = new Thread(worker);
+//        parentThread.start();
+//
+//
+//        log.info("test");
+//        ChildTaskReceiver childWorker = locator.getService(ChildTaskReceiver.class);
+//        Thread childThread = new Thread(childWorker);
+//        childThread.start();
 
 
     }

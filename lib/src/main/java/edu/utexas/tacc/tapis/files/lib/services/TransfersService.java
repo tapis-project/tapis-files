@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.ConnectionFactory;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
@@ -14,6 +16,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
+import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
 import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskReceiver;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
@@ -29,6 +32,7 @@ import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -41,6 +45,8 @@ public class TransfersService implements ITransfersService {
     private final Receiver receiver;
     private final Sender sender;
 
+    @Inject
+    private ParentTaskFSM fsm;
 
     @Inject
     private FileTransfersDAO dao;
@@ -57,10 +63,10 @@ public class TransfersService implements ITransfersService {
         ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
         ReceiverOptions receiverOptions = new ReceiverOptions()
             .connectionFactory(connectionFactory)
-            .connectionSubscriptionScheduler(Schedulers.newElastic("parent-receiver"));
+            .connectionSubscriptionScheduler(Schedulers.newElastic("receiver"));
         SenderOptions senderOptions = new SenderOptions()
             .connectionFactory(connectionFactory)
-            .resourceManagementScheduler(Schedulers.newElastic("parent-sender"));
+            .resourceManagementScheduler(Schedulers.newElastic("sender"));
         receiver = RabbitFlux.createReceiver(receiverOptions);
         sender = RabbitFlux.createSender(senderOptions);
     }
@@ -126,38 +132,40 @@ public class TransfersService implements ITransfersService {
     public Flux<AcknowledgableDelivery> streamParentMessages() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
-        Flux<AcknowledgableDelivery> parentMessages = receiver.consumeManualAck(PARENT_QUEUE, options);
-        return parentMessages.delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
+        Flux<AcknowledgableDelivery> parentMessageStream = receiver.consumeManualAck(PARENT_QUEUE, options);
+        return parentMessageStream.delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
     }
 
-//    private Flux<TransferTaskChild> doRootListing(ParentTaskReceiver.MessagePair pair) {
-//        TSystem sourceSystem;
-//        IRemoteDataClient sourceClient;
-//        TransferTask task = pair.getTask();
-//        AcknowledgableDelivery message = pair.getMessage();
-//        try {
-//            SystemsClient systemsClient = systemsClientFactory.getClient(task.getTenantId(), task.getUsername());
-//            sourceSystem = systemsClient.getSystemByName(task.getSourceSystemId(), null);
-//        } catch (TapisClientException | ServiceException ex) {
-//            return Flux.error(ex);
-//        }
-//        try {
-//            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, task.getUsername());
-//        } catch (IOException ex) {
-//            return Flux.error(ex);
-//        }
-//
-//        List<FileInfo> fileListing;
-//        try {
-//            fileListing = sourceClient.ls(task.getSourcePath());
-//        } catch (IOException ex) {
-//            return Flux.error(ex);
-//        }
-//
-//        Stream<TransferTaskChild> childTasks = fileListing.stream().map(f -> {
-//            return new TransferTaskChild(task, f.getPath());
-//        });
-//        message.ack();
-//        return Flux.fromStream(childTasks);
-//    }
+    public boolean doStepOne(TransferTask task) {
+        TSystem sourceSystem;
+        IRemoteDataClient sourceClient;
+        try {
+            SystemsClient systemsClient = systemsClientFactory.getClient(task.getTenantId(), task.getUsername());
+            sourceSystem = systemsClient.getSystemByName(task.getSourceSystemId(), null);
+
+            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, task.getUsername());
+
+            //TODO: Bulk inserts for both
+            List<FileInfo> fileListing;
+            fileListing = sourceClient.ls(task.getSourcePath());
+            fileListing.forEach(f -> {
+                    TransferTaskChild child = new TransferTaskChild(task, f.getPath());
+                    dao.insertChildTask(child);
+                    publishChildMessage(child);
+                });
+        } catch (Exception ex) {
+            return false;
+        }
+
+    }
+
+    private void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
+        try {
+            String m = mapper.writeValueAsString(childTask);
+            OutboundMessage message = new OutboundMessage("", CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
+            sender.send(Flux.just(message));
+        } catch (JsonProcessingException ex) {
+            log.error(ex.getMessage(), ex);
+        }
+    }
 }
