@@ -7,10 +7,13 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem.TransferMethodsEnu
 import org.jvnet.hk2.annotations.Service;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.util.List;
 
+@Service
+@Named
 public class RemoteDataClientFactory implements IRemoteDataClientFactory {
 
     private final SSHConnectionCache sshConnectionCache;

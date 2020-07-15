@@ -7,11 +7,15 @@ import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWT;
 import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWTParms;
 import org.glassfish.hk2.api.Factory;
+import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Named;
+
+@Service @Named
 public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
-    private Logger log = LoggerFactory.getLogger(ServiceJWTCacheFactory.class);
+    private static final Logger log = LoggerFactory.getLogger(ServiceJWTCacheFactory.class);
 
     private final IRuntimeConfig runtimeConfig = RuntimeSettings.get();
 

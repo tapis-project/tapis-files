@@ -4,9 +4,11 @@ import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import org.glassfish.hk2.api.Factory;
+import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Service
 public class TenantCacheFactory implements Factory<TenantManager> {
 
     private static final Logger log = LoggerFactory.getLogger(TenantCacheFactory.class);

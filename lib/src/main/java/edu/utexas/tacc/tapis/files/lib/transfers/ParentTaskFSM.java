@@ -15,10 +15,11 @@ import org.statefulj.fsm.model.impl.StateImpl;
 import org.statefulj.persistence.memory.MemoryPersisterImpl;
 
 import javax.annotation.PostConstruct;
+import javax.inject.Named;
 import java.util.LinkedList;
 import java.util.List;
 
-@Service
+@Service @Named
 public class ParentTaskFSM {
 
     private static final State<TransferTask> ACCEPTED = new StateImpl<>(TransferTaskStatus.ACCEPTED.name());
@@ -33,6 +34,7 @@ public class ParentTaskFSM {
 
     private static FSM<TransferTask> fsm;
 
+    @PostConstruct
     public static FSM<TransferTask> getFSM() {
         if (fsm == null) {
             states.add(ACCEPTED);

@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.transfers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
@@ -26,7 +27,6 @@ import java.io.IOException;
  */
 
 @Service
-@Named
 public class ParentTaskReceiver implements Runnable {
 
 
@@ -38,7 +38,6 @@ public class ParentTaskReceiver implements Runnable {
 
     @Inject
     public ParentTaskReceiver(@NotNull TransfersService transfersService) {
-
         this.transfersService = transfersService;
     }
 
@@ -51,44 +50,24 @@ public class ParentTaskReceiver implements Runnable {
                     log.error("invalid message", ex);
                     return Mono.error(ex);
                 }
-            }).map(Flux::parallel)
+            })
+            .map(Flux::parallel)
             .subscribe(group -> {
                 group.runOn(Schedulers.newBoundedElastic(8, 1, "pool"))
                     //flatMap allows for an empty sequence if the processing step failed
-                    .flatMap((taskMessage) -> {
+                    .map((taskMessage) -> {
                         try {
                             TransferTask task = mapper.readValue(taskMessage.getBody(), TransferTask.class);
-                            return transfersService.doStepOne(task);
-                        } catch (IOException ex) {
+                            transfersService.doStepOne(task);
+                            taskMessage.ack();
+                            return Mono.empty();
+                        } catch (IOException | ServiceException ex) {
+                            taskMessage.nack(false);
                             return Mono.error(ex);
                         }
                     })
-                    .flatMap((task)->{
-                            return Mono.just(task);
-                    }).subscribe();
+                    .subscribe();
             });
-    }
-
-
-    public static void main(String[] args) throws Exception {
-
-        Flux.range(1, 10)
-            .map((i) -> {
-                if (i == 4) {
-                    return Flux.error(new IOException());
-                }
-                return i * 2;
-            })
-            .onErrorContinue((ex, o) -> {
-                log.info(ex.getMessage(), o.toString());
-            })
-            .map((i) -> {
-                log.info(i.toString());
-                return i;
-            })
-            .subscribe();
-
-
     }
 
 }

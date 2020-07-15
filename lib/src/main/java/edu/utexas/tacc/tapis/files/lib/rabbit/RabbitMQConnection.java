@@ -1,4 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.rabbit;
+
 import com.rabbitmq.client.ConnectionFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
@@ -10,11 +11,11 @@ public class RabbitMQConnection {
 
     public static synchronized ConnectionFactory getInstance() {
         if (INSTANCE == null) {
-                ConnectionFactory connectionFactory = new ConnectionFactory();
-                connectionFactory.setUsername(conf.getRabbitMQUsername());
-                connectionFactory.setPassword(conf.getRabbitmqPassword());
-                connectionFactory.setVirtualHost(conf.getRabbitMQVHost());
-                connectionFactory.useNio();
+            ConnectionFactory connectionFactory = new ConnectionFactory();
+            connectionFactory.setUsername(conf.getRabbitMQUsername());
+            connectionFactory.setPassword(conf.getRabbitmqPassword());
+            connectionFactory.setVirtualHost(conf.getRabbitMQVHost());
+            connectionFactory.useNio();
         }
         return INSTANCE;
     }

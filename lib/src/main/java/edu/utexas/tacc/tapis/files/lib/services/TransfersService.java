@@ -25,10 +25,12 @@ import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
@@ -45,21 +47,18 @@ public class TransfersService implements ITransfersService {
     private final Receiver receiver;
     private final Sender sender;
 
-    @Inject
     private ParentTaskFSM fsm;
-
-    @Inject
     private FileTransfersDAO dao;
-
-    @Inject
     private SystemsClientFactory systemsClientFactory;
-
-    @Inject
     private RemoteDataClientFactory remoteDataClientFactory;
 
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
 
-    public TransfersService() throws ServiceException {
+    @Inject
+    public TransfersService(ParentTaskFSM fsm,
+                            FileTransfersDAO dao,
+                            SystemsClientFactory systemsClientFactory,
+                            RemoteDataClientFactory remoteDataClientFactory) {
         ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
         ReceiverOptions receiverOptions = new ReceiverOptions()
             .connectionFactory(connectionFactory)
@@ -69,6 +68,12 @@ public class TransfersService implements ITransfersService {
             .resourceManagementScheduler(Schedulers.newElastic("sender"));
         receiver = RabbitFlux.createReceiver(receiverOptions);
         sender = RabbitFlux.createSender(senderOptions);
+        this.dao = dao;
+        this.fsm = fsm;
+        this.systemsClientFactory = systemsClientFactory;
+        this.remoteDataClientFactory = remoteDataClientFactory;
+
+        //TODO: Test out rabbitmq connection and auto shut down if not available?
     }
 
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull String transferTaskId) throws ServiceException {
@@ -106,6 +111,7 @@ public class TransfersService implements ITransfersService {
         try {
             // TODO: check if requesting user has access to both the source and dest systems, throw an error back if not
             task = dao.createTransferTask(task);
+            this.publishParentTaskMessage(task);
             return task;
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage());
@@ -129,6 +135,17 @@ public class TransfersService implements ITransfersService {
         }
     }
 
+    private void publishParentTaskMessage(@NotNull TransferTask task) throws ServiceException {
+        try {
+            String m = mapper.writeValueAsString(task);
+            OutboundMessage message = new OutboundMessage("", PARENT_QUEUE, m.getBytes(StandardCharsets.UTF_8));
+            sender.send(Mono.just(message)).subscribe();
+        } catch (Exception e) {
+            log.info(e.getMessage());
+            throw new ServiceException(e.getMessage());
+        }
+    }
+
     public Flux<AcknowledgableDelivery> streamParentMessages() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
@@ -136,26 +153,30 @@ public class TransfersService implements ITransfersService {
         return parentMessageStream.delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
     }
 
-    public boolean doStepOne(TransferTask task) {
+    public void doStepOne(TransferTask task) throws ServiceException {
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
         try {
             SystemsClient systemsClient = systemsClientFactory.getClient(task.getTenantId(), task.getUsername());
             sourceSystem = systemsClient.getSystemByName(task.getSourceSystemId(), null);
-
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, task.getUsername());
 
             //TODO: Bulk inserts for both
             List<FileInfo> fileListing;
             fileListing = sourceClient.ls(task.getSourcePath());
             fileListing.forEach(f -> {
-                    TransferTaskChild child = new TransferTaskChild(task, f.getPath());
+                TransferTaskChild child = new TransferTaskChild(task, f.getPath());
+                try {
                     dao.insertChildTask(child);
                     publishChildMessage(child);
-                });
-        } catch (Exception ex) {
-            return false;
+                } catch (ServiceException | DAOException ex) {
+                    log.error(child.toString());
+                }
+            });
+        } catch (Exception e) {
+            throw new ServiceException(e.getMessage());
         }
+
 
     }
 

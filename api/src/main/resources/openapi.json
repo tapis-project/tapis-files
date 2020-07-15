@@ -686,6 +686,62 @@
         }
       }
     },
+    "/v3/files/transfers/{transferTaskId}" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get a transfer task",
+        "operationId" : "getTransferTask",
+        "parameters" : [ {
+          "name" : "transferTaskId",
+          "in" : "path",
+          "description" : "Transfer task ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Stop/Cancel a transfer task",
+        "operationId" : "cancelTransferTask",
+        "parameters" : [ {
+          "name" : "transferTaskId",
+          "in" : "path",
+          "description" : "Transfer task ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TapisResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v3/files/transfers" : {
       "post" : {
         "tags" : [ "transfers" ],
@@ -738,62 +794,6 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v3/files/transfers/{transferTaskId}" : {
-      "get" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Get a transfer task",
-        "operationId" : "getTransferTask",
-        "parameters" : [ {
-          "name" : "transferTaskId",
-          "in" : "path",
-          "description" : "Transfer task ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Stop/Cancel a transfer task",
-        "operationId" : "cancelTransferTask",
-        "parameters" : [ {
-          "name" : "transferTaskId",
-          "in" : "path",
-          "description" : "Transfer task ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TapisResponse"
                 }
               }
             }
@@ -1002,9 +1002,8 @@
           },
           "status" : {
             "type" : "string",
-            "description" : "The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED",
-            "example" : "PENDING",
-            "enum" : [ "ACCEPTED", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
+            "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
+            "example" : "PENDING"
           },
           "created" : {
             "type" : "integer",
