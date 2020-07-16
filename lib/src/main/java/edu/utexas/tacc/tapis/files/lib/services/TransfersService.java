@@ -33,6 +33,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.ServerErrorException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -169,7 +170,6 @@ public class TransfersService implements ITransfersService {
             group.runOn(Schedulers.newBoundedElastic(8, 1, "pool"))
                 .flatMap(m -> Mono.fromCallable(() -> {
                     TransferTask task = mapper.readValue(m.getBody(), TransferTask.class);
-                    log.info(task.toString());
                     doStepOne(task);
                     m.ack();
                     return task;
@@ -200,6 +200,7 @@ public class TransfersService implements ITransfersService {
             });
             task.setStatus(TransferTaskStatus.STAGED.name());
             dao.updateTransferTask(task);
+            List<TransferTask> tasks = getTransfersForUser(task.getUsername());
         } catch (Exception e) {
             throw new ServiceException(e.getMessage());
         }
@@ -210,6 +211,14 @@ public class TransfersService implements ITransfersService {
             return this.dao.getAllChildren(task);
         } catch (DAOException e) {
             throw new ServiceException(e.getMessage());
+        }
+    }
+
+    public List<TransferTask> getTransfersForUser(String username) throws ServiceException {
+        try {
+            return this.dao.getAllTransfersForUser(username);
+        } catch (DAOException ex) {
+            throw new ServiceException(ex.getMessage());
         }
     }
 

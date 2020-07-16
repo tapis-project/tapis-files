@@ -12,7 +12,12 @@ public class FileTransfersDAOStatements {
 
     //language=SQL
     public static final String GET_ALL_CHILDREN =
-        "SELECT * FROM transfer_tasks_child where parent_task_id = ?";
+        "SELECT * FROM transfer_tasks_child where parent_task_id = ?;";
+
+    //language=SQL
+    public static final String GET_ALL_TASKS_FOR_USER =
+        "SELECT * FROM transfer_tasks where username = ?;";
+
 
     //language=SQL
     public static final String UPDATE_PARENT_TASK_SIZE =

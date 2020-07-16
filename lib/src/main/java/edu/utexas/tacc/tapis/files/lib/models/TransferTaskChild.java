@@ -26,6 +26,7 @@ public class TransferTaskChild extends TransferTask implements ITransferTask {
     }
 
     public TransferTaskChild(@NotNull TransferTask transferTask, @NotNull String sourcePath) {
+        this.setParentTaskId(transferTask.getId());
         this.setSourcePath(sourcePath);
         this.setSourceSystemId(transferTask.getSourceSystemId());
         this.setParentTaskId(transferTask.getId());

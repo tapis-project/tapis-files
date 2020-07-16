@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.statefulj.persistence.annotations.State;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -166,6 +167,11 @@ public class TransferTask implements ITransferTask {
     @Override
     public void setCreated(String created) {
         this.created = Instant.parse(created);
+    }
+
+    @Override
+    public void setCreated(Timestamp created) {
+        this.created = created.toInstant();
     }
 
     /**

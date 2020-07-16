@@ -15,6 +15,8 @@ import org.flywaydb.core.Flyway;
 
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 
+import java.util.List;
+
 public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
 
 
@@ -48,4 +50,23 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(tNew.getStatus(), TransferTaskStatus.ACCEPTED);
         Assert.assertNotEquals(tNew.getCreated(), null);
     }
+
+    @Test
+    public void testGetAllForUser() throws DAOException {
+        FileTransfersDAO dao = new FileTransfersDAO();
+        TransferTask task = new TransferTask();
+        task.setTenantId("test");
+        task.setUsername("test");
+        task.setDestinationSystemId("test");
+        task.setDestinationPath("/test");
+        task.setSourceSystemId("test2");
+        task.setSourcePath("/test2");
+        dao.createTransferTask(task);
+        dao.createTransferTask(task);
+
+        List<TransferTask> tasks = dao.getAllTransfersForUser(task.getUsername());
+        Assert.assertEquals(tasks.size(), 2);
+    }
+
+
 }

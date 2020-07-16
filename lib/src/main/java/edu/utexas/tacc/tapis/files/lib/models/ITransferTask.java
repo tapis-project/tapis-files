@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -50,6 +51,8 @@ public interface ITransferTask {
     void setCreated(Instant created);
 
     void setCreated(String created);
+
+    void setCreated(Timestamp created);
 
     String getStatus();
 
