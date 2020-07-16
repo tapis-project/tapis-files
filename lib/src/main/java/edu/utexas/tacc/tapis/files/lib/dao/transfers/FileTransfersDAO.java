@@ -7,9 +7,11 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
+import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 
@@ -138,7 +140,6 @@ public class FileTransfersDAO implements IFileTransferDAO {
 
     }
 
-
     public TransferTask updateTransferTask(@NotNull TransferTask task) throws DAOException {
         Connection connection = HikariConnectionPool.getConnection();
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
@@ -218,4 +219,47 @@ public class FileTransfersDAO implements IFileTransferDAO {
         }
     }
 
+    public TransferTaskChild getChildTask(@NotNull TransferTaskChild task) throws DAOException {
+        Connection connection = HikariConnectionPool.getConnection();
+        RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
+
+        try {
+            BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
+            String stmt = FileTransfersDAOStatements.GET_CHILD_TASK_BY_ID;
+            QueryRunner runner = new QueryRunner();
+            TransferTaskChild child = runner.query(connection, stmt, handler,
+                task.getUuid()
+            );
+
+            return child;
+        } catch (SQLException ex) {
+            throw new DAOException(ex.getErrorCode());
+        } finally {
+            DbUtils.closeQuietly(connection);
+        }
+    }
+
+    public List<TransferTaskChild> getAllChildren(@NotNull TransferTask task) throws DAOException {
+        Connection connection = HikariConnectionPool.getConnection();
+        RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
+
+        try {
+            BeanListHandler<TransferTaskChild> handler = new BeanListHandler<>(TransferTaskChild.class, rowProcessor);
+            String stmt = FileTransfersDAOStatements.GET_ALL_CHILDREN;
+            QueryRunner runner = new QueryRunner();
+
+            List<TransferTaskChild> children = runner.query(
+                connection,
+                stmt,
+                handler,
+                task.getId()
+            );
+
+            return children;
+        } catch (SQLException ex) {
+            throw new DAOException(ex.getErrorCode());
+        } finally {
+            DbUtils.closeQuietly(connection);
+        }
+    }
 }

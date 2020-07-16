@@ -165,7 +165,6 @@ public class S3DataClient implements IRemoteDataClient {
     public void insert(@NotNull String path, @NotNull InputStream fileStream) throws IOException {
         // TODO: This should use multipart on an InputStream ideally;
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
-        log.info(remotePath);
         try {
             PutObjectRequest req = PutObjectRequest.builder()
                     .bucket(bucket)

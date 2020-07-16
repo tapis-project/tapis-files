@@ -27,7 +27,7 @@ import java.io.IOException;
  */
 
 @Service
-public class ParentTaskReceiver implements Runnable {
+public class ParentTaskReceiver {
 
 
     private static final Logger log = LoggerFactory.getLogger(ParentTaskReceiver.class);
@@ -41,33 +41,6 @@ public class ParentTaskReceiver implements Runnable {
         this.transfersService = transfersService;
     }
 
-    public void run() {
-        transfersService.streamParentMessages()
-            .groupBy((message) -> {
-                try {
-                    return Mono.just(mapper.readValue(message.getBody(), TransferTask.class).getTenantId());
-                } catch (IOException ex) {
-                    log.error("invalid message", ex);
-                    return Mono.error(ex);
-                }
-            })
-            .map(Flux::parallel)
-            .subscribe(group -> {
-                group.runOn(Schedulers.newBoundedElastic(8, 1, "pool"))
-                    //flatMap allows for an empty sequence if the processing step failed
-                    .map((taskMessage) -> {
-                        try {
-                            TransferTask task = mapper.readValue(taskMessage.getBody(), TransferTask.class);
-                            transfersService.doStepOne(task);
-                            taskMessage.ack();
-                            return Mono.empty();
-                        } catch (IOException | ServiceException ex) {
-                            taskMessage.nack(false);
-                            return Mono.error(ex);
-                        }
-                    })
-                    .subscribe();
-            });
-    }
+
 
 }

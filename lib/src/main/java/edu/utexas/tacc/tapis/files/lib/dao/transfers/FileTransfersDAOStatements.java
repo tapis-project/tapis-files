@@ -8,7 +8,11 @@ public class FileTransfersDAOStatements {
 
     //language=SQL
     public static final String GET_CHILD_TASK_BY_ID =
-        "SELECT * FROM transfer_tasks_child where uuid= ?";
+        "SELECT * FROM transfer_tasks_child where uuid = ?";
+
+    //language=SQL
+    public static final String GET_ALL_CHILDREN =
+        "SELECT * FROM transfer_tasks_child where parent_task_id = ?";
 
     //language=SQL
     public static final String UPDATE_PARENT_TASK_SIZE =

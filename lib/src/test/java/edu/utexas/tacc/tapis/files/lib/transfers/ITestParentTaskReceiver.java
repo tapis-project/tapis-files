@@ -7,7 +7,9 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.ITransfersService;
@@ -25,12 +27,15 @@ import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.mockito.Mockito;
+import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
+import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
+import reactor.test.StepVerifier;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -51,18 +56,20 @@ public class ITestParentTaskReceiver {
     private IRemoteDataClientFactory remoteDataClientFactory;
 
     TenantManager tenantManager = Mockito.mock(TenantManager.class);
-    SKClient skClient = Mockito.mock(SKClient .class);
-    SystemsClient systemsClient = Mockito.mock(SystemsClient .class);
+    SKClient skClient = Mockito.mock(SKClient.class);
+    SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
+    SystemsClientFactory systemsClientFactory = Mockito.mock(SystemsClientFactory.class);
     ServiceJWT serviceJWT;
-    ITransfersService transfersService;
+    TransfersService transfersService;
 
     @BeforeSuite
-    private void doBeforeSuite() {
+    private void doBeforeSuite() throws Exception {
         //S3 system
         var creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
         sourceSystem = new TSystem();
+        sourceSystem.setTenant("dev");
         sourceSystem.setHost("http://localhost");
         sourceSystem.setBucketName("test");
         sourceSystem.setName("sourceSystem");
@@ -77,6 +84,7 @@ public class ITestParentTaskReceiver {
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
         destSystem = new TSystem();
+        destSystem.setTenant("dev");
         destSystem.setHost("http://localhost");
         destSystem.setBucketName("test");
         destSystem.setName("destSystem");
@@ -96,6 +104,8 @@ public class ITestParentTaskReceiver {
         serviceJWT = Mockito.mock(ServiceJWT.class);
         var serviceJWTFactory = Mockito.mock(ServiceJWTCacheFactory.class);
         when(serviceJWTFactory.provide()).thenReturn(serviceJWT);
+        when(systemsClientFactory.getClient(any(), any())).thenReturn(systemsClient);
+
 //        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
 
         ServiceLocator locator = ServiceLocatorUtilities.bind(new AbstractBinder() {
@@ -103,12 +113,12 @@ public class ITestParentTaskReceiver {
             protected void configure() {
                 bindAsContract(ParentTaskFSM.class);
                 bindAsContract(FileTransfersDAO.class);
-                bindAsContract(SystemsClientFactory.class);
                 bindAsContract(ParentTaskReceiver.class);
                 bindAsContract(TransfersService.class);
                 bindAsContract(RemoteDataClientFactory.class);
                 bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
 
+                bind(systemsClientFactory).to(SystemsClientFactory.class);
                 bind(systemsClient).to(SystemsClient.class);
                 bind(tenantManager).to(TenantManager.class);
                 bind(skClient).to(SKClient.class);
@@ -117,19 +127,18 @@ public class ITestParentTaskReceiver {
                 bind(tenantManager).to(TenantManager.class);
             }
         });
-        ParentTaskReceiver worker = locator.getService(ParentTaskReceiver.class);
         remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
         transfersService = locator.getService(TransfersService.class);
-        worker.run();
+
     }
 
     @BeforeTest
     public void beforeTest() throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         IFileOpsService fileOpsService = new FileOpsService(client);
-        InputStream in = Utils.makeFakeFile(10*1024);
+        InputStream in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("file1.txt", in);
-        in = Utils.makeFakeFile(10*1024);
+        in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("file2.txt", in);
     }
 
@@ -160,12 +169,40 @@ public class ITestParentTaskReceiver {
 
     }
 
-
-
-
-
-
-
+    @Test
+    public void testDoes() throws Exception {
+        when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
+        TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
+            sourceSystem.getName(),
+            "/file1.txt",
+            destSystem.getName(),
+            "/"
+        );
+        TransferTask t2 = transfersService.createTransfer("testUser1", "dev2",
+            sourceSystem.getName(),
+            "/file1.txt",
+            destSystem.getName(),
+            "/"
+        );
+        TransferTask t3 = transfersService.createTransfer("testUser1", "dev3",
+            sourceSystem.getName(),
+            "/file1.txt",
+            destSystem.getName(),
+            "/"
+        );
+        Flux<AcknowledgableDelivery> messages = transfersService.streamParentMessages();
+        Flux<TransferTask> tasks = transfersService.processParentTasks(messages);
+        StepVerifier
+            .create(tasks)
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
+            .thenCancel()
+            .verify();
+        List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
+        Assert.assertEquals(children.size(), 1);
+    }
 
 
 }

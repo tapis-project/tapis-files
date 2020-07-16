@@ -11,11 +11,11 @@ public class RabbitMQConnection {
 
     public static synchronized ConnectionFactory getInstance() {
         if (INSTANCE == null) {
-            ConnectionFactory connectionFactory = new ConnectionFactory();
-            connectionFactory.setUsername(conf.getRabbitMQUsername());
-            connectionFactory.setPassword(conf.getRabbitmqPassword());
-            connectionFactory.setVirtualHost(conf.getRabbitMQVHost());
-            connectionFactory.useNio();
+            INSTANCE = new ConnectionFactory();
+            INSTANCE.setUsername(conf.getRabbitMQUsername());
+            INSTANCE.setPassword(conf.getRabbitmqPassword());
+            INSTANCE.setVirtualHost(conf.getRabbitMQVHost());
+            INSTANCE.useNio();
         }
         return INSTANCE;
     }

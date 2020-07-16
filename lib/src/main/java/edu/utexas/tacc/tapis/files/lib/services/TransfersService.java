@@ -41,9 +41,10 @@ import java.util.stream.Stream;
 
 @Service
 public class TransfersService implements ITransfersService {
-    private Logger log = LoggerFactory.getLogger(TransfersService.class);
+    private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
     private static final String PARENT_QUEUE = "tapis.files.transfers.parent";
     private static final String CHILD_QUEUE = "tapis.files.transfers.child";
+    private static final int MAX_RETRIES = 5;
     private final Receiver receiver;
     private final Sender sender;
 
@@ -150,7 +151,31 @@ public class TransfersService implements ITransfersService {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
         Flux<AcknowledgableDelivery> parentMessageStream = receiver.consumeManualAck(PARENT_QUEUE, options);
-        return parentMessageStream.delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
+        return parentMessageStream
+            .delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
+    }
+
+    public Flux<TransferTask> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
+        return messageStream.groupBy((message) -> {
+            try {
+                return Mono.just(mapper.readValue(message.getBody(), TransferTask.class).getTenantId());
+            } catch (IOException ex) {
+                log.error("invalid message", ex);
+                return Mono.empty();
+            }
+        })
+        .map(Flux::parallel)
+        .flatMap(group ->
+            group.runOn(Schedulers.newBoundedElastic(8, 1, "pool"))
+                .flatMap(m -> Mono.fromCallable(() -> {
+                    TransferTask task = mapper.readValue(m.getBody(), TransferTask.class);
+                    log.info(task.toString());
+                    doStepOne(task);
+                    m.ack();
+                    return task;
+                }).retry(MAX_RETRIES))
+        );
+
     }
 
     public void doStepOne(TransferTask task) throws ServiceException {
@@ -173,18 +198,26 @@ public class TransfersService implements ITransfersService {
                     log.error(child.toString());
                 }
             });
+            task.setStatus(TransferTaskStatus.STAGED.name());
+            dao.updateTransferTask(task);
         } catch (Exception e) {
             throw new ServiceException(e.getMessage());
         }
+    }
 
-
+    public List<TransferTaskChild> getAllChildrenTasks(TransferTask task) throws ServiceException {
+        try {
+            return this.dao.getAllChildren(task);
+        } catch (DAOException e) {
+            throw new ServiceException(e.getMessage());
+        }
     }
 
     private void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
         try {
             String m = mapper.writeValueAsString(childTask);
             OutboundMessage message = new OutboundMessage("", CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
-            sender.send(Flux.just(message));
+            sender.send(Flux.just(message)).subscribe();
         } catch (JsonProcessingException ex) {
             log.error(ex.getMessage(), ex);
         }
