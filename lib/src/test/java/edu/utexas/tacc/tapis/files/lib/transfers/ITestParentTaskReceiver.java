@@ -204,5 +204,32 @@ public class ITestParentTaskReceiver {
         Assert.assertEquals(children.size(), 1);
     }
 
+    @Test
+    public void testMultipleChildren() throws Exception {
+        when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
 
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IFileOpsService fileOpsService = new FileOpsService(client);
+        InputStream in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert("a/1.txt", in);
+        in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert("a/2.txt", in);
+        TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
+            sourceSystem.getName(),
+            "/a",
+            destSystem.getName(),
+            "/a"
+        );
+
+        Flux<AcknowledgableDelivery> messages = transfersService.streamParentMessages();
+        Flux<TransferTask> tasks = transfersService.processParentTasks(messages);
+        StepVerifier
+            .create(tasks)
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
+            .thenCancel()
+            .verify();
+        List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
+        Assert.assertEquals(children.size(), 2);
+    }
 }
