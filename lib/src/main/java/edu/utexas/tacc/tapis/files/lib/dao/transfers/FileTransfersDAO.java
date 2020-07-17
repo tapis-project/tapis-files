@@ -181,6 +181,25 @@ public class FileTransfersDAO implements IFileTransferDAO {
             DbUtils.closeQuietly(connection);
         }
     }
+    public TransferTask updateTransferTaskChild(@NotNull TransferTaskChild task) throws DAOException {
+        Connection connection = HikariConnectionPool.getConnection();
+        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        try {
+            BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
+            String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK;
+            QueryRunner runner = new QueryRunner();
+            TransferTaskChild updatedTask = runner.query(connection, stmt, handler,
+                task.getBytesTransferred(),
+                task.getStatus(),
+                task.getUuid().toString()
+            );
+            return updatedTask;
+        } catch (SQLException ex) {
+            throw new DAOException(ex.getErrorCode());
+        } finally {
+            DbUtils.closeQuietly(connection);
+        }
+    }
 
     public TransferTask createTransferTask(@NotNull TransferTask task) throws DAOException {
 
@@ -259,7 +278,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
         }
     }
 
-    public List<TransferTask> getAllTransfersForUser(@NotNull String username) throws DAOException {
+    public List<TransferTask> getAllTransfersForUser(@NotNull String tenantId, @NotNull String username) throws DAOException {
         Connection connection = HikariConnectionPool.getConnection();
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
 
@@ -267,21 +286,8 @@ public class FileTransfersDAO implements IFileTransferDAO {
             ResultSetHandler<List<TransferTask>> handler = new BeanListHandler<>(TransferTask.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_ALL_TASKS_FOR_USER;
             QueryRunner runner = new QueryRunner();
-//            PreparedStatement stmt = connection.prepareStatement(query);
-//            stmt.setString(1, username);
-//            ResultSet rs = stmt.executeQuery();
-//            List<TransferTask> tasks = new ArrayList<>();
-//            while (rs.next()) {
-//
-//                TransferTask t = new TransferTask();
-//                t.setCreated(rs.getTimestamp("created").toInstant());
-//                t.setStatus(rs.getString("status"));
-//                t.setTenantId(rs.getString("tenant_id"));
-//                t.setDestinationSystemId(rs.getString("destination_system_id"));
-//                t.setDestinationPath(rs.getString("destination_path"));
-//                tasks.add(t);
-//            }
             List<TransferTask> tasks = runner.query(connection, query, handler,
+                tenantId,
                 username
             );
             return tasks;

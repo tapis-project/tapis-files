@@ -60,12 +60,12 @@ public class S3DataClient implements IRemoteDataClient {
             String host = system.getHost();
             URI tmpUri = new URI(host);
             if ((system.getPort() != null) && (system.getPort() > 0)) {
-                endpoint =   UriBuilder.fromUri("")
-                        .scheme(tmpUri.getScheme())
-                        .host(tmpUri.getHost())
-                        .port(system.getPort())
-                        .path(tmpUri.getPath())
-                        .build();
+                endpoint = UriBuilder.fromUri("")
+                    .scheme(tmpUri.getScheme())
+                    .host(tmpUri.getHost())
+                    .port(system.getPort())
+                    .path(tmpUri.getPath())
+                    .build();
 
             } else {
                 endpoint = new URI(host);
@@ -83,8 +83,8 @@ public class S3DataClient implements IRemoteDataClient {
                 system.getAccessCredential().getAccessSecret()
             );
             S3ClientBuilder builder = S3Client.builder()
-                    .region(reg)
-                    .credentialsProvider(StaticCredentialsProvider.create(credentials));
+                .region(reg)
+                .credentialsProvider(StaticCredentialsProvider.create(credentials));
 
             // Have to do the endpoint override if its not a real AWS route, as in for a minio
             // instance
@@ -100,10 +100,10 @@ public class S3DataClient implements IRemoteDataClient {
 
     private Stream<S3Object> listWithIterator(String path) {
         ListObjectsV2Request req = ListObjectsV2Request.builder()
-                .bucket(bucket)
-                .prefix(path)
-                .maxKeys(MAX_LISTING_SIZE)
-                .build();
+            .bucket(bucket)
+            .prefix(path)
+            .maxKeys(MAX_LISTING_SIZE)
+            .build();
         ListObjectsV2Iterable resp = client.listObjectsV2Paginator(req);
         return resp.contents().stream();
     }
@@ -141,7 +141,7 @@ public class S3DataClient implements IRemoteDataClient {
         if (files.isEmpty()) {
             doesExist(remoteAbsolutePath);
         }
-        return  files;
+        return files;
     }
 
 
@@ -151,9 +151,9 @@ public class S3DataClient implements IRemoteDataClient {
         remotePath = DataClientUtils.ensureTrailingSlash(remotePath);
         try {
             PutObjectRequest req = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(remotePath)
-                    .build();
+                .bucket(bucket)
+                .key(remotePath)
+                .build();
             client.putObject(req, RequestBody.fromString(""));
         } catch (S3Exception ex) {
             log.error("S3DataClient.mkdir", ex);
@@ -167,9 +167,9 @@ public class S3DataClient implements IRemoteDataClient {
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         try {
             PutObjectRequest req = PutObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(remotePath)
-                    .build();
+                .bucket(bucket)
+                .key(remotePath)
+                .build();
             client.putObject(req, RequestBody.fromBytes(fileStream.readAllBytes()));
         } catch (S3Exception ex) {
             log.error("S3DataClient::insert", ex);
@@ -178,7 +178,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
 
-    private void doRename(S3Object object, String newPath) throws IOException{
+    private void doRename(S3Object object, String newPath) throws IOException {
         //Copy object to new path
         copy(object.key(), newPath);
         //Delete old object
@@ -186,7 +186,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     /**
-     *  @param currentPath
+     * @param currentPath
      * @param newName
      */
     @Override
@@ -216,10 +216,10 @@ public class S3DataClient implements IRemoteDataClient {
         String encodedSourcePath = bucket + "/" + DataClientUtils.getRemotePath(rootDir, currentPath);
         String remoteDestinationPath = DataClientUtils.getRemotePathForS3(rootDir, newPath);
         CopyObjectRequest req = CopyObjectRequest.builder()
-                .bucket(bucket)
-                .copySource(encodedSourcePath)
-                .key(remoteDestinationPath)
-                .build();
+            .bucket(bucket)
+            .copySource(encodedSourcePath)
+            .key(remoteDestinationPath)
+            .build();
         try {
             client.copyObject(req);
         } catch (NoSuchKeyException ex) {
@@ -231,11 +231,11 @@ public class S3DataClient implements IRemoteDataClient {
 
     }
 
-    private  void deleteObject(String remotePath) throws S3Exception {
+    private void deleteObject(String remotePath) throws S3Exception {
         DeleteObjectRequest req = DeleteObjectRequest.builder()
-                .bucket(bucket)
-                .key(remotePath)
-                .build();
+            .bucket(bucket)
+            .key(remotePath)
+            .build();
         client.deleteObject(req);
     }
 
@@ -262,6 +262,7 @@ public class S3DataClient implements IRemoteDataClient {
 
     /**
      * Returns the entire contents of an object as an InputStream
+     *
      * @param path
      * @return
      * @throws IOException
@@ -271,9 +272,9 @@ public class S3DataClient implements IRemoteDataClient {
     public InputStream getStream(@NotNull String path) throws IOException, NotFoundException {
         try {
             GetObjectRequest req = GetObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(path)
-                    .build();
+                .bucket(bucket)
+                .key(path)
+                .build();
             return client.getObject(req, ResponseTransformer.toInputStream());
         } catch (NoSuchKeyException ex) {
             throw new NotFoundException();
@@ -289,7 +290,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void connect() throws IOException{
+    public void connect() throws IOException {
 
     }
 
@@ -299,15 +300,15 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException, NotFoundException{
+    public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException, NotFoundException {
         try {
             // S3 api includes the final byte, different than posix, so we subtract one to get the proper count.
             String brange = String.format("bytes=%s-%s", startByte, startByte + count - 1);
             GetObjectRequest req = GetObjectRequest.builder()
-                    .bucket(bucket)
-                    .range(brange)
-                    .key(path)
-                    .build();
+                .bucket(bucket)
+                .range(brange)
+                .key(path)
+                .build();
             return client.getObject(req, ResponseTransformer.toInputStream());
         } catch (NoSuchKeyException ex) {
             throw new NotFoundException();

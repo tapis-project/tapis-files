@@ -21,7 +21,7 @@ public class TransferTask implements ITransferTask {
     protected UUID uuid;
     protected Long totalBytes;
     protected Long bytesTransferred;
-
+    protected int retries;
 
     // status MUST be a string for the FSM to work, enum is not an option
     @State
@@ -45,7 +45,13 @@ public class TransferTask implements ITransferTask {
         this.uuid = UUID.randomUUID();
         this.status = TransferTaskStatus.ACCEPTED.name();
     }
+    public int getRetries() {
+        return retries;
+    }
 
+    public void setRetries(int retries) {
+        this.retries = retries;
+    }
     /**
      * Unique ID of the task.
      * @return uuid

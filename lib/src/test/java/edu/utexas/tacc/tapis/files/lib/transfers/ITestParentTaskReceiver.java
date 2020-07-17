@@ -217,16 +217,19 @@ public class ITestParentTaskReceiver {
         fileOpsService.insert("a/2.txt", in);
         TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
             sourceSystem.getName(),
-            "/a",
+            "/a/",
             destSystem.getName(),
-            "/a"
+            "/a/"
         );
 
         Flux<AcknowledgableDelivery> messages = transfersService.streamParentMessages();
         Flux<TransferTask> tasks = transfersService.processParentTasks(messages);
         StepVerifier
             .create(tasks)
-            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
+            .assertNext(t -> {
+                Assert.assertEquals(t.getStatus(), "STAGED");
+                Assert.assertEquals(t.getId(), t1.getId());
+            })
             .thenCancel()
             .verify();
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);

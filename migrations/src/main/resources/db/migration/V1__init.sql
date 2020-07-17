@@ -13,14 +13,15 @@ CREATE table transfer_tasks (
     destination_path VARCHAR NOT NULL,
     status VARCHAR(128) NOT NULL,
     bytes_transferred BIGINT NOT NULL default 0,
-    total_bytes BIGINT NOT NULL default 0
+    total_bytes BIGINT NOT NULL default 0,
+    retries INT NOT NULL default 0
 );
 CREATE index on transfer_tasks(tenant_id, username, uuid);
 
 DROP TABLE IF EXISTS transfer_tasks_child CASCADE;
 CREATE TABLE transfer_tasks_child (
     id serial PRIMARY KEY,
-    parent_task_id int REFERENCES transfer_tasks(id)
+    parent_task_id int REFERENCES transfer_tasks(id) ON DELETE CASCADE
 
 ) INHERITS(transfer_tasks);
 

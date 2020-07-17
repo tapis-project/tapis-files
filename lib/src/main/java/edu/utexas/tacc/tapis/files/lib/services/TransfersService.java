@@ -43,8 +43,8 @@ import java.util.stream.Stream;
 @Service
 public class TransfersService implements ITransfersService {
     private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
-    private static final String PARENT_QUEUE = "tapis.files.transfers.parent";
-    private static final String CHILD_QUEUE = "tapis.files.transfers.child";
+    private String PARENT_QUEUE = "tapis.files.transfers.parent";
+    private String CHILD_QUEUE = "tapis.files.transfers.child";
     private static final int MAX_RETRIES = 5;
     private final Receiver receiver;
     private final Sender sender;
@@ -76,6 +76,10 @@ public class TransfersService implements ITransfersService {
         this.remoteDataClientFactory = remoteDataClientFactory;
 
         //TODO: Test out rabbitmq connection and auto shut down if not available?
+    }
+
+    public void setParentQueue(String name) {
+        this.PARENT_QUEUE = name;
     }
 
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull String transferTaskId) throws ServiceException {
@@ -200,7 +204,6 @@ public class TransfersService implements ITransfersService {
             });
             task.setStatus(TransferTaskStatus.STAGED.name());
             dao.updateTransferTask(task);
-            List<TransferTask> tasks = getTransfersForUser(task.getUsername());
         } catch (Exception e) {
             throw new ServiceException(e.getMessage());
         }
@@ -208,18 +211,51 @@ public class TransfersService implements ITransfersService {
 
     public List<TransferTaskChild> getAllChildrenTasks(TransferTask task) throws ServiceException {
         try {
-            return this.dao.getAllChildren(task);
+            return dao.getAllChildren(task);
         } catch (DAOException e) {
             throw new ServiceException(e.getMessage());
         }
     }
 
-    public List<TransferTask> getTransfersForUser(String username) throws ServiceException {
+    public List<TransferTask> getTransfersForUser(String tenantId, String username) throws ServiceException {
         try {
-            return this.dao.getAllTransfersForUser(username);
+            return dao.getAllTransfersForUser(tenantId, username);
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage());
         }
+    }
+
+    public void doTransfer(TransferTaskChild taskChild) throws ServiceException {
+
+        try {
+            //Step 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
+            taskChild.setStatus(TransferTaskStatus.IN_PROGRESS.name());
+            taskChild.setRetries(taskChild.getRetries() + 1);
+            dao.updateTransferTaskChild(taskChild);
+        } catch (DAOException ex) {
+            throw new ServiceException(ex.getMessage());
+        }
+        //Step 2: Get clients for source / dest
+        try {
+            SystemsClient systemsClient = systemsClientFactory.getClient(taskChild.getTenantId(), taskChild.getUsername());
+            TSystem sourceSystem = systemsClient.getSystemByName(taskChild.getSourceSystemId(), null);
+            IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
+            TSystem destSystem = systemsClient.getSystemByName(taskChild.getDestinationSystemId(), null);
+            IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
+
+
+        } catch (TapisClientException | IOException ex) {
+            log.error(ex.getMessage(), ex);
+            throw new ServiceException(ex.getMessage());
+        }
+
+
+
+
+        //Step 3: Stream the file contents to dest
+
+        //Step 4: Update the parent task with bytes_transferred and check for completeness
+
     }
 
     private void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
@@ -229,6 +265,7 @@ public class TransfersService implements ITransfersService {
             sender.send(Flux.just(message)).subscribe();
         } catch (JsonProcessingException ex) {
             log.error(ex.getMessage(), ex);
+            throw new ServiceException(ex.getMessage());
         }
     }
 }

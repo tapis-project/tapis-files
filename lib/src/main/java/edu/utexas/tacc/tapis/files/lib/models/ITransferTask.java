@@ -57,4 +57,8 @@ public interface ITransferTask {
     String getStatus();
 
     void setStatus(String status) throws IllegalArgumentException;
+
+    void setRetries(int retries);
+
+    int getRetries();
 }
