@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.ConnectionFactory;
@@ -17,7 +16,6 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
-import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskReceiver;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -30,15 +28,12 @@ import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
-import javax.ws.rs.ServerErrorException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.UUID;
-import java.util.stream.Stream;
 
 @Service
 public class TransfersService implements ITransfersService {
@@ -82,29 +77,25 @@ public class TransfersService implements ITransfersService {
         this.PARENT_QUEUE = name;
     }
 
-    public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull String transferTaskId) throws ServiceException {
+    public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull long transferTaskId) throws ServiceException {
         try {
-            TransferTask task = dao.getTransferTask(transferTaskId);
+            TransferTask task = dao.getTransferTaskById(transferTaskId);
             return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage());
         }
     }
 
-    public TransferTask getTransferTask(@NotNull String taskUUID) throws ServiceException, NotFoundException {
-        UUID taskId = UUID.fromString(taskUUID);
-        return getTransferTask(taskId);
-    }
 
-    public TransferTask getTransferTask(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
+    public TransferTask getTransferTask(@NotNull long taskId) throws ServiceException, NotFoundException {
         try {
-            TransferTask task = dao.getTransferTask(taskUUID);
+            TransferTask task = dao.getTransferTaskById(taskId);
             if (task == null) {
                 throw new NotFoundException("No transfer task with this UUID found.");
             }
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage());
+            throw new ServiceException(ex.getMessage(), ex);
         }
     }
 
@@ -120,7 +111,7 @@ public class TransfersService implements ITransfersService {
             this.publishParentTaskMessage(task);
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage());
+            throw new ServiceException(ex.getMessage(), ex);
         }
     }
 
@@ -128,7 +119,7 @@ public class TransfersService implements ITransfersService {
         try {
             return dao.insertChildTask(task);
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage());
+            throw new ServiceException(ex.getMessage(), ex);
         }
     }
 
@@ -137,15 +128,23 @@ public class TransfersService implements ITransfersService {
             task.setStatus(TransferTaskStatus.CANCELLED.name());
             dao.updateTransferTask(task);
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage());
+            throw new ServiceException(ex.getMessage(), ex);
         }
+    }
+
+    public void deleteQueue(String qName) {
+        sender.delete(QueueSpecification.queue(qName))
+            .subscribe();
     }
 
     private void publishParentTaskMessage(@NotNull TransferTask task) throws ServiceException {
         try {
             String m = mapper.writeValueAsString(task);
             OutboundMessage message = new OutboundMessage("", PARENT_QUEUE, m.getBytes(StandardCharsets.UTF_8));
-            sender.send(Mono.just(message)).subscribe();
+            Flux<OutboundMessageResult> confirms = sender.sendWithPublishConfirms(Mono.just(message));
+            sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE))
+                .thenMany(confirms)
+                .subscribe();
         } catch (Exception e) {
             log.info(e.getMessage());
             throw new ServiceException(e.getMessage());
@@ -160,41 +159,48 @@ public class TransfersService implements ITransfersService {
             .delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
     }
 
-    public Flux<TransferTask> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
-        return messageStream.groupBy((message) -> {
-            try {
-                return Mono.just(mapper.readValue(message.getBody(), TransferTask.class).getTenantId());
-            } catch (IOException ex) {
-                log.error("invalid message", ex);
-                return Mono.empty();
-            }
-        })
-        .map(Flux::parallel)
-        .flatMap(group ->
-            group.runOn(Schedulers.newBoundedElastic(8, 1, "pool"))
-                .flatMap(m -> Mono.fromCallable(() -> {
-                    TransferTask task = mapper.readValue(m.getBody(), TransferTask.class);
-                    doStepOne(task);
-                    m.ack();
-                    return task;
-                }).retry(MAX_RETRIES))
-        );
-
+    private Mono<String> groupByTenant(AcknowledgableDelivery message) {
+        try {
+            return Mono.just(mapper.readValue(message.getBody(), TransferTask.class).getTenantId());
+        } catch (IOException ex) {
+            log.error("invalid message", ex);
+            return Mono.error(ex);
+        }
     }
 
-    public void doStepOne(TransferTask task) throws ServiceException {
+    public Flux<TransferTask> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
+         return messageStream
+            .groupBy(this::groupByTenant)
+            .flatMap(group ->
+                group.parallel()
+                    .runOn(Schedulers.newParallel("pool")))
+                    .flatMap(message-> {
+                        try {
+                            TransferTask task = mapper.readValue(message.getBody(), TransferTask.class);
+                            doStepOne(task);
+                            message.ack();
+                            return Mono.just(task);
+                        } catch (IOException | ServiceException ex) {
+                            message.nack(true);
+                            return Mono.empty();
+                        }
+                    });
+    }
+    public TransferTask doStepOne(TransferTask parentTask) throws ServiceException {
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
+        // Has to be final for lambda below
+        final TransferTask finalParentTask = parentTask;
         try {
-            SystemsClient systemsClient = systemsClientFactory.getClient(task.getTenantId(), task.getUsername());
-            sourceSystem = systemsClient.getSystemByName(task.getSourceSystemId(), null);
-            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, task.getUsername());
+            SystemsClient systemsClient = systemsClientFactory.getClient(parentTask.getTenantId(), parentTask.getUsername());
+            sourceSystem = systemsClient.getSystemByName(parentTask.getSourceSystemId(), null);
+            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
 
             //TODO: Bulk inserts for both
             List<FileInfo> fileListing;
-            fileListing = sourceClient.ls(task.getSourcePath());
+            fileListing = sourceClient.ls(parentTask.getSourcePath());
             fileListing.forEach(f -> {
-                TransferTaskChild child = new TransferTaskChild(task, f.getPath());
+                TransferTaskChild child = new TransferTaskChild(finalParentTask, f.getPath());
                 try {
                     dao.insertChildTask(child);
                     publishChildMessage(child);
@@ -202,10 +208,11 @@ public class TransfersService implements ITransfersService {
                     log.error(child.toString());
                 }
             });
-            task.setStatus(TransferTaskStatus.STAGED.name());
-            dao.updateTransferTask(task);
+            parentTask.setStatus(TransferTaskStatus.STAGED.name());
+            parentTask = dao.updateTransferTask(parentTask);
+            return parentTask;
         } catch (Exception e) {
-            throw new ServiceException(e.getMessage());
+            throw new ServiceException(e.getMessage(), e);
         }
     }
 
@@ -213,7 +220,7 @@ public class TransfersService implements ITransfersService {
         try {
             return dao.getAllChildren(task);
         } catch (DAOException e) {
-            throw new ServiceException(e.getMessage());
+            throw new ServiceException(e.getMessage(), e);
         }
     }
 
@@ -221,41 +228,62 @@ public class TransfersService implements ITransfersService {
         try {
             return dao.getAllTransfersForUser(tenantId, username);
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage());
+            throw new ServiceException(ex.getMessage(), ex);
         }
     }
 
     public void doTransfer(TransferTaskChild taskChild) throws ServiceException {
+        TSystem sourceSystem;
+        TSystem destSystem;
+        IRemoteDataClient sourceClient;
+        IRemoteDataClient destClient;
 
         try {
             //Step 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS.name());
             taskChild.setRetries(taskChild.getRetries() + 1);
-            dao.updateTransferTaskChild(taskChild);
+            taskChild = dao.updateTransferTaskChild(taskChild);
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage());
+            throw new ServiceException(ex.getMessage(), ex);
         }
         //Step 2: Get clients for source / dest
         try {
             SystemsClient systemsClient = systemsClientFactory.getClient(taskChild.getTenantId(), taskChild.getUsername());
-            TSystem sourceSystem = systemsClient.getSystemByName(taskChild.getSourceSystemId(), null);
-            IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
-            TSystem destSystem = systemsClient.getSystemByName(taskChild.getDestinationSystemId(), null);
-            IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
+            sourceSystem = systemsClient.getSystemByName(taskChild.getSourceSystemId(), null);
+            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
+            destSystem = systemsClient.getSystemByName(taskChild.getDestinationSystemId(), null);
+            destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
 
 
         } catch (TapisClientException | IOException ex) {
             log.error(ex.getMessage(), ex);
-            throw new ServiceException(ex.getMessage());
+            throw new ServiceException(ex.getMessage(), ex);
         }
 
-
-
-
         //Step 3: Stream the file contents to dest
+        try {
+            InputStream sourceStream = sourceClient.getStream(taskChild.getSourcePath());
+            destClient.insert(taskChild.getDestinationPath(), sourceStream);
+        } catch (IOException ex) {
+            String msg = String.format("Error transferring %s", taskChild.toString());
+            throw new ServiceException(msg, ex);
+        }
 
         //Step 4: Update the parent task with bytes_transferred and check for completeness
-
+        try {
+            TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
+            taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
+            dao.updateTransferTaskChild(taskChild);
+            dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getTotalBytes());
+            long incompleteCount = dao.getUncompleteChildrenCount(taskChild.getParentTaskId());
+            if (incompleteCount == 0) {
+                parentTask.setStatus(TransferTaskStatus.COMPLETED.name());
+                dao.updateTransferTask(parentTask);
+            }
+        } catch (DAOException ex) {
+            String msg = String.format("Error updating child task %s", taskChild.toString());
+            throw new ServiceException(msg, ex);
+        }
     }
 
     private void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
@@ -264,8 +292,7 @@ public class TransfersService implements ITransfersService {
             OutboundMessage message = new OutboundMessage("", CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
             sender.send(Flux.just(message)).subscribe();
         } catch (JsonProcessingException ex) {
-            log.error(ex.getMessage(), ex);
-            throw new ServiceException(ex.getMessage());
+            throw new ServiceException(ex.getMessage(), ex);
         }
     }
 }

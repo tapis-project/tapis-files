@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public interface IFileTransferDAO {
 
-  TransferTask getTransferTask(UUID taskUuid) throws DAOException;
+  TransferTask getTransferTaskById(long taskId) throws DAOException;
   TransferTask createTransferTask(TransferTask task) throws DAOException;
   List<TransferTaskChild> getAllChildren(@NotNull TransferTask task) throws DAOException;
   TransferTaskChild getChildTask(@NotNull TransferTaskChild task) throws DAOException;

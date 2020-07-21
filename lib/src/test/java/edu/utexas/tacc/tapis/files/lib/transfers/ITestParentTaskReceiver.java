@@ -27,6 +27,8 @@ import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.mockito.Mockito;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeSuite;
@@ -38,10 +40,7 @@ import reactor.rabbitmq.*;
 import reactor.test.StepVerifier;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -51,9 +50,11 @@ import static org.mockito.Mockito.when;
 @Test(groups = {"integration"})
 public class ITestParentTaskReceiver {
 
+    private static final Logger log = LoggerFactory.getLogger(ITransfersService.class);
     private TSystem sourceSystem;
     private TSystem destSystem;
     private IRemoteDataClientFactory remoteDataClientFactory;
+    private ServiceLocator locator;
 
     TenantManager tenantManager = Mockito.mock(TenantManager.class);
     SKClient skClient = Mockito.mock(SKClient.class);
@@ -108,7 +109,7 @@ public class ITestParentTaskReceiver {
 
 //        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
 
-        ServiceLocator locator = ServiceLocatorUtilities.bind(new AbstractBinder() {
+        locator = ServiceLocatorUtilities.bind(new AbstractBinder() {
             @Override
             protected void configure() {
                 bindAsContract(ParentTaskFSM.class);
@@ -208,13 +209,15 @@ public class ITestParentTaskReceiver {
     public void testMultipleChildren() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
-
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         IFileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("a/1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("a/2.txt", in);
+        String qname = UUID.randomUUID().toString();
+        log.info(qname);
+        transfersService.setParentQueue(qname);
         TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
             sourceSystem.getName(),
             "/a/",
@@ -230,6 +233,7 @@ public class ITestParentTaskReceiver {
                 Assert.assertEquals(t.getStatus(), "STAGED");
                 Assert.assertEquals(t.getId(), t1.getId());
             })
+            .then(()->transfersService.deleteQueue(qname))
             .thenCancel()
             .verify();
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);

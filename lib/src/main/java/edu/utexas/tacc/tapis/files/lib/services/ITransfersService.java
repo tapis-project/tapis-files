@@ -10,11 +10,9 @@ import java.util.UUID;
 
 public interface ITransfersService {
 
-    TransferTask getTransferTask(String taskUUID) throws ServiceException, NotFoundException;
-    TransferTask getTransferTask(UUID taskUUID) throws ServiceException, NotFoundException;
-
-    boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull String transferId) throws ServiceException;
-
+    TransferTask getTransferTask(long taskId) throws ServiceException, NotFoundException;
+    void setParentQueue(String parentQueue);
+    boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull long transferId) throws ServiceException;
     TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException;
 
     void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException;

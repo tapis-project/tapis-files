@@ -3,8 +3,12 @@ package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 public class FileTransfersDAOStatements {
 
     //language=SQL
-    public static final String GET_PARENT_TASK_BY_ID =
+    public static final String GET_PARENT_TASK_BY_UUID =
         "SELECT * FROM transfer_tasks where uuid = ?";
+
+    //language=SQL
+    public static final String GET_PARENT_TASK_BY_ID =
+        "SELECT * FROM transfer_tasks where id = ?";
 
     //language=SQL
     public static final String GET_CHILD_TASK_BY_ID =
@@ -27,10 +31,24 @@ public class FileTransfersDAOStatements {
             "RETURNING transfer_tasks_child.*";
 
     //language=SQL
+    public static final String GET_CHILD_TASK_INCOMPLETE_COUNT =
+        "SELECT count(id) from transfer_tasks_child " +
+            "WHERE parent_task_id = ? " +
+            "AND status != 'FAILED' ";
+
+
+    //language=SQL
     public static final String UPDATE_PARENT_TASK_SIZE =
         "UPDATE transfer_tasks " +
-            "SET total_bytes += ?" +
-            "WHERE uuid = ? " +
+            "SET total_bytes = total_bytes + ?" +
+            "WHERE id = ? " +
+            "RETURNING transfer_tasks.*";
+
+    //language=SQL
+    public static final String UPDATE_PARENT_TASK_BYTES_TRANSFERRED =
+        "UPDATE transfer_tasks " +
+            "SET bytes_transferred = bytes_transferred + ?" +
+            "WHERE id = ? " +
             "RETURNING transfer_tasks.*";
 
     //language=SQL

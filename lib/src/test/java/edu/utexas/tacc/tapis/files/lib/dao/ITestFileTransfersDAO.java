@@ -45,7 +45,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         task.setSourceSystemId("test2");
         task.setSourcePath("/test2");
         TransferTask t = dao.createTransferTask(task);
-        TransferTask tNew = dao.getTransferTask(t.getUuid());
+        TransferTask tNew = dao.getTransferTaskById(t.getId());
         Assert.assertEquals(tNew.getUuid(), task.getUuid());
         Assert.assertEquals(tNew.getStatus(), TransferTaskStatus.ACCEPTED);
         Assert.assertNotEquals(tNew.getCreated(), null);
@@ -64,7 +64,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         dao.createTransferTask(task);
         dao.createTransferTask(task);
 
-        List<TransferTask> tasks = dao.getAllTransfersForUser(task.getUsername());
+        List<TransferTask> tasks = dao.getAllTransfersForUser(task.getTenantId(), task.getUsername());
         Assert.assertEquals(tasks.size(), 2);
     }
 
