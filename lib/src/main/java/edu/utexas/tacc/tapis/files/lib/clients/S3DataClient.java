@@ -127,6 +127,13 @@ public class S3DataClient implements IRemoteDataClient {
         return this.ls(path, MAX_LISTING_SIZE, 0);
     }
 
+    @Override
+    public void makeBucket(String name) throws IOException {
+        CreateBucketRequest req = CreateBucketRequest.builder()
+            .bucket(name)
+            .build();
+        client.createBucket(req);
+    }
 
     @Override
     public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException {

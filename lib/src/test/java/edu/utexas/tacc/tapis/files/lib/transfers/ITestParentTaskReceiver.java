@@ -6,10 +6,13 @@ import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.ITransfersService;
@@ -38,6 +41,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 import reactor.test.StepVerifier;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.InputStream;
 import java.util.*;
@@ -65,6 +69,7 @@ public class ITestParentTaskReceiver {
 
     @BeforeSuite
     private void doBeforeSuite() throws Exception {
+
         //S3 system
         var creds = new Credential();
         creds.setAccessKey("user");
@@ -72,7 +77,7 @@ public class ITestParentTaskReceiver {
         sourceSystem = new TSystem();
         sourceSystem.setTenant("dev");
         sourceSystem.setHost("http://localhost");
-        sourceSystem.setBucketName("test");
+        sourceSystem.setBucketName("test1");
         sourceSystem.setName("sourceSystem");
         sourceSystem.setPort(9000);
         sourceSystem.setAccessCredential(creds);
@@ -87,7 +92,7 @@ public class ITestParentTaskReceiver {
         destSystem = new TSystem();
         destSystem.setTenant("dev");
         destSystem.setHost("http://localhost");
-        destSystem.setBucketName("test");
+        destSystem.setBucketName("test2");
         destSystem.setName("destSystem");
         destSystem.setPort(9000);
         destSystem.setAccessCredential(creds);
@@ -136,6 +141,12 @@ public class ITestParentTaskReceiver {
     @BeforeTest
     public void beforeTest() throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        try {
+            client.makeBucket("test1");
+            client.makeBucket("test2");
+        } catch (Exception ex) {
+
+        }
         IFileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("file1.txt", in);
@@ -171,7 +182,7 @@ public class ITestParentTaskReceiver {
     }
 
     @Test
-    public void testDoes() throws Exception {
+    public void testDoesListingAndCreatesChildTasks() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
         TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
@@ -209,20 +220,19 @@ public class ITestParentTaskReceiver {
     public void testMultipleChildren() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IFileOpsService fileOpsService = new FileOpsService(sourceClient);
         InputStream in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("a/1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("a/2.txt", in);
         String qname = UUID.randomUUID().toString();
-        log.info(qname);
         transfersService.setParentQueue(qname);
         TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
             sourceSystem.getName(),
             "/a/",
             destSystem.getName(),
-            "/a/"
+            "/b/"
         );
 
         Flux<AcknowledgableDelivery> messages = transfersService.streamParentMessages();
@@ -238,5 +248,40 @@ public class ITestParentTaskReceiver {
             .verify();
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
         Assert.assertEquals(children.size(), 2);
+    }
+
+    @Test
+    public void testDoesTransfer() throws Exception {
+        when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IFileOpsService fileOpsService = new FileOpsService(sourceClient);
+        //Add some files to transfer
+        InputStream in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert("a/1.txt", in);
+        in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert("a/2.txt", in);
+        String qname = UUID.randomUUID().toString();
+        transfersService.setParentQueue(qname);
+
+        TransferTask t1 = transfersService.createTransfer(
+            "testUser1",
+            "dev",
+            sourceSystem.getName(),
+            "/a/",
+            destSystem.getName(),
+            "/b/"
+        );
+
+        TransferTaskChild child = new TransferTaskChild(t1, t1.getSourcePath());
+        child = transfersService.createTransferTaskChild(child);
+        TransferTaskChild task = transfersService.doTransfer(child);
+        log.info(task.toString());
+        IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
+        List<FileInfo> listing = fileOpsServiceDestination.ls("/b/");
+        Assert.assertEquals(listing.size(), 2);
+
+
     }
 }

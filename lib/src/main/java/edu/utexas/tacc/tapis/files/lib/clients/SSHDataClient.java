@@ -13,6 +13,7 @@ import javax.ws.rs.NotFoundException;
 import com.jcraft.jsch.*;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,11 @@ public class SSHDataClient implements IRemoteDataClient {
         systemId = sys.getName();
         sshConnection = sshCon;
         system = sys;
+    }
+
+    @Override
+    public void makeBucket(String name) throws IOException {
+        throw new NotImplementedException("");
     }
 
     public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {

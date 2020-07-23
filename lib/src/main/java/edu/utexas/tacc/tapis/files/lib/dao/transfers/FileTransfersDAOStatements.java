@@ -27,7 +27,7 @@ public class FileTransfersDAOStatements {
         "UPDATE transfer_tasks_child " +
             " SET bytes_transferred = ?, " +
             "     status = ? " +
-            "WHERE uuid = ? " +
+            "WHERE id = ? " +
             "RETURNING transfer_tasks_child.*";
 
     //language=SQL

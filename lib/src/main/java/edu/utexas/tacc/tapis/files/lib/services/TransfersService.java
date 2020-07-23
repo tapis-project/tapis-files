@@ -76,6 +76,10 @@ public class TransfersService implements ITransfersService {
     public void setParentQueue(String name) {
         this.PARENT_QUEUE = name;
     }
+    public void setChildQueue(String name) {
+        this.CHILD_QUEUE = name;
+    }
+
 
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull long transferTaskId) throws ServiceException {
         try {
@@ -168,24 +172,70 @@ public class TransfersService implements ITransfersService {
         }
     }
 
+    private Mono<Long> groupByParentTask(AcknowledgableDelivery message) {
+        try {
+            return Mono.just(mapper.readValue(message.getBody(), TransferTaskChild.class).getParentTaskId());
+        } catch (IOException ex) {
+            log.error("invalid message", ex);
+            return Mono.error(ex);
+        }
+    }
+
+    public Flux<TransferTaskChild> processChildTasks(Flux<AcknowledgableDelivery> messageStream) {
+        return messageStream
+            .groupBy(this::groupByParentTask)
+            .flatMap(group ->
+                group.parallel()
+                    .runOn(Schedulers.newParallel("childPool"))
+                    .flatMap(this::processChildMessage)
+            );
+     }
+
+    private Mono<TransferTaskChild> processChildMessage(AcknowledgableDelivery message) {
+        return Mono.fromCallable( ()-> {
+            try {
+                TransferTaskChild child = mapper.readValue(message.getBody(), TransferTaskChild.class);
+                child = doTransfer(child);
+                message.ack();
+                return child;
+            } catch (IOException | ServiceException ex) {
+                message.nack(true);
+                throw new ServiceException(ex.getMessage(), ex);
+            }
+        })
+            .retry(MAX_RETRIES);
+    }
+
+
+
     public Flux<TransferTask> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
          return messageStream
             .groupBy(this::groupByTenant)
             .flatMap(group ->
                 group.parallel()
-                    .runOn(Schedulers.newParallel("pool")))
-                    .flatMap(message-> {
-                        try {
-                            TransferTask task = mapper.readValue(message.getBody(), TransferTask.class);
-                            doStepOne(task);
-                            message.ack();
-                            return Mono.just(task);
-                        } catch (IOException | ServiceException ex) {
-                            message.nack(true);
-                            return Mono.empty();
-                        }
-                    });
+                    .runOn(Schedulers.newParallel("pool"))
+                    .flatMap(this::processParentMessage)
+            );
     }
+
+
+
+    private Mono<TransferTask> processParentMessage(AcknowledgableDelivery message) {
+        return Mono.fromCallable( ()-> {
+            try {
+                TransferTask task = mapper.readValue(message.getBody(), TransferTask.class);
+                task = doStepOne(task);
+                message.ack();
+                return task;
+            } catch (IOException | ServiceException ex) {
+                message.nack(true);
+                throw new ServiceException(ex.getMessage(), ex);
+            }
+        })
+            .retry(MAX_RETRIES);
+
+    }
+
     public TransferTask doStepOne(TransferTask parentTask) throws ServiceException {
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
@@ -232,14 +282,14 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public void doTransfer(TransferTaskChild taskChild) throws ServiceException {
+    public TransferTaskChild doTransfer(TransferTaskChild taskChild) throws ServiceException {
         TSystem sourceSystem;
         TSystem destSystem;
         IRemoteDataClient sourceClient;
         IRemoteDataClient destClient;
 
+        //Step 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
         try {
-            //Step 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS.name());
             taskChild.setRetries(taskChild.getRetries() + 1);
             taskChild = dao.updateTransferTaskChild(taskChild);
@@ -273,7 +323,7 @@ public class TransfersService implements ITransfersService {
         try {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
-            dao.updateTransferTaskChild(taskChild);
+            taskChild = dao.updateTransferTaskChild(taskChild);
             dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getTotalBytes());
             long incompleteCount = dao.getUncompleteChildrenCount(taskChild.getParentTaskId());
             if (incompleteCount == 0) {
@@ -284,6 +334,7 @@ public class TransfersService implements ITransfersService {
             String msg = String.format("Error updating child task %s", taskChild.toString());
             throw new ServiceException(msg, ex);
         }
+        return taskChild;
     }
 
     private void publishChildMessage(TransferTaskChild childTask) throws ServiceException {

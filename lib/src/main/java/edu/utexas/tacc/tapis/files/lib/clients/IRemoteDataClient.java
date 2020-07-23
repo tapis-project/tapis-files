@@ -12,6 +12,7 @@ import javax.ws.rs.NotFoundException;
 
 public interface IRemoteDataClient {
 
+    void makeBucket(String name) throws IOException;
     // without limit/offset, just a helper method for convenience
     List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException;
     List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException;
