@@ -65,7 +65,8 @@ public class TransfersApiResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
-            TransferTask task = transfersService.getTransferTask(transferTaskId);
+            UUID transferTaskUUID = UUID.fromString(transferTaskId);
+            TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
             isPermitted(task, user);
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
@@ -89,7 +90,7 @@ public class TransfersApiResource {
     public Response getTransferTaskHistory(
             @ValidUUID
             @Parameter(description = "Transfer task ID", required=true, example = EXAMPLE_TASK_ID)
-            @PathParam("transferTaskId") String transferTaskId,
+            @PathParam("transferTaskId") UUID transferTaskId,
             @Context SecurityContext securityContext) {
 
 
@@ -117,7 +118,8 @@ public class TransfersApiResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
-            TransferTask task = transfersService.getTransferTask(transferTaskId);
+            UUID transferTaskUUID = UUID.fromString(transferTaskId);
+            TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
             isPermitted(task, user);
             transfersService.cancelTransfer(task);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);

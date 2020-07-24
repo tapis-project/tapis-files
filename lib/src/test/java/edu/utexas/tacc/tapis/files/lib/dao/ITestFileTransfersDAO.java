@@ -17,6 +17,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 
 import java.util.List;
 
+@Test(groups={"integration"})
 public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
 
 
@@ -31,7 +32,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         task.setSourceSystemId("test2");
         task.setSourcePath("/test2");
         TransferTask t = dao.createTransferTask(task);
-        Assert.assertEquals(t.getUuid(), task.getUuid());
+        Assert.assertTrue(t.getId() > 0);
     }
 
     @Test
@@ -46,9 +47,8 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         task.setSourcePath("/test2");
         TransferTask t = dao.createTransferTask(task);
         TransferTask tNew = dao.getTransferTaskById(t.getId());
-        Assert.assertEquals(tNew.getUuid(), task.getUuid());
-        Assert.assertEquals(tNew.getStatus(), TransferTaskStatus.ACCEPTED);
-        Assert.assertNotEquals(tNew.getCreated(), null);
+        Assert.assertEquals(tNew.getStatus(), TransferTaskStatus.ACCEPTED.name());
+        Assert.assertNotNull(tNew.getCreated());
     }
 
     @Test

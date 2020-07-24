@@ -12,7 +12,7 @@ public interface ITransfersService {
 
     TransferTask getTransferTask(long taskId) throws ServiceException, NotFoundException;
     void setParentQueue(String parentQueue);
-    boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull long transferId) throws ServiceException;
+    boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferId) throws ServiceException;
     TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException;
 
     void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException;

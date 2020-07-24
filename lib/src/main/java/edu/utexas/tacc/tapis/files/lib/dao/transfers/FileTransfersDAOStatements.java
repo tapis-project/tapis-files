@@ -65,8 +65,8 @@ public class FileTransfersDAOStatements {
     //language=SQL
     public static final String INSERT_PARENT_TASK =
         "INSERT into transfer_tasks " +
-            "(uuid, tenant_id, username, source_system_id, source_path, destination_system_id, destination_path, status)" +
-            "values (?, ?, ?, ?, ?, ?, ?, ?)" +
+            "(tenant_id, username, source_system_id, source_path, destination_system_id, destination_path, status)" +
+            "values (?, ?, ?, ?, ?, ?, ?)" +
             "RETURNING transfer_tasks.*";
 
     //language=SQL

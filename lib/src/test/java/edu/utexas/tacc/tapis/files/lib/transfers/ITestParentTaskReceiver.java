@@ -33,10 +33,7 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeSuite;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
@@ -138,7 +135,7 @@ public class ITestParentTaskReceiver {
 
     }
 
-    @BeforeTest
+    @BeforeMethod
     public void beforeTest() throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         try {
@@ -154,12 +151,12 @@ public class ITestParentTaskReceiver {
         fileOpsService.insert("file2.txt", in);
     }
 
-    @AfterTest()
+    @AfterMethod
     public void tearDown() throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         IFileOpsService fileOpsService = new FileOpsService(client);
         fileOpsService.delete("/");
-        client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        client = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
         fileOpsService = new FileOpsService(client);
         fileOpsService.delete("/");
     }
@@ -185,6 +182,8 @@ public class ITestParentTaskReceiver {
     public void testDoesListingAndCreatesChildTasks() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
+        String qname = UUID.randomUUID().toString();
+        transfersService.setParentQueue(qname);
         TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
             sourceSystem.getName(),
             "/file1.txt",
@@ -255,7 +254,7 @@ public class ITestParentTaskReceiver {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
         IFileOpsService fileOpsService = new FileOpsService(sourceClient);
         //Add some files to transfer
         InputStream in = Utils.makeFakeFile(10 * 1024);
@@ -273,14 +272,16 @@ public class ITestParentTaskReceiver {
             destSystem.getName(),
             "/b/"
         );
-
-        TransferTaskChild child = new TransferTaskChild(t1, t1.getSourcePath());
+        FileInfo fileInfo = new FileInfo();
+        fileInfo.setPath("/a/1.txt");
+        fileInfo.setSize(10*1024);
+        TransferTaskChild child = new TransferTaskChild(t1, fileInfo);
         child = transfersService.createTransferTaskChild(child);
         TransferTaskChild task = transfersService.doTransfer(child);
         log.info(task.toString());
         IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
-        List<FileInfo> listing = fileOpsServiceDestination.ls("/b/");
-        Assert.assertEquals(listing.size(), 2);
+        List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
+        Assert.assertEquals(listing.size(), 1);
 
 
     }

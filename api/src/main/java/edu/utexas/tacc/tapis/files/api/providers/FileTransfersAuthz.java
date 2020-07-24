@@ -14,6 +14,7 @@ import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
+import java.util.UUID;
 
 @FileTransfersAuthorization
 public class FileTransfersAuthz implements ContainerRequestFilter {
@@ -37,9 +38,10 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
         String tenantId = user.getTenantId();
         MultivaluedMap<String, String> params = requestContext.getUriInfo().getPathParameters();
         String taskID = params.getFirst("transferTaskId");
+        UUID taskUUID = UUID.fromString(taskID);
 
         try {
-            boolean isPermitted = transfersService.isPermitted(username, tenantId, taskID);
+            boolean isPermitted = transfersService.isPermitted(username, tenantId, taskUUID);
             if (!isPermitted) {
                 throw new NotAuthorizedException("Not authorized to access this transfer");
             }

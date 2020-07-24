@@ -294,9 +294,9 @@
       },
       "post" : {
         "tags" : [ "file operations" ],
-        "summary" : "Upload a file",
-        "description" : "The file will be added at the {path} independent of the original file name",
-        "operationId" : "insert",
+        "summary" : "Create a directory",
+        "description" : "Create a directory in the system at path the given path",
+        "operationId" : "mkdir",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -314,22 +314,6 @@
             "type" : "string"
           }
         } ],
-        "requestBody" : {
-          "content" : {
-            "multipart/form-data" : {
-              "schema" : {
-                "required" : [ "file" ],
-                "type" : "object",
-                "properties" : {
-                  "file" : {
-                    "type" : "string",
-                    "format" : "binary"
-                  }
-                }
-              }
-            }
-          }
-        },
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -742,6 +726,36 @@
         }
       }
     },
+    "/v3/files/transfers/{transferTaskId}/history" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get history of a transfer task",
+        "operationId" : "getTransferTaskHistory",
+        "parameters" : [ {
+          "name" : "transferTaskId",
+          "in" : "path",
+          "description" : "Transfer task ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v3/files/transfers" : {
       "post" : {
         "tags" : [ "transfers" ],
@@ -758,35 +772,6 @@
           },
           "required" : true
         },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v3/files/transfers/{transferTaskId}/history" : {
-      "get" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Get history of a transfer task",
-        "operationId" : "getTransferTaskHistory",
-        "parameters" : [ {
-          "name" : "transferTaskId",
-          "in" : "path",
-          "description" : "Transfer task ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
-        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -967,7 +952,7 @@
         "properties" : {
           "id" : {
             "type" : "integer",
-            "format" : "int32"
+            "format" : "int64"
           },
           "tenantId" : {
             "type" : "string"
@@ -994,6 +979,10 @@
           "bytesTransferred" : {
             "type" : "integer",
             "format" : "int64"
+          },
+          "retries" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "uuid" : {
             "type" : "string",
@@ -1029,6 +1018,23 @@
           }
         }
       },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "TransferTaskRequest" : {
         "required" : [ "destinationPath", "destinationSystemId", "sourcePath", "sourceSystemId" ],
         "type" : "object",
@@ -1048,23 +1054,6 @@
           "destinationPath" : {
             "type" : "string",
             "description" : "Path to file/folder in destination system"
-          }
-        }
-      },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
           }
         }
       }

@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class TransfersService implements ITransfersService {
@@ -76,14 +77,15 @@ public class TransfersService implements ITransfersService {
     public void setParentQueue(String name) {
         this.PARENT_QUEUE = name;
     }
+
     public void setChildQueue(String name) {
         this.CHILD_QUEUE = name;
     }
 
 
-    public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull long transferTaskId) throws ServiceException {
+    public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskId) throws ServiceException {
         try {
-            TransferTask task = dao.getTransferTaskById(transferTaskId);
+            TransferTask task = dao.getTransferTaskByUUID(transferTaskId);
             return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage());
@@ -94,6 +96,18 @@ public class TransfersService implements ITransfersService {
     public TransferTask getTransferTask(@NotNull long taskId) throws ServiceException, NotFoundException {
         try {
             TransferTask task = dao.getTransferTaskById(taskId);
+            if (task == null) {
+                throw new NotFoundException("No transfer task with this ID found.");
+            }
+            return task;
+        } catch (DAOException ex) {
+            throw new ServiceException(ex.getMessage(), ex);
+        }
+    }
+
+    public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
+        try {
+            TransferTask task = dao.getTransferTaskByUUID(taskUUID);
             if (task == null) {
                 throw new NotFoundException("No transfer task with this UUID found.");
             }
@@ -111,9 +125,9 @@ public class TransfersService implements ITransfersService {
 
         try {
             // TODO: check if requesting user has access to both the source and dest systems, throw an error back if not
-            task = dao.createTransferTask(task);
-            this.publishParentTaskMessage(task);
-            return task;
+            TransferTask newTask = dao.createTransferTask(task);
+            this.publishParentTaskMessage(newTask);
+            return newTask;
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
         }
@@ -144,7 +158,7 @@ public class TransfersService implements ITransfersService {
     private void publishParentTaskMessage(@NotNull TransferTask task) throws ServiceException {
         try {
             String m = mapper.writeValueAsString(task);
-            OutboundMessage message = new OutboundMessage("", PARENT_QUEUE, m.getBytes(StandardCharsets.UTF_8));
+            OutboundMessage message = new OutboundMessage("", PARENT_QUEUE, m.getBytes());
             Flux<OutboundMessageResult> confirms = sender.sendWithPublishConfirms(Mono.just(message));
             sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE))
                 .thenMany(confirms)
@@ -189,10 +203,10 @@ public class TransfersService implements ITransfersService {
                     .runOn(Schedulers.newParallel("childPool"))
                     .flatMap(this::processChildMessage)
             );
-     }
+    }
 
     private Mono<TransferTaskChild> processChildMessage(AcknowledgableDelivery message) {
-        return Mono.fromCallable( ()-> {
+        return Mono.fromCallable(() -> {
             try {
                 TransferTaskChild child = mapper.readValue(message.getBody(), TransferTaskChild.class);
                 child = doTransfer(child);
@@ -207,9 +221,8 @@ public class TransfersService implements ITransfersService {
     }
 
 
-
     public Flux<TransferTask> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
-         return messageStream
+        return messageStream
             .groupBy(this::groupByTenant)
             .flatMap(group ->
                 group.parallel()
@@ -219,12 +232,11 @@ public class TransfersService implements ITransfersService {
     }
 
 
-
     private Mono<TransferTask> processParentMessage(AcknowledgableDelivery message) {
-        return Mono.fromCallable( ()-> {
+        return Mono.fromCallable(() -> {
             try {
                 TransferTask task = mapper.readValue(message.getBody(), TransferTask.class);
-                task = doStepOne(task);
+                task = doParentListing(task);
                 message.ack();
                 return task;
             } catch (IOException | ServiceException ex) {
@@ -236,7 +248,7 @@ public class TransfersService implements ITransfersService {
 
     }
 
-    public TransferTask doStepOne(TransferTask parentTask) throws ServiceException {
+    public TransferTask doParentListing(TransferTask parentTask) throws ServiceException {
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
         // Has to be final for lambda below
@@ -249,15 +261,19 @@ public class TransfersService implements ITransfersService {
             //TODO: Bulk inserts for both
             List<FileInfo> fileListing;
             fileListing = sourceClient.ls(parentTask.getSourcePath());
-            fileListing.forEach(f -> {
-                TransferTaskChild child = new TransferTaskChild(finalParentTask, f.getPath());
+            long totalBytes = 0;
+            for (FileInfo f : fileListing) {
+                totalBytes += f.getSize();
+                TransferTaskChild child = new TransferTaskChild(finalParentTask, f);
                 try {
                     dao.insertChildTask(child);
                     publishChildMessage(child);
                 } catch (ServiceException | DAOException ex) {
                     log.error(child.toString());
                 }
-            });
+            }
+            ;
+            parentTask.setTotalBytes(totalBytes);
             parentTask.setStatus(TransferTaskStatus.STAGED.name());
             parentTask = dao.updateTransferTask(parentTask);
             return parentTask;

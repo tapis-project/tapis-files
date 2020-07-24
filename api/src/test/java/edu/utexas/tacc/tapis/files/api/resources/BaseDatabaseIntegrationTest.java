@@ -1,12 +1,12 @@
-package edu.utexas.tacc.tapis.files.lib;
+package edu.utexas.tacc.tapis.files.api.resources;
 
 import org.flywaydb.core.Flyway;
+import org.glassfish.jersey.test.JerseyTestNg;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 @Test(groups={"integration"})
-public abstract class BaseDatabaseIntegrationTest {
+public abstract class BaseDatabaseIntegrationTest extends JerseyTestNg.ContainerPerClassTest {
 
     @BeforeMethod
     public void doBeforeTest() {

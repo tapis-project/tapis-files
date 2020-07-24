@@ -101,6 +101,21 @@ public class FileTransfersDAO implements IFileTransferDAO {
         }
     }
 
+    public TransferTask getTransferTaskByUUID(@NotNull  UUID uuid) throws DAOException {
+        Connection connection = HikariConnectionPool.getConnection();
+        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        try {
+            BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
+            String query = FileTransfersDAOStatements.GET_PARENT_TASK_BY_UUID;
+            QueryRunner runner = new QueryRunner();
+            TransferTask task = runner.query(connection, query, handler, uuid);
+            return task;
+        } catch (SQLException ex) {
+            throw new DAOException(ex.getMessage(), ex);
+        } finally {
+            DbUtils.closeQuietly(connection);
+        }
+    }
 
     public TransferTask getTransferTaskById(@NotNull  long id) throws DAOException {
         Connection connection = HikariConnectionPool.getConnection();
@@ -220,7 +235,6 @@ public class FileTransfersDAO implements IFileTransferDAO {
             String stmt = FileTransfersDAOStatements.INSERT_PARENT_TASK;
             QueryRunner runner = new QueryRunner();
             TransferTask insertedTask = runner.query(connection, stmt, handler,
-                    task.getUuid(),
                     task.getTenantId(),
                     task.getUsername(),
                     task.getSourceSystemId(),

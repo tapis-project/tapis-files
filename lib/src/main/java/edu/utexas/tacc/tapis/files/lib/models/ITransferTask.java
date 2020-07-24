@@ -10,7 +10,7 @@ public interface ITransferTask {
 
     void setId(int id);
 
-    int getId();
+    long getId();
 
     Long getTotalBytes();
 

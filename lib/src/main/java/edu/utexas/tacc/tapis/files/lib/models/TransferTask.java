@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.statefulj.persistence.annotations.State;
@@ -11,7 +12,7 @@ import java.util.UUID;
 
 public class TransferTask implements ITransferTask {
 
-    protected int id;
+    protected long id;
     protected String tenantId;
     protected String username;
     protected String sourceSystemId;
@@ -42,7 +43,6 @@ public class TransferTask implements ITransferTask {
         this.sourcePath = sourcePath;
         this.destinationSystemId = destinationSystemId;
         this.destinationPath = destinationPath;
-        this.uuid = UUID.randomUUID();
         this.status = TransferTaskStatus.ACCEPTED.name();
     }
     public int getRetries() {
@@ -69,9 +69,10 @@ public class TransferTask implements ITransferTask {
     }
 
     @Override
-    public int getId() {
+    public long getId() {
         return id;
     }
+
     @Override
     public Long getTotalBytes() {
         return totalBytes;
@@ -166,6 +167,7 @@ public class TransferTask implements ITransferTask {
     }
 
     @Override
+    @JsonIgnore
     public void setCreated(Instant created) {
         this.created = created;
     }

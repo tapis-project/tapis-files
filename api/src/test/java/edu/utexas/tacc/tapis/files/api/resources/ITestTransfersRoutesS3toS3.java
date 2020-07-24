@@ -4,6 +4,8 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
+import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
@@ -42,7 +44,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @Test(groups={"integration"})
-public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTest {
+public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
 
     private Logger log = LoggerFactory.getLogger(ITestTransfersRoutesS3toS3.class);
     private String user1jwt;
@@ -100,9 +102,11 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
                         bind(skClient).to(SKClient.class);
                         bind(serviceJWT).to(ServiceJWT.class);
                         bind(tenantManager).to(TenantManager.class);
+                        bindAsContract(ParentTaskFSM.class);
                         bindAsContract(TransfersService.class);
                         bindAsContract(FileTransfersDAO.class);
                         bindAsContract(RemoteDataClientFactory.class);
+                        bindAsContract(SystemsClientFactory.class);
                         bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
 
                     }
@@ -167,7 +171,7 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
         Assert.assertEquals(newTask.getSourcePath(), "sourcePath");
         Assert.assertEquals(newTask.getUsername(), "testuser1");
         Assert.assertEquals(newTask.getTenantId(), "dev");
-        Assert.assertEquals(newTask.getStatus(), TransferTaskStatus.ACCEPTED);
+        Assert.assertEquals(newTask.getStatus(), TransferTaskStatus.ACCEPTED.name());
     }
 
     @Test
@@ -230,7 +234,7 @@ public class ITestTransfersRoutesS3toS3 extends JerseyTestNg.ContainerPerClassTe
                 .delete();
 
         TransferTask task = getTransferTask(t.getUuid().toString());
-        Assert.assertEquals(task.getStatus(), TransferTaskStatus.CANCELLED);
+        Assert.assertEquals(task.getStatus(), TransferTaskStatus.CANCELLED.name());
         Assert.assertEquals(resp.getStatus(), 200);
 
     }

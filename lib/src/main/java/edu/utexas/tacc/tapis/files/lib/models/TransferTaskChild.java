@@ -1,19 +1,20 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
+
 import javax.validation.constraints.NotNull;
-import java.math.BigInteger;
-import java.time.Instant;
+import java.nio.file.Path;
 import java.util.UUID;
 
 public class TransferTaskChild extends TransferTask implements ITransferTask {
 
-    private int parentTaskId;
+    private long parentTaskId;
 
     public TransferTaskChild() {}
 
     public TransferTaskChild(String tenantId, String username,
                              String sourceSystemId, String sourcePath,
-                             String destinationSystemId, String destinationPath, int parentTaskId) {
+                             String destinationSystemId, String destinationPath, long parentTaskId) {
         this.tenantId = tenantId;
         this.username = username;
         this.sourceSystemId = sourceSystemId;
@@ -25,25 +26,36 @@ public class TransferTaskChild extends TransferTask implements ITransferTask {
         this.parentTaskId = parentTaskId;
     }
 
-    public TransferTaskChild(@NotNull TransferTask transferTask, @NotNull String sourcePath) {
+    /**
+     *  @param transferTask The TransferTask from which to derive this child
+     * @param fileInfo The path to the single file in the source system
+     */
+    public TransferTaskChild(@NotNull TransferTask transferTask, @NotNull FileInfo fileInfo) {
+
+        Path destPath = PathUtils.relativizePathsForTransfer(
+            transferTask.getSourcePath(),
+            fileInfo.getPath(),
+            transferTask.getDestinationPath()
+        );
+
         this.setParentTaskId(transferTask.getId());
-        this.setSourcePath(sourcePath);
+        this.setSourcePath(fileInfo.getPath());
         this.setSourceSystemId(transferTask.getSourceSystemId());
         this.setParentTaskId(transferTask.getId());
-        this.setDestinationPath(transferTask.getDestinationPath());
+        this.setDestinationPath(destPath.toString());
         this.setDestinationSystemId(transferTask.getDestinationSystemId());
         this.setStatus(TransferTaskStatus.ACCEPTED.name());
         this.setTenantId(transferTask.getTenantId());
         this.setUsername(transferTask.getUsername());
         this.setBytesTransferred(0L);
-        this.setTotalBytes(0L);
+        this.setTotalBytes(fileInfo.getSize());
     }
 
     public long getParentTaskId() {
         return parentTaskId;
     }
 
-    public void setParentTaskId(int parentTaskId) {
+    public void setParentTaskId(long parentTaskId) {
         this.parentTaskId = parentTaskId;
     }
 
@@ -60,9 +72,7 @@ public class TransferTaskChild extends TransferTask implements ITransferTask {
 
     @Override
     public int hashCode() {
-        int result = super.hashCode();
-        result = 31 * result + parentTaskId;
-        return result;
+       return Long.hashCode(id);
     }
 
     @Override
