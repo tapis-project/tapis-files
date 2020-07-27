@@ -49,9 +49,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestParentTaskReceiver {
+public class ITestTransfers {
 
-    private static final Logger log = LoggerFactory.getLogger(ITransfersService.class);
+    private static final Logger log = LoggerFactory.getLogger(ITestTransfers.class);
     private TSystem sourceSystem;
     private TSystem destSystem;
     private IRemoteDataClientFactory remoteDataClientFactory;
@@ -175,7 +175,6 @@ public class ITestParentTaskReceiver {
             destSystem.getName(),
             "/"
         );
-
     }
 
     @Test
@@ -274,15 +273,12 @@ public class ITestParentTaskReceiver {
         );
         FileInfo fileInfo = new FileInfo();
         fileInfo.setPath("/a/1.txt");
-        fileInfo.setSize(10*1024);
+        fileInfo.setSize(10 * 1024);
         TransferTaskChild child = new TransferTaskChild(t1, fileInfo);
         child = transfersService.createTransferTaskChild(child);
         TransferTaskChild task = transfersService.doTransfer(child);
-        log.info(task.toString());
         IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 1);
-
-
     }
 }

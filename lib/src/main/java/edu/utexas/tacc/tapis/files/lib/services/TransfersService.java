@@ -290,7 +290,7 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public List<TransferTask> getTransfersForUser(String tenantId, String username) throws ServiceException {
+    public List<TransferTask> getAllTransfersForUser(String tenantId, String username) throws ServiceException {
         try {
             return dao.getAllTransfersForUser(tenantId, username);
         } catch (DAOException ex) {
