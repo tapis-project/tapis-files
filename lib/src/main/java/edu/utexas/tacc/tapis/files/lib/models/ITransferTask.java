@@ -12,13 +12,13 @@ public interface ITransferTask {
 
     long getId();
 
-    Long getTotalBytes();
+    long getTotalBytes();
 
-    void setTotalBytes(Long totalBytes);
+    void setTotalBytes(long totalBytes);
 
-    Long getBytesTransferred();
+    long getBytesTransferred();
 
-    void setBytesTransferred(Long bytesTransferred);
+    void setBytesTransferred(long bytesTransferred);
 
     String getTenantId();
 

@@ -20,8 +20,8 @@ public class TransferTask implements ITransferTask {
     protected String destinationSystemId;
     protected String destinationPath;
     protected UUID uuid;
-    protected Long totalBytes;
-    protected Long bytesTransferred;
+    protected long totalBytes;
+    protected long bytesTransferred;
     protected int retries;
 
     // status MUST be a string for the FSM to work, enum is not an option
@@ -74,22 +74,22 @@ public class TransferTask implements ITransferTask {
     }
 
     @Override
-    public Long getTotalBytes() {
+    public long getTotalBytes() {
         return totalBytes;
     }
 
     @Override
-    public void setTotalBytes(Long totalBytes) {
+    public void setTotalBytes(long totalBytes) {
         this.totalBytes = totalBytes;
     }
 
     @Override
-    public Long getBytesTransferred() {
+    public long getBytesTransferred() {
         return bytesTransferred;
     }
 
     @Override
-    public void setBytesTransferred(Long bytesTransferred) {
+    public void setBytesTransferred(long bytesTransferred) {
         this.bytesTransferred = bytesTransferred;
     }
 

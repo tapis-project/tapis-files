@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.*;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 import reactor.test.StepVerifier;
@@ -162,19 +163,28 @@ public class ITestTransfers {
     }
 
     @Test
-    public void testDoesListing() throws Exception {
+    public void testUpdatesTransferSize() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
-
-        TransferTask task = new TransferTask();
-        task.setTenantId("test");
-        task.setUsername("test");
-        transfersService.createTransfer("testUser1", "dev",
+        String qname = UUID.randomUUID().toString();
+        transfersService.setParentQueue(qname);
+        TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
             sourceSystem.getName(),
-            "/file1.txt",
+            "/",
             destSystem.getName(),
             "/"
         );
+        Flux<AcknowledgableDelivery> messages = transfersService.streamParentMessages();
+        Flux<TransferTask> tasks = transfersService.processParentTasks(messages);
+        // Task should be STAGED after the pipeline runs
+        StepVerifier
+            .create(tasks)
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
+            .thenCancel()
+            .verify();
+        TransferTask task = transfersService.getTransferTaskByUUID(t1.getUuid());
+        // The total size should be the sum of the 2 files inserted into the bucket in beforeTest()
+        Assert.assertEquals(task.getTotalBytes(), 2 * 10 * 1024);
     }
 
     @Test
@@ -271,14 +281,93 @@ public class ITestTransfers {
             destSystem.getName(),
             "/b/"
         );
-        FileInfo fileInfo = new FileInfo();
-        fileInfo.setPath("/a/1.txt");
-        fileInfo.setSize(10 * 1024);
-        TransferTaskChild child = new TransferTaskChild(t1, fileInfo);
-        child = transfersService.createTransferTaskChild(child);
-        TransferTaskChild task = transfersService.doTransfer(child);
+
+        List<TransferTaskChild> kids = new ArrayList<>();
+        for(String path : new String[]{"/a/1.txt", "/a/2.txt"}){
+            FileInfo fileInfo = new FileInfo();
+            fileInfo.setPath(path);
+            fileInfo.setSize(10 * 1024);
+            TransferTaskChild child = new TransferTaskChild(t1, fileInfo);
+            child = transfersService.createTransferTaskChild(child);
+            transfersService.publishChildMessage(child);
+            kids.add(child);
+        }
+
+        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
+        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
         IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
+        StepVerifier
+            .create(stream)
+            .assertNext(k->{
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
+            })
+            .assertNext(k->{
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
+            })
+            .thenCancel()
+            .verify();
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
-        Assert.assertEquals(listing.size(), 1);
+        Assert.assertEquals(listing.size(), 2);
+
     }
+
+    @Test
+    public void testDoesTransfersWhenOneErrors() throws Exception {
+        when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        IFileOpsService fileOpsService = new FileOpsService(sourceClient);
+        //Add some files to transfer
+        InputStream in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert("a/1.txt", in);
+        in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert("a/2.txt", in);
+        String qname = UUID.randomUUID().toString();
+        transfersService.setChildQueue(qname);
+
+        TransferTask t1 = transfersService.createTransfer(
+            "testUser1",
+            "dev",
+            sourceSystem.getName(),
+            "/a/",
+            destSystem.getName(),
+            "/b/"
+        );
+
+        List<TransferTaskChild> kids = new ArrayList<>();
+        for(String path : new String[]{"/NOT-THERE/1.txt", "/a/2.txt"}){
+            FileInfo fileInfo = new FileInfo();
+            fileInfo.setPath(path);
+            fileInfo.setSize(10 * 1024);
+            TransferTaskChild child = new TransferTaskChild(t1, fileInfo);
+            child = transfersService.createTransferTaskChild(child);
+            transfersService.publishChildMessage(child);
+            kids.add(child);
+        }
+        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
+        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
+//        StepVerifier
+//            .create(stream)
+//            .assertNext(k->{
+//                Assert.assertEquals(k.getStatus(), TransferTaskStatus.FAILED.name());
+//            })
+//            .assertNext(k->{
+//                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
+//            })
+//            .thenCancel()
+//            .verify();
+        stream.subscribe(taskChild -> {
+            log.info(taskChild.toString());
+        }, err->{
+            log.error(err.getMessage(), err);
+        });
+        Thread.sleep(2000);
+//        IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
+//        List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
+//        Assert.assertEquals(listing.size(), 2);
+        transfersService.deleteQueue(qname);
+
+    }
+
 }

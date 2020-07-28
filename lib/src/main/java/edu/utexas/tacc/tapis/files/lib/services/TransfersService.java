@@ -92,6 +92,21 @@ public class TransfersService implements ITransfersService {
         }
     }
 
+    public List<TransferTaskChild> getAllChildrenTasks(TransferTask task) throws ServiceException {
+        try {
+            return dao.getAllChildren(task);
+        } catch (DAOException e) {
+            throw new ServiceException(e.getMessage(), e);
+        }
+    }
+
+    public List<TransferTask> getAllTransfersForUser(String tenantId, String username) throws ServiceException {
+        try {
+            return dao.getAllTransfersForUser(tenantId, username);
+        } catch (DAOException ex) {
+            throw new ServiceException(ex.getMessage(), ex);
+        }
+    }
 
     public TransferTask getTransferTask(@NotNull long taskId) throws ServiceException, NotFoundException {
         try {
@@ -125,6 +140,7 @@ public class TransfersService implements ITransfersService {
 
         try {
             // TODO: check if requesting user has access to both the source and dest systems, throw an error back if not
+            // TODO: Do this in a single transaction
             TransferTask newTask = dao.createTransferTask(task);
             this.publishParentTaskMessage(newTask);
             return newTask;
@@ -186,48 +202,13 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    private Mono<Long> groupByParentTask(AcknowledgableDelivery message) {
-        try {
-            return Mono.just(mapper.readValue(message.getBody(), TransferTaskChild.class).getParentTaskId());
-        } catch (IOException ex) {
-            log.error("invalid message", ex);
-            return Mono.error(ex);
-        }
-    }
-
-    public Flux<TransferTaskChild> processChildTasks(Flux<AcknowledgableDelivery> messageStream) {
-        return messageStream
-            .groupBy(this::groupByParentTask)
-            .flatMap(group ->
-                group.parallel()
-                    .runOn(Schedulers.newParallel("childPool"))
-                    .flatMap(this::processChildMessage)
-            );
-    }
-
-    private Mono<TransferTaskChild> processChildMessage(AcknowledgableDelivery message) {
-        return Mono.fromCallable(() -> {
-            try {
-                TransferTaskChild child = mapper.readValue(message.getBody(), TransferTaskChild.class);
-                child = doTransfer(child);
-                message.ack();
-                return child;
-            } catch (IOException | ServiceException ex) {
-                message.nack(true);
-                throw new ServiceException(ex.getMessage(), ex);
-            }
-        })
-            .retry(MAX_RETRIES);
-    }
-
-
     public Flux<TransferTask> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
         return messageStream
             .groupBy(this::groupByTenant)
             .flatMap(group ->
                 group.parallel()
                     .runOn(Schedulers.newParallel("pool"))
-                    .flatMap(this::processParentMessage)
+                    .flatMap(m -> this.processParentMessage(m).retry(MAX_RETRIES))
             );
     }
 
@@ -243,8 +224,7 @@ public class TransfersService implements ITransfersService {
                 message.nack(true);
                 throw new ServiceException(ex.getMessage(), ex);
             }
-        })
-            .retry(MAX_RETRIES);
+        });
 
     }
 
@@ -272,7 +252,6 @@ public class TransfersService implements ITransfersService {
                     log.error(child.toString());
                 }
             }
-            ;
             parentTask.setTotalBytes(totalBytes);
             parentTask.setStatus(TransferTaskStatus.STAGED.name());
             parentTask = dao.updateTransferTask(parentTask);
@@ -282,23 +261,115 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public List<TransferTaskChild> getAllChildrenTasks(TransferTask task) throws ServiceException {
-        try {
-            return dao.getAllChildren(task);
-        } catch (DAOException e) {
-            throw new ServiceException(e.getMessage(), e);
-        }
-    }
 
-    public List<TransferTask> getAllTransfersForUser(String tenantId, String username) throws ServiceException {
+
+    /**
+     *
+     *   Child task message processing
+     *
+     */
+
+    public void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
         try {
-            return dao.getAllTransfersForUser(tenantId, username);
-        } catch (DAOException ex) {
+            String m = mapper.writeValueAsString(childTask);
+            OutboundMessage message = new OutboundMessage("", CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
+            sender.send(Flux.just(message)).subscribe();
+        } catch (JsonProcessingException ex) {
             throw new ServiceException(ex.getMessage(), ex);
         }
     }
 
-    public TransferTaskChild doTransfer(TransferTaskChild taskChild) throws ServiceException {
+    private Mono<TransferTaskChild> deserializeChildMessage(AcknowledgableDelivery message) {
+        try {
+            TransferTaskChild child = mapper.readValue(message.getBody(), TransferTaskChild.class);
+            return Mono.just(child);
+        } catch (IOException ex) {
+            // DO NOT requeue the message if it fails here!
+            message.nack(false);
+            return Mono.empty();
+        }
+    }
+
+    private Mono<Long> groupByParentTask(AcknowledgableDelivery message) {
+        try {
+            return Mono.just(mapper.readValue(message.getBody(), TransferTaskChild.class).getParentTaskId());
+        } catch (IOException ex) {
+            log.error("invalid message", ex);
+            return Mono.error(ex);
+        }
+    }
+
+    public Flux<AcknowledgableDelivery> streamChildMessages() {
+        ConsumeOptions options = new ConsumeOptions();
+        options.qos(1000);
+        Flux<AcknowledgableDelivery> childMessageStream = receiver.consumeManualAck(CHILD_QUEUE, options);
+        return childMessageStream
+            .delaySubscription(sender.declareQueue(QueueSpecification.queue(CHILD_QUEUE)));
+    }
+
+
+    public Flux<TransferTaskChild> processChildTasks(@NotNull Flux<AcknowledgableDelivery> messageStream) {
+        // Deserialize the message so that we can pass that into the reactor chain.
+        return messageStream
+            .groupBy(this::groupByParentTask)
+            .flatMap(group -> group.parallel().runOn(Schedulers.newParallel("childPool")))
+            .flatMap(this::deserializeChildMessage)
+            .flatMap(t1->doChildTransferChevronOne(t1).retry(MAX_RETRIES))
+            .flatMap(t2->doChildTransferChevronTwo(t2).retry(MAX_RETRIES))
+            .flatMap(t3->doChildTransferChevronThree(t3).retry(MAX_RETRIES));
+    }
+
+    private Mono<Void> doErrorChevronOne(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
+        message.nack(false);
+        //TODO: Update task status to FAILED for both child and parent
+        log.error(ex.getMessage(), ex);
+        return Mono.error(ex);
+    }
+
+    private Mono<Void> doErrorChevronTwo(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
+        message.nack(false);
+        //TODO: Update task status to FAILED for both child and parent
+        log.error(ex.getMessage(), ex);
+        return Mono.error(ex);
+    }
+
+    private Mono<Void> doErrorChevronThree(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
+        message.nack(false);
+        //TODO: Update task status to FAILED for both child and parent
+        log.error(ex.getMessage(), ex);
+        return Mono.error(ex);
+    }
+
+
+
+    /**
+     * Step one: We update the task's status and the parent task if necessary
+     * @param taskChild
+     * @return
+     */
+    private Mono<TransferTaskChild> doChildTransferChevronOne(@NotNull TransferTaskChild taskChild) {
+        try {
+            TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
+            if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED.name())) {
+                return Mono.empty();
+            }
+            taskChild = dao.getChildTask(taskChild);
+            taskChild.setStatus(TransferTaskStatus.IN_PROGRESS.name());
+            dao.updateTransferTaskChild(taskChild);
+
+            // If the parent task has not been set to IN_PROGRESS do it here.
+            if (!parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS.name())) {
+                parentTask.setStatus(TransferTaskStatus.IN_PROGRESS.name());
+                dao.updateTransferTask(parentTask);
+            }
+            return Mono.just(taskChild);
+        } catch (DAOException ex) {
+            return Mono.error(new ServiceException(ex.getMessage(), ex));
+        }
+
+    }
+
+    private  Mono<TransferTaskChild> doChildTransferChevronTwo(TransferTaskChild taskChild) {
         TSystem sourceSystem;
         TSystem destSystem;
         IRemoteDataClient sourceClient;
@@ -310,7 +381,7 @@ public class TransfersService implements ITransfersService {
             taskChild.setRetries(taskChild.getRetries() + 1);
             taskChild = dao.updateTransferTaskChild(taskChild);
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            return Mono.error(new ServiceException(ex.getMessage(), ex));
         }
         //Step 2: Get clients for source / dest
         try {
@@ -319,47 +390,44 @@ public class TransfersService implements ITransfersService {
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
             destSystem = systemsClient.getSystemByName(taskChild.getDestinationSystemId(), null);
             destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
-
-
-        } catch (TapisClientException | IOException ex) {
+        } catch (TapisClientException | IOException | ServiceException ex) {
             log.error(ex.getMessage(), ex);
-            throw new ServiceException(ex.getMessage(), ex);
+            return Mono.error(new ServiceException(ex.getMessage(), ex));
         }
 
         //Step 3: Stream the file contents to dest
         try {
             InputStream sourceStream = sourceClient.getStream(taskChild.getSourcePath());
             destClient.insert(taskChild.getDestinationPath(), sourceStream);
-        } catch (IOException ex) {
+        } catch (IOException | NotFoundException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
-            throw new ServiceException(msg, ex);
+            return Mono.empty();
         }
+        return Mono.just(taskChild);
+    }
 
-        //Step 4: Update the parent task with bytes_transferred and check for completeness
+    /**
+     * Mark the child as COMPLETE and check if the parent task is complete.
+     * @param taskChild
+     * @return
+     */
+    private Mono<TransferTaskChild> doChildTransferChevronThree(@NotNull TransferTaskChild taskChild) {
         try {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
             taskChild = dao.updateTransferTaskChild(taskChild);
             dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getTotalBytes());
-            long incompleteCount = dao.getUncompleteChildrenCount(taskChild.getParentTaskId());
+            long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getParentTaskId());
             if (incompleteCount == 0) {
                 parentTask.setStatus(TransferTaskStatus.COMPLETED.name());
                 dao.updateTransferTask(parentTask);
             }
+            return Mono.just(taskChild);
         } catch (DAOException ex) {
             String msg = String.format("Error updating child task %s", taskChild.toString());
-            throw new ServiceException(msg, ex);
+            return Mono.error(new ServiceException(ex.getMessage(), ex));
         }
-        return taskChild;
     }
 
-    private void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
-        try {
-            String m = mapper.writeValueAsString(childTask);
-            OutboundMessage message = new OutboundMessage("", CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
-            sender.send(Flux.just(message)).subscribe();
-        } catch (JsonProcessingException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
-        }
-    }
+
 }

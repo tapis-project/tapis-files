@@ -34,7 +34,7 @@ public class FileTransfersDAOStatements {
     public static final String GET_CHILD_TASK_INCOMPLETE_COUNT =
         "SELECT count(id) from transfer_tasks_child " +
             "WHERE parent_task_id = ? " +
-            "AND status != 'FAILED' ";
+            "AND status != 'COMPLETED' ";
 
 
     //language=SQL
@@ -58,7 +58,8 @@ public class FileTransfersDAOStatements {
             "     source_path = ?, " +
             "     destination_system_id = ?, " +
             "     destination_path = ?, " +
-            "     status = ? " +
+            "     status = ?, " +
+            "     total_bytes = ? " +
             "WHERE uuid = ? " +
             "RETURNING transfer_tasks.*";
 
