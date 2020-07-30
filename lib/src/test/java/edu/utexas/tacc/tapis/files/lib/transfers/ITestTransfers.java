@@ -45,8 +45,7 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
@@ -347,27 +346,63 @@ public class ITestTransfers {
         }
         Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
-//        StepVerifier
-//            .create(stream)
-//            .assertNext(k->{
-//                Assert.assertEquals(k.getStatus(), TransferTaskStatus.FAILED.name());
-//            })
-//            .assertNext(k->{
-//                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
-//            })
-//            .thenCancel()
-//            .verify();
-        stream.subscribe(taskChild -> {
-            log.info(taskChild.toString());
-        }, err->{
-            log.error(err.getMessage(), err);
-        });
-        Thread.sleep(2000);
-//        IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
-//        List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
-//        Assert.assertEquals(listing.size(), 2);
-        transfersService.deleteQueue(qname);
+        StepVerifier
+            .create(stream)
+            .assertNext(k->{
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
+            })
+            .thenCancel()
+            .verify();
 
+        IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
+        List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
+        Assert.assertEquals(listing.size(), 2);
+        transfersService.deleteQueue(qname);
+    }
+
+    @Test
+    public void testFullPipeline() throws Exception {
+        when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        IFileOpsService fileOpsService = new FileOpsService(sourceClient);
+        //Add some files to transfer
+        InputStream in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert("/a/1.txt", in);
+        in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert("/a/2.txt", in);
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
+
+        TransferTask t1 = transfersService.createTransfer(
+            "testUser1",
+            "dev",
+            sourceSystem.getName(),
+            "/a/",
+            destSystem.getName(),
+            "/b/"
+        );
+
+        Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
+        Flux<TransferTask> parentStream = transfersService.processParentTasks(parentMessageStream);
+        parentStream.subscribe();
+
+        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
+        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
+        stream.subscribe(taskChild -> log.info(taskChild.toString()));
+
+        IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
+
+        Thread.sleep(2000);
+        List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
+        Assert.assertEquals(listing.size(), 2);
+        t1 = transfersService.getTransferTask(t1.getId());
+        Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED.name());
+        transfersService.deleteQueue(parentQ);
+        transfersService.deleteQueue(childQ);
     }
 
 }

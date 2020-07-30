@@ -251,8 +251,6 @@ public class S3DataClient implements IRemoteDataClient {
         try {
             String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
             listWithIterator(remotePath).forEach(object -> {
-                //TODO: What to do if one fails?
-                log.info(object.toString());
                 try {
                     deleteObject(object.key());
                 } catch (S3Exception ex) {

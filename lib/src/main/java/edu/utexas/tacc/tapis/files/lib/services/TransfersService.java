@@ -50,6 +50,7 @@ public class TransfersService implements ITransfersService {
     private SystemsClientFactory systemsClientFactory;
     private RemoteDataClientFactory remoteDataClientFactory;
 
+//    private static final List<TransferTaskStatus> FINAL_STATES = {TransferTaskStatus.FAILED, TransferTaskStatus.CANCELLED}
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
 
     @Inject
@@ -246,7 +247,7 @@ public class TransfersService implements ITransfersService {
                 totalBytes += f.getSize();
                 TransferTaskChild child = new TransferTaskChild(finalParentTask, f);
                 try {
-                    dao.insertChildTask(child);
+                    child = dao.insertChildTask(child);
                     publishChildMessage(child);
                 } catch (ServiceException | DAOException ex) {
                     log.error(child.toString());
@@ -312,18 +313,27 @@ public class TransfersService implements ITransfersService {
         // Deserialize the message so that we can pass that into the reactor chain.
         return messageStream
             .groupBy(this::groupByParentTask)
-            .flatMap(group -> group.parallel().runOn(Schedulers.newParallel("childPool")))
-            .flatMap(this::deserializeChildMessage)
-            .flatMap(t1->doChildTransferChevronOne(t1).retry(MAX_RETRIES))
-            .flatMap(t2->doChildTransferChevronTwo(t2).retry(MAX_RETRIES))
-            .flatMap(t3->doChildTransferChevronThree(t3).retry(MAX_RETRIES));
+            .log()
+            .map(group -> group.parallel().runOn(Schedulers.newParallel("childPool::"+group.key())))
+            .flatMap(g->
+                g.flatMap(m->deserializeChildMessage(m)
+                    .flatMap(t1->Mono.fromCallable(()->doChildTransferChevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e->doErrorChevronOne(m, e, t1)))
+                    .flatMap(t2->Mono.fromCallable(()->doChildTransferChevronTwo(t2)).retry(MAX_RETRIES).onErrorResume(e->doErrorChevronOne(m, e, t2)))
+                    .flatMap(t3->Mono.fromCallable(()->doChildTransferChevronThree(t3)).retry(MAX_RETRIES).onErrorResume(e->doErrorChevronOne(m, e, t3)))
+                    .flatMap(t4 -> {
+                        m.ack();
+                        return Mono.just(t4);
+                    })
+                )
+            );
     }
 
-    private Mono<Void> doErrorChevronOne(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
+    private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
         message.nack(false);
+        log.error("ERROR: {}", task);
         //TODO: Update task status to FAILED for both child and parent
         log.error(ex.getMessage(), ex);
-        return Mono.error(ex);
+        return Mono.empty();
     }
 
     private Mono<Void> doErrorChevronTwo(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
@@ -347,11 +357,12 @@ public class TransfersService implements ITransfersService {
      * @param taskChild
      * @return
      */
-    private Mono<TransferTaskChild> doChildTransferChevronOne(@NotNull TransferTaskChild taskChild) {
+    private TransferTaskChild doChildTransferChevronOne(@NotNull TransferTaskChild taskChild) throws ServiceException {
+        log.info("***** DOING doChildTransferChevronOne ****");
         try {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED.name())) {
-                return Mono.empty();
+                return taskChild;
             }
             taskChild = dao.getChildTask(taskChild);
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS.name());
@@ -362,14 +373,15 @@ public class TransfersService implements ITransfersService {
                 parentTask.setStatus(TransferTaskStatus.IN_PROGRESS.name());
                 dao.updateTransferTask(parentTask);
             }
-            return Mono.just(taskChild);
+            return taskChild;
         } catch (DAOException ex) {
-            return Mono.error(new ServiceException(ex.getMessage(), ex));
+            throw new ServiceException(ex.getMessage(), ex);
         }
 
     }
 
-    private  Mono<TransferTaskChild> doChildTransferChevronTwo(TransferTaskChild taskChild) {
+    private  TransferTaskChild doChildTransferChevronTwo(TransferTaskChild taskChild) throws ServiceException {
+        log.info("***** DOING doChildTransferChevronTwo ****");
         TSystem sourceSystem;
         TSystem destSystem;
         IRemoteDataClient sourceClient;
@@ -381,7 +393,7 @@ public class TransfersService implements ITransfersService {
             taskChild.setRetries(taskChild.getRetries() + 1);
             taskChild = dao.updateTransferTaskChild(taskChild);
         } catch (DAOException ex) {
-            return Mono.error(new ServiceException(ex.getMessage(), ex));
+            throw new ServiceException(ex.getMessage(), ex);
         }
         //Step 2: Get clients for source / dest
         try {
@@ -392,7 +404,7 @@ public class TransfersService implements ITransfersService {
             destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
         } catch (TapisClientException | IOException | ServiceException ex) {
             log.error(ex.getMessage(), ex);
-            return Mono.error(new ServiceException(ex.getMessage(), ex));
+            throw new ServiceException(ex.getMessage(), ex);
         }
 
         //Step 3: Stream the file contents to dest
@@ -401,9 +413,10 @@ public class TransfersService implements ITransfersService {
             destClient.insert(taskChild.getDestinationPath(), sourceStream);
         } catch (IOException | NotFoundException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
-            return Mono.empty();
+            throw new ServiceException(ex.getMessage(), ex);
+
         }
-        return Mono.just(taskChild);
+        return taskChild;
     }
 
     /**
@@ -411,7 +424,8 @@ public class TransfersService implements ITransfersService {
      * @param taskChild
      * @return
      */
-    private Mono<TransferTaskChild> doChildTransferChevronThree(@NotNull TransferTaskChild taskChild) {
+    private TransferTaskChild doChildTransferChevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
+        log.info("***** DOING doChildTransferChevronThree ****");
         try {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
@@ -422,10 +436,10 @@ public class TransfersService implements ITransfersService {
                 parentTask.setStatus(TransferTaskStatus.COMPLETED.name());
                 dao.updateTransferTask(parentTask);
             }
-            return Mono.just(taskChild);
+            return taskChild;
         } catch (DAOException ex) {
             String msg = String.format("Error updating child task %s", taskChild.toString());
-            return Mono.error(new ServiceException(ex.getMessage(), ex));
+            throw new ServiceException(ex.getMessage(), ex);
         }
     }
 

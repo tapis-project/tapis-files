@@ -19,10 +19,10 @@ public class PathUtils {
 
         // This catches when the listing for the file is in the root of the tree.
         if ( srcFilePath.equals(srcBasePath) ) {
-            return destBasePath.resolve(srcFilePath);
+            return destBasePath.resolve(srcFilePath).normalize();
         }
         Path sourceRelativeToBase = srcBasePath.relativize(srcFilePath);
-        Path finalDestPath = destBasePath.resolve(sourceRelativeToBase);
+        Path finalDestPath = destBasePath.resolve(sourceRelativeToBase).normalize();
         return finalDestPath;
     }
 
