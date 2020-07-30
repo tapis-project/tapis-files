@@ -2,8 +2,7 @@ FROM maven:3-jdk-13
 WORKDIR /app
 
 # Copy all of the repo into the /app dir. The .dockerignore file will skip the target dirs
-COPY . .
-
+COPY ./lib/target/ ./target
 #RUN mvn -pl api clean install --also-make -DskipTests
 
-CMD ["java", "-jar", "api/target/tapis-files.jar", "edu.utexas.tacc.tapis.files.lib.workers.RecieveLogs"]
+CMD ["java", "-cp", "target/tapis-files.jar:target/dependencies/*", "edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp"]
