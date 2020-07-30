@@ -4,6 +4,8 @@ import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
@@ -15,14 +17,16 @@ import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
+import reactor.rabbitmq.AcknowledgableDelivery;
 
 import javax.inject.Singleton;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class TransfersApp {
 
     private static Logger log = LoggerFactory.getLogger(TransfersApp.class);
-
 
     public static void main(String[] args) throws Exception {
         ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
@@ -34,25 +38,33 @@ public class TransfersApp {
                 bindAsContract(RemoteDataClientFactory.class);
                 bindAsContract(TransfersService.class);
                 bindAsContract(SystemsClientFactory.class);
-                bindAsContract(ParentTaskReceiver.class);
-                bindAsContract(ChildTaskReceiver.class);
                 bindAsContract(FileTransfersDAO.class);
                 bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindFactory(ServiceJWTCacheFactory.class).to(ServiceJWT.class).in(Singleton.class);
                 bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
             }
         });
-        ParentTaskReceiver worker = locator.getService(ParentTaskReceiver.class);
-//        Thread parentThread = new Thread(worker);
-//        parentThread.start();
-//
-//
-//        log.info("test");
-//        ChildTaskReceiver childWorker = locator.getService(ChildTaskReceiver.class);
-//        Thread childThread = new Thread(childWorker);
-//        childThread.start();
 
+        TransfersService transfersService = locator.getService(TransfersService.class);
+        transfersService.setChildQueue(UUID.randomUUID().toString());
+        transfersService.setParentQueue(UUID.randomUUID().toString());
 
+        Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
+        Flux<TransferTask> parentTaskFlux = transfersService.processParentTasks(parentMessageStream);
+        parentTaskFlux.subscribe();
+
+        Flux<AcknowledgableDelivery> childMessageStream = transfersService.streamChildMessages();
+        Flux<TransferTaskChild> childTaskFlux = transfersService.processChildTasks(childMessageStream);
+        childTaskFlux.subscribe();
     }
+
+    private void logSuccess(TransferTask t) {
+        log.info(t.toString());
+    }
+
+    private void logError(Throwable t) {
+        log.error(t.getMessage(), t);
+    }
+
 
 }

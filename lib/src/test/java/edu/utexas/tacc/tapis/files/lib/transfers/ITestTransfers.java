@@ -116,7 +116,6 @@ public class ITestTransfers {
             protected void configure() {
                 bindAsContract(ParentTaskFSM.class);
                 bindAsContract(FileTransfersDAO.class);
-                bindAsContract(ParentTaskReceiver.class);
                 bindAsContract(TransfersService.class);
                 bindAsContract(RemoteDataClientFactory.class);
                 bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);

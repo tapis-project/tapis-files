@@ -45,12 +45,15 @@ public class TransfersService implements ITransfersService {
     private final Receiver receiver;
     private final Sender sender;
 
-    private ParentTaskFSM fsm;
-    private FileTransfersDAO dao;
-    private SystemsClientFactory systemsClientFactory;
-    private RemoteDataClientFactory remoteDataClientFactory;
+    private final ParentTaskFSM fsm;
+    private final FileTransfersDAO dao;
+    private final SystemsClientFactory systemsClientFactory;
+    private final RemoteDataClientFactory remoteDataClientFactory;
 
-//    private static final List<TransferTaskStatus> FINAL_STATES = {TransferTaskStatus.FAILED, TransferTaskStatus.CANCELLED}
+    private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]{
+        TransferTaskStatus.FAILED,
+        TransferTaskStatus.CANCELLED,
+        TransferTaskStatus.COMPLETED};
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
 
     @Inject
@@ -194,6 +197,17 @@ public class TransfersService implements ITransfersService {
             .delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
     }
 
+    private Mono<TransferTask> deserializeParentMessage(AcknowledgableDelivery message) {
+        try {
+            TransferTask child = mapper.readValue(message.getBody(), TransferTask.class);
+            return Mono.just(child);
+        } catch (IOException ex) {
+            // DO NOT requeue the message if it fails here!
+            message.nack(false);
+            return Mono.empty();
+        }
+    }
+
     private Mono<String> groupByTenant(AcknowledgableDelivery message) {
         try {
             return Mono.just(mapper.readValue(message.getBody(), TransferTask.class).getTenantId());
@@ -203,33 +217,31 @@ public class TransfersService implements ITransfersService {
         }
     }
 
+    private Mono<TransferTask> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTask t) {
+        //TODO: Add task failure, set status etc
+        m.nack(false);
+        return Mono.empty();
+    }
+
     public Flux<TransferTask> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
         return messageStream
             .groupBy(this::groupByTenant)
             .flatMap(group ->
                 group.parallel()
                     .runOn(Schedulers.newParallel("pool"))
-                    .flatMap(m -> this.processParentMessage(m).retry(MAX_RETRIES))
+                    .flatMap(m->deserializeParentMessage(m)
+                        .flatMap(t1->Mono.fromCallable(()-> doParentChevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e -> doErrorParentChevronOne(m, e, t1)))
+                        .flatMap(t2->{
+                            m.ack();
+                            return Mono.just(t2);
+                        })
+                    )
+
             );
     }
 
 
-    private Mono<TransferTask> processParentMessage(AcknowledgableDelivery message) {
-        return Mono.fromCallable(() -> {
-            try {
-                TransferTask task = mapper.readValue(message.getBody(), TransferTask.class);
-                task = doParentListing(task);
-                message.ack();
-                return task;
-            } catch (IOException | ServiceException ex) {
-                message.nack(true);
-                throw new ServiceException(ex.getMessage(), ex);
-            }
-        });
-
-    }
-
-    public TransferTask doParentListing(TransferTask parentTask) throws ServiceException {
+    public TransferTask doParentChevronOne(TransferTask parentTask) throws ServiceException {
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
         // Has to be final for lambda below
@@ -240,6 +252,7 @@ public class TransfersService implements ITransfersService {
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
 
             //TODO: Bulk inserts for both
+            //TODO: Retries will break this, should delete anything in the DB if it is a retry?
             List<FileInfo> fileListing;
             fileListing = sourceClient.ls(parentTask.getSourcePath());
             long totalBytes = 0;
@@ -263,12 +276,10 @@ public class TransfersService implements ITransfersService {
     }
 
 
-
     /**
-     *
-     *   Child task message processing
-     *
+     * Child task message processing
      */
+
 
     public void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
         try {
@@ -296,7 +307,7 @@ public class TransfersService implements ITransfersService {
             return Mono.just(mapper.readValue(message.getBody(), TransferTaskChild.class).getParentTaskId());
         } catch (IOException ex) {
             log.error("invalid message", ex);
-            return Mono.error(ex);
+            return Mono.empty();
         }
     }
 
@@ -314,16 +325,18 @@ public class TransfersService implements ITransfersService {
         return messageStream
             .groupBy(this::groupByParentTask)
             .log()
-            .map(group -> group.parallel().runOn(Schedulers.newParallel("childPool::"+group.key())))
-            .flatMap(g->
-                g.flatMap(m->deserializeChildMessage(m)
-                    .flatMap(t1->Mono.fromCallable(()->doChildTransferChevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e->doErrorChevronOne(m, e, t1)))
-                    .flatMap(t2->Mono.fromCallable(()->doChildTransferChevronTwo(t2)).retry(MAX_RETRIES).onErrorResume(e->doErrorChevronOne(m, e, t2)))
-                    .flatMap(t3->Mono.fromCallable(()->doChildTransferChevronThree(t3)).retry(MAX_RETRIES).onErrorResume(e->doErrorChevronOne(m, e, t3)))
-                    .flatMap(t4 -> {
-                        m.ack();
-                        return Mono.just(t4);
-                    })
+            .map(group -> group.parallel().runOn(Schedulers.newParallel("childPool::" + group.key())))
+            .flatMap(g ->
+                g.flatMap(
+                    //Wwe need the message in scope so we can ack/nack it later
+                    m -> deserializeChildMessage(m)
+                        .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t1)))
+                        .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t2)))
+                        .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t3)))
+                        .flatMap(t4 -> {
+                            m.ack();
+                            return Mono.just(t4);
+                        })
                 )
             );
     }
@@ -351,14 +364,14 @@ public class TransfersService implements ITransfersService {
     }
 
 
-
     /**
      * Step one: We update the task's status and the parent task if necessary
+     *
      * @param taskChild
      * @return
      */
-    private TransferTaskChild doChildTransferChevronOne(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        log.info("***** DOING doChildTransferChevronOne ****");
+    private TransferTaskChild chevronOne(@NotNull TransferTaskChild taskChild) throws ServiceException {
+        log.info("***** DOING chevronOne ****");
         try {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED.name())) {
@@ -380,8 +393,14 @@ public class TransfersService implements ITransfersService {
 
     }
 
-    private  TransferTaskChild doChildTransferChevronTwo(TransferTaskChild taskChild) throws ServiceException {
-        log.info("***** DOING doChildTransferChevronTwo ****");
+    /**
+     * Chevron 2: The meat of the operation. We get remote clients for source and dest and send bytes
+     * @param taskChild
+     * @return
+     * @throws ServiceException
+     */
+    private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException {
+        log.info("***** DOING chevronTwo ****");
         TSystem sourceSystem;
         TSystem destSystem;
         IRemoteDataClient sourceClient;
@@ -413,24 +432,27 @@ public class TransfersService implements ITransfersService {
             destClient.insert(taskChild.getDestinationPath(), sourceStream);
         } catch (IOException | NotFoundException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(msg, ex);
 
         }
         return taskChild;
     }
 
     /**
-     * Mark the child as COMPLETE and check if the parent task is complete.
+     * Book keeping and cleanup. Mark the child as COMPLETE and check if the parent task is complete.
+     *
      * @param taskChild
      * @return
      */
-    private TransferTaskChild doChildTransferChevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        log.info("***** DOING doChildTransferChevronThree ****");
+    private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
+        log.info("***** DOING chevronThree ****");
         try {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
             taskChild = dao.updateTransferTaskChild(taskChild);
             dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getTotalBytes());
+
+            // Check to see if all the children are complete. If so, update the parent task
             long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getParentTaskId());
             if (incompleteCount == 0) {
                 parentTask.setStatus(TransferTaskStatus.COMPLETED.name());
@@ -439,7 +461,7 @@ public class TransfersService implements ITransfersService {
             return taskChild;
         } catch (DAOException ex) {
             String msg = String.format("Error updating child task %s", taskChild.toString());
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
