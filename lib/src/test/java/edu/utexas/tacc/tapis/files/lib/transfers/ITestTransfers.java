@@ -279,7 +279,7 @@ public class ITestTransfers {
             destSystem.getName(),
             "/b/"
         );
-
+        // Create a couple of children for the task
         List<TransferTaskChild> kids = new ArrayList<>();
         for(String path : new String[]{"/a/1.txt", "/a/2.txt"}){
             FileInfo fileInfo = new FileInfo();
@@ -377,6 +377,15 @@ public class ITestTransfers {
         transfersService.setParentQueue(parentQ);
 
         TransferTask t1 = transfersService.createTransfer(
+            "testUser1",
+            "dev",
+            sourceSystem.getName(),
+            "/a/",
+            destSystem.getName(),
+            "/b/"
+        );
+
+        TransferTask t2 = transfersService.createTransfer(
             "testUser1",
             "dev",
             sourceSystem.getName(),

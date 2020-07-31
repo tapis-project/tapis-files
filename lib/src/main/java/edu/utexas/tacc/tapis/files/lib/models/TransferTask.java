@@ -23,6 +23,7 @@ public class TransferTask implements ITransferTask {
     protected long totalBytes;
     protected long bytesTransferred;
     protected int retries;
+    protected String finalMessage;
 
     // status MUST be a string for the FSM to work, enum is not an option
     @State
@@ -52,6 +53,15 @@ public class TransferTask implements ITransferTask {
     public void setRetries(int retries) {
         this.retries = retries;
     }
+
+    public String getFinalMessage() {
+        return finalMessage;
+    }
+
+    public void setFinalMessage(String finalMessage) {
+        this.finalMessage = finalMessage;
+    }
+
     /**
      * Unique ID of the task.
      * @return uuid

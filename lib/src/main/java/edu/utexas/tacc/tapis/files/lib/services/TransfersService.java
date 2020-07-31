@@ -227,8 +227,8 @@ public class TransfersService implements ITransfersService {
         return messageStream
             .groupBy(this::groupByTenant)
             .flatMap(group ->
-                group.parallel()
-                    .runOn(Schedulers.newParallel("pool"))
+                group
+                    .publishOn(Schedulers.newBoundedElastic(20,1,"pool"+group.key()))
                     .flatMap(m->deserializeParentMessage(m)
                         .flatMap(t1->Mono.fromCallable(()-> doParentChevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e -> doErrorParentChevronOne(m, e, t1)))
                         .flatMap(t2->{
@@ -242,6 +242,7 @@ public class TransfersService implements ITransfersService {
 
 
     public TransferTask doParentChevronOne(TransferTask parentTask) throws ServiceException {
+        log.info("***** DOING doParentChevronOne ****");
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
         // Has to be final for lambda below
@@ -325,7 +326,7 @@ public class TransfersService implements ITransfersService {
         return messageStream
             .groupBy(this::groupByParentTask)
             .log()
-            .map(group -> group.parallel().runOn(Schedulers.newParallel("childPool::" + group.key())))
+            .map(group -> group.publishOn(Schedulers.newBoundedElastic(6, 1 , "childPool::" + group.key())))
             .flatMap(g ->
                 g.flatMap(
                     //Wwe need the message in scope so we can ack/nack it later
@@ -445,7 +446,7 @@ public class TransfersService implements ITransfersService {
      * @return
      */
     private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        log.info("***** DOING chevronThree ****");
+        log.info("***** DOING chevronThree **** {}", taskChild);
         try {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());

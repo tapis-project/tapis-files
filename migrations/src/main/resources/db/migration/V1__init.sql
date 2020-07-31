@@ -15,7 +15,8 @@ CREATE table transfer_tasks
     status                VARCHAR(128)             NOT NULL,
     bytes_transferred     BIGINT                   NOT NULL default 0,
     total_bytes           BIGINT                   NOT NULL default 0,
-    retries               INT                      NOT NULL default 0
+    retries               INT                      NOT NULL default 0,
+    final_message         VARCHAR
 );
 CREATE index on transfer_tasks (tenant_id, username, uuid);
 
@@ -35,9 +36,10 @@ CREATE TABLE transfer_tasks_child
     bytes_transferred     BIGINT                   NOT NULL default 0,
     total_bytes           BIGINT                   NOT NULL default 0,
     retries               INT                      NOT NULL default 0,
-    parent_task_id int REFERENCES transfer_tasks(id) ON DELETE CASCADE
-
+    parent_task_id int REFERENCES transfer_tasks(id) ON DELETE CASCADE,
+    final_message         VARCHAR
 );
+
 CREATE INDEX on transfer_tasks_child (tenant_id, username, parent_task_id);
 
 
