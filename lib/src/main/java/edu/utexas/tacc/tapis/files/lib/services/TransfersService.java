@@ -10,10 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.lib.models.*;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
@@ -41,6 +38,7 @@ public class TransfersService implements ITransfersService {
     private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
     private String PARENT_QUEUE = "tapis.files.transfers.parent";
     private String CHILD_QUEUE = "tapis.files.transfers.child";
+    private String CONTROL_QUEUE = "tapis.files.transfers.control";
     private static final int MAX_RETRIES = 5;
     private final Receiver receiver;
     private final Sender sender;
@@ -189,14 +187,6 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public Flux<AcknowledgableDelivery> streamParentMessages() {
-        ConsumeOptions options = new ConsumeOptions();
-        options.qos(1000);
-        Flux<AcknowledgableDelivery> parentMessageStream = receiver.consumeManualAck(PARENT_QUEUE, options);
-        return parentMessageStream
-            .delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
-    }
-
     private Mono<TransferTask> deserializeParentMessage(AcknowledgableDelivery message) {
         try {
             TransferTask child = mapper.readValue(message.getBody(), TransferTask.class);
@@ -217,10 +207,15 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    private Mono<TransferTask> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTask t) {
-        //TODO: Add task failure, set status etc
-        m.nack(false);
-        return Mono.empty();
+
+
+
+    public Flux<AcknowledgableDelivery> streamParentMessages() {
+        ConsumeOptions options = new ConsumeOptions();
+        options.qos(1000);
+        Flux<AcknowledgableDelivery> childMessageStream = receiver.consumeManualAck(PARENT_QUEUE, options);
+        return childMessageStream
+            .delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
     }
 
     public Flux<TransferTask> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
@@ -229,17 +224,23 @@ public class TransfersService implements ITransfersService {
             .flatMap(group ->
                 group
                     .publishOn(Schedulers.newBoundedElastic(20,1,"pool"+group.key()))
-                    .flatMap(m->deserializeParentMessage(m)
+                    .flatMap(m->
+                        deserializeParentMessage(m)
                         .flatMap(t1->Mono.fromCallable(()-> doParentChevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e -> doErrorParentChevronOne(m, e, t1)))
                         .flatMap(t2->{
                             m.ack();
                             return Mono.just(t2);
                         })
                     )
-
             );
     }
 
+    private Mono<TransferTask> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTask t) {
+        //TODO: Add task failure, set status etc
+        log.error(e.getMessage(), e);
+        m.nack(false);
+        return Mono.empty();
+    }
 
     public TransferTask doParentChevronOne(TransferTask parentTask) throws ServiceException {
         log.info("***** DOING doParentChevronOne ****");
@@ -331,6 +332,7 @@ public class TransfersService implements ITransfersService {
                 g.flatMap(
                     //Wwe need the message in scope so we can ack/nack it later
                     m -> deserializeChildMessage(m)
+                        .takeUntilOther(streamControlMessages().filter(ctrl->ctrl.getAction().equals("CANCEL")))
                         .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t1)))
                         .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t2)))
                         .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t3)))
@@ -392,6 +394,26 @@ public class TransfersService implements ITransfersService {
             throw new ServiceException(ex.getMessage(), ex);
         }
 
+    }
+
+    private Mono<ControlMessage> deserializeControlMessage(AcknowledgableDelivery message) {
+        try {
+            ControlMessage controlMessage = mapper.readValue(message.getBody(), ControlMessage.class);
+            return Mono.just(controlMessage);
+        } catch (IOException ex) {
+            // DO NOT requeue the message if it fails here!
+            message.nack(false);
+            return Mono.empty();
+        }
+    }
+
+    public Flux<ControlMessage> streamControlMessages() {
+        ConsumeOptions options = new ConsumeOptions();
+        options.qos(1000);
+        Flux<AcknowledgableDelivery> controlMessageStream = receiver.consumeManualAck(CONTROL_QUEUE, options);
+        return controlMessageStream
+            .delaySubscription(sender.declareQueue(QueueSpecification.queue(CONTROL_QUEUE)))
+            .flatMap(this::deserializeControlMessage);
     }
 
     /**

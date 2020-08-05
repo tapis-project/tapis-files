@@ -16,20 +16,21 @@
     <properties>
         <tapis-client-java.version>1.10</tapis-client-java.version>
         <tapis-shared.version>1.10</tapis-shared.version>
+        <javax.websockets.version>1.1</javax.websockets.version>
+        <javax.validation.version>2.0.1.Final</javax.validation.version>
         <skipITs>true</skipITs>
     </properties>
 
     <profiles>
         <profile>
-            <id>dev</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
+            <id>test</id>
             <properties>
-                <flyway.user>dev</flyway.user>
-                <flyway.password>dev</flyway.password>
-                <flyway.url>jdbc:postgresql://postgres/dev</flyway.url>
-                <flyway.skip>true</flyway.skip>
+                <flyway.user>test</flyway.user>
+                <flyway.password>test</flyway.password>
+                <flyway.url>jdbc:postgresql://localhost/test</flyway.url>
+                <flyway.skip>false</flyway.skip>
+                <skipITs>false</skipITs>
+<!--                <flyway.baselineOnMigrate>true</flyway.baselineOnMigrate>-->
             </properties>
         </profile>
         <profile>
@@ -213,6 +214,7 @@
         <module>api</module>
         <module>lib</module>
         <module>migrations</module>
+        <module>notifications</module>
     </modules>
 
 </project>

@@ -11,7 +11,6 @@
     <artifactId>tapis-files-api</artifactId>
 
 
-
     <dependencies>
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
@@ -69,10 +68,25 @@
             <artifactId>jersey-media-json-jackson</artifactId>
         </dependency>
         <dependency>
-    <groupId>javax.validation</groupId>
-    <artifactId>validation-api</artifactId>
-    <version>2.0.1.Final</version>
-</dependency>
+            <groupId>javax.validation</groupId>
+            <artifactId>validation-api</artifactId>
+            <version>${javax.validation.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.websocket</groupId>
+            <artifactId>javax.websocket-api</artifactId>
+            <version>${javax.websockets.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.tyrus</groupId>
+            <artifactId>tyrus-server</artifactId>
+            <version>1.12</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.tyrus</groupId>
+            <artifactId>tyrus-container-grizzly-server</artifactId>
+            <version>1.12</version>
+        </dependency>
     </dependencies>
 
     <build>
