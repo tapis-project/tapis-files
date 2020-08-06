@@ -2,12 +2,11 @@ package edu.utexas.tacc.tapis.files.notifications;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
+import edu.utexas.tacc.tapis.files.lib.services.NotificationsService;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -16,8 +15,6 @@ import javax.websocket.OnClose;
 import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.server.ServerEndpoint;
-import java.io.IOException;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 

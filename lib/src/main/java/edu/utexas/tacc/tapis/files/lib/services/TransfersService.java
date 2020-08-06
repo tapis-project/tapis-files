@@ -12,6 +12,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.*;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
+import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
 import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
@@ -30,6 +31,7 @@ import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,6 +49,7 @@ public class TransfersService implements ITransfersService {
     private final FileTransfersDAO dao;
     private final SystemsClientFactory systemsClientFactory;
     private final RemoteDataClientFactory remoteDataClientFactory;
+    private final NotificationsService notificationsService;
 
     private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]{
         TransferTaskStatus.FAILED,
@@ -58,7 +61,8 @@ public class TransfersService implements ITransfersService {
     public TransfersService(ParentTaskFSM fsm,
                             FileTransfersDAO dao,
                             SystemsClientFactory systemsClientFactory,
-                            RemoteDataClientFactory remoteDataClientFactory) {
+                            RemoteDataClientFactory remoteDataClientFactory,
+                            NotificationsService notificationsService) {
         ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
         ReceiverOptions receiverOptions = new ReceiverOptions()
             .connectionFactory(connectionFactory)
@@ -72,6 +76,7 @@ public class TransfersService implements ITransfersService {
         this.fsm = fsm;
         this.systemsClientFactory = systemsClientFactory;
         this.remoteDataClientFactory = remoteDataClientFactory;
+        this.notificationsService = notificationsService;
 
         //TODO: Test out rabbitmq connection and auto shut down if not available?
     }
@@ -271,6 +276,8 @@ public class TransfersService implements ITransfersService {
             parentTask.setTotalBytes(totalBytes);
             parentTask.setStatus(TransferTaskStatus.STAGED.name());
             parentTask = dao.updateTransferTask(parentTask);
+            String noteMessage = String.format("Transfer %s staged", parentTask.getUuid());
+            notificationsService.sendNotification(parentTask.getTenantId(), parentTask.getUsername(), noteMessage);
             return parentTask;
         } catch (Exception e) {
             throw new ServiceException(e.getMessage(), e);
@@ -336,9 +343,10 @@ public class TransfersService implements ITransfersService {
                         .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t1)))
                         .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t2)))
                         .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t3)))
-                        .flatMap(t4 -> {
+                        .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t4)))
+                        .flatMap(t5 -> {
                             m.ack();
-                            return Mono.just(t4);
+                            return Mono.just(t5);
                         })
                 )
             );
@@ -389,6 +397,8 @@ public class TransfersService implements ITransfersService {
                 parentTask.setStatus(TransferTaskStatus.IN_PROGRESS.name());
                 dao.updateTransferTask(parentTask);
             }
+            String noteMessage = String.format("Transfer in progress for %s", taskChild.getSourcePath());
+            notificationsService.sendNotification(taskChild.getTenantId(), taskChild.getUsername(), noteMessage);
             return taskChild;
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
@@ -396,25 +406,6 @@ public class TransfersService implements ITransfersService {
 
     }
 
-    private Mono<ControlMessage> deserializeControlMessage(AcknowledgableDelivery message) {
-        try {
-            ControlMessage controlMessage = mapper.readValue(message.getBody(), ControlMessage.class);
-            return Mono.just(controlMessage);
-        } catch (IOException ex) {
-            // DO NOT requeue the message if it fails here!
-            message.nack(false);
-            return Mono.empty();
-        }
-    }
-
-    public Flux<ControlMessage> streamControlMessages() {
-        ConsumeOptions options = new ConsumeOptions();
-        options.qos(1000);
-        Flux<AcknowledgableDelivery> controlMessageStream = receiver.consumeManualAck(CONTROL_QUEUE, options);
-        return controlMessageStream
-            .delaySubscription(sender.declareQueue(QueueSpecification.queue(CONTROL_QUEUE)))
-            .flatMap(this::deserializeControlMessage);
-    }
 
     /**
      * Chevron 2: The meat of the operation. We get remote clients for source and dest and send bytes
@@ -451,14 +442,24 @@ public class TransfersService implements ITransfersService {
 
         //Step 3: Stream the file contents to dest
         try {
-            InputStream sourceStream = sourceClient.getStream(taskChild.getSourcePath());
-            destClient.insert(taskChild.getDestinationPath(), sourceStream);
+            InputStream sourceStream =  sourceClient.getStream(taskChild.getSourcePath());
+            ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream);
+            // Observe the progress event stream
+            observableInputStream.getEventStream()
+                .limitRate(100, 10)
+                .publishOn(Schedulers.elastic())
+                .subscribe(this::updateProgress);
+            destClient.insert(taskChild.getDestinationPath(), observableInputStream);
         } catch (IOException | NotFoundException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
             throw new ServiceException(msg, ex);
 
         }
         return taskChild;
+    }
+
+    private void updateProgress(Long aLong) {
+        log.info(aLong.toString());
     }
 
     /**
@@ -473,13 +474,30 @@ public class TransfersService implements ITransfersService {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
             taskChild = dao.updateTransferTaskChild(taskChild);
-            dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getTotalBytes());
+            parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getTotalBytes());
+            String noteMessage = String.format("Transfer completed for %s", taskChild.getSourcePath());
+            notificationsService.sendNotification(taskChild.getTenantId(), taskChild.getUsername(), noteMessage);
+            return taskChild;
+        } catch (DAOException ex) {
+            String msg = String.format("Error updating child task %s", taskChild.toString());
+            throw new ServiceException(msg, ex);
+        }
+    }
 
+    private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
+        log.info("***** DOING chevronFour **** {}", taskChild);
+        try {
+            TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             // Check to see if all the children are complete. If so, update the parent task
-            long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getParentTaskId());
-            if (incompleteCount == 0) {
-                parentTask.setStatus(TransferTaskStatus.COMPLETED.name());
-                dao.updateTransferTask(parentTask);
+            // TODO: Race condition
+            if (!parentTask.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
+                long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getParentTaskId());
+                if (incompleteCount == 0) {
+                    parentTask.setStatus(TransferTaskStatus.COMPLETED.name());
+                    dao.updateTransferTask(parentTask);
+                    String noteMessage = String.format("Transfer %s complete", parentTask.getUuid());
+                    notificationsService.sendNotification(taskChild.getTenantId(), taskChild.getUsername(), noteMessage);
+                }
             }
             return taskChild;
         } catch (DAOException ex) {
@@ -489,4 +507,23 @@ public class TransfersService implements ITransfersService {
     }
 
 
+    private Mono<ControlMessage> deserializeControlMessage(AcknowledgableDelivery message) {
+        try {
+            ControlMessage controlMessage = mapper.readValue(message.getBody(), ControlMessage.class);
+            return Mono.just(controlMessage);
+        } catch (IOException ex) {
+            // DO NOT requeue the message if it fails here!
+            message.nack(false);
+            return Mono.empty();
+        }
+    }
+
+    public Flux<ControlMessage> streamControlMessages() {
+        ConsumeOptions options = new ConsumeOptions();
+        options.qos(1000);
+        Flux<AcknowledgableDelivery> controlMessageStream = receiver.consumeManualAck(CONTROL_QUEUE, options);
+        return controlMessageStream
+            .delaySubscription(sender.declareQueue(QueueSpecification.queue(CONTROL_QUEUE)))
+            .flatMap(this::deserializeControlMessage);
+    }
 }

@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.notifications;
+package edu.utexas.tacc.tapis.files.lib.services;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;

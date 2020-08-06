@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.notifications;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.services.NotificationsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -15,7 +16,7 @@ public class NoteSender {
     private static final NotificationsService notificationsService = new NotificationsService();
 
     public static void main(String[] args) throws Exception{
-        Flux.interval(Duration.ofMillis(10))
+        Flux.interval(Duration.ofMillis(1000))
             .publishOn(Schedulers.newElastic("sender"))
             .take(100)
             .flatMap(tick->{

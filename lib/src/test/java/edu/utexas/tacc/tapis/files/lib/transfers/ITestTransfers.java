@@ -13,10 +13,7 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
-import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.files.lib.services.ITransfersService;
-import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
+import edu.utexas.tacc.tapis.files.lib.services.*;
 import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
@@ -118,6 +115,7 @@ public class ITestTransfers {
                 bindAsContract(FileTransfersDAO.class);
                 bindAsContract(TransfersService.class);
                 bindAsContract(RemoteDataClientFactory.class);
+                bindAsContract(NotificationsService.class);
                 bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
 
                 bind(systemsClientFactory).to(SystemsClientFactory.class);
@@ -164,8 +162,10 @@ public class ITestTransfers {
     public void testUpdatesTransferSize() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
-        String qname = UUID.randomUUID().toString();
-        transfersService.setParentQueue(qname);
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
         TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
             sourceSystem.getName(),
             "/",
@@ -183,14 +183,20 @@ public class ITestTransfers {
         TransferTask task = transfersService.getTransferTaskByUUID(t1.getUuid());
         // The total size should be the sum of the 2 files inserted into the bucket in beforeTest()
         Assert.assertEquals(task.getTotalBytes(), 2 * 10 * 1024);
+
+        transfersService.deleteQueue(childQ);
+        transfersService.deleteQueue(parentQ);
+
     }
 
     @Test
     public void testDoesListingAndCreatesChildTasks() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
-        String qname = UUID.randomUUID().toString();
-        transfersService.setParentQueue(qname);
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
         TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
             sourceSystem.getName(),
             "/file1.txt",
@@ -220,6 +226,9 @@ public class ITestTransfers {
             .verify();
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
         Assert.assertEquals(children.size(), 1);
+
+        transfersService.deleteQueue(childQ);
+        transfersService.deleteQueue(parentQ);
     }
 
     @Test
@@ -232,8 +241,11 @@ public class ITestTransfers {
         fileOpsService.insert("a/1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("a/2.txt", in);
-        String qname = UUID.randomUUID().toString();
-        transfersService.setParentQueue(qname);
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
+
         TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
             sourceSystem.getName(),
             "/a/",
@@ -249,11 +261,15 @@ public class ITestTransfers {
                 Assert.assertEquals(t.getStatus(), "STAGED");
                 Assert.assertEquals(t.getId(), t1.getId());
             })
-            .then(()->transfersService.deleteQueue(qname))
             .thenCancel()
             .verify();
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
         Assert.assertEquals(children.size(), 2);
+
+        transfersService.deleteQueue(childQ);
+        transfersService.deleteQueue(parentQ);
+
+
     }
 
     @Test
@@ -264,12 +280,14 @@ public class ITestTransfers {
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
         IFileOpsService fileOpsService = new FileOpsService(sourceClient);
         //Add some files to transfer
-        InputStream in = Utils.makeFakeFile(10 * 1024);
+        InputStream in = Utils.makeFakeFile(10 * 1000 * 1024);
         fileOpsService.insert("a/1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("a/2.txt", in);
-        String qname = UUID.randomUUID().toString();
-        transfersService.setParentQueue(qname);
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
 
         TransferTask t1 = transfersService.createTransfer(
             "testUser1",
@@ -306,7 +324,8 @@ public class ITestTransfers {
             .verify();
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 2);
-
+        transfersService.deleteQueue(childQ);
+        transfersService.deleteQueue(parentQ);
     }
 
     @Test
@@ -321,8 +340,10 @@ public class ITestTransfers {
         fileOpsService.insert("a/1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("a/2.txt", in);
-        String qname = UUID.randomUUID().toString();
-        transfersService.setChildQueue(qname);
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
 
         TransferTask t1 = transfersService.createTransfer(
             "testUser1",
@@ -356,7 +377,9 @@ public class ITestTransfers {
         IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 2);
-        transfersService.deleteQueue(qname);
+        transfersService.deleteQueue(childQ);
+        transfersService.deleteQueue(parentQ);
+
     }
 
     @Test
@@ -367,7 +390,7 @@ public class ITestTransfers {
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
         IFileOpsService fileOpsService = new FileOpsService(sourceClient);
         //Add some files to transfer
-        InputStream in = Utils.makeFakeFile(10 * 1024);
+        InputStream in = Utils.makeFakeFile(10000 * 1024);
         fileOpsService.insert("/a/1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("/a/2.txt", in);
@@ -385,14 +408,14 @@ public class ITestTransfers {
             "/b/"
         );
 
-        TransferTask t2 = transfersService.createTransfer(
-            "testUser1",
-            "dev",
-            sourceSystem.getName(),
-            "/a/",
-            destSystem.getName(),
-            "/b/"
-        );
+//        TransferTask t2 = transfersService.createTransfer(
+//            "testUser1",
+//            "dev",
+//            sourceSystem.getName(),
+//            "/a/",
+//            destSystem.getName(),
+//            "/b/"
+//        );
 
         Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
         Flux<TransferTask> parentStream = transfersService.processParentTasks(parentMessageStream);
@@ -401,9 +424,7 @@ public class ITestTransfers {
         Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
         stream.subscribe(taskChild -> log.info(taskChild.toString()));
-
         IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
-
         Thread.sleep(2000);
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 2);
