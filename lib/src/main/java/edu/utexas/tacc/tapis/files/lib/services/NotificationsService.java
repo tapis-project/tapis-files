@@ -20,7 +20,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 
 @Service
-public class NotificationsService {
+public class NotificationsService implements INotificationsService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationsService.class);
     private static final int MAX_RETRIES = 5;
@@ -43,6 +43,7 @@ public class NotificationsService {
         sender = RabbitFlux.createSender(senderOptions);
     }
 
+    @Override
     public void sendNotification(String tenantId, String recipient, String message) throws ServiceException {
         try {
             FilesNotification note = new FilesNotification(tenantId, recipient, message);
@@ -65,6 +66,7 @@ public class NotificationsService {
         }
     }
 
+    @Override
     public Flux<FilesNotification> streamNotifications() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);

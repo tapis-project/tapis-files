@@ -89,6 +89,11 @@ public class TransfersService implements ITransfersService {
         this.CHILD_QUEUE = name;
     }
 
+    public void setControlQueue(String name) {
+        this.CONTROL_QUEUE = name;
+    }
+
+
 
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskId) throws ServiceException {
         try {
@@ -247,7 +252,7 @@ public class TransfersService implements ITransfersService {
         return Mono.empty();
     }
 
-    public TransferTask doParentChevronOne(TransferTask parentTask) throws ServiceException {
+    private TransferTask doParentChevronOne(TransferTask parentTask) throws ServiceException {
         log.info("***** DOING doParentChevronOne ****");
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
@@ -288,8 +293,6 @@ public class TransfersService implements ITransfersService {
     /**
      * Child task message processing
      */
-
-
     public void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
         try {
             String m = mapper.writeValueAsString(childTask);
@@ -329,12 +332,19 @@ public class TransfersService implements ITransfersService {
     }
 
 
+    /**
+     * This is the main processing workflow. Starting with the raw message stream created by streamChildMessages(),
+     * we walk through the transfer process. A Flux<TransferTaskChild> is returned and can be subscribed to later
+     * for further processing / notifications / logging
+     * @param messageStream
+     * @return
+     */
     public Flux<TransferTaskChild> processChildTasks(@NotNull Flux<AcknowledgableDelivery> messageStream) {
         // Deserialize the message so that we can pass that into the reactor chain.
         return messageStream
             .groupBy(this::groupByParentTask)
             .log()
-            .map(group -> group.publishOn(Schedulers.newBoundedElastic(6, 1 , "childPool::" + group.key())))
+            .map(group -> group.publishOn(Schedulers.newBoundedElastic(6, 1 , "childPool")))
             .flatMap(g ->
                 g.flatMap(
                     //Wwe need the message in scope so we can ack/nack it later
@@ -352,6 +362,13 @@ public class TransfersService implements ITransfersService {
             );
     }
 
+    /**
+     *
+     * @param message Message from rabbitmq
+     * @param ex Exception that was thrown
+     * @param task the Child task that failed
+     * @return
+     */
     private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
         message.nack(false);
         log.error("ERROR: {}", task);
@@ -446,9 +463,11 @@ public class TransfersService implements ITransfersService {
             ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream);
             // Observe the progress event stream
             observableInputStream.getEventStream()
-                .limitRate(100, 10)
-                .publishOn(Schedulers.elastic())
-                .subscribe(this::updateProgress);
+                .window(Duration.ofMillis(10))//bundle ev
+                .flatMap(window->window.takeLast(1))
+                .flatMap(this::updateProgress)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe();
             destClient.insert(taskChild.getDestinationPath(), observableInputStream);
         } catch (IOException | NotFoundException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
@@ -458,8 +477,9 @@ public class TransfersService implements ITransfersService {
         return taskChild;
     }
 
-    private void updateProgress(Long aLong) {
+    private Mono<Long> updateProgress(Long aLong) {
         log.info(aLong.toString());
+        return Mono.just(aLong);
     }
 
     /**
@@ -518,6 +538,11 @@ public class TransfersService implements ITransfersService {
         }
     }
 
+
+    /**
+     * Stream the messages coming off of the CONTROL_QUEUE
+     * @return A flux of ControlMessage
+     */
     public Flux<ControlMessage> streamControlMessages() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);

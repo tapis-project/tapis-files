@@ -9,7 +9,6 @@ public class NotificationsApp {
 
     public static void main(String[] args) {
         Server server = new Server("localhost", 8081, "/", null, NotificationsResource.class);
-
         try {
             server.start();
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));

@@ -390,10 +390,8 @@ public class ITestTransfers {
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
         IFileOpsService fileOpsService = new FileOpsService(sourceClient);
         //Add some files to transfer
-        InputStream in = Utils.makeFakeFile(10000 * 1024);
-        fileOpsService.insert("/a/1.txt", in);
-        in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert("/a/2.txt", in);
+        fileOpsService.insert("/a/1.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.insert("/a/2.txt", Utils.makeFakeFile(10 * 1024));
         String childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(childQ);
         String parentQ = UUID.randomUUID().toString();
@@ -425,7 +423,9 @@ public class ITestTransfers {
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
         stream.subscribe(taskChild -> log.info(taskChild.toString()));
         IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
-        Thread.sleep(2000);
+        // MUST sleep here for a bit for a bit for things to resolve. Alternatively could
+        // use a StepVerifier or put some of this in the subscribe callback
+        Thread.sleep(1000);
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 2);
         t1 = transfersService.getTransferTask(t1.getId());
