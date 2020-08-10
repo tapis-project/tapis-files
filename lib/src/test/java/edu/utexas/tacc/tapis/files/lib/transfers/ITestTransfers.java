@@ -434,4 +434,60 @@ public class ITestTransfers {
         transfersService.deleteQueue(childQ);
     }
 
+
+    @Test
+    public void testPerformance() throws Exception {
+        when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        IFileOpsService fileOpsServiceSource = new FileOpsService(sourceClient);
+
+        // 10 tenants with 100 transfers of 10 files
+        Map<String, Tenant> tenantMap = new HashMap<>();
+        when(tenantManager.getTenants()).thenReturn(tenantMap);
+
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
+
+        //Add some files to transfer
+
+        for (var i=0;i<10;i++) {
+            //Add some files to the source bucket
+            String fname = String.format("/a/%s.txt", i);
+            fileOpsServiceSource.insert(fname, Utils.makeFakeFile(10000 * 1024));
+        }
+        for (var i=0;i<1;i++) {
+            var tenant = new Tenant();
+            tenant.setTenantId("testTenant"+i);
+            tenant.setBaseUrl("https://test.tapis.io");
+            tenantMap.put(tenant.getTenantId(), tenant);
+
+            for (var j=0;j<1;j++) {
+               transfersService.createTransfer(
+                    "testUser1",
+                    "tenant"+i,
+                    sourceSystem.getName(),
+                    "/a/",
+                    destSystem.getName(),
+                    "/b/"
+                );
+            }
+        }
+
+
+
+        Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
+        Flux<TransferTask> parentStream = transfersService.processParentTasks(parentMessageStream);
+        parentStream.subscribe();
+
+        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
+        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
+        stream.subscribe(taskChild -> log.info(taskChild.toString()));
+        stream.blockLast();
+        transfersService.deleteQueue(parentQ);
+        transfersService.deleteQueue(childQ);
+    }
 }

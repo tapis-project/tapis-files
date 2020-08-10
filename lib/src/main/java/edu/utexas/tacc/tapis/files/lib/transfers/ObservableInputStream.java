@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
+import org.jetbrains.annotations.NotNull;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
@@ -19,6 +20,8 @@ import java.io.InputStream;
 public class ObservableInputStream extends FilterInputStream {
 
     private final EmitterProcessor<Long> events = EmitterProcessor.create();
+    private final FluxSink<Long> sink = events.sink();
+
     public ObservableInputStream(InputStream in) {
         super(in);
 
@@ -32,12 +35,12 @@ public class ObservableInputStream extends FilterInputStream {
     }
 
     @Override
-    public int read(byte[] b) throws IOException {
+    public int read(@NotNull byte[] b) throws IOException {
         return read(b, 0, b.length);
     }
 
     @Override
-    public int read(byte[] b, int off, int len) throws IOException {
+    public int read(@NotNull byte[] b, int off, int len) throws IOException {
         return (int) updateProgress(super.read(b, off, len));
     }
 
@@ -49,10 +52,10 @@ public class ObservableInputStream extends FilterInputStream {
         if (bytesRead != -1) {
             this.totalBytesRead += bytesRead;
             // Send event to whoever is listening
-            events.onNext(this.totalBytesRead);
+            sink.next(this.totalBytesRead);
         } else {
             // If no more bytes, kill off the emitter also
-            events.onComplete();
+            sink.complete();
         }
         return bytesRead;
     }
