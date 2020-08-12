@@ -26,7 +26,8 @@ public class FileTransfersDAOStatements {
     public static final String UPDATE_CHILD_TASK =
         "UPDATE transfer_tasks_child " +
             " SET bytes_transferred = ?, " +
-            "     status = ? " +
+            "     status = ?, " +
+            "     retries = ? " +
             "WHERE id = ? " +
             "RETURNING transfer_tasks_child.*";
 

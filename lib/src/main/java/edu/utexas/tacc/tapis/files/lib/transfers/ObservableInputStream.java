@@ -24,7 +24,6 @@ public class ObservableInputStream extends FilterInputStream {
 
     public ObservableInputStream(InputStream in) {
         super(in);
-
     }
     private long totalBytesRead = 0L;
 

@@ -49,7 +49,6 @@ public class NotificationsResource {
 
     @OnOpen
     public void onOpen(Session s) {
-        log.info("******************************************************************");
         sessions.add(s);
     }
 

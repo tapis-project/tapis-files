@@ -88,7 +88,7 @@ public class SSHDataClient implements IRemoteDataClient {
                 throw new IOException(msg);
             }
         } finally {
-            channelSftp.disconnect();
+            sshConnection.returnChannel(channelSftp);
         }
 
         // For each entry in the fileList received, get the fileInfo object
@@ -152,7 +152,7 @@ public class SSHDataClient implements IRemoteDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            channelSftp.disconnect();
+           sshConnection.returnChannel(channelSftp);
         }
 
     }
@@ -176,7 +176,7 @@ public class SSHDataClient implements IRemoteDataClient {
             log.error("Error inserting file to {}", systemId, ex);
             throw new IOException("Error inserting file into " + systemId);
         } finally {
-            channelSftp.disconnect();
+            sshConnection.returnChannel(channelSftp);
         }
     }
 
@@ -217,7 +217,7 @@ public class SSHDataClient implements IRemoteDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            channelSftp.disconnect();
+            sshConnection.returnChannel(channelSftp);
         }
     }
 
@@ -249,7 +249,10 @@ public class SSHDataClient implements IRemoteDataClient {
                 log.error(msg, e);
                 throw new IOException(msg, e);
             }
+        } finally {
+            sshConnection.returnChannel(channelSftp);
         }
+
     }
 
 
@@ -318,7 +321,7 @@ public class SSHDataClient implements IRemoteDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            channelSftp.disconnect();
+            sshConnection.returnChannel(channelSftp);
         }
     }
 
@@ -340,7 +343,7 @@ public class SSHDataClient implements IRemoteDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            channelSftp.disconnect();
+            sshConnection.returnChannel(channelSftp);
         }
     }
 
@@ -389,7 +392,7 @@ public class SSHDataClient implements IRemoteDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            channel.disconnect();
+            sshConnection.returnChannel(channel);
         }
     }
 
@@ -405,14 +408,16 @@ public class SSHDataClient implements IRemoteDataClient {
 
     private ChannelSftp openAndConnectSFTPChannel() throws IOException {
         String CHANNEL_TYPE = "sftp";
-        ChannelSftp channel = (ChannelSftp) sshConnection.openChannel(CHANNEL_TYPE);
-
+        log.info("Current channel count is {}", sshConnection.getChannelCount());
+        //TODO: This will fail with a strange error if the max channels per connection limit is reached.
+        //TODO: Need to find a way to pool channels?
         try {
-            channel.connect();
+            ChannelSftp channel = (ChannelSftp) sshConnection.openChannel(CHANNEL_TYPE);
+            channel.connect(10*1000);
             return channel;
         } catch (JSchException e) {
-            log.error("ERROR: Could not open SSH channel");
-            throw new IOException("Could not open ssh connection");
+            log.error("ERROR: Could not open SSH channel", e);
+            throw new IOException("Could not open ssh connection", e);
         }
     }
 

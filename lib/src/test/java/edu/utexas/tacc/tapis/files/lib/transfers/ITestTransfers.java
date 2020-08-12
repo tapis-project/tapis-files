@@ -13,7 +13,10 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
-import edu.utexas.tacc.tapis.files.lib.services.*;
+import edu.utexas.tacc.tapis.files.lib.services.NotificationsService;
+import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
@@ -23,6 +26,7 @@ import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
+import org.apache.commons.io.IOUtils;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
@@ -39,6 +43,8 @@ import reactor.test.StepVerifier;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -51,6 +57,8 @@ public class ITestTransfers {
     private static final Logger log = LoggerFactory.getLogger(ITestTransfers.class);
     private TSystem sourceSystem;
     private TSystem destSystem;
+    private TSystem testSystemSSH;
+
     private IRemoteDataClientFactory remoteDataClientFactory;
     private ServiceLocator locator;
 
@@ -63,9 +71,33 @@ public class ITestTransfers {
 
     @BeforeSuite
     private void doBeforeSuite() throws Exception {
+        String privateKey = IOUtils.toString(
+            this.getClass().getResourceAsStream("/test-machine"),
+            StandardCharsets.UTF_8
+        );
+        String publicKey = IOUtils.toString(
+            this.getClass().getResourceAsStream("/test-machine.pub"),
+            StandardCharsets.UTF_8
+        );
+
+        //SSH system with username/password
+        Credential creds = new Credential();
+        creds.setAccessKey("testuser");
+        creds.setPassword("password");
+        testSystemSSH = new TSystem();
+        testSystemSSH.setAccessCredential(creds);
+        testSystemSSH.setHost("localhost");
+        testSystemSSH.setPort(2222);
+        testSystemSSH.setRootDir("/data/home/testuser/");
+        testSystemSSH.setName("destSystem");
+        testSystemSSH.setEffectiveUserId("testuser");
+        testSystemSSH.setDefaultAccessMethod(TSystem.DefaultAccessMethodEnum.PASSWORD);
+        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
+        transferMechs.add(TSystem.TransferMethodsEnum.SFTP);
+        testSystemSSH.setTransferMethods(transferMechs);
 
         //S3 system
-        var creds = new Credential();
+        creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
         sourceSystem = new TSystem();
@@ -76,7 +108,7 @@ public class ITestTransfers {
         sourceSystem.setPort(9000);
         sourceSystem.setAccessCredential(creds);
         sourceSystem.setRootDir("/");
-        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
+        transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
         sourceSystem.setTransferMethods(transferMechs);
 
@@ -435,14 +467,13 @@ public class ITestTransfers {
     }
 
 
-    @Test
+    @Test(groups = {"performance"})
     public void testPerformance() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
         IFileOpsService fileOpsServiceSource = new FileOpsService(sourceClient);
-
         // 10 tenants with 100 transfers of 10 files
         Map<String, Tenant> tenantMap = new HashMap<>();
         when(tenantManager.getTenants()).thenReturn(tenantMap);
@@ -453,7 +484,7 @@ public class ITestTransfers {
         transfersService.setParentQueue(parentQ);
 
         //Add some files to transfer
-
+        fileOpsServiceSource.delete("/");
         for (var i=0;i<10;i++) {
             //Add some files to the source bucket
             String fname = String.format("/a/%s.txt", i);
@@ -485,7 +516,71 @@ public class ITestTransfers {
 
         Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
-        stream.subscribe(taskChild -> log.info(taskChild.toString()));
+        stream.subscribe(taskChild -> {
+            log.warn("CURRENT THREAD COUNT: {}", ManagementFactory.getThreadMXBean().getThreadCount() );
+            log.info(taskChild.toString());
+        });
+        stream.blockLast();
+        transfersService.deleteQueue(parentQ);
+        transfersService.deleteQueue(childQ);
+    }
+
+    @Test(groups = {"performance"})
+    public void testS3toSSH() throws Exception {
+        when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(testSystemSSH);
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        IFileOpsService fileOpsServiceSource = new FileOpsService(sourceClient);
+        // 10 tenants with 100 transfers of 10 files
+        Map<String, Tenant> tenantMap = new HashMap<>();
+        when(tenantManager.getTenants()).thenReturn(tenantMap);
+
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
+
+        int NUMFILES = 2;
+        int NUMTENANTS = 5;
+        int NUMTRANSFERS = 1;
+
+        //Add some files to transfer
+        fileOpsServiceSource.delete("/");
+        for (var i=0;i<NUMFILES;i++) {
+            //Add some files to the source bucket
+            String fname = String.format("/a/%s.txt", i);
+            fileOpsServiceSource.insert(fname, Utils.makeFakeFile(100000 * 1024));
+        }
+        for (var i=0;i<NUMTENANTS;i++) {
+            var tenant = new Tenant();
+            tenant.setTenantId("testTenant"+i);
+            tenant.setBaseUrl("https://test.tapis.io");
+            tenantMap.put(tenant.getTenantId(), tenant);
+
+            for (var j=0;j<NUMTRANSFERS;j++) {
+                transfersService.createTransfer(
+                    "testuser",
+                    "tenant"+i,
+                    sourceSystem.getName(),
+                    "/a/",
+                    destSystem.getName(),
+                    "/b/"
+                );
+            }
+        }
+
+
+
+        Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
+        Flux<TransferTask> parentStream = transfersService.processParentTasks(parentMessageStream);
+        parentStream.subscribe();
+
+        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
+        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
+        stream.subscribe(taskChild -> {
+            log.info(taskChild.toString());
+        });
         stream.blockLast();
         transfersService.deleteQueue(parentQ);
         transfersService.deleteQueue(childQ);

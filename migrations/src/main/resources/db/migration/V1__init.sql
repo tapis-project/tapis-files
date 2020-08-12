@@ -42,7 +42,7 @@ CREATE TABLE transfer_tasks_child
 
 CREATE INDEX on transfer_tasks_child (tenant_id, username, parent_task_id);
 
-
+DROP TABLE IF EXISTS transfer_task_child_events CASCADE;
 CREATE TABLE transfer_task_child_events
 (
     id            serial PRIMARY KEY,

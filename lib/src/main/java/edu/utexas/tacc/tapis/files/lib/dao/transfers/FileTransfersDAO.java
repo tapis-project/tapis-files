@@ -38,6 +38,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
             task.setDestinationSystemId(rs.getString("destination_system_id"));
             task.setDestinationPath(rs.getString("destination_path"));
             task.setCreated(rs.getTimestamp("created").toInstant());
+            task.setRetries(rs.getInt("retries"));
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
             task.setTotalBytes(rs.getLong("total_bytes"));
@@ -69,6 +70,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
             task.setDestinationSystemId(rs.getString("destination_system_id"));
             task.setDestinationPath(rs.getString("destination_path"));
             task.setCreated(rs.getTimestamp("created").toInstant());
+            task.setRetries(rs.getInt("retries"));
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
             task.setTotalBytes(rs.getLong("total_bytes"));
@@ -200,6 +202,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
             TransferTaskChild updatedTask = runner.query(connection, stmt, handler,
                 task.getBytesTransferred(),
                 task.getStatus(),
+                task.getRetries(),
                 task.getId()
             );
             return updatedTask;

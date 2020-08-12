@@ -95,8 +95,6 @@ public class TransfersService implements ITransfersService {
         this.CONTROL_QUEUE = name;
     }
 
-
-
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskId) throws ServiceException {
         try {
             TransferTask task = dao.getTransferTaskByUUID(transferTaskId);
@@ -374,22 +372,35 @@ public class TransfersService implements ITransfersService {
                 }
             })
             .flatMap(group-> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(6, 1, "ChildPool:"+group.key());
+                Scheduler scheduler = Schedulers.newBoundedElastic(6,10,"ChildPool:"+group.key());
                 return group
                     .publishOn(scheduler)
                     .flatMap(
                         //Wwe need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
-                            .takeUntilOther(streamControlMessages().filter(ctrl -> ctrl.getAction().equals("CANCEL")))
-                            .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t1)))
-                            .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t2)))
-                            .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t3)))
-                            .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4)).retry(MAX_RETRIES).onErrorResume(e -> doErrorChevronOne(m, e, t4)))
+                            .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
+                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60))
+                                .onErrorResume(e -> doErrorChevronOne(m, e, t1))
+                            )
+                            .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2))
+                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60))
+                                .publishOn(scheduler)
+                                .onErrorResume(e -> doErrorChevronOne(m, e, t2))
+                            )
+                            .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
+                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60))
+                                .onErrorResume(e -> doErrorChevronOne(m, e, t3))
+                            )
+                            .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4))
+                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60))
+                                .onErrorResume(e -> doErrorChevronOne(m, e, t4))
+                            )
                             .flatMap(t5 -> {
                                 m.ack();
                                 return Mono.just(t5);
                             })
-                            .flatMap(t6->Mono.fromCallable(()->chevronFive(t6, scheduler)))
+                          .flatMap(t6->Mono.fromCallable(()->chevronFive(t6, scheduler)))
+
                     );
             });
     }
@@ -493,15 +504,14 @@ public class TransfersService implements ITransfersService {
         //Step 3: Stream the file contents to dest
         try {
             InputStream sourceStream =  sourceClient.getStream(taskChild.getSourcePath());
-            ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream);
+//            ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream);
             // Observe the progress event stream
-            observableInputStream.getEventStream()
-                .window(Duration.ofMillis(100))//bundle ev
-                .flatMap(window->window.takeLast(1))
-                .flatMap(this::updateProgress)
-                .publishOn(Schedulers.boundedElastic())
-                .subscribe();
-            destClient.insert(taskChild.getDestinationPath(), observableInputStream);
+//            observableInputStream.getEventStream()
+//                .window(Duration.ofMillis(100))
+//                .flatMap(window->window.takeLast(1))
+//                .flatMap(this::updateProgress)
+//                .subscribe();
+            destClient.insert(taskChild.getDestinationPath(), sourceStream);
 
         } catch (IOException | NotFoundException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
@@ -512,7 +522,7 @@ public class TransfersService implements ITransfersService {
     }
 
     private Mono<Long> updateProgress(Long aLong) {
-        log.info(aLong.toString());
+//        log.info(aLong.toString());
         return Mono.just(aLong);
     }
 
@@ -539,7 +549,7 @@ public class TransfersService implements ITransfersService {
     }
 
     private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        log.error("***** DOING chevronFour **** {}", taskChild);
+        log.info("***** DOING chevronFour **** {}", taskChild);
         try {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             // Check to see if all the children are complete. If so, update the parent task
@@ -561,11 +571,15 @@ public class TransfersService implements ITransfersService {
     }
 
     private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild, Scheduler scheduler) throws ServiceException {
-        log.error("***** DOING chevronFive **** {}", taskChild);
+        log.info("***** DOING chevronFive **** {}", taskChild);
         try {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             if (parentTask.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
+                log.info(scheduler.toString());
                 scheduler.dispose();
+                log.warn("PARENT TASK {} COMPLETE", parentTask.getId());
+                log.warn("CHILD TASK RETRIES: {}", taskChild.getRetries());
+                log.warn("SCHEDULER DISPOSED: {}", scheduler.isDisposed());
             }
             return taskChild;
         } catch (DAOException ex) {
