@@ -372,27 +372,26 @@ public class TransfersService implements ITransfersService {
                 }
             })
             .flatMap(group-> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(6,10,"ChildPool:"+group.key());
+                Scheduler scheduler = Schedulers.newBoundedElastic(6,1,"ChildPool:"+group.key());
                 return group
                     .publishOn(scheduler)
                     .flatMap(
                         //Wwe need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
                             .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
-                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60))
+                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60), scheduler)
                                 .onErrorResume(e -> doErrorChevronOne(m, e, t1))
                             )
                             .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2))
-                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60))
-                                .publishOn(scheduler)
+                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60), scheduler)
                                 .onErrorResume(e -> doErrorChevronOne(m, e, t2))
                             )
                             .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
-                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60))
+                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60), scheduler)
                                 .onErrorResume(e -> doErrorChevronOne(m, e, t3))
                             )
                             .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4))
-                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60))
+                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60), scheduler)
                                 .onErrorResume(e -> doErrorChevronOne(m, e, t4))
                             )
                             .flatMap(t5 -> {
@@ -504,14 +503,15 @@ public class TransfersService implements ITransfersService {
         //Step 3: Stream the file contents to dest
         try {
             InputStream sourceStream =  sourceClient.getStream(taskChild.getSourcePath());
-//            ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream);
+            ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream);
             // Observe the progress event stream
-//            observableInputStream.getEventStream()
-//                .window(Duration.ofMillis(100))
-//                .flatMap(window->window.takeLast(1))
-//                .flatMap(this::updateProgress)
-//                .subscribe();
-            destClient.insert(taskChild.getDestinationPath(), sourceStream);
+            observableInputStream.getEventStream()
+                .window(Duration.ofMillis(1000))
+                .flatMap(window->window.takeLast(1))
+                .publishOn(Schedulers.boundedElastic())
+                .flatMap(this::updateProgress)
+                .subscribe();
+            destClient.insert(taskChild.getDestinationPath(), observableInputStream);
 
         } catch (IOException | NotFoundException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
@@ -522,7 +522,7 @@ public class TransfersService implements ITransfersService {
     }
 
     private Mono<Long> updateProgress(Long aLong) {
-//        log.info(aLong.toString());
+        log.info(aLong.toString());
         return Mono.just(aLong);
     }
 

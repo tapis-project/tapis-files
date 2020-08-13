@@ -408,7 +408,7 @@ public class SSHDataClient implements IRemoteDataClient {
 
     private ChannelSftp openAndConnectSFTPChannel() throws IOException {
         String CHANNEL_TYPE = "sftp";
-        log.info("Current channel count is {}", sshConnection.getChannelCount());
+        // log.info("Current channel count is {}", sshConnection.getChannelCount());
         //TODO: This will fail with a strange error if the max channels per connection limit is reached.
         //TODO: Need to find a way to pool channels?
         try {

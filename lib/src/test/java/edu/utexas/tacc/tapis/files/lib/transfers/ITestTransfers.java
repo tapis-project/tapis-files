@@ -542,7 +542,7 @@ public class ITestTransfers {
         transfersService.setParentQueue(parentQ);
 
         int NUMFILES = 2;
-        int NUMTENANTS = 5;
+        int NUMTENANTS = 4;
         int NUMTRANSFERS = 1;
 
         //Add some files to transfer
@@ -574,13 +574,18 @@ public class ITestTransfers {
 
         Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
         Flux<TransferTask> parentStream = transfersService.processParentTasks(parentMessageStream);
-        parentStream.subscribe();
+        parentStream
+            .subscribeOn(Schedulers.boundedElastic())
+            .subscribe();
 
         Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
-        stream.subscribe(taskChild -> {
-            log.info(taskChild.toString());
-        });
+        stream
+            .subscribeOn(Schedulers.boundedElastic())
+            .subscribe(taskChild -> {
+                log.info("CURRENT THREAD COUNT = {}", ManagementFactory.getThreadMXBean().getThreadCount());
+                log.info(taskChild.toString());
+            });
         stream.blockLast();
         transfersService.deleteQueue(parentQ);
         transfersService.deleteQueue(childQ);
