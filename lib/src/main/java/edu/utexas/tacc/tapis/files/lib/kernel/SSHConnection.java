@@ -21,7 +21,7 @@ public class SSHConnection {
 
     private static final int CONNECT_TIMEOUT_MILLIS = 15000; // 15 seconds
 
-    // A concurrent set that will be used to store the channels that are open
+    // A  set that will be used to store the channels that are open
     // on the SSH session.
     private final Set<Channel> channels = new HashSet<>();
 
@@ -80,7 +80,7 @@ public class SSHConnection {
         initSession();
     }
 
-    public int getChannelCount() {
+    public synchronized int getChannelCount() {
         return channels.size();
     }
 
@@ -136,7 +136,7 @@ public class SSHConnection {
      * @return Channel
      * @throws IOException
      */
-    public synchronized Channel openChannel(String channelType) throws IOException {
+    public synchronized Channel createChannel(String channelType) throws IOException {
         Channel channel;
         try {
             switch (channelType) {
@@ -153,6 +153,7 @@ public class SSHConnection {
                     throw new IOException("Invalid channel type");
             }
             channels.add(channel);
+            log.warn("CURRENT CHANNEL COUNT: {}", channels.size());
             return channel;
 
         } catch (JSchException e) {

@@ -1,20 +1,15 @@
 package edu.utexas.tacc.tapis.files.lib.cache;
 
 import com.jcraft.jsch.Channel;
-import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.kernel.SSHConnection;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
-import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -62,7 +57,7 @@ public class ITestSSHConnectionCache {
     public void testCacheKeepsSessionAlive() throws Exception {
         SSHConnectionCache cache = new SSHConnectionCache(100, TimeUnit.MILLISECONDS);
         SSHConnection test = cache.getConnection(testSystem, "testuser");
-        test.openChannel("sftp");
+        test.createChannel("sftp");
         Thread.sleep(200);
         Assert.assertTrue(test.getSession().isConnected());
         Assert.assertNotNull(cache.getCache().getIfPresent(new SSHConnectionCacheKey(testSystem, "testuser")));
@@ -72,7 +67,7 @@ public class ITestSSHConnectionCache {
     public void testCacheRemovesKeyAfterClose() throws Exception {
         SSHConnectionCache cache = new SSHConnectionCache(100, TimeUnit.MILLISECONDS);
         SSHConnection test = cache.getConnection(testSystem, "testuser");
-        Channel c = test.openChannel("sftp");
+        Channel c = test.createChannel("sftp");
         Thread.sleep(200);
         Assert.assertTrue(test.getSession().isConnected());
         test.returnChannel(c);
@@ -90,7 +85,7 @@ public class ITestSSHConnectionCache {
         executorService.submit(()-> {
             try {
                 SSHConnection con = cache.getConnection(testSystem, "testuser");
-                Channel channel = con.openChannel("stfp");
+                Channel channel = con.createChannel("stfp");
                 Thread.sleep(200);
                 //Should be the same instance as the one created above
                 Assert.assertSame(con, test);

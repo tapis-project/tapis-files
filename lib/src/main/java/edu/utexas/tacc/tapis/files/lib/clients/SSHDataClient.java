@@ -372,7 +372,7 @@ public class SSHDataClient implements IRemoteDataClient {
 
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
-        Path absPath = Paths.get(rootDir, path);
+        Path absPath = Paths.get(rootDir, path).normalize();
         ChannelExec channel = openCommandChannel();
         //TODO: Really need to sanitize this command
         try {
@@ -408,22 +408,24 @@ public class SSHDataClient implements IRemoteDataClient {
 
     private ChannelSftp openAndConnectSFTPChannel() throws IOException {
         String CHANNEL_TYPE = "sftp";
+        ChannelSftp channel = (ChannelSftp) sshConnection.createChannel(CHANNEL_TYPE);
+
         // log.info("Current channel count is {}", sshConnection.getChannelCount());
         //TODO: This will fail with a strange error if the max channels per connection limit is reached.
         //TODO: Need to find a way to pool channels?
         try {
-            ChannelSftp channel = (ChannelSftp) sshConnection.openChannel(CHANNEL_TYPE);
             channel.connect(10*1000);
             return channel;
         } catch (JSchException e) {
             log.error("ERROR: Could not open SSH channel", e);
+            sshConnection.returnChannel(channel);
             throw new IOException("Could not open ssh connection", e);
         }
     }
 
     private ChannelExec openCommandChannel() throws IOException {
         String CHANNEL_TYPE = "exec";
-        return (ChannelExec) sshConnection.openChannel(CHANNEL_TYPE);
+        return (ChannelExec) sshConnection.createChannel(CHANNEL_TYPE);
     }
 
 

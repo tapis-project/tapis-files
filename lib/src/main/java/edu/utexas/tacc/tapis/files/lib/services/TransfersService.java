@@ -508,7 +508,7 @@ public class TransfersService implements ITransfersService {
             observableInputStream.getEventStream()
                 .window(Duration.ofMillis(1000))
                 .flatMap(window->window.takeLast(1))
-                .publishOn(Schedulers.boundedElastic())
+                .publishOn(Schedulers.elastic())
                 .flatMap(this::updateProgress)
                 .subscribe();
             destClient.insert(taskChild.getDestinationPath(), observableInputStream);
