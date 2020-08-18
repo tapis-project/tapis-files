@@ -1,9 +1,10 @@
+cache:
+  paths:
+    - .m2/repository/
 build:
   # Official docker image.
   image: maven:3-jdk-13
   stage: build
-  services:
-    - docker:dind
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
     - git clone https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-shared-java.git
@@ -15,7 +16,6 @@ build:
     - mvn clean install tapis-shared-java
     - mvn clean install tapis-client-java
     - mvn clean install tapis-files
-    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME" -f deploy/Dockerfile .
 #    - docker push "$CI_REGISTRY_IMAGE:$CI_BRANCH"
 #  except:
 #    - master
