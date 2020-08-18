@@ -1,27 +1,14 @@
-image: maven:latest
-
-variables:
-  MAVEN_CLI_OPTS: "-s .m2/settings.xml --batch-mode"
-  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
-
-cache:
-  paths:
-    - .m2/repository/
-    - target/
-
-build:
+docker-build:
+  # Official docker image.
+  image: docker:latest
   stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$DOCKERHUB_USER" -p "$DOCKERHUB_PASSWD"
+    - git clone https://jmeiring:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-shared-java.git
   script:
-    - mvn $MAVEN_CLI_OPTS compile
-
-test:
-  stage: test
-  script:
-    - mvn $MAVEN_CLI_OPTS test
-
-deploy:
-  stage: deploy
-  script:
-    - mvn $MAVEN_CLI_OPTS deploy
-  only:
-    - master
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_BRANCH" -f deploy/Dockerfile .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_BRANCH"
+#  except:
+#    - master
