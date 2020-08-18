@@ -11,7 +11,7 @@ docker-build:
     - git clone https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-bom.git
 
   script:
-    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_BRANCH" -f deploy/Dockerfile .
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME" -f deploy/Dockerfile .
 #    - docker push "$CI_REGISTRY_IMAGE:$CI_BRANCH"
 #  except:
 #    - master
