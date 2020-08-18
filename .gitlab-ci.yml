@@ -1,6 +1,6 @@
 docker-build:
   # Official docker image.
-  image: docker:latest
+  image: maven:latest
   stage: build
   services:
     - docker:dind
@@ -11,6 +11,10 @@ docker-build:
     - git clone https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-bom.git
 
   script:
+    - mvn clean install tapis-bom
+    - mvn clean install tapis-shared-java
+    - mvn clean install tapis-client-java
+    - mvn clean install tapis-files
     - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME" -f deploy/Dockerfile .
 #    - docker push "$CI_REGISTRY_IMAGE:$CI_BRANCH"
 #  except:
