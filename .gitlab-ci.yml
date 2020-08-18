@@ -1,6 +1,6 @@
-docker-build:
+build:
   # Official docker image.
-  image: 43rgfgdfg54
+  image: maven:3-jdk-13
   stage: build
   services:
     - docker:dind
