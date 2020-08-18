@@ -1,9 +1,11 @@
 cache:
   paths:
     - .m2/repository/
+
+image: maven:3-jdk-13
+
 build:
   # Official docker image.
-  image: maven:3-jdk-13
   stage: build
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
