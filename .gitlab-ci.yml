@@ -5,7 +5,7 @@ docker-build:
   services:
     - docker:dind
   before_script:
-    - docker login -u "$DOCKERHUB_USER" -p "$DOCKERHUB_PASSWD"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
     - git clone https://jmeiring:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-shared-java.git
   script:
     - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_BRANCH" -f deploy/Dockerfile .
