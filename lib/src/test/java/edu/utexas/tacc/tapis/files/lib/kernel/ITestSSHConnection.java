@@ -27,7 +27,7 @@ public class ITestSSHConnection {
             );
 
             for (var j = 0; j < 15; j++) {
-                log.info("Opening channel {}", j);
+                log.info("Opening channel {} in session {}", j, i);
                 Channel c = connection.createChannel("sftp");
                 try {
                     c.connect();

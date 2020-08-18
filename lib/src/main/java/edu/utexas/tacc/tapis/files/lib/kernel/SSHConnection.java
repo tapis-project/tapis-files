@@ -163,7 +163,7 @@ public class SSHConnection {
 
     }
 
-    public void closeSession() {
+    public synchronized void closeSession() {
         if (session != null && session.isConnected()) {
             session.disconnect();
         }

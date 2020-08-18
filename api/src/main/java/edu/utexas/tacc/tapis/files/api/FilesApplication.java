@@ -26,6 +26,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.glassfish.grizzly.http.server.HttpServer;
+import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
+import org.glassfish.grizzly.threadpool.ThreadPoolConfig;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.slf4j.Logger;
@@ -119,7 +121,10 @@ public class FilesApplication extends BaseResourceConfig {
     public static void main(String[] args) throws Exception {
         final URI BASE_URI = URI.create("http://0.0.0.0:8080/");
         FilesApplication config = new FilesApplication();
+
         final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(BASE_URI, config, false);
+        final TCPNIOTransport transport = server.getListener("grizzly").getTransport();
+        transport.setWorkerThreadPoolConfig(ThreadPoolConfig.defaultConfig().setCorePoolSize(16).setMaxPoolSize(32));
         server.start();
     }
 }
