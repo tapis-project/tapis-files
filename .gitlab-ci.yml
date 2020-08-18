@@ -16,10 +16,10 @@ build:
     - git clone https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-bom.git
 
   script:
-    - mvn clean install tapis-bom
-    - mvn clean install tapis-shared-java
-    - mvn clean install tapis-client-java
-    - mvn clean install tapis-files
+    - mvn clean install -f tapis-bom/pom.xml
+    - mvn clean install -f tapis-shared-java/pom.xml
+    - mvn clean install -f tapis-client-java/pom.xml
+    - mvn clean install -f tapis-files/pom.xml
 #    - docker push "$CI_REGISTRY_IMAGE:$CI_BRANCH"
 #  except:
 #    - master
