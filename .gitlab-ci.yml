@@ -1,14 +1,29 @@
-### mpackard
-
-image: ruby:2.6
+cache:
+  paths:
+    - .m2/repository/
 
 services:
-  - postgres:9.3
+  - docker:19.03.12-dind
 
-before_script:
-  - bundle install
+build:
+  # Official docker image.
 
-test:
+  stage: build
+  before_script:
+    - mvn --version
+    - java --version
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-shared-java.git
+    - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-client-java.git
+    - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-bom.git
+
   script:
-  - bundle exec rake spec
+
+    - mvn clean install -f tapis-bom/pom.xml
+    - mvn clean install -f tapis-shared-java/pom.xml
+    - mvn clean install -f tapis-client-java/pom.xml
+    - mvn clean install -f tapis-files/pom.xml
+#    - docker push "$CI_REGISTRY_IMAGE:$CI_BRANCH"
+#  except:
+#    - master
 
