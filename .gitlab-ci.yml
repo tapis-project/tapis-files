@@ -3,7 +3,7 @@ cache:
     - .m2/repository/
 
 services:
-  - docker:19.03.12-dind
+  - docker
 
 build:
   # Official docker image.
