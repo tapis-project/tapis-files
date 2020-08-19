@@ -7,11 +7,9 @@ services:
 
 build:
   # Official docker image.
-
+  image: maven-jdk-13
   stage: build
   before_script:
-    - mvn --version
-    - java --version
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
     - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-shared-java.git
     - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-client-java.git
