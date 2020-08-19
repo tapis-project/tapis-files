@@ -14,6 +14,7 @@ build:
   image: maven:3-openjdk-14
   stage: compile
   before_script:
+    - yum install -y git
     - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-shared-java.git
     - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-client-java.git
     - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-bom.git
