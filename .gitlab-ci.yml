@@ -3,7 +3,7 @@ cache:
     - .m2/repository/
 
 services:
-  - dind
+  - docker:dind
 
 build:
   # Official docker image.
@@ -24,3 +24,4 @@ build:
 #    - docker push "$CI_REGISTRY_IMAGE:$CI_BRANCH"
 #  except:
 #    - master
+
