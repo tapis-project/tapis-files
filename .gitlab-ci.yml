@@ -17,7 +17,7 @@ build:
 
   script:
     - mvn clean install -f tapis-bom/pom.xml
-    - mvn clean install -f tapis-shared-java/pom.xml
+    - cd tapis-shared-java; mvn clean install;  cd ..;
     - mvn clean install -f tapis-client-java/pom.xml
     - mvn clean install -f tapis-files/pom.xml
 #    - docker push "$CI_REGISTRY_IMAGE:$CI_BRANCH"
