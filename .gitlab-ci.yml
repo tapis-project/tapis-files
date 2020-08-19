@@ -3,7 +3,7 @@ cache:
     - .m2/repository/
 
 services:
-  - docker
+  - docker:dind
 
 build:
   # Official docker image.
