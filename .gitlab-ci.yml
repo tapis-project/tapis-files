@@ -10,14 +10,17 @@ build:
 
   stage: build
   before_script:
+    - mvn --version
+    - java --version
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
     - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-shared-java.git
     - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-client-java.git
     - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-bom.git
 
   script:
+
     - mvn clean install -f tapis-bom/pom.xml
-    - cd tapis-shared-java; mvn clean install;  cd ..;
+    - mvn clean install -f tapis-shared-java/pom.xml
     - mvn clean install -f tapis-client-java/pom.xml
     - mvn clean install -f tapis-files/pom.xml
 #    - docker push "$CI_REGISTRY_IMAGE:$CI_BRANCH"
