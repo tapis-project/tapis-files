@@ -11,7 +11,7 @@ stages:
 
 build:
   # Official docker image.
-  image: maven:3-openjdk-11
+  image: maven:3-openjdk-14
   stage: compile
   before_script:
     - git clone -b dev https://${CI_DEPLOY_USER}:${CI_JOB_TOKEN}@gitlab.tacc.utexas.edu/tapis-project/tapis-shared-java.git
