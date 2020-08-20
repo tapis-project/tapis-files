@@ -16,7 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      - path: tapis-files
+      with:
+        path: tapis-files
     - uses: actions/checkout@v2
       with:
         repository: tapis-project/tapis-shared-java
