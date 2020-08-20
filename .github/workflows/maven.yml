@@ -48,4 +48,4 @@ jobs:
         mvn install -f tapis-bom/pom.xml
         mvn install -f tapis-shared-java/pom.xml
         mvn install -f tapis-client-java/pom.xml
-        mvn install -f tapis-files/pom.xml
+        mvn install -f tapis-files/pom.xml -DskipTests=true
