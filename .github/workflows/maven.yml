@@ -22,7 +22,7 @@ jobs:
         ref: dev
     - uses: actions/checkout@v2
       with:
-        repostory: tapis-project/tapis-bom
+        repository: tapis-project/tapis-bom
         ref: dev
     - uses: actions/checkout@v2
       with:
@@ -32,6 +32,11 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 13
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@v1.3
+      with:
+        # Set the sonar.projectBaseDir analysis property
+        projectBaseDir: # optional, default is .
     - name: Build with Maven
       run: |
         mvn install -f tapis-bom/pom.xml
