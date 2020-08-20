@@ -64,5 +64,9 @@ jobs:
         docker build -t tapis/test-ssh-machine -f deploy/Dockerfile.ssh-machine .
         docker build -t tapis/files-workers:dev -f deploy/Dockerfile.workers .
 
-#    - name: Push images
+    - name: Integration tests
+      run: |
+        docker-compose -f deploy/docker-compose.yml up -d
+        sleep 2
+        mvn verify
 
