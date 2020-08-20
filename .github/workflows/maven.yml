@@ -71,7 +71,7 @@ jobs:
         docker exec postgres psql -U dev -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"" -d test
         docker exec postgres psql -U dev -c "CREATE USER test with encrypted password 'test'"
         docker exec postgres psql -U dev -c "GRANT ALL PRIVILEGES ON DATABASE test TO test"
-        mvn verify -DAPP_ENV=test
+        mvn verify -DAPP_ENV=test -DskipTests=false
 
     - name: Build images
       run: |
