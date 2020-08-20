@@ -22,24 +22,29 @@ jobs:
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
         restore-keys: |
           ${{ runner.os }}-maven-
+
     - uses: actions/checkout@v2
       with:
         path: tapis-files
+
     - uses: actions/checkout@v2
       with:
         repository: tapis-project/tapis-shared-java
         ref: dev
         path: tapis-shared-java
+
     - uses: actions/checkout@v2
       with:
         repository: tapis-project/tapis-bom
         ref: dev
         path: tapis-bom
+
     - uses: actions/checkout@v2
       with:
         repository: tapis-project/tapis-client-java
         ref: dev
         path: tapis-client-java
+
     - name: Set up JDK
       uses: actions/setup-java@v1
       with:
@@ -57,20 +62,19 @@ jobs:
         mvn -B install -f tapis-client-java/pom.xml
         mvn -B install -f tapis-files/pom.xml -DskipTests=true -Dflyway.skip=true
 
-    - name: Build images
-      run: |
-        cd tapis-files
-        docker build -t tapis/files-api:dev -f deploy/Dockerfile .
-        docker build -t tapis/test-ssh-machine -f deploy/Dockerfile.ssh-machine .
-        docker build -t tapis/files-workers:dev -f deploy/Dockerfile.workers .
-
     - name: Integration tests
       run: |
         cd tapis-files
+        docker-compose -f deploy/docker-compose.yml up -d
+        sleep 1
         docker exec postgres psql -U dev -c "CREATE DATABASE test"
         docker exec postgres psql -U dev -c "CREATE USER test with encrypted password 'test'"
         docker exec postgres psql -U dev -c "GRANT ALL PRIVILEGES ON DATABASE test TO test"
-        docker-compose -f deploy/docker-compose.yml up -d
-        sleep 2
         mvn verify -DAPP_ENV=test
 
+    - name: Build images
+        run: |
+          cd tapis-files
+          docker build -t tapis/files-api:dev -f deploy/Dockerfile .
+          docker build -t tapis/test-ssh-machine -f deploy/Dockerfile.ssh-machine .
+          docker build -t tapis/files-workers:dev -f deploy/Dockerfile.workers .
