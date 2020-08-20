@@ -16,6 +16,7 @@ services:
       - 5672:5672
 
   postgres:
+    container_name: postgres
     image: postgres:11
     environment:
       - POSTGRES_USER=dev
