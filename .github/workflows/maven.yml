@@ -66,6 +66,7 @@ jobs:
 
     - name: Integration tests
       run: |
+        cd tapis-files
         docker-compose -f deploy/docker-compose.yml up -d
         sleep 2
         mvn verify
