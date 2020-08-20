@@ -73,8 +73,8 @@ jobs:
         mvn verify -DAPP_ENV=test
 
     - name: Build images
-        run: |
-          cd tapis-files
-          docker build -t tapis/files-api:dev -f deploy/Dockerfile .
-          docker build -t tapis/test-ssh-machine -f deploy/Dockerfile.ssh-machine .
-          docker build -t tapis/files-workers:dev -f deploy/Dockerfile.workers .
+      run: |
+        cd tapis-files
+        docker build -t tapis/files-api:dev -f deploy/Dockerfile .
+        docker build -t tapis/test-ssh-machine -f deploy/Dockerfile.ssh-machine .
+        docker build -t tapis/files-workers:dev -f deploy/Dockerfile.workers .
