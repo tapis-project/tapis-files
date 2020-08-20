@@ -15,19 +15,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/checkout@v2
-      with:
-        repository: tapis-project/tapis-shared-java
-        ref: dev
-    - uses: actions/checkout@v2
-      with:
-        repository: tapis-project/tapis-bom
-        ref: dev
-    - uses: actions/checkout@v2
-      with:
-        repository: tapis-project/tapis-client-java
-        ref: dev
+    - name: Checkout repos
+      - uses: actions/checkout@v2
+        - path: tapis-files
+      - uses: actions/checkout@v2
+        with:
+          repository: tapis-project/tapis-shared-java
+          ref: dev
+          path: tapis-shared-java
+      - uses: actions/checkout@v2
+        with:
+          repository: tapis-project/tapis-bom
+          ref: dev
+          path: tapis-bom
+      - uses: actions/checkout@v2
+        with:
+          repository: tapis-project/tapis-client-java
+          ref: dev
+          path: tapis-client-java
     - name: Set up JDK
       uses: actions/setup-java@v1
       with:
