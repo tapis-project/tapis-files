@@ -72,5 +72,5 @@ jobs:
         docker exec postgres psql -U dev -c "GRANT ALL PRIVILEGES ON DATABASE test TO test"
         docker-compose -f deploy/docker-compose.yml up -d
         sleep 2
-        mvn verify
+        mvn verify -DAPP_ENV=test
 
