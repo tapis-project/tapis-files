@@ -10,7 +10,12 @@ stages:
   - build-images
 
 build:
-  # Official docker image.
+  needs:
+    - project: tapis-project/tapis-shared-java
+      job: build
+      artifacts: true
+
+    # Official docker image.
   image: maven:3-openjdk-14
   stage: compile
   before_script:
