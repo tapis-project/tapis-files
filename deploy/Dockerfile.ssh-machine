@@ -1,6 +1,5 @@
 FROM rastasheep/ubuntu-sshd:18.04
 
-RUN apt install netstat
 RUN useradd --create-home --shell /bin/bash testuser
 RUN echo 'testuser:password' | chpasswd
 RUN mkdir -p /home/testuser/.ssh/
