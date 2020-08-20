@@ -66,7 +66,7 @@ jobs:
       run: |
         cd tapis-files
         docker-compose -f deploy/docker-compose.yml up -d
-        sleep 1
+        sleep 3
         docker exec postgres psql -U dev -c "CREATE EXTENSION IF NOT EXISTS 'uuid-ossp'"
         docker exec postgres psql -U dev -c "CREATE DATABASE test"
         docker exec postgres psql -U dev -c "CREATE USER test with encrypted password 'test'"
