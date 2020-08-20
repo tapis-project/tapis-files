@@ -49,3 +49,13 @@ jobs:
         mvn install -f tapis-shared-java/pom.xml
         mvn install -f tapis-client-java/pom.xml
         mvn install -f tapis-files/pom.xml -DskipTests=true
+
+    - name: Build images
+      run: |
+        cd tapis-files
+        docker build -t tapis/files-api:dev -f deploy/Dockerfile .
+        docker build -t tapis/test-ssh-machine -f deploy/Dockerfile.ssh-machine .
+        docker build -t tapis/files-workers:dev -f deploy/Dockerfile.workers .
+
+#    - name: Push images
+
