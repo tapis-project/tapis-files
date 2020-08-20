@@ -55,7 +55,7 @@ jobs:
         mvn -B install -f tapis-bom/pom.xml
         mvn -B install -f tapis-shared-java/pom.xml
         mvn -B install -f tapis-client-java/pom.xml
-        mvn -B install -f tapis-files/pom.xml -DskipTests=true
+        mvn -B install -f tapis-files/pom.xml -DskipTests=true -Dflyway.skip=true
 
     - name: Build images
       run: |
