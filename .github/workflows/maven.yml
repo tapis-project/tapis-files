@@ -52,10 +52,10 @@ jobs:
     - name: Build with Maven
       run: |
         ls -lah
-        mvn install -f tapis-bom/pom.xml
-        mvn install -f tapis-shared-java/pom.xml
-        mvn install -f tapis-client-java/pom.xml
-        mvn install -f tapis-files/pom.xml -DskipTests=true
+        mvn -B install -f tapis-bom/pom.xml
+        mvn -B install -f tapis-shared-java/pom.xml
+        mvn -B install -f tapis-client-java/pom.xml
+        mvn -B install -f tapis-files/pom.xml -DskipTests=true
 
     - name: Build images
       run: |
