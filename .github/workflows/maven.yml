@@ -16,9 +16,22 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up JDK 1.8
+    - uses: actions/checkout@v2
+      with: tapis-project/tapis-shared-java
+        ref: dev
+    - uses: actions/checkout@v2
+        with: tapis-project/tapis-bom
+          ref: dev
+    - uses: actions/checkout@v2
+        with: tapis-project/tapis-client-java
+          ref: dev
+    - name: Set up JDK
       uses: actions/setup-java@v1
       with:
-        java-version: 1.8
+        java-version: 13
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: |
+        mvn install -f tapis-bom/pom.xml
+        mvn install -f tapis-shared-java/pom.xml
+        mvn install -f tapis-client-java/pom.xml
+        mvn install -f tapis-files/pom.xml
