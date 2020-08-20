@@ -15,37 +15,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repos
-      - uses: actions/checkout@v2
-        - path: tapis-files
-      - uses: actions/checkout@v2
+      - name: Checkout repos
+        - uses: actions/checkout@v2
+          - path: tapis-files
+        - uses: actions/checkout@v2
+          with:
+            repository: tapis-project/tapis-shared-java
+            ref: dev
+            path: tapis-shared-java
+        - uses: actions/checkout@v2
+          with:
+            repository: tapis-project/tapis-bom
+            ref: dev
+            path: tapis-bom
+        - uses: actions/checkout@v2
+          with:
+            repository: tapis-project/tapis-client-java
+            ref: dev
+            path: tapis-client-java
+      - name: Set up JDK
+        uses: actions/setup-java@v1
         with:
-          repository: tapis-project/tapis-shared-java
-          ref: dev
-          path: tapis-shared-java
-      - uses: actions/checkout@v2
-        with:
-          repository: tapis-project/tapis-bom
-          ref: dev
-          path: tapis-bom
-      - uses: actions/checkout@v2
-        with:
-          repository: tapis-project/tapis-client-java
-          ref: dev
-          path: tapis-client-java
-    - name: Set up JDK
-      uses: actions/setup-java@v1
-      with:
-        java-version: 13
+          java-version: 13
 #    - name: SonarCloud Scan
 #      uses: SonarSource/sonarcloud-github-action@v1.3
 #      with:
 #        # Set the sonar.projectBaseDir analysis property
 #        projectBaseDir: # optional, default is .
-    - name: Build with Maven
-      run: |
-        ls -lah
-        mvn install -f tapis-bom/pom.xml
-        mvn install -f tapis-shared-java/pom.xml
-        mvn install -f tapis-client-java/pom.xml
-        mvn install -f tapis-files/pom.xml
+      - name: Build with Maven
+        run: |
+          ls -lah
+          mvn install -f tapis-bom/pom.xml
+          mvn install -f tapis-shared-java/pom.xml
+          mvn install -f tapis-client-java/pom.xml
+          mvn install -f tapis-files/pom.xml
