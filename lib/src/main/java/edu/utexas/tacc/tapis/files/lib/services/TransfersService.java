@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -178,9 +179,8 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public void deleteQueue(String qName) {
-        sender.delete(QueueSpecification.queue(qName))
-            .subscribe();
+    public Mono<DeleteOk> deleteQueue(String qName) {
+        return sender.delete(QueueSpecification.queue(qName));
     }
 
     private void publishParentTaskMessage(@NotNull TransferTask task) throws ServiceException {

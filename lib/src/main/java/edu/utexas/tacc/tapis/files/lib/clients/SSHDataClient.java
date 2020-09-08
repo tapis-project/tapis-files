@@ -418,7 +418,6 @@ public class SSHDataClient implements IRemoteDataClient {
             return channel;
         } catch (JSchException e) {
             log.error("ERROR: Could not open SSH channel", e);
-            sshConnection.returnChannel(channel);
             throw new IOException("Could not open ssh connection", e);
         }
     }

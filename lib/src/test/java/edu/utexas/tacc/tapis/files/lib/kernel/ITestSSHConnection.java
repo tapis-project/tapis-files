@@ -5,7 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.Test;
 
-@Test(groups = {"integration"})
+@Test(groups = {"integration"}, enabled = false)
 public class ITestSSHConnection {
 
     private static final Logger log = LoggerFactory.getLogger(ITestSSHConnection.class);
@@ -18,7 +18,7 @@ public class ITestSSHConnection {
 
 
 
-        for (var i=0;i<12;i++) {
+        for (var i=0;i<1;i++) {
             SSHConnection connection = new SSHConnection(
                 "localhost",
                 2222,
@@ -26,7 +26,7 @@ public class ITestSSHConnection {
                 "password"
             );
 
-            for (var j = 0; j < 15; j++) {
+            for (var j = 0; j < 1; j++) {
                 log.info("Opening channel {} in session {}", j, i);
                 Channel c = connection.createChannel("sftp");
                 try {

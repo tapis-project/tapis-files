@@ -9,7 +9,7 @@ import org.testng.annotations.Test;
 public abstract class BaseDatabaseIntegrationTest {
 
     @BeforeMethod
-    public void doBeforeTest() {
+    public void doMigrations() {
         Flyway flyway = Flyway.configure()
                 .dataSource("jdbc:postgresql://localhost:5432/test", "test", "test")
                 .load();

@@ -702,6 +702,8 @@ components:
         retries:
           type: integer
           format: int32
+        finalMessage:
+          type: string
         uuid:
           type: string
           description: Unique ID of the task.

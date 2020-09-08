@@ -30,23 +30,28 @@ public class SSHConnectionCache implements ISSHConnectionCache {
 
     private static final Logger log = LoggerFactory.getLogger(SSHConnectionCache.class);
     private static LoadingCache<SSHConnectionCacheKey, SSHConnection> sessionCache;
-    private static final  ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    private  final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    private final TimeUnit timeUnit;
+    private final long timeout;
     /**
      *
-     * @param timeout Timeout in seconds of when to preform maintenence
+     * @param timeout Timeout of when to preform maintenance
+     * @param timeUnit TimeUnit of timeout
      */
     public SSHConnectionCache(long timeout, TimeUnit timeUnit) {
+        this.timeUnit = timeUnit;
+        this.timeout = timeout;
         sessionCache = CacheBuilder.newBuilder()
                 .recordStats()
                 .build(new SSHConnectionCacheLoader());
-        executorService.scheduleWithFixedDelay( ()-> {
+        executorService.scheduleAtFixedRate( ()-> {
             sessionCache.asMap().forEach( (SSHConnectionCacheKey key, SSHConnection connection) -> {
                 if (connection.getChannelCount() == 0) {
                     connection.closeSession();
                     sessionCache.invalidate(key);
                 }
             });
-        }, 0,timeout, timeUnit);
+        }, this.timeout, this.timeout, this.timeUnit);
     }
 
     public CacheStats getCacheStats() {

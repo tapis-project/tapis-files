@@ -7,8 +7,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 
 /**
@@ -139,6 +137,9 @@ public class SSHConnection {
     public synchronized Channel createChannel(String channelType) throws IOException {
         Channel channel;
         try {
+            if (!session.isConnected()) {
+                initSession();
+            }
             switch (channelType) {
                 case "sftp":
                     channel = (ChannelSftp) session.openChannel(channelType);
@@ -153,7 +154,6 @@ public class SSHConnection {
                     throw new IOException("Invalid channel type");
             }
             channels.add(channel);
-            log.warn("CURRENT CHANNEL COUNT: {}", channels.size());
             return channel;
 
         } catch (JSchException e) {
@@ -164,7 +164,7 @@ public class SSHConnection {
     }
 
     public synchronized void closeSession() {
-        if (session != null && session.isConnected()) {
+        if (session != null && session.isConnected() && getChannelCount() == 0) {
             session.disconnect();
         }
     }

@@ -69,7 +69,7 @@ public class FileOpsService implements IFileOpsService {
             client.insert(path, inputStream);
         } catch (IOException ex) {
             log.error("ERROR", ex);
-            throw new ServiceException("insert failed");
+            throw new ServiceException("insert failed", ex);
         }
     }
 
@@ -79,7 +79,7 @@ public class FileOpsService implements IFileOpsService {
             client.move(path, newPath);
         } catch (IOException ex) {
             log.error("ERROR", ex);
-            throw new ServiceException("move/rename failed: " + ex.getMessage());
+            throw new ServiceException("move/rename failed", ex);
         }
     }
 
@@ -89,7 +89,7 @@ public class FileOpsService implements IFileOpsService {
             client.delete(path);
         } catch (IOException ex) {
             log.error("ERROR", ex);
-            throw new ServiceException("delete failed");
+            throw new ServiceException("delete failed", ex);
         }
     }
 
