@@ -375,6 +375,7 @@ public class SSHDataClient implements IRemoteDataClient {
         Path absPath = Paths.get(rootDir, path).normalize();
         ChannelExec channel = openCommandChannel();
         //TODO: Really need to sanitize this command
+        //TODO: Really do
         try {
             String command = String.format("dd if=%s ibs=1 skip=%s count=%s", absPath.toString(), startByte, count);
             channel.setCommand(command);
@@ -418,6 +419,7 @@ public class SSHDataClient implements IRemoteDataClient {
             return channel;
         } catch (JSchException e) {
             log.error("ERROR: Could not open SSH channel", e);
+            sshConnection.returnChannel(channel);
             throw new IOException("Could not open ssh connection", e);
         }
     }
