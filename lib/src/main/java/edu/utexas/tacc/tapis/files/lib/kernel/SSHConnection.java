@@ -142,10 +142,10 @@ public class SSHConnection {
             }
             switch (channelType) {
                 case "sftp":
-                    channel = (ChannelSftp) session.openChannel(channelType);
+                    channel = session.openChannel(channelType);
                     break;
                 case "exec":
-                    channel = (ChannelExec) session.openChannel(channelType);
+                    channel = session.openChannel(channelType);
                     break;
                 case "shell":
                     channel = session.openChannel(channelType);

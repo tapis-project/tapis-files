@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,12 +40,6 @@ public class ContentApiResource extends BaseFilesResource {
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
     private static final Logger log = LoggerFactory.getLogger(ContentApiResource.class);
 
-    @Inject
-    SystemsClient systemsClient;
-
-    @Inject
-    RemoteDataClientFactory remoteDataClientFactory;
-
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
     @Path("/{systemId}/{path:.+}")
@@ -58,11 +54,11 @@ public class ContentApiResource extends BaseFilesResource {
             @Parameter(description = "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1") @Min(1) @HeaderParam("more") Long moreStartPage,
             @Context SecurityContext securityContext) {
         try {
-            AuthenticatedUser user  = (AuthenticatedUser) securityContext.getUserPrincipal();
+            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
-            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, user.getOboUser());
-            FileOpsService fileOpsService = new FileOpsService(client);
+            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+            IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             InputStream stream;
             String mtype = MediaType.APPLICATION_OCTET_STREAM;
             String contentDisposition;
