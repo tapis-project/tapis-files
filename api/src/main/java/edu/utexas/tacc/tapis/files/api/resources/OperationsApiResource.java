@@ -58,14 +58,6 @@ public class OperationsApiResource extends BaseFilesResource {
     private static class FileStringResponse extends TapisResponse<String> {
     }
 
-    @Inject
-    SystemsClient systemsClient;
-
-    @Inject
-    RemoteDataClientFactory remoteDataClientFactory;
-
-
-
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
     @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.

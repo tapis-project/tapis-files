@@ -49,6 +49,7 @@ public class TransfersApp {
         transfersService.setChildQueue(UUID.randomUUID().toString());
         transfersService.setParentQueue(UUID.randomUUID().toString());
 
+
         Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
         Flux<TransferTask> parentTaskFlux = transfersService.processParentTasks(parentMessageStream);
         parentTaskFlux.subscribe();

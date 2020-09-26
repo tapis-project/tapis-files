@@ -118,7 +118,6 @@ public class ITestFileOpsService {
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
             }
         });
-//        locator.inject(this);
         remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
     }
 

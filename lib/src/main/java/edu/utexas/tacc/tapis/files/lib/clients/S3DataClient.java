@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -56,22 +57,12 @@ public class S3DataClient implements IRemoteDataClient {
         // There are so many different flavors of s3 URLs we have to
         // do the gymnastics below.
         try {
-            URI endpoint;
             String host = system.getHost();
-            URI tmpUri = new URI(host);
-            if ((system.getPort() != null) && (system.getPort() > 0)) {
-                endpoint = UriBuilder.fromUri("")
-                    .scheme(tmpUri.getScheme())
-                    .host(tmpUri.getHost())
-                    .port(system.getPort())
-                    .path(tmpUri.getPath())
-                    .build();
-
-            } else {
-                endpoint = new URI(host);
-            }
             String region = S3URLParser.getRegion(host);
+            URI endpoint = configEndpoint(host);
             Region reg;
+
+            //For minio/other S3 compliant APIs, the region is not needed
             if (region == null) {
                 reg = Region.US_EAST_1;
             } else {
@@ -96,6 +87,28 @@ public class S3DataClient implements IRemoteDataClient {
         } catch (URISyntaxException e) {
             throw new IOException("Could not create s3 client for system");
         }
+    }
+
+
+    public URI configEndpoint(String host) throws URISyntaxException {
+        URI endpoint;
+        URI tmpURI = new URI(host);
+        UriBuilder uriBuilder = UriBuilder.fromUri("");
+        uriBuilder
+            .host(tmpURI.getHost())
+            .scheme(tmpURI.getScheme());
+        if ((system.getPort() != null) && (system.getPort() > 0)) {
+            uriBuilder.port(system.getPort());
+        }
+        if (StringUtils.isBlank(tmpURI.getHost())) {
+            uriBuilder.host(host);
+        }
+        //Make sure there is a scheme, and default to https if not.
+        if (StringUtils.isBlank(tmpURI.getScheme())) {
+            uriBuilder.scheme("https");
+        }
+        endpoint = uriBuilder.build();
+        return endpoint;
     }
 
     private Stream<S3Object> listWithIterator(String path) {

@@ -5,9 +5,9 @@ name: Java CI with Maven
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ main ]
   pull_request:
-    branches: [ dev ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -23,28 +23,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    - uses: actions/checkout@v2
-      with:
-        path: tapis-files
-
-    - uses: actions/checkout@v2
-      with:
-        repository: tapis-project/tapis-shared-java
-        ref: dev
-        path: tapis-shared-java
-
-    - uses: actions/checkout@v2
-      with:
-        repository: tapis-project/tapis-bom
-        ref: dev
-        path: tapis-bom
-
-    - uses: actions/checkout@v2
-      with:
-        repository: tapis-project/tapis-client-java
-        ref: dev
-        path: tapis-client-java
-
     - name: Set up JDK
       uses: actions/setup-java@v1
       with:
@@ -56,11 +34,7 @@ jobs:
 #        projectBaseDir: # optional, default is .
     - name: Build with Maven
       run: |
-        ls -lah
-        mvn -B install -f tapis-bom/pom.xml
-        mvn -B install -f tapis-shared-java/pom.xml
-        mvn -B install -f tapis-client-java/pom.xml
-        mvn -B install -f tapis-files/pom.xml -DskipTests=true -Dflyway.skip=true
+        mvn -B install -DskipTests=true -Dflyway.skip=true
 
     - name: Integration tests
       run: |
@@ -73,9 +47,9 @@ jobs:
         docker exec postgres psql -U dev -c "GRANT ALL PRIVILEGES ON DATABASE test TO test"
         mvn verify -DAPP_ENV=test -P test
 
-    - name: Build images
-      run: |
-        cd tapis-files
-        docker build -t tapis/files-api:dev -f deploy/Dockerfile .
-        docker build -t tapis/test-ssh-machine -f deploy/Dockerfile.ssh-machine .
-        docker build -t tapis/files-workers:dev -f deploy/Dockerfile.workers .
+#    - name: Build images
+#      run: |
+#        cd tapis-files
+#        docker build -t tapis/files-api:dev -f deploy/Dockerfile .
+#        docker build -t tapis/test-ssh-machine -f deploy/Dockerfile.ssh-machine .
+#        docker build -t tapis/files-workers:dev -f deploy/Dockerfile.workers .

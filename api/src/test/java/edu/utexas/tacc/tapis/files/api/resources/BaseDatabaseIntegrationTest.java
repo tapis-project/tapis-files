@@ -9,10 +9,10 @@ import org.testng.annotations.Test;
 public abstract class BaseDatabaseIntegrationTest extends JerseyTestNg.ContainerPerClassTest {
 
     @BeforeMethod
-    public void doBeforeTest() {
+    public void doFlywayMigrations() {
         Flyway flyway = Flyway.configure()
-                .dataSource("jdbc:postgresql://localhost:5432/test", "test", "test")
-                .load();
+            .dataSource("jdbc:postgresql://localhost:5432/test", "test", "test")
+            .load();
         flyway.clean();
         flyway.migrate();
     }

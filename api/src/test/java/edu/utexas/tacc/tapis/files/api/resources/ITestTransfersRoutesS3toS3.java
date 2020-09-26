@@ -21,6 +21,7 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.codec.Charsets;
+import org.flywaydb.core.Flyway;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTestNg;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.apache.commons.io.IOUtils;
 
@@ -51,6 +53,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     private String user1jwt;
     private String user2jwt;
     private TSystem testSystem;
+    private Credential creds;
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
     // mocking out the services
     private SystemsClient systemsClient;
@@ -58,10 +61,12 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     private TenantManager tenantManager;
     private ServiceJWT serviceJWT;
     private Tenant tenant;
+    private Map<String, Tenant> tenantMap = new HashMap<>();
+
 
     private ITestTransfersRoutesS3toS3() throws Exception {
         //List<String> creds = new ArrayList<>();
-        Credential creds = new Credential();
+        creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
         testSystem = new TSystem();
@@ -78,7 +83,6 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         tenant = new Tenant();
         tenant.setTenantId("testTenant");
         tenant.setBaseUrl("test.tapis.io");
-        Map<String, Tenant> tenantMap = new HashMap<>();
         tenantMap.put(tenant.getTenantId(), tenant);
         when(tenantManager.getTenants()).thenReturn(tenantMap);
         when(tenantManager.getTenant(any())).thenReturn(tenant);
@@ -118,29 +122,35 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         return app;
     }
 
-    @AfterClass
-    public void tearDown() throws Exception {
-        super.tearDown();
-    }
 
     @BeforeClass
-    public void setUp() throws Exception {
-        super.setUp();
+    public void setUpUsers() throws Exception {
         user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
         user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
     }
+
+    @BeforeMethod
+    public void beforeTest() throws Exception {
+        when(tenantManager.getTenants()).thenReturn(tenantMap);
+        when(tenantManager.getTenant(any())).thenReturn(tenant);
+        when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
+    }
+
+
 
     /**
      * Helper method to create transfer tasks
      * @return
      */
-    private TransferTask createTransferTask() throws Exception {
+    private TransferTask createTransferTask() {
         TransferTaskRequest payload = new TransferTaskRequest();
         payload.setSourceSystemId("sourceSystem");
         payload.setSourcePath("sourcePath");
         payload.setDestinationSystemId("destinationSystem");
         payload.setDestinationPath("destinationPath");
-        when(systemsClient.getSystemByName(any(String.class))).thenReturn(testSystem);
+
 
         Response createTaskResponse = target("/v3/files/transfers")
                 .request()
