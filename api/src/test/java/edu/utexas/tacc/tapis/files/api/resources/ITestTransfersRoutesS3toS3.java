@@ -84,8 +84,6 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         tenant.setTenantId("testTenant");
         tenant.setBaseUrl("test.tapis.io");
         tenantMap.put(tenant.getTenantId(), tenant);
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
     }
 
     @Override
@@ -122,6 +120,12 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         return app;
     }
 
+    @BeforeClass
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+    }
+
 
     @BeforeClass
     public void setUpUsers() throws Exception {
@@ -130,7 +134,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     }
 
     @BeforeMethod
-    public void beforeTest() throws Exception {
+    public void initMocks() throws Exception {
         when(tenantManager.getTenants()).thenReturn(tenantMap);
         when(tenantManager.getTenant(any())).thenReturn(tenant);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);

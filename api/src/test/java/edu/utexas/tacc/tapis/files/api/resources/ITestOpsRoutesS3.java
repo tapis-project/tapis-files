@@ -52,7 +52,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerMethodTest {
+public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     private Logger log = LoggerFactory.getLogger(ITestOpsRoutesS3.class);
     private String user1jwt;
@@ -131,6 +131,38 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerMethodTest {
         config.register(MultiPartFeature.class);
     }
 
+
+    @BeforeClass
+    public void setUpUsers() throws Exception {
+        user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
+        user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
+    }
+
+    @BeforeMethod
+    public void initMocks() throws Exception {
+        when(tenantManager.getTenants()).thenReturn(tenantMap);
+        when(tenantManager.getTenant(any())).thenReturn(tenant);
+        when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
+        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
+        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
+    }
+
+
+
+
+    @Test
+    public void testGetS3List() throws Exception {
+        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
+        FileListResponse response = target("/v3/files/ops/testSystem/")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", user1jwt)
+            .get(FileListResponse.class);
+        FileInfo file = response.getResult().get(0);
+        Assert.assertEquals(file.getName(), "testfile1.txt");
+        Assert.assertEquals(file.getSize(), 10 * 1024);
+    }
+
     private InputStream makeFakeFile(int size) {
         byte[] b = new byte[size];
         new Random().nextBytes(b);
@@ -151,34 +183,6 @@ public class ITestOpsRoutesS3 extends JerseyTestNg.ContainerPerMethodTest {
 
     }
 
-    @BeforeMethod
-    public void beforeTest() throws Exception {
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
-        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
-    }
-
-    @BeforeClass
-    public void setUpTest() throws Exception {
-        user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
-        user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
-    }
-
-
-    @Test
-    public void testGetS3List() throws Exception {
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
-        FileListResponse response = target("/v3/files/ops/testSystem/")
-            .request()
-            .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
-            .get(FileListResponse.class);
-        FileInfo file = response.getResult().get(0);
-        Assert.assertEquals(file.getName(), "testfile1.txt");
-        Assert.assertEquals(file.getSize(), 10 * 1024);
-    }
 
     @Test
     public void testGetS3ListWithLimitAndOffset() throws Exception {
