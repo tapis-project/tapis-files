@@ -101,6 +101,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     protected ResourceConfig configure() {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
+        forceSet(TestProperties.CONTAINER_PORT, "0");
         tenantManager = Mockito.mock(TenantManager.class);
         skClient = Mockito.mock(SKClient.class);
         systemsClient = Mockito.mock(SystemsClient.class);
@@ -124,12 +125,17 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         return app;
     }
 
+    @BeforeClass
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+    }
 
     // Needed for the test client to be able to use Mutlipart/form posts;
     @Override
     protected void configureClient(ClientConfig config) {
         config.register(MultiPartFeature.class);
-    }
+   }
 
 
     @BeforeClass
@@ -148,7 +154,12 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     }
 
 
+    @AfterMethod
+    public void cleanup() throws Exception {
+        S3DataClient client = new S3DataClient(testSystem);
+        client.delete("/");
 
+    }
 
     @Test
     public void testGetS3List() throws Exception {
@@ -176,12 +187,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         client.insert(fileName, f1);
     }
 
-    @AfterMethod
-    public void tearDownTest() throws Exception {
-        S3DataClient client = new S3DataClient(testSystem);
-        client.delete("/");
 
-    }
 
 
     @Test
