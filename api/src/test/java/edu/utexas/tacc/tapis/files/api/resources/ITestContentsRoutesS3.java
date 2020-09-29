@@ -35,7 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
+public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     private Logger log = LoggerFactory.getLogger(ITestContentsRoutesS3.class);
     private String user1jwt;
