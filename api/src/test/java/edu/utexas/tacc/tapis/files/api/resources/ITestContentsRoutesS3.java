@@ -46,7 +46,7 @@ public class ITestContentsRoutesS3 extends JerseyTestNg.ContainerPerClassTest {
     private Map<String, Tenant> tenantMap = new HashMap<>();
 
 
-    // mocking out the services
+    // mocking out the services test
     private SystemsClient systemsClient;
     private SKClient skClient;
     private TenantManager tenantManager;
