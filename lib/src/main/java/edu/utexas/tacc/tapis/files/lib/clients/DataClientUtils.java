@@ -4,13 +4,13 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.validation.constraints.NotNull;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+
 
 public class DataClientUtils {
 
     public static String getRemotePath(@NotNull String rootDir, @NotNull String path) {
         String remotePath =  FilenameUtils.normalize(FilenameUtils.concat(rootDir, path));
+        remotePath = remotePath.replaceAll("//", "/");
         if (StringUtils.isEmpty(remotePath)) return "/";
         return remotePath;
     }
