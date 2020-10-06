@@ -141,7 +141,7 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void makeBucket(String name) throws IOException {
+    public void makeBucket(String name) {
         CreateBucketRequest req = CreateBucketRequest.builder()
             .bucket(name)
             .build();

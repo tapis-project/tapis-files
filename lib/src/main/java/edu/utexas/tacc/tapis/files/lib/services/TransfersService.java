@@ -513,11 +513,12 @@ public class TransfersService implements ITransfersService {
             InputStream sourceStream =  sourceClient.getStream(taskChild.getSourcePath());
             ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream);
             // Observe the progress event stream
+            final TransferTaskChild finalTaskChild = taskChild;
             observableInputStream.getEventStream()
                 .window(Duration.ofMillis(1000))
                 .flatMap(window->window.takeLast(1))
                 .publishOn(Schedulers.elastic())
-                .flatMap(this::updateProgress)
+                .flatMap((prog)->this.updateProgress(prog, finalTaskChild))
                 .subscribe();
             destClient.insert(taskChild.getDestinationPath(), observableInputStream);
 
@@ -529,9 +530,16 @@ public class TransfersService implements ITransfersService {
         return taskChild;
     }
 
-    private Mono<Long> updateProgress(Long aLong) {
-        log.info(aLong.toString());
-        return Mono.just(aLong);
+    private Mono<Long> updateProgress(Long aLong, TransferTaskChild taskChild) {
+        taskChild.setBytesTransferred(aLong);
+        try {
+            dao.updateTransferTaskChild(taskChild);
+            return Mono.just(aLong);
+        } catch (DAOException ex) {
+            String message = "Error updating progress for TransferTaskChild {}";
+            log.error(message, taskChild);
+            return Mono.empty();
+        }
     }
 
     /**
@@ -546,7 +554,7 @@ public class TransfersService implements ITransfersService {
             TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
             taskChild = dao.updateTransferTaskChild(taskChild);
-            parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getTotalBytes());
+            parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
             String noteMessage = String.format("Transfer completed for %s", taskChild.getSourcePath());
             notificationsService.sendNotification(taskChild.getTenantId(), taskChild.getUsername(), noteMessage);
             return taskChild;

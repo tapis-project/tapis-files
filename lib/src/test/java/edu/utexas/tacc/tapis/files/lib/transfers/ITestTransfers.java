@@ -56,124 +56,15 @@ import static org.mockito.Mockito.when;
 public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     private static final Logger log = LoggerFactory.getLogger(ITestTransfers.class);
+
     private TSystem sourceSystem;
     private TSystem destSystem;
-    private TSystem testSystemSSH;
-
-    private IRemoteDataClientFactory remoteDataClientFactory;
-    private ServiceLocator locator;
-
-    TenantManager tenantManager = Mockito.mock(TenantManager.class);
-    SKClient skClient = Mockito.mock(SKClient.class);
-    SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-    SystemsClientFactory systemsClientFactory = Mockito.mock(SystemsClientFactory.class);
-    ServiceJWT serviceJWT;
-    TransfersService transfersService;
-
-    @BeforeSuite
-    private void doBeforeSuite() throws Exception {
-        String privateKey = IOUtils.toString(
-            this.getClass().getResourceAsStream("/test-machine"),
-            StandardCharsets.UTF_8
-        );
-        String publicKey = IOUtils.toString(
-            this.getClass().getResourceAsStream("/test-machine.pub"),
-            StandardCharsets.UTF_8
-        );
-
-        //SSH system with username/password
-        Credential creds = new Credential();
-        creds.setAccessKey("testuser");
-        creds.setPassword("password");
-        testSystemSSH = new TSystem();
-        testSystemSSH.setAccessCredential(creds);
-        testSystemSSH.setHost("localhost");
-        testSystemSSH.setPort(2222);
-        testSystemSSH.setRootDir("/data/home/testuser/");
-        testSystemSSH.setName("destSystem");
-        testSystemSSH.setEffectiveUserId("testuser");
-        testSystemSSH.setDefaultAccessMethod(TSystem.DefaultAccessMethodEnum.PASSWORD);
-        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.SFTP);
-        testSystemSSH.setTransferMethods(transferMechs);
-
-        //S3 system
-        creds = new Credential();
-        creds.setAccessKey("user");
-        creds.setAccessSecret("password");
-        sourceSystem = new TSystem();
-        sourceSystem.setTenant("dev");
-        sourceSystem.setHost("http://localhost");
-        sourceSystem.setBucketName("test1");
-        sourceSystem.setName("sourceSystem");
-        sourceSystem.setPort(9000);
-        sourceSystem.setAccessCredential(creds);
-        sourceSystem.setRootDir("/");
-        transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.S3);
-        sourceSystem.setTransferMethods(transferMechs);
-
-        creds = new Credential();
-        creds.setAccessKey("user");
-        creds.setAccessSecret("password");
-        destSystem = new TSystem();
-        destSystem.setTenant("dev");
-        destSystem.setHost("http://localhost");
-        destSystem.setBucketName("test2");
-        destSystem.setName("destSystem");
-        destSystem.setPort(9000);
-        destSystem.setAccessCredential(creds);
-        destSystem.setRootDir("/");
-        transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.S3);
-        destSystem.setTransferMethods(transferMechs);
-
-        var tenant = new Tenant();
-        tenant.setTenantId("testTenant");
-        tenant.setBaseUrl("https://test.tapis.io");
-        Map<String, Tenant> tenantMap = new HashMap<>();
-        tenantMap.put(tenant.getTenantId(), tenant);
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        serviceJWT = Mockito.mock(ServiceJWT.class);
-        var serviceJWTFactory = Mockito.mock(ServiceJWTCacheFactory.class);
-        when(serviceJWTFactory.provide()).thenReturn(serviceJWT);
-        when(systemsClientFactory.getClient(any(), any())).thenReturn(systemsClient);
-
-//        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
-
-        locator = ServiceLocatorUtilities.bind(new AbstractBinder() {
-            @Override
-            protected void configure() {
-                bindAsContract(ParentTaskFSM.class);
-                bindAsContract(FileTransfersDAO.class);
-                bindAsContract(TransfersService.class);
-                bindAsContract(RemoteDataClientFactory.class);
-                bindAsContract(NotificationsService.class);
-                bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-
-                bind(systemsClientFactory).to(SystemsClientFactory.class);
-                bind(systemsClient).to(SystemsClient.class);
-                bind(tenantManager).to(TenantManager.class);
-                bind(skClient).to(SKClient.class);
-                bind(serviceJWTFactory).to(ServiceJWTCacheFactory.class);
-                bind(serviceJWT).to(ServiceJWT.class);
-                bind(tenantManager).to(TenantManager.class);
-            }
-        });
-        remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        transfersService = locator.getService(TransfersService.class);
-
-    }
 
     @BeforeMethod
     public void beforeTest() throws Exception {
+        sourceSystem = testSystemS3;
+        destSystem = testSystemSSH;
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        try {
-            client.makeBucket("test1");
-            client.makeBucket("test2");
-        } catch (Exception ex) {
-
-        }
         IFileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("file1.txt", in);
@@ -199,7 +90,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setChildQueue(childQ);
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
-        TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
+        TransferTask t1 = transfersService.createTransfer("testuser", "dev",
             sourceSystem.getName(),
             "/",
             destSystem.getName(),
@@ -230,7 +121,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setChildQueue(childQ);
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
-        TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
+        TransferTask t1 = transfersService.createTransfer("testuser", "dev",
             sourceSystem.getName(),
             "/file1.txt",
             destSystem.getName(),
@@ -279,7 +170,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
 
-        TransferTask t1 = transfersService.createTransfer("testUser1", "dev",
+        TransferTask t1 = transfersService.createTransfer("testuser", "dev",
             sourceSystem.getName(),
             "/a/",
             destSystem.getName(),
@@ -313,9 +204,10 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
         IFileOpsService fileOpsService = new FileOpsService(sourceClient);
         //Add some files to transfer
-        InputStream in = Utils.makeFakeFile(10 * 1000 * 1024);
+        int FILESIZE = 10 * 1000 * 1024;
+        InputStream in = Utils.makeFakeFile(FILESIZE);
         fileOpsService.insert("a/1.txt", in);
-        in = Utils.makeFakeFile(10 * 1024);
+        in = Utils.makeFakeFile(FILESIZE);
         fileOpsService.insert("a/2.txt", in);
         String childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(childQ);
@@ -323,7 +215,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setParentQueue(parentQ);
 
         TransferTask t1 = transfersService.createTransfer(
-            "testUser1",
+            "testuser",
             "dev",
             sourceSystem.getName(),
             "/a/",
@@ -335,7 +227,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         for(String path : new String[]{"/a/1.txt", "/a/2.txt"}){
             FileInfo fileInfo = new FileInfo();
             fileInfo.setPath(path);
-            fileInfo.setSize(10 * 1024);
+            fileInfo.setSize(FILESIZE);
             TransferTaskChild child = new TransferTaskChild(t1, fileInfo);
             child = transfersService.createTransferTaskChild(child);
             transfersService.publishChildMessage(child);
@@ -349,9 +241,11 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             .create(stream)
             .assertNext(k->{
                 Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
+                Assert.assertEquals(k.getBytesTransferred(), FILESIZE);
             })
             .assertNext(k->{
                 Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
+                Assert.assertEquals(k.getBytesTransferred(), FILESIZE);
             })
             .thenCancel()
             .verify();
@@ -379,7 +273,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setParentQueue(parentQ);
 
         TransferTask t1 = transfersService.createTransfer(
-            "testUser1",
+            "testuser",
             "dev",
             sourceSystem.getName(),
             "/a/",
@@ -432,7 +326,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setParentQueue(parentQ);
 
         TransferTask t1 = transfersService.createTransfer(
-            "testUser1",
+            "testuser",
             "dev",
             sourceSystem.getName(),
             "/a/",
@@ -459,7 +353,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
         // MUST sleep here for a bit for a bit for things to resolve. Alternatively could
         // use a StepVerifier or put some of this in the subscribe callback
-        Thread.sleep(1000);
+        Thread.sleep(2000);
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 2);
         t1 = transfersService.getTransferTask(t1.getId());
@@ -500,7 +394,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
             for (var j=0;j<1;j++) {
                transfersService.createTransfer(
-                    "testUser1",
+                    "testuser",
                     "tenant"+i,
                     sourceSystem.getName(),
                     "/a/",
@@ -516,11 +410,12 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
-        stream.subscribe(taskChild -> {
-            log.warn("CURRENT THREAD COUNT: {}", ManagementFactory.getThreadMXBean().getThreadCount() );
-            log.info(taskChild.toString());
-        });
-//        stream.take(10).blockLast();
+        stream
+            .take(10)
+            .subscribe(taskChild -> {
+                log.warn("CURRENT THREAD COUNT: {}", ManagementFactory.getThreadMXBean().getThreadCount() );
+                log.info(taskChild.toString());
+            });
         transfersService.deleteQueue(parentQ).subscribe();
         transfersService.deleteQueue(childQ).subscribe();
     }
