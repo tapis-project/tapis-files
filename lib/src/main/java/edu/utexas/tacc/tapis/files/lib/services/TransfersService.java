@@ -313,13 +313,20 @@ public class TransfersService implements ITransfersService {
                     })
             );
 
-            sender.declareQueue(QueueSpecification.queue(CHILD_QUEUE)).thenMany(messages).subscribe();
+            sender.declareQueue(QueueSpecification.queue(CHILD_QUEUE))
+                .thenMany(messages)
+                .subscribe();
     }
+
     public void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
         try {
             String m = mapper.writeValueAsString(childTask);
             OutboundMessage message = new OutboundMessage("", CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
-            sender.send(Flux.just(message)).subscribe();
+
+            sender.declareQueue(QueueSpecification.queue(CHILD_QUEUE))
+                .subscribe();
+            sender.send(Mono.just(message))
+                .subscribe();
         } catch (JsonProcessingException ex) {
             throw new ServiceException(ex.getMessage(), ex);
         }
@@ -364,6 +371,7 @@ public class TransfersService implements ITransfersService {
     public Flux<TransferTaskChild> processChildTasks(@NotNull Flux<AcknowledgableDelivery> messageStream) {
         // Deserialize the message so that we can pass that into the reactor chain.
         return messageStream
+            .log()
             .groupBy( m-> {
                 try {
                     return groupByParentTask(m);

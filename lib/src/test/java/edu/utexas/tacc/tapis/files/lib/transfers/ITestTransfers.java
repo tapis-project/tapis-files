@@ -191,7 +191,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         fileOpsService.delete("/");
     }
 
-    @Test(enabled = false)
+    @Test
     public void testUpdatesTransferSize() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
@@ -222,7 +222,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test(enabled = false)
+    @Test
     public void testDoesListingAndCreatesChildTasks() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
@@ -264,7 +264,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.deleteQueue(childQ).subscribe();
     }
 
-    @Test(enabled = false)
+    @Test
     public void testMultipleChildren() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
@@ -305,7 +305,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test(enabled = false)
+    @Test
     public void testDoesTransfer() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
@@ -357,11 +357,11 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             .verify();
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 2);
-        transfersService.deleteQueue(childQ);
-        transfersService.deleteQueue(parentQ);
+        transfersService.deleteQueue(childQ).subscribe();
+        transfersService.deleteQueue(parentQ).subscribe();
     }
 
-    @Test(enabled = false)
+    @Test
     public void testDoesTransfersWhenOneErrors() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
@@ -409,13 +409,14 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
-        Assert.assertEquals(listing.size(), 2);
-        transfersService.deleteQueue(childQ);
-        transfersService.deleteQueue(parentQ);
+        //NOT-THERE/1.txt should NOT BE THERE
+        Assert.assertEquals(listing.size(), 1);
+        transfersService.deleteQueue(childQ).subscribe();
+        transfersService.deleteQueue(parentQ).subscribe();
 
     }
 
-    @Test(enabled = false)
+    @Test
     public void testFullPipeline() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
@@ -463,12 +464,12 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.size(), 2);
         t1 = transfersService.getTransferTask(t1.getId());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED.name());
-        transfersService.deleteQueue(parentQ);
-        transfersService.deleteQueue(childQ);
+        transfersService.deleteQueue(parentQ).subscribe();
+        transfersService.deleteQueue(childQ).subscribe();
     }
 
 
-    @Test(groups = {"performance"}, enabled = false)
+    @Test(groups = {"performance"})
     public void testPerformance() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(destSystem);
@@ -509,8 +510,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             }
         }
 
-
-
         Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
         Flux<TransferTask> parentStream = transfersService.processParentTasks(parentMessageStream);
         parentStream.subscribe();
@@ -521,12 +520,12 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             log.warn("CURRENT THREAD COUNT: {}", ManagementFactory.getThreadMXBean().getThreadCount() );
             log.info(taskChild.toString());
         });
-        stream.blockLast();
+//        stream.take(10).blockLast();
         transfersService.deleteQueue(parentQ).subscribe();
         transfersService.deleteQueue(childQ).subscribe();
     }
 
-    @Test(groups = {"performance"}, enabled = false)
+    @Test(groups = {"performance"})
     public void testS3toSSH() throws Exception {
         when(systemsClient.getSystemByName(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemByName(eq("destSystem"), any())).thenReturn(testSystemSSH);
@@ -542,7 +541,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
 
-        int NUMFILES = 2;
+        int NUMFILES = 20;
         int NUMTENANTS = 4;
         int NUMTRANSFERS = 1;
 
@@ -582,11 +581,14 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
         stream
+            .take(10)
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe(taskChild -> {
                 log.info("CURRENT THREAD COUNT = {}", ManagementFactory.getThreadMXBean().getThreadCount());
                 log.info(taskChild.toString());
+                Assert.assertEquals(taskChild.getBytesTransferred(), 100000 *1024);
             });
+
 
         transfersService.deleteQueue(parentQ).subscribe();
         transfersService.deleteQueue(childQ).subscribe();
