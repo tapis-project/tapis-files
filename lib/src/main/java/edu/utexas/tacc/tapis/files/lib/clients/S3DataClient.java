@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
@@ -33,6 +34,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 public class S3DataClient implements IRemoteDataClient {
@@ -185,12 +187,14 @@ public class S3DataClient implements IRemoteDataClient {
     public void insert(@NotNull String path, @NotNull InputStream fileStream) throws IOException {
         // TODO: This should use multipart on an InputStream ideally;
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
+        File scratchFile = File.createTempFile(UUID.randomUUID().toString(), "tmp");
         try {
+            FileUtils.copyInputStreamToFile(fileStream, scratchFile);
             PutObjectRequest req = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(remotePath)
                 .build();
-            client.putObject(req, RequestBody.fromBytes(fileStream.readAllBytes()));
+            client.putObject(req, RequestBody.fromFile(scratchFile));
         } catch (S3Exception ex) {
             log.error("S3DataClient::insert", ex);
             throw new IOException("Could not upload file.");

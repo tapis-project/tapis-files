@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,12 +24,10 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.validation.constraints.Min;
 import javax.ws.rs.*;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.*;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Paths;
 import java.util.Objects;
 
@@ -45,7 +44,10 @@ public class ContentApiResource extends BaseFilesResource {
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "content" })
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "OK")
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "401", description = "Not Authenticated"),
+        @ApiResponse(responseCode = "404", description = "Not Found"),
+        @ApiResponse(responseCode = "403", description = "Not Authorized")
     })
     public Response filesGetContents(
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
@@ -82,8 +84,17 @@ public class ContentApiResource extends BaseFilesResource {
             else {
                 stream = fileOpsService.getStream(path);
             }
+
+            StreamingOutput outStream = output -> {
+                try {
+                    IOUtils.copy(stream, output);
+                } catch (Exception e) {
+                    throw new WebApplicationException(e);
+                }
+            };
+
             return Response
-                    .ok(stream, mtype)
+                    .ok(outStream, mtype)
                     .header("content-disposition", contentDisposition)
                     .header("cache-control", "max-age=3600")
                     .build();

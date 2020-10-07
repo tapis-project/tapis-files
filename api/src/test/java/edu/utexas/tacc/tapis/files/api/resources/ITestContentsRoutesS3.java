@@ -27,6 +27,7 @@ import org.testng.annotations.*;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -102,11 +103,30 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         return app;
     }
 
+    public class RandomInputStream extends InputStream {
+
+        private long length;
+        private long count;
+        private Random random;
+
+        public RandomInputStream(long length) {
+            this.length = length;
+            this.random = new Random();
+        }
+
+        @Override
+        public int read() throws IOException {
+            if (count >= length) {
+                return -1;
+            }
+            count++;
+            return random.nextInt();
+        }
+    }
 
     private InputStream makeFakeFile(int size){
-        byte[] b = new byte[size];
-        new Random().nextBytes(b);
-        InputStream is = new ByteArrayInputStream(b);
+
+        InputStream is = new RandomInputStream(size);
         return is;
     }
 
@@ -139,6 +159,26 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
     public void setUp() throws Exception {
         super.setUp();
     }
+
+
+    @Test
+    public void testStreamLargeFile() throws Exception {
+        addTestFilesToBucket(testSystem, "testfile1.txt", 10*1000*1000*1024);
+        Response response = target("/v3/files/content/testSystem/testfile1.txt")
+            .request()
+            .header("X-Tapis-Token", user1jwt)
+            .get();
+        InputStream contents = response.readEntity(InputStream.class);
+        long fsize=0;
+        long chunk=0;
+        byte[] buffer = new byte[1024];
+        while((chunk = contents.read(buffer)) != -1){
+            fsize += chunk;
+        }
+        Assert.assertEquals(fsize, 10*1000*1000*1024);
+        contents.close();
+    }
+
 
     @Test
     public void testSimpleGetContents() throws Exception {

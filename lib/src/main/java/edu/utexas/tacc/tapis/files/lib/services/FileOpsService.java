@@ -105,6 +105,8 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public InputStream getStream(String path) throws ServiceException, NotFoundException {
         // Try with resources to auto close the stream
+        // Pushing the InputStream to a bufferedInputStream is memory efficient
+        // way to auto close the initial input stream.
         try (InputStream fileStream = client.getStream(path)) {
             return IOUtils.toBufferedInputStream(fileStream);
         } catch (IOException ex) {
