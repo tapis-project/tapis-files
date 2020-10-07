@@ -198,6 +198,8 @@ public class S3DataClient implements IRemoteDataClient {
         } catch (S3Exception ex) {
             log.error("S3DataClient::insert", ex);
             throw new IOException("Could not upload file.");
+        } finally {
+            scratchFile.delete();
         }
     }
 
