@@ -225,7 +225,6 @@ public class S3DataClient implements IRemoteDataClient {
 
         Stream<S3Object> response = listWithIterator(oldRemotePath);
 
-        //TODO: retry logic?
         response.forEach(object -> {
             try {
                 String key = object.key();

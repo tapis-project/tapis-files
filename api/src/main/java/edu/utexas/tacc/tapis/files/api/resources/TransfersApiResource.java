@@ -160,7 +160,7 @@ public class TransfersApiResource {
                     transferTask.getDestinationSystemId(),
                     transferTask.getDestinationPath()
             );
-            TapisResponse resp = TransferTaskResponse.createSuccessResponse(task);
+            TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (ServiceException ex) {
             log.error("createTransferTask", ex);
