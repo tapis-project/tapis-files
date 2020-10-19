@@ -234,7 +234,6 @@
         <module>api</module>
         <module>lib</module>
         <module>migrations</module>
-        <module>notifications</module>
     </modules>
 
 </project>

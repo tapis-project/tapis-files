@@ -80,8 +80,6 @@ public class TransfersService implements ITransfersService {
         this.systemsClientFactory = systemsClientFactory;
         this.remoteDataClientFactory = remoteDataClientFactory;
         this.notificationsService = notificationsService;
-
-        //TODO: Test out rabbitmq connection and auto shut down if not available?
     }
 
     public void setParentQueue(String name) {
