@@ -4,6 +4,8 @@ import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
@@ -35,6 +37,7 @@ public abstract class BaseFilesResource {
     RemoteDataClientFactory remoteDataClientFactory;
 
     private static final Logger log = LoggerFactory.getLogger(BaseFilesResource.class);
+    private IRuntimeConfig settings = RuntimeSettings.get();
 
     /**
      * Configure the systems client with the correct baseURL and token for the request.
@@ -45,7 +48,7 @@ public abstract class BaseFilesResource {
         try {
             String tenantId = user.getTenantId();
             systemsClient.setBasePath(tenantCache.getTenant(tenantId).getBaseUrl());
-            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
+            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT(settings.getSiteId()));
             systemsClient.addDefaultHeader("x-tapis-user", user.getName());
             systemsClient.addDefaultHeader("x-tapis-tenant", user.getTenantId());
         } catch (TapisException ex) {

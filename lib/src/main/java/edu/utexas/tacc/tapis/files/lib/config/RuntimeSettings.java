@@ -6,17 +6,18 @@ public class RuntimeSettings {
 
     static class BaseConfig implements IRuntimeConfig{
 
-        private String dbHost = settings.get("DB_HOST", "localhost");
-        private String dbName = settings.get("DB_NAME", "dev");
-        private String dbUsername = settings.get("DB_USERNAME", "dev");
-        private String dbPassword = settings.get("DB_PASSWORD", "dev");
-        private String dbPort = settings.get("DB_PORT", "5432");
-        private String rabbitMQUsername = settings.get("RABBITMQ_USERNAME", "dev");
-        private String rabbitMQVHost = settings.get("RABBITMQ_VHOST", "dev");
-        private String rabbitmqPassword = settings.get("RABBITMQ_PASSWORD", "dev");
-        private String servicePassword = settings.get("SERVICE_PASSWORD", "dev");
-        private String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
-        private String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
+        protected String siteId = settings.get("TAPIS_SITE_ID");
+        protected String dbHost = settings.get("DB_HOST", "localhost");
+        protected String dbName = settings.get("DB_NAME", "dev");
+        protected String dbUsername = settings.get("DB_USERNAME", "dev");
+        protected String dbPassword = settings.get("DB_PASSWORD", "dev");
+        protected String dbPort = settings.get("DB_PORT", "5432");
+        protected String rabbitMQUsername = settings.get("RABBITMQ_USERNAME", "dev");
+        protected String rabbitMQVHost = settings.get("RABBITMQ_VHOST", "dev");
+        protected String rabbitmqPassword = settings.get("RABBITMQ_PASSWORD", "dev");
+        protected String servicePassword = settings.get("SERVICE_PASSWORD", "dev");
+        protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
+        protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
 
         public String getDbHost() {
             return dbHost;
@@ -55,15 +56,18 @@ public class RuntimeSettings {
         public String getTokensServiceURL() { return tokensServiceURL; }
 
         public String getTenantsServiceURL() { return tenantsServiceURL; }
+
+        public String getSiteId() { return siteId; }
+
     }
 
 
     private static class TestConfig extends BaseConfig {
-        private String dbHost = settings.get("DB_HOST", "localhost");
-        private String dbName = "test";
-        private String dbUsername = "test";
-        private String dbPassword = "test";
-        private String dbPort = "5432";
+        protected String dbHost = settings.get("DB_HOST", "localhost");
+        protected String dbName = "test";
+        protected String dbUsername = "test";
+        protected String dbPassword = "test";
+        protected String dbPort = "5432";
 
         @Override
         public String getDbName() { return dbName; }

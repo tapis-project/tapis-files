@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.utils;
 
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWT;
@@ -19,6 +21,7 @@ public class SystemsClientFactory {
 
     private TenantManager tenantManager;
     private ServiceJWT serviceJWTCache;
+    private IRuntimeConfig settings = RuntimeSettings.get();
 
     @Inject
     public SystemsClientFactory(TenantManager tenantManager, ServiceJWT serviceJWTCache) {
@@ -31,7 +34,7 @@ public class SystemsClientFactory {
         try {
             Tenant tenant = tenantManager.getTenant(tenantId);
             client.setBasePath(tenant.getBaseUrl());
-            client.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
+            client.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT(settings.getSiteId()));
             client.addDefaultHeader("x-tapis-user", username);
             client.addDefaultHeader("x-tapis-tenant", tenant.getTenantId());
             return client;

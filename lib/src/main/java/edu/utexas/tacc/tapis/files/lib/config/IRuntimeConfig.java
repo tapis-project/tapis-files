@@ -12,4 +12,5 @@ public interface IRuntimeConfig {
     String getServicePassword();
     String getTokensServiceURL();
     String getTenantsServiceURL();
+    String getSiteId();
 }

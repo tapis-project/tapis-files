@@ -52,7 +52,6 @@ public class TransfersService implements ITransfersService {
     private final FileTransfersDAO dao;
     private final SystemsClientFactory systemsClientFactory;
     private final RemoteDataClientFactory remoteDataClientFactory;
-    private final NotificationsService notificationsService;
 
     private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]{
         TransferTaskStatus.FAILED,
@@ -64,8 +63,7 @@ public class TransfersService implements ITransfersService {
     public TransfersService(ParentTaskFSM fsm,
                             FileTransfersDAO dao,
                             SystemsClientFactory systemsClientFactory,
-                            RemoteDataClientFactory remoteDataClientFactory,
-                            NotificationsService notificationsService) {
+                            RemoteDataClientFactory remoteDataClientFactory ) {
         ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
         ReceiverOptions receiverOptions = new ReceiverOptions()
             .connectionFactory(connectionFactory)
@@ -79,7 +77,6 @@ public class TransfersService implements ITransfersService {
         this.fsm = fsm;
         this.systemsClientFactory = systemsClientFactory;
         this.remoteDataClientFactory = remoteDataClientFactory;
-        this.notificationsService = notificationsService;
     }
 
     public void setParentQueue(String name) {
@@ -285,7 +282,6 @@ public class TransfersService implements ITransfersService {
             children = dao.getAllChildren(parentTask);
             publishBulkChildMessages(children);
             String noteMessage = String.format("Transfer %s staged", parentTask.getUuid());
-            notificationsService.sendNotification(parentTask.getTenantId(), parentTask.getUsername(), noteMessage);
             return parentTask;
         } catch (Exception e) {
             log.error("Error processing {}", parentTask);
@@ -463,7 +459,6 @@ public class TransfersService implements ITransfersService {
                 dao.updateTransferTask(parentTask);
             }
             String noteMessage = String.format("Transfer in progress for %s", taskChild.getSourcePath());
-            notificationsService.sendNotification(taskChild.getTenantId(), taskChild.getUsername(), noteMessage);
             return taskChild;
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
@@ -554,7 +549,6 @@ public class TransfersService implements ITransfersService {
             taskChild = dao.updateTransferTaskChild(taskChild);
             parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
             String noteMessage = String.format("Transfer completed for %s", taskChild.getSourcePath());
-            notificationsService.sendNotification(taskChild.getTenantId(), taskChild.getUsername(), noteMessage);
             return taskChild;
         } catch (DAOException ex) {
             String msg = String.format("Error updating child task %s", taskChild.toString());
@@ -574,7 +568,6 @@ public class TransfersService implements ITransfersService {
                     parentTask.setStatus(TransferTaskStatus.COMPLETED.name());
                     dao.updateTransferTask(parentTask);
                     String noteMessage = String.format("Transfer %s complete", parentTask.getUuid());
-                    notificationsService.sendNotification(taskChild.getTenantId(), taskChild.getUsername(), noteMessage);
                 }
             }
             return taskChild;

@@ -4,7 +4,6 @@ import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
-import edu.utexas.tacc.tapis.files.lib.services.NotificationsService;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.files.lib.transfers.ITestTransfers;
 import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
@@ -144,7 +143,6 @@ public abstract class BaseDatabaseIntegrationTest  {
                 bindAsContract(FileTransfersDAO.class);
                 bindAsContract(TransfersService.class);
                 bindAsContract(RemoteDataClientFactory.class);
-                bindAsContract(NotificationsService.class);
                 bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
 
                 bind(systemsClientFactory).to(SystemsClientFactory.class);

@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.security.*;
@@ -35,6 +37,8 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
     @Context
     private ResourceInfo resourceInfo;
 
+    private IRuntimeConfig settings = RuntimeSettings.get();
+
     @Override
     public void filter(ContainerRequestContext requestContext) throws WebApplicationException {
 
@@ -58,7 +62,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
             Tenant tenant = tenantCache.getTenant(tenantId);
             skClient.setUserAgent("filesServiceClient");
             skClient.setBasePath(tenant.getBaseUrl() + "/v3");
-            skClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
+            skClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT(settings.getSiteId()));
             skClient.addDefaultHeader("x-tapis-user", username);
             skClient.addDefaultHeader("x-tapis-tenant", tenantId);
             boolean isPermitted = skClient.isPermitted(tenantId, username, permSpec);

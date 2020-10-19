@@ -7,7 +7,6 @@ COPY pom.xml .
 COPY api/pom.xml ./api/pom.xml
 COPY lib/pom.xml ./lib/pom.xml
 COPY migrations/pom.xml ./migrations/pom.xml
-COPY notifications/pom.xml ./notifications/pom.xml
 # should only install the deps
 RUN mvn clean install --fail-never
 #now copy all the source and build

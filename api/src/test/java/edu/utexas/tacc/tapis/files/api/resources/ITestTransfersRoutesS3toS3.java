@@ -4,7 +4,6 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.services.NotificationsService;
 import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
@@ -110,7 +109,6 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
                         bindAsContract(FileTransfersDAO.class);
                         bindAsContract(RemoteDataClientFactory.class);
                         bindAsContract(SystemsClientFactory.class);
-                        bindAsContract(NotificationsService.class);
                         bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
 
                     }
