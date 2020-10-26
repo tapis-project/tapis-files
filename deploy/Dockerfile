@@ -10,7 +10,10 @@ COPY migrations/pom.xml ./migrations/pom.xml
 # should only install the deps
 RUN mvn clean install --fail-never
 #now copy all the source and build
-COPY . .
+COPY api/src ./api/src
+COPY lib/src ./lib/src
+COPY migrations/src ./migrations/src
+
 RUN mvn package -DskipTests
 
 FROM openjdk:15-slim

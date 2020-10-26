@@ -14,8 +14,8 @@
     <version>1.0</version>
 
     <properties>
-        <tapis-client-java.version>1.11.12</tapis-client-java.version>
-        <tapis-shared.version>1.11.35</tapis-shared.version>
+        <tapis-client-java.version>[1.11,2.0)</tapis-client-java.version>
+        <tapis-shared.version>[1.11,2.0)</tapis-shared.version>
         <javax.websockets.version>1.1</javax.websockets.version>
         <javax.validation.version>2.0.1.Final</javax.validation.version>
         <skipITs>true</skipITs>
