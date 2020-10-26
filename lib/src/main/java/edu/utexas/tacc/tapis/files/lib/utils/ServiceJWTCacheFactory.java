@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Named;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service @Named
 public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
@@ -22,7 +24,10 @@ public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
     @Override
     public ServiceJWT provide() {
         try {
+            List<String> targetSites = new ArrayList<>();
+            targetSites.add(runtimeConfig.getSiteId());
             ServiceJWTParms params = new ServiceJWTParms();
+            params.setTargetSites(targetSites);
             params.setServiceName("files");
             params.setTenant("master");
             params.setTokensBaseUrl(runtimeConfig.getTokensServiceURL());
