@@ -2,20 +2,19 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
-import edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest;
 import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
-import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWT;
 import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.codec.Charsets;
 import org.apache.commons.io.IOUtils;
@@ -25,18 +24,14 @@ import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
-import org.glassfish.jersey.process.internal.RequestScoped;
 import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.test.TestProperties;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
-import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
@@ -68,6 +63,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     private Tenant tenant;
     private Credential creds;
     private Map<String, Tenant> tenantMap = new HashMap<>();
+    private Site testSite;
 
     // mocking out the services
     private SystemsClient systemsClient;
@@ -94,7 +90,12 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         tenant = new Tenant();
         tenant.setTenantId("testTenant");
         tenant.setBaseUrl("https://test.tapis.io");
+        tenant.setSiteId("test");
         tenantMap.put(tenant.getTenantId(), tenant);
+
+        testSite = new Site();
+        testSite.setSiteId("test");
+
     }
 
     @Override
@@ -106,7 +107,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         skClient = Mockito.mock(SKClient.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
-
+        JWTValidateRequestFilter.setSiteId("test");
+        JWTValidateRequestFilter.setService("files");
         ResourceConfig app = new BaseResourceConfig()
             .register(new JWTValidateRequestFilter(tenantManager))
             .register(new AbstractBinder() {
@@ -148,6 +150,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     public void initMocks() throws Exception {
         when(tenantManager.getTenants()).thenReturn(tenantMap);
         when(tenantManager.getTenant(any())).thenReturn(tenant);
+        when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
@@ -347,11 +350,14 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
             .header("x-tapis-token", user1jwt)
             .post(Entity.entity(multiPart, MediaType.MULTIPART_FORM_DATA_TYPE), FileStringResponse.class);
 
+        Assert.assertEquals(response.getStatus(), "success");
+
         FileListResponse listing = target("/v3/files/ops/testSystem/test-inserted.txt")
             .request()
             .header("x-tapis-token", user1jwt)
             .get(FileListResponse.class);
-        Assert.assertTrue(listing.getResult().size() == 1);
+        Assert.assertEquals(listing.getResult().size(), 1);
+        Assert.assertEquals(listing.getResult().get(0).getName(), "test-inserted.txt");
     }
 
     @Test
