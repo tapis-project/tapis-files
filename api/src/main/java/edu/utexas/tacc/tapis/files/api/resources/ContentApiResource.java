@@ -55,13 +55,15 @@ public class ContentApiResource extends BaseFilesResource {
             @Parameter(description = "Range of bytes to send", example = "range=0,999") @HeaderParam("range") HeaderByteRange range,
             @Parameter(description = "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1") @Min(1) @HeaderParam("more") Long moreStartPage,
             @Context SecurityContext securityContext) {
+
+        InputStream stream = null;
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+
         try {
-            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             configureSystemsClient(user);
             TSystem system = systemsClient.getSystemByName(systemId, null);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
-            InputStream stream;
             String mtype = MediaType.APPLICATION_OCTET_STREAM;
             String contentDisposition;
 
@@ -85,9 +87,10 @@ public class ContentApiResource extends BaseFilesResource {
                 stream = fileOpsService.getStream(path);
             }
 
+            InputStream finalStream = stream;
             StreamingOutput outStream = output -> {
                 try {
-                    IOUtils.copy(stream, output);
+                    IOUtils.copy(finalStream, output);
                 } catch (Exception e) {
                     throw new WebApplicationException(e);
                 }
