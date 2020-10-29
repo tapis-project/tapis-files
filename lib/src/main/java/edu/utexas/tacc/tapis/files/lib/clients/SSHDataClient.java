@@ -331,7 +331,7 @@ public class SSHDataClient implements IRemoteDataClient {
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
         try {
             InputStream inputStream = channelSftp.get(absPath.toString());
-            return IOUtils.toBufferedInputStream(inputStream);
+            return IOUtils.buffer(inputStream);
         } catch (SftpException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
@@ -381,7 +381,7 @@ public class SSHDataClient implements IRemoteDataClient {
             channel.setCommand(command);
             InputStream commandOutput = channel.getInputStream();
             channel.connect();
-            return IOUtils.toBufferedInputStream(commandOutput);
+            return IOUtils.buffer(commandOutput);
         } catch (JSchException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
