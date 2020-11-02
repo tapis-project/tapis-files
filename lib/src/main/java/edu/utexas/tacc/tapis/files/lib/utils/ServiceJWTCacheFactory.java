@@ -27,7 +27,7 @@ public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
             List<String> targetSites = new ArrayList<>();
             targetSites.add(runtimeConfig.getSiteId());
             ServiceJWTParms params = new ServiceJWTParms();
-            params.setTargetSites(targetSites);
+//            params.setTargetSites(targetSites);
             params.setServiceName("files");
             params.setTenant("master");
             params.setTokensBaseUrl(runtimeConfig.getTokensServiceURL());

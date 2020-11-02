@@ -48,7 +48,7 @@ public abstract class BaseFilesResource {
         try {
             String tenantId = user.getTenantId();
             systemsClient.setBasePath(tenantCache.getTenant(tenantId).getBaseUrl());
-            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT(settings.getSiteId()));
+            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
             systemsClient.addDefaultHeader("x-tapis-user", user.getName());
             systemsClient.addDefaultHeader("x-tapis-tenant", user.getTenantId());
         } catch (TapisException ex) {

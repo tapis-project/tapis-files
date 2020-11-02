@@ -83,8 +83,8 @@ public class FilesApplication extends BaseResourceConfig {
 
         runtimeConfig = RuntimeSettings.get();
 
-        JWTValidateRequestFilter.setSiteId("tacc");
-        JWTValidateRequestFilter.setService("files");
+        //JWTValidateRequestFilter.setSiteId("tacc");
+        //JWTValidateRequestFilter.setService("files");
 //        JWTValidateRequestFilter.setService(runtimeConfig.getTenantsServiceURL());
         //JWT validation
         register(JWTValidateRequestFilter.class);

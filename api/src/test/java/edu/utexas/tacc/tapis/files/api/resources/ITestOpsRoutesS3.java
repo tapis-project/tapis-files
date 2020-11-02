@@ -107,8 +107,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         skClient = Mockito.mock(SKClient.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
-        JWTValidateRequestFilter.setSiteId("test");
-        JWTValidateRequestFilter.setService("files");
+//        JWTValidateRequestFilter.setSiteId("test");
+//        JWTValidateRequestFilter.setService("files");
         ResourceConfig app = new BaseResourceConfig()
             .register(new JWTValidateRequestFilter(tenantManager))
             .register(new AbstractBinder() {
@@ -150,7 +150,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     public void initMocks() throws Exception {
         when(tenantManager.getTenants()).thenReturn(tenantMap);
         when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(tenantManager.getSite(any())).thenReturn(testSite);
+//        when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);

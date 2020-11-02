@@ -34,7 +34,7 @@ public class SystemsClientFactory {
         try {
             Tenant tenant = tenantManager.getTenant(tenantId);
             client.setBasePath(tenant.getBaseUrl());
-            client.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT(settings.getSiteId()));
+            client.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT());
             client.addDefaultHeader("x-tapis-user", username);
             client.addDefaultHeader("x-tapis-tenant", tenant.getTenantId());
             return client;
