@@ -61,7 +61,7 @@ public class ContentApiResource extends BaseFilesResource {
 
         try {
             configureSystemsClient(user);
-            TSystem system = systemsClient.getSystemByName(systemId, null);
+            TSystem system = systemsClient.getSystemWithCredentials(systemId, null);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             String mtype = MediaType.APPLICATION_OCTET_STREAM;
@@ -105,6 +105,8 @@ public class ContentApiResource extends BaseFilesResource {
             throw new BadRequestException("Only files can be served");
         } catch (ServiceException | IOException ex) {
             throw new WebApplicationException(ex);
+        } finally {
+
         }
     }
 

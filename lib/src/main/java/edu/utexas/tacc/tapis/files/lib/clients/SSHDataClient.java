@@ -11,6 +11,7 @@ import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 
 import com.jcraft.jsch.*;
+import edu.utexas.tacc.tapis.files.lib.kernel.TapisJSCHInputStream;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.NotImplementedException;
@@ -332,7 +333,8 @@ public class SSHDataClient implements IRemoteDataClient {
         InputStream inputStream = null;
         try {
             inputStream = channelSftp.get(absPath.toString());
-            return IOUtils.toBufferedInputStream(inputStream);
+            TapisJSCHInputStream shellInputStream = new TapisJSCHInputStream(inputStream, sshConnection, channelSftp);
+            return shellInputStream;
         } catch (SftpException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
@@ -343,8 +345,6 @@ public class SSHDataClient implements IRemoteDataClient {
                 log.error(msg, e);
                 throw new IOException(msg, e);
             }
-        } finally {
-            sshConnection.returnChannel(channelSftp);
         }
     }
 
@@ -381,8 +381,9 @@ public class SSHDataClient implements IRemoteDataClient {
             String command = String.format("dd if=%s ibs=1 skip=%s count=%s", absPath.toString(), startByte, count);
             channel.setCommand(command);
             InputStream commandOutput = channel.getInputStream();
+            TapisJSCHInputStream shellInputStream = new TapisJSCHInputStream(commandOutput, sshConnection, channel);
             channel.connect();
-            return IOUtils.toBufferedInputStream(commandOutput);
+            return shellInputStream;
         } catch (JSchException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = String.format(NOT_FOUND_MESSAGE, username, host, path);
@@ -393,8 +394,6 @@ public class SSHDataClient implements IRemoteDataClient {
                 log.error(msg, e);
                 throw new IOException(msg, e);
             }
-        } finally {
-            sshConnection.returnChannel(channel);
         }
     }
 

@@ -58,8 +58,6 @@ public abstract class BaseFilesResource {
         }
     }
     public IFileOpsService makeFileOpsService(TSystem system, String username) throws TapisClientException, IOException, ServiceException {
-        Credential creds = systemsClient.getUserCredential(system.getName(), username);
-        system.setAccessCredential(creds);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, username);
         FileOpsService fileOpsService = new FileOpsService(client);
         return fileOpsService;

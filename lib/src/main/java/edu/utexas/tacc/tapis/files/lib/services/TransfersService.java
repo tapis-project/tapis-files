@@ -262,7 +262,7 @@ public class TransfersService implements ITransfersService {
         final TransferTask finalParentTask = parentTask;
         try {
             SystemsClient systemsClient = systemsClientFactory.getClient(parentTask.getTenantId(), parentTask.getUsername());
-            sourceSystem = systemsClient.getSystemByName(parentTask.getSourceSystemId(), null);
+            sourceSystem = systemsClient.getSystemWithCredentials(parentTask.getSourceSystemId(), null);
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
 
             //TODO: Retries will break this, should delete anything in the DB if it is a retry?
@@ -492,9 +492,9 @@ public class TransfersService implements ITransfersService {
         //Step 2: Get clients for source / dest
         try {
             SystemsClient systemsClient = systemsClientFactory.getClient(taskChild.getTenantId(), taskChild.getUsername());
-            sourceSystem = systemsClient.getSystemByName(taskChild.getSourceSystemId(), null);
+            sourceSystem = systemsClient.getSystemWithCredentials(taskChild.getSourceSystemId(), null);
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
-            destSystem = systemsClient.getSystemByName(taskChild.getDestinationSystemId(), null);
+            destSystem = systemsClient.getSystemWithCredentials(taskChild.getDestinationSystemId(), null);
             destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
         } catch (TapisClientException | IOException | ServiceException ex) {
             log.error(ex.getMessage(), ex);
@@ -502,9 +502,10 @@ public class TransfersService implements ITransfersService {
         }
 
         //Step 3: Stream the file contents to dest
-        try {
-            InputStream sourceStream =  sourceClient.getStream(taskChild.getSourcePath());
-            ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream);
+        try (InputStream sourceStream =  sourceClient.getStream(taskChild.getSourcePath());
+             ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream)
+        ){
+
             // Observe the progress event stream
             final TransferTaskChild finalTaskChild = taskChild;
             observableInputStream.getEventStream()

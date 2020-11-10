@@ -12,6 +12,7 @@ import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.codec.Charsets;
 import org.apache.commons.io.IOUtils;
@@ -29,6 +30,8 @@ import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -45,7 +48,7 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
     private Tenant tenant;
     private Credential creds;
     private Map<String, Tenant> tenantMap = new HashMap<>();
-
+    Site site;
 
     // mocking out the services test
     private SystemsClient systemsClient;
@@ -73,6 +76,8 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         tenant.setTenantId("testTenant");
         tenant.setBaseUrl("https://test.tapis.io");
         tenantMap.put(tenant.getTenantId(), tenant);
+        site = new Site();
+        site.setSiteId("dev");
 
     }
 
@@ -84,7 +89,8 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         skClient = Mockito.mock(SKClient.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
-
+        JWTValidateRequestFilter.setService("files");
+        JWTValidateRequestFilter.setSiteId("dev");
         ResourceConfig app = new BaseResourceConfig()
             .register(new JWTValidateRequestFilter(tenantManager))
             .register(new AbstractBinder() {
@@ -124,13 +130,13 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         }
     }
 
-    private InputStream makeFakeFile(int size){
+    private InputStream makeFakeFile(long size){
 
         InputStream is = new RandomInputStream(size);
         return is;
     }
 
-    private void addTestFilesToBucket(TSystem system, String fileName, int fileSize) throws Exception{
+    private void addTestFilesToBucket(TSystem system, String fileName, long fileSize) throws Exception{
         S3DataClient client = new S3DataClient(system);
         InputStream f1 = makeFakeFile(fileSize);
         client.insert(fileName, f1);
@@ -147,9 +153,10 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
     public void beforeTest() throws Exception {
         when(tenantManager.getTenants()).thenReturn(tenantMap);
         when(tenantManager.getTenant(any())).thenReturn(tenant);
+        when(tenantManager.getSite(any())).thenReturn(site);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
         user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
         user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
     }
@@ -163,19 +170,23 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testStreamLargeFile() throws Exception {
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10*1000*1000*1024);
+        long filesize = 100 * 1000 * 1000;
+        addTestFilesToBucket(testSystem, "testfile1.txt", filesize);
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
             .request()
             .header("X-Tapis-Token", user1jwt)
             .get();
         InputStream contents = response.readEntity(InputStream.class);
+        Instant start = Instant.now();
         long fsize=0;
         long chunk=0;
         byte[] buffer = new byte[1024];
         while((chunk = contents.read(buffer)) != -1){
             fsize += chunk;
         }
-        Assert.assertEquals(fsize, 10*1000*1000*1024);
+        Duration time = Duration.between(start, Instant.now());
+        log.info("fileize={} MB: Download took {} ms: throughput={} MB/s", filesize /1E6, time.toMillis(), filesize / (1E6 * time.toMillis()/1000));
+        Assert.assertEquals(fsize, filesize);
         contents.close();
     }
 

@@ -107,8 +107,9 @@ public class FileOpsService implements IFileOpsService {
         // Try with resources to auto close the stream
         // Pushing the InputStream to a bufferedInputStream is memory efficient
         // way to auto close the initial input stream.
-        try (InputStream fileStream = client.getStream(path)) {
-            return IOUtils.buffer(fileStream);
+        try {
+            InputStream fileStream = client.getStream(path);
+            return fileStream;
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
@@ -117,8 +118,9 @@ public class FileOpsService implements IFileOpsService {
 
     @Override
     public InputStream getBytes(@NotNull String path, long startByte, long count) throws ServiceException, NotFoundException {
-        try (InputStream fileStream = client.getBytesByRange(path, startByte, count)) {
-            return IOUtils.buffer(fileStream);
+        try  {
+            InputStream fileStream = client.getBytesByRange(path, startByte, count);
+            return fileStream;
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
@@ -128,8 +130,9 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public InputStream more(@NotNull String path, long startPage) throws ServiceException, NotFoundException {
         long startByte = (startPage - 1) * 1024;
-        try (InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023)) {
-            return IOUtils.buffer(fileStream);
+        try  {
+            InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023);
+            return fileStream;
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");

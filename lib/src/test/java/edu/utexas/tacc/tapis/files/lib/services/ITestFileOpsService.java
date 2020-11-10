@@ -185,8 +185,8 @@ public class ITestFileOpsService {
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert("test.txt", in);
         List<FileInfo> listing = fileOpsService.ls("test.txt");
-        Assert.assertTrue(listing.size() == 1);
-        Assert.assertTrue(listing.get(0).getName().equals("test.txt"));
+        Assert.assertEquals(listing.size(), 1);
+        Assert.assertEquals(listing.get(0).getName(), "test.txt");
 
     }
 
@@ -197,8 +197,8 @@ public class ITestFileOpsService {
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.insert("test.txt", in);
         List<FileInfo> listing = fileOpsService.ls("test.txt");
-        Assert.assertTrue(listing.size() == 1);
-        Assert.assertTrue(listing.get(0).getName().equals("test.txt"));
+        Assert.assertEquals(listing.size(), 1);
+        Assert.assertEquals(listing.get(0).getName(), "test.txt");
         Assert.assertEquals(listing.get(0).getSize(), 100 * 1000 * 1024L);
     }
 

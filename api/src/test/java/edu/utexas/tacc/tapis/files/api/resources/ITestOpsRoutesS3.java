@@ -153,7 +153,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
     }
 
 

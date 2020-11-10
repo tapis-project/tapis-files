@@ -94,7 +94,8 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         skClient = Mockito.mock(SKClient.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
-
+        JWTValidateRequestFilter.setSiteId("dev");
+        JWTValidateRequestFilter.setService("files");
         ResourceConfig app = new BaseResourceConfig()
                 .register(new JWTValidateRequestFilter(tenantManager))
                 .register(new AbstractBinder() {
@@ -137,7 +138,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         when(tenantManager.getTenant(any())).thenReturn(tenant);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        when(systemsClient.getSystemByName(any(String.class), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
     }
 
 

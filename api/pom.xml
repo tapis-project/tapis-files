@@ -20,12 +20,12 @@
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>tapis-files-lib</artifactId>
-            <version>${project.version}</version>
+            <version>${project.parent.version}</version>
         </dependency>
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>tapis-files-migrations</artifactId>
-            <version>${project.version}</version>
+            <version>${project.parent.version}</version>
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
@@ -70,12 +70,6 @@
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-json-jackson</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>javax.websocket</groupId>
-            <artifactId>javax.websocket-api</artifactId>
-            <version>${javax.websockets.version}</version>
         </dependency>
     </dependencies>
 
