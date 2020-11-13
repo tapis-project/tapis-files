@@ -11,9 +11,8 @@ import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 
 import com.jcraft.jsch.*;
-import edu.utexas.tacc.tapis.files.lib.kernel.TapisJSCHInputStream;
+import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -21,8 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com.jcraft.jsch.ChannelSftp.LsEntry;
 
-import edu.utexas.tacc.tapis.files.lib.kernel.ProgressMonitor;
-import edu.utexas.tacc.tapis.files.lib.kernel.SSHConnection;
+import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 
@@ -238,8 +236,7 @@ public class SSHDataClient implements IRemoteDataClient {
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
 
         try {
-            ProgressMonitor progress = new ProgressMonitor();
-            channelSftp.put(absoluteCurrentPath.toString(), absoluteNewPath.toString(), progress);
+            channelSftp.put(absoluteCurrentPath.toString(), absoluteNewPath.toString());
         } catch (SftpException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = String.format(NOT_FOUND_MESSAGE, username, host, currentPath);

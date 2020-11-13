@@ -3,7 +3,7 @@ package edu.utexas.tacc.tapis.files.api;
 import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
-import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
+import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;

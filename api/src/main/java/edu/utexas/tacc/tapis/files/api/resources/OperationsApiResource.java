@@ -102,7 +102,7 @@ public class OperationsApiResource extends BaseFilesResource {
             return Response.status(Status.OK).entity(resp).build();
         } catch (ServiceException | IOException | TapisClientException e) {
             log.error("listFiles", e);
-            throw new WebApplicationException(e.getMessage());
+            throw new WebApplicationException("Something went wrong!");
         }
     }
 

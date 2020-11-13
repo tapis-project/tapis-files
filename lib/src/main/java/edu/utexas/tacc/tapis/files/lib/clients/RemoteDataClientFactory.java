@@ -1,7 +1,8 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
-import edu.utexas.tacc.tapis.files.lib.kernel.SSHConnection;
+import edu.utexas.tacc.tapis.shared.ssh.ISSHConnection;
+import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
+import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem.TransferMethodsEnum;
 import org.jvnet.hk2.annotations.Service;

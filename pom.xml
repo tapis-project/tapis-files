@@ -15,7 +15,10 @@
 
     <properties>
         <tapis-client-java.version>[1.11,2.0)</tapis-client-java.version>
-        <tapis-shared.version>1.11.36</tapis-shared.version>
+        <tapis-shared.version>1.11.38-SNAPSHOT</tapis-shared.version>
+        <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
+        <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
+        <hk2.version>2.6.1</hk2.version>
         <skipITs>true</skipITs>
     </properties>
 
@@ -101,7 +104,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>${maven-jar-plugin.version}</version>
                 <configuration>
                     <archive>
                         <manifest>
@@ -112,7 +115,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.1.1</version>
+                <version>${maven-dependency-plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>prepare-package</phase>
@@ -169,7 +172,6 @@
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
-            <version>3.2.3.RELEASE</version>
         </dependency>
         <dependency>
             <!-- Logback supplies the proper version of sl4j -->

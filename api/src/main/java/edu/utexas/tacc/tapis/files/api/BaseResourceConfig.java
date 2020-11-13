@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.api;
 
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthzSystemPath;
 import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
-import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper;
 import edu.utexas.tacc.tapis.sharedapi.providers.ValidationExceptionMapper;
 import org.glassfish.jersey.jackson.JacksonFeature;

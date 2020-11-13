@@ -1,11 +1,10 @@
 package edu.utexas.tacc.tapis.files.lib;
 
-import edu.utexas.tacc.tapis.files.lib.cache.SSHConnectionCache;
+import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
-import edu.utexas.tacc.tapis.files.lib.transfers.ITestTransfers;
 import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
 import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
