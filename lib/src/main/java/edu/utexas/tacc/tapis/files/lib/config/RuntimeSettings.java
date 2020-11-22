@@ -2,11 +2,11 @@ package edu.utexas.tacc.tapis.files.lib.config;
 
 public class RuntimeSettings {
 
-    private static Settings settings = new Settings();
+    private static final Settings settings = new Settings();
 
     static class BaseConfig implements IRuntimeConfig{
 
-        protected String siteId = settings.get("TAPIS_SITE_ID", "tacc");
+        protected String siteId = settings.get("tapis.side.id", "tacc");
         protected String dbHost = settings.get("DB_HOST", "localhost");
         protected String dbName = settings.get("DB_NAME", "dev");
         protected String dbUsername = settings.get("DB_USERNAME", "dev");
