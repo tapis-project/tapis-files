@@ -2,7 +2,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
+import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;

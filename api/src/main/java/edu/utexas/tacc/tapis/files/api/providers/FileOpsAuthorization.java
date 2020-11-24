@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
-import edu.utexas.tacc.tapis.files.api.models.FilePermissionsEnum;
+import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import javax.annotation.Priority;
 import javax.ws.rs.NameBinding;
 import javax.ws.rs.Priorities;

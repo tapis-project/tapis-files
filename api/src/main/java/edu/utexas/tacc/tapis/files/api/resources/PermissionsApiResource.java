@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
-import edu.utexas.tacc.tapis.files.lib.dao.permissions.FilePermission;
+import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -9,14 +9,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.*;
-import javax.validation.constraints.*;
 
 
 @Path("/v3/files/permissions")
@@ -46,7 +44,7 @@ public class PermissionsApiResource  {
     @GET
     @Path("/{systemId}/{path}")
     @Produces({ "application/json" })
-    @Operation(summary = "List permissions on an file/folder", description = "Returns a list of roles/users that can access the file QUESTION: Who should be able to see access this? Only the owner of the system? ", tags={ "permissions" })
+    @Operation(summary = "Get the API users permissions on a file or folder.", description = "Get the permissions for the API user for the system and path.", tags={ "permissions" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",

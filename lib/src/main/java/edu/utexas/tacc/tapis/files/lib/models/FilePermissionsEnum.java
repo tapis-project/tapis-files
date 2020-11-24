@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.api.models;
+package edu.utexas.tacc.tapis.files.lib.models;
 
 public enum FilePermissionsEnum {
     READ("r"),
@@ -7,7 +7,7 @@ public enum FilePermissionsEnum {
 
     private final String label;
 
-    private FilePermissionsEnum(String label) {
+    FilePermissionsEnum(String label) {
         this.label = label;
     }
 

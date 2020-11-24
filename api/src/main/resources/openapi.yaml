@@ -311,9 +311,8 @@ paths:
     get:
       tags:
       - permissions
-      summary: List permissions on an file/folder
-      description: 'Returns a list of roles/users that can access the file QUESTION:
-        Who should be able to see access this? Only the owner of the system? '
+      summary: Get the API users permissions on a file or folder.
+      description: Get the permissions for the API user for the system and path.
       operationId: permissionsSystemIdPathGet
       parameters:
       - name: systemId
@@ -631,10 +630,16 @@ components:
     FilePermission:
       type: object
       properties:
-        username:
+        systemId:
           type: string
-        created:
+        path:
           type: string
+        permissions:
+          type: string
+          enum:
+          - READ
+          - READWRITE
+          - ALL
     FilePermissionResponse:
       type: object
       properties:
