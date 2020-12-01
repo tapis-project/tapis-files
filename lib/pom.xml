@@ -23,7 +23,7 @@
         </dependency>
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
-            <artifactId>tapis-shared-api</artifactId>
+            <artifactId>tapis-shared-lib</artifactId>
             <version>${tapis-shared.version}</version>
         </dependency>
         <dependency>
@@ -55,6 +55,10 @@
             <artifactId>commons-dbutils</artifactId>
         </dependency>
         <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-jaxrs2</artifactId>
         </dependency>
@@ -74,6 +78,7 @@
             <groupId>io.projectreactor.rabbitmq</groupId>
             <artifactId>reactor-rabbitmq</artifactId>
         </dependency>
+
 
     </dependencies>
 

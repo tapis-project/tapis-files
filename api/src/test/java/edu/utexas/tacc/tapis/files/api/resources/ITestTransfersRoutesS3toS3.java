@@ -13,8 +13,8 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
-import edu.utexas.tacc.tapis.sharedapi.security.ServiceJWT;
-import edu.utexas.tacc.tapis.sharedapi.security.TenantManager;
+import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -70,7 +70,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
         testSystem.setName("testSystem");
-        testSystem.setAccessCredential(creds);
+        testSystem.setAuthnCredential(creds);
         testSystem.setRootDir("/");
         List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
@@ -146,10 +146,8 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
      */
     private TransferTask createTransferTask() {
         TransferTaskRequest payload = new TransferTaskRequest();
-        payload.setSourceSystemId("sourceSystem");
-        payload.setSourcePath("sourcePath");
-        payload.setDestinationSystemId("destinationSystem");
-        payload.setDestinationPath("destinationPath");
+        payload.setSourceURI("tapis://sourceSystem/sourcePath");
+        payload.setDestinationURI("tapis://destSystem/destinationPath");
 
 
         Response createTaskResponse = target("/v3/files/transfers")

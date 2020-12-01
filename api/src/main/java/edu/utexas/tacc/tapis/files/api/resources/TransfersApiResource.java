@@ -152,17 +152,17 @@ public class TransfersApiResource {
             @Context SecurityContext securityContext) {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            TransferTask task = transfersService.createTransfer(
-                    user.getName(),
-                    user.getTenantId(),
-                    transferTask.getSourceSystemId(),
-                    transferTask.getSourcePath(),
-                    transferTask.getDestinationSystemId(),
-                    transferTask.getDestinationPath()
-            );
-            TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
-            return Response.ok(resp).build();
-        } catch (ServiceException ex) {
+//            TransferTask task = transfersService.createTransfer(
+//                    user.getName(),
+//                    user.getTenantId(),
+//                    transferTask.getSourceSystemId(),
+//                    transferTask.getSourcePath(),
+//                    transferTask.getDestinationSystemId(),
+//                    transferTask.getDestinationPath()
+//            );
+//            TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse();
+            return Response.ok("ok").build();
+        } catch (Exception ex) {
             log.error("createTransferTask", ex);
             throw new WebApplicationException("server error");
         }

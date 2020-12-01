@@ -1,53 +1,32 @@
 package edu.utexas.tacc.tapis.files.api.models;
-import com.fasterxml.jackson.annotation.JsonProperty;
+
 import io.swagger.v3.oas.annotations.media.Schema;
-import javax.validation.constraints.*;
+
+import javax.validation.constraints.NotBlank;
 
 public class TransferTaskRequest {
 
-    private String sourceSystemId;
-    private String sourcePath;
-    private String destinationSystemId;
-    private String destinationPath;
+    private String sourceURI;
+    private String destinationURI;
 
-    @Schema(required = true, description = "ID of source system")
-    @NotNull
-    public String getSourceSystemId() {
-        return sourceSystemId;
+
+    @Schema(required = true, description = "Fully qualified URI, such as tapis://{systemID}/{path} or https://myserver.com/path/to/inputs/")
+    @NotBlank
+    public String getSourceURI() {
+        return sourceURI;
     }
 
-
-    public void setSourceSystemId(String sourceSystemId) {
-        this.sourceSystemId = sourceSystemId;
+    @Schema(required = true, description = "Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}")
+    @NotBlank
+    public String getDestinationURI() {
+        return destinationURI;
     }
 
-    @Schema(required = true, description = "Path to file/folder in source system")
-    @NotNull
-    public String getSourcePath() {
-        return sourcePath;
+    public void setDestinationURI(String destinationURI) {
+        this.destinationURI = destinationURI;
     }
 
-    public void setSourcePath(String sourcePath) {
-        this.sourcePath = sourcePath;
-    }
-
-    @Schema(required = true, description = "ID of destination system")
-    @NotNull
-    public String getDestinationSystemId() {
-        return destinationSystemId;
-    }
-
-    public void setDestinationSystemId(String destinationSystemId) {
-        this.destinationSystemId = destinationSystemId;
-    }
-
-    @Schema(required = true, description = "Path to file/folder in destination system")
-    @NotNull
-    public String getDestinationPath() {
-        return destinationPath;
-    }
-
-    public void setDestinationPath(String destinationPath) {
-        this.destinationPath = destinationPath;
+    public void setSourceURI(String sourceURI) {
+        this.sourceURI = sourceURI;
     }
 }

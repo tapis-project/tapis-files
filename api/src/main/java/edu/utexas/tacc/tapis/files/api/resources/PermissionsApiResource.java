@@ -44,7 +44,7 @@ public class PermissionsApiResource  {
     @GET
     @Path("/{systemId}/{path}")
     @Produces({ "application/json" })
-    @Operation(summary = "Get the API users permissions on a file or folder.", description = "Get the permissions for the API user for the system and path.", tags={ "permissions" })
+    @Operation(summary = "Get the API user's permissions on a file or folder.", description = "Get the permissions for the API user for the system and path.", tags={ "permissions" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",

@@ -445,7 +445,7 @@
     "/v3/files/permissions/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "permissions" ],
-        "summary" : "Get the API users permissions on a file or folder.",
+        "summary" : "Get the API user's permissions on a file or folder.",
         "description" : "Get the permissions for the API user for the system and path.",
         "operationId" : "permissionsSystemIdPathGet",
         "parameters" : [ {
@@ -888,6 +888,12 @@
       "FilePermission" : {
         "type" : "object",
         "properties" : {
+          "tenantId" : {
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          },
           "systemId" : {
             "type" : "string"
           },
@@ -1035,24 +1041,16 @@
         }
       },
       "TransferTaskRequest" : {
-        "required" : [ "destinationPath", "destinationSystemId", "sourcePath", "sourceSystemId" ],
+        "required" : [ "destinationURI", "sourceURI" ],
         "type" : "object",
         "properties" : {
-          "sourceSystemId" : {
+          "sourceURI" : {
             "type" : "string",
-            "description" : "ID of source system"
+            "description" : "Fully qualified URI, such as tapis://{systemID}/{path} or https://myserver.com/path/to/inputs/"
           },
-          "sourcePath" : {
+          "destinationURI" : {
             "type" : "string",
-            "description" : "Path to file/folder in source system"
-          },
-          "destinationSystemId" : {
-            "type" : "string",
-            "description" : "ID of destination system"
-          },
-          "destinationPath" : {
-            "type" : "string",
-            "description" : "Path to file/folder in destination system"
+            "description" : "Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}"
           }
         }
       },
