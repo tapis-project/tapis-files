@@ -745,6 +745,15 @@ components:
           type: string
     TransferTaskRequest:
       required:
+      - elements
+      type: object
+      properties:
+        elements:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTaskRequestElement'
+    TransferTaskRequestElement:
+      required:
       - destinationURI
       - sourceURI
       type: object

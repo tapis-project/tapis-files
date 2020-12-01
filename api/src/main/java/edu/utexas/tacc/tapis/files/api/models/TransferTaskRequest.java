@@ -2,31 +2,19 @@ package edu.utexas.tacc.tapis.files.api.models;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotEmpty;
+import java.util.List;
 
 public class TransferTaskRequest {
 
-    private String sourceURI;
-    private String destinationURI;
+    private List<TransferTaskRequestElement> elements;
 
-
-    @Schema(required = true, description = "Fully qualified URI, such as tapis://{systemID}/{path} or https://myserver.com/path/to/inputs/")
-    @NotBlank
-    public String getSourceURI() {
-        return sourceURI;
+    @NotEmpty
+    public List<TransferTaskRequestElement> getElements() {
+        return elements;
     }
 
-    @Schema(required = true, description = "Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}")
-    @NotBlank
-    public String getDestinationURI() {
-        return destinationURI;
-    }
-
-    public void setDestinationURI(String destinationURI) {
-        this.destinationURI = destinationURI;
-    }
-
-    public void setSourceURI(String sourceURI) {
-        this.sourceURI = sourceURI;
+    public void setElements(List<TransferTaskRequestElement> elements) {
+        this.elements = elements;
     }
 }
