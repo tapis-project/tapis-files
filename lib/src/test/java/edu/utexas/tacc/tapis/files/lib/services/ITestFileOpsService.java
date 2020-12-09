@@ -51,7 +51,7 @@ public class ITestFileOpsService {
         creds.setAccessKey("testuser");
         creds.setPassword("password");
         testSystemSSH = new TSystem();
-        testSystemSSH.setAuthnCredential(creds);
+        testSystemSSH.setAccessCredential(creds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
         testSystemSSH.setRootDir("/data/home/testuser/");
@@ -66,7 +66,7 @@ public class ITestFileOpsService {
         creds.setPublicKey(publicKey);
         creds.setPrivateKey(privateKey);
         testSystemPKI = new TSystem();
-        testSystemPKI.setAuthnCredential(creds);
+        testSystemPKI.setAccessCredential(creds);
         testSystemPKI.setHost("localhost");
         testSystemPKI.setPort(2222);
         testSystemPKI.setRootDir("/data/home/testuser/");
@@ -85,7 +85,7 @@ public class ITestFileOpsService {
         testSystemS3.setBucketName("test");
         testSystemS3.setName("testSystem");
         testSystemS3.setPort(9000);
-        testSystemS3.setAuthnCredential(creds);
+        testSystemS3.setAccessCredential(creds);
         testSystemS3.setRootDir("/");
         transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);

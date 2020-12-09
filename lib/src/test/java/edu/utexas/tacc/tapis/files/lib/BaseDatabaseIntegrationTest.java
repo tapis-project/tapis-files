@@ -79,7 +79,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         creds.setAccessKey("testuser");
         creds.setPassword("password");
         testSystemSSH = new TSystem();
-        testSystemSSH.setAuthnCredential(creds);
+        testSystemSSH.setAccessCredential(creds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
         testSystemSSH.setRootDir("/data/home/testuser/");
@@ -99,7 +99,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemS3.setBucketName("test1");
         testSystemS3.setName("sourceSystem");
         testSystemS3.setPort(9000);
-        testSystemS3.setAuthnCredential(creds);
+        testSystemS3.setAccessCredential(creds);
         testSystemS3.setRootDir("/");
         transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
@@ -110,7 +110,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         creds.setPublicKey(publicKey);
         creds.setPrivateKey(privateKey);
         testSystemPKI = new TSystem();
-        testSystemPKI.setAuthnCredential(creds);
+        testSystemPKI.setAccessCredential(creds);
         testSystemPKI.setHost("localhost");
         testSystemPKI.setPort(2222);
         testSystemPKI.setRootDir("/data/home/testuser/");

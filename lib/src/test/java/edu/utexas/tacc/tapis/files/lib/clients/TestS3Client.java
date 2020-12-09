@@ -21,7 +21,7 @@ public class TestS3Client {
         sys.setHost("test.tacc.io");
         sys.setBucketName("testBucket");
         sys.setPort(9000);
-        sys.setAuthnCredential(creds);
+        sys.setAccessCredential(creds);
 
         S3DataClient client = new S3DataClient(sys);
         URI tmpURI = client.configEndpoint(sys.getHost());
@@ -38,7 +38,7 @@ public class TestS3Client {
         sys.setHost("http://test.tacc.io");
         sys.setBucketName("testBucket");
         sys.setPort(9000);
-        sys.setAuthnCredential(creds);
+        sys.setAccessCredential(creds);
 
         S3DataClient client = new S3DataClient(sys);
         URI tmpURI = client.configEndpoint(sys.getHost());
@@ -55,7 +55,7 @@ public class TestS3Client {
         sys.setHost("https://test.tacc.io/bucket");
         sys.setBucketName("testBucket");
         sys.setPort(9000);
-        sys.setAuthnCredential(creds);
+        sys.setAccessCredential(creds);
 
         S3DataClient client = new S3DataClient(sys);
         URI tmpURI = client.configEndpoint(sys.getHost());

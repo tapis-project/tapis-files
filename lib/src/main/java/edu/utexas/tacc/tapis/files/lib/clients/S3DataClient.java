@@ -71,8 +71,8 @@ public class S3DataClient implements IRemoteDataClient {
                 reg = Region.of(region);
             }
             AwsCredentials credentials = AwsBasicCredentials.create(
-                system.getAuthnCredential().getAccessKey(),
-                system.getAuthnCredential().getAccessSecret()
+                system.getAccessCredential().getAccessKey(),
+                system.getAccessCredential().getAccessSecret()
             );
             S3ClientBuilder builder = S3Client.builder()
                 .region(reg)

@@ -315,9 +315,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 //        TransferTask t2 = transfersService.createTransfer(
 //            "testUser1",
 //            "dev",
-//            sourceSystem.getName(),
+//            sourceSystem.getId(),
 //            "/a/",
-//            destSystem.getName(),
+//            destSystem.getId(),
 //            "/b/"
 //        );
 

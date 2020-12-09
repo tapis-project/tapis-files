@@ -70,7 +70,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
         testSystem.setName("testSystem");
-        testSystem.setAuthnCredential(creds);
+        testSystem.setAccessCredential(creds);
         testSystem.setRootDir("/");
         List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
