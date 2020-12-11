@@ -29,7 +29,7 @@ public class ServiceJWTCacheFactory implements Factory<ServiceJWT> {
             ServiceJWTParms params = new ServiceJWTParms();
             params.setTargetSites(targetSites);
             params.setServiceName("files");
-            params.setTenant("master");
+            params.setTenant("admin");
             params.setTokensBaseUrl(runtimeConfig.getTokensServiceURL());
             return new ServiceJWT(params, runtimeConfig.getServicePassword());
         } catch (TapisException | TapisClientException ex) {
