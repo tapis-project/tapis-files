@@ -69,9 +69,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
         TransferTask t1 = transfersService.createTransfer("testuser", "dev",
-            sourceSystem.getName(),
+            sourceSystem.getId(),
             "/",
-            destSystem.getName(),
+            destSystem.getId(),
             "/"
         );
         Flux<AcknowledgableDelivery> messages = transfersService.streamParentMessages();
@@ -100,21 +100,21 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
         TransferTask t1 = transfersService.createTransfer("testuser", "dev",
-            sourceSystem.getName(),
+            sourceSystem.getId(),
             "/file1.txt",
-            destSystem.getName(),
+            destSystem.getId(),
             "/"
         );
         TransferTask t2 = transfersService.createTransfer("testUser1", "dev2",
-            sourceSystem.getName(),
+            sourceSystem.getId(),
             "/file1.txt",
-            destSystem.getName(),
+            destSystem.getId(),
             "/"
         );
         TransferTask t3 = transfersService.createTransfer("testUser1", "dev3",
-            sourceSystem.getName(),
+            sourceSystem.getId(),
             "/file1.txt",
-            destSystem.getName(),
+            destSystem.getId(),
             "/"
         );
         Flux<AcknowledgableDelivery> messages = transfersService.streamParentMessages();
@@ -149,9 +149,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setParentQueue(parentQ);
 
         TransferTask t1 = transfersService.createTransfer("testuser", "dev",
-            sourceSystem.getName(),
+            sourceSystem.getId(),
             "/a/",
-            destSystem.getName(),
+            destSystem.getId(),
             "/b/"
         );
 
@@ -195,9 +195,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
             "dev",
-            sourceSystem.getName(),
+            sourceSystem.getId(),
             "/a/",
-            destSystem.getName(),
+            destSystem.getId(),
             "/b/"
         );
         // Create a couple of children for the task
@@ -253,9 +253,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
             "dev",
-            sourceSystem.getName(),
+            sourceSystem.getId(),
             "/a/",
-            destSystem.getName(),
+            destSystem.getId(),
             "/b/"
         );
 
@@ -306,9 +306,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
             "dev",
-            sourceSystem.getName(),
+            sourceSystem.getId(),
             "/a/",
-            destSystem.getName(),
+            destSystem.getId(),
             "/b/"
         );
 
@@ -374,9 +374,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                transfersService.createTransfer(
                     "testuser",
                     "tenant"+i,
-                    sourceSystem.getName(),
+                    sourceSystem.getId(),
                     "/a/",
-                    destSystem.getName(),
+                    destSystem.getId(),
                     "/b/"
                 );
             }
@@ -435,9 +435,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                 transfersService.createTransfer(
                     "testuser",
                     "tenant"+i,
-                    sourceSystem.getName(),
+                    sourceSystem.getId(),
                     "/a/",
-                    destSystem.getName(),
+                    destSystem.getId(),
                     "/b/"
                 );
             }

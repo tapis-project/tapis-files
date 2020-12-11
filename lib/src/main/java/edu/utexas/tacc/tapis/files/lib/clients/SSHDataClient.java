@@ -43,7 +43,7 @@ public class SSHDataClient implements IRemoteDataClient {
         rootDir = Paths.get(rdir).normalize().toString();
         host = sys.getHost();
         username = sys.getEffectiveUserId();
-        systemId = sys.getName();
+        systemId = sys.getId();
         sshConnection = sshCon;
         system = sys;
     }

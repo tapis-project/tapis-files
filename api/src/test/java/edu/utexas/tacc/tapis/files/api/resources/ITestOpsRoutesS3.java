@@ -80,8 +80,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
-        testSystem.setName("testSystem");
-        testSystem.setAccessCredential(creds);
+        testSystem.setId("testSystem");
+        testSystem.setAuthnCredential(creds);
         testSystem.setRootDir("/");
         List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TSystem.TransferMethodsEnum.S3);
