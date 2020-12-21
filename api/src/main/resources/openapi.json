@@ -1041,9 +1041,10 @@
         }
       },
       "TransferTaskRequest" : {
-        "required" : [ "elements" ],
+        "required" : [ "tag", "elements" ],
         "type" : "object",
         "properties" : {
+          "tag": {"type": "string"},
           "elements" : {
             "type" : "array",
             "items" : {
