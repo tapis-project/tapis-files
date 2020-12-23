@@ -745,9 +745,12 @@ components:
           type: string
     TransferTaskRequest:
       required:
+      - tag
       - elements
       type: object
       properties:
+        tag:
+          type: string
         elements:
           type: array
           items:
