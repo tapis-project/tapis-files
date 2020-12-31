@@ -27,7 +27,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
     private Logger log = LoggerFactory.getLogger(FileOpsAuthzSystemPath.class);
     private AuthenticatedUser user;
     // PERMSPEC is "files:tenant:r,rw,*:systemId:path
-    private String PERMSPEC = "files:%s:%s:%s:%s";
+    private static final String PERMSPEC = "files:%s:%s:%s:%s";
 
     @Inject private SKClient skClient;
 
