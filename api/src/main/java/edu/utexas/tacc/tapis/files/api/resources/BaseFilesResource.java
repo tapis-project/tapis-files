@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -25,13 +26,7 @@ import java.io.IOException;
 public abstract class BaseFilesResource {
 
     @Inject
-    SystemsClient systemsClient;
-
-    @Inject
-    TenantManager tenantCache;
-
-    @Inject
-    ServiceJWT serviceJWTCache;
+    SystemsCache systemsCache;
 
     @Inject
     RemoteDataClientFactory remoteDataClientFactory;
@@ -39,24 +34,6 @@ public abstract class BaseFilesResource {
     private static final Logger log = LoggerFactory.getLogger(BaseFilesResource.class);
     private IRuntimeConfig settings = RuntimeSettings.get();
 
-    /**
-     * Configure the systems client with the correct baseURL and token for the request.
-     * @param user
-     * @throws ServiceException
-     */
-    public void configureSystemsClient(AuthenticatedUser user) throws ServiceException {
-        try {
-            String tenantId = user.getTenantId();
-            systemsClient.setBasePath(tenantCache.getTenant(tenantId).getBaseUrl());
-            systemsClient.addDefaultHeader("x-tapis-token", serviceJWTCache.getAccessJWT(settings.getSiteId()));
-            systemsClient.addDefaultHeader("x-tapis-user", user.getName());
-            systemsClient.addDefaultHeader("x-tapis-tenant", user.getTenantId());
-        } catch (TapisException ex) {
-            String msg = "ERROR: configureSystems client failed for user: %s";
-            log.error(String.format(msg, user.toString()), ex);
-            throw new ServiceException("Something went wrong");
-        }
-    }
     public IFileOpsService makeFileOpsService(TSystem system, String username) throws TapisClientException, IOException, ServiceException {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, username);
         FileOpsService fileOpsService = new FileOpsService(client);

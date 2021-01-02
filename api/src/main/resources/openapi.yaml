@@ -327,6 +327,12 @@ paths:
         required: true
         schema:
           type: string
+      - name: username
+        in: query
+        description: Username to remove
+        required: true
+        schema:
+          type: string
       responses:
         200:
           description: FilePermission
@@ -340,36 +346,8 @@ paths:
       tags:
       - permissions
       summary: 'Add permissions on an object. '
-      description: 'Add a user to a file/folder. QUESTION - who should be able to
-        add permissions? Only the owner? '
+      description: Add a user to a file/folder.
       operationId: permissionsSystemIdPathPost
-      parameters:
-      - name: systemId
-        in: path
-        description: System ID
-        required: true
-        schema:
-          type: string
-      - name: path
-        in: path
-        description: path
-        required: true
-        schema:
-          type: string
-      responses:
-        200:
-          description: FilePermission
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/FilePermissionResponse'
-    delete:
-      tags:
-      - permissions
-      summary: 'Remove permissions on an object for a user. '
-      description: 'Remove user permissions to a file/folder. QUESTION - who should
-        be able to delete permissions? Only the owner? '
-      operationId: permissionsSystemIdPathDelete
       parameters:
       - name: systemId
         in: path
@@ -396,6 +374,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FilePermissionResponse'
+    delete:
+      tags:
+      - permissions
+      summary: 'Remove permissions on an object for a user. '
+      description: Remove user permissions to a file/folder.
+      operationId: permissionsSystemIdPathDelete
+      parameters:
+      - name: systemId
+        in: path
+        description: System ID
+        required: true
+        schema:
+          type: string
+      - name: path
+        in: path
+        description: path
+        required: true
+        schema:
+          type: string
+      - name: username
+        in: query
+        description: Username to remove
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: FilePermission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilePermissionStringResponse'
   /v3/files/share/{systemId}/{path}:
     get:
       tags:
@@ -483,20 +493,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
-  /v3/files/transfers:
-    post:
+  /v3/files/transfers/{transferTaskId}/history:
+    get:
       tags:
       - transfers
-      summary: Transfer data
-      description: This creates a background task which will transfer files into the
-        storage system
-      operationId: createTransferTask
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TransferTaskRequest'
+      summary: Get history of a transfer task
+      operationId: getTransferTaskHistory
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
         required: true
+        schema:
+          type: string
+          format: uuid
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
       responses:
         200:
           description: OK
@@ -545,21 +556,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TapisResponse'
-  /v3/files/transfers/{transferTaskId}/history:
-    get:
+  /v3/files/transfers:
+    post:
       tags:
       - transfers
-      summary: Get history of a transfer task
-      operationId: getTransferTaskHistory
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
+      summary: Transfer data
+      description: This creates a background task which will transfer files into the
+        storage system
+      operationId: createTransferTask
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferTaskRequest'
         required: true
-        schema:
-          type: string
-          format: uuid
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
       responses:
         200:
           description: OK
@@ -625,6 +635,17 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/FileInfo'
+        version:
+          type: string
+    FilePermissionStringResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: string
         version:
           type: string
     FilePermission:
@@ -743,10 +764,21 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string
     TransferTaskRequest:
       required:
-      - tag
       - elements
+      - tag
       type: object
       properties:
         tag:
@@ -767,14 +799,3 @@ components:
         destinationURI:
           type: string
           description: Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string

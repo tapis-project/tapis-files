@@ -20,6 +20,12 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 
+
+/**
+ *  Annotation for The File Permissions endpoints. Currently, only the *owner* of the system
+ *  is allowed to grant/revoke permissions. API users can check their own permissions
+ *  via the GET endpoint, which is not protected by this annotation.
+ */
 @FilePermissionsAuthorization
 public class FilePermissionsAuthz implements ContainerRequestFilter {
 

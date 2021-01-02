@@ -86,14 +86,19 @@ public class PermissionsApiResource  {
             @Context SecurityContext securityContext) throws NotFoundException {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
+        TSystem system;
         try {
-            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId);
+            system = systemsCache.getSystem(user.getTenantId(), systemId);
         } catch (ServiceException ex) {
             throw new WebApplicationException("Could not retrieve system", ex);
         }
-
+        String systemOwner = system.getOwner();
+        if (!systemOwner.equals(user.getName())) {
+            username = user.getName();
+        }
         //check if user==owner
         // if not, username = user.getName() regardless of query string.
+
 
         try {
             boolean allPermitted = permsService.isPermitted(user.getTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
