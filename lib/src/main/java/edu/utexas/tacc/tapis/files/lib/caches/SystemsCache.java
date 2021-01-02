@@ -8,8 +8,10 @@ import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.jvnet.hk2.annotations.Service;
 
 import javax.inject.Inject;
@@ -25,11 +27,13 @@ public class SystemsCache {
     private final ServiceJWT serviceJWT;
     private final IRuntimeConfig config;
     private final LoadingCache<SystemCacheKey, TSystem> cache;
+    private final TenantManager tenantCache;
 
     @Inject
-    public SystemsCache(SystemsClient systemsClient, ServiceJWT serviceJWT) {
+    public SystemsCache(SystemsClient systemsClient, ServiceJWT serviceJWT, TenantManager tenantCache) {
         this.systemsClient = systemsClient;
         this.serviceJWT = serviceJWT;
+        this.tenantCache = tenantCache;
         this.config = RuntimeSettings.get();
         cache = CacheBuilder.newBuilder()
             .expireAfterWrite(Duration.ofMinutes(5))
@@ -50,6 +54,8 @@ public class SystemsCache {
 
         @Override
         public TSystem load(SystemCacheKey key) throws Exception {
+            Tenant tenant = tenantCache.getTenant(key.getTenantId());
+            systemsClient.setBasePath(tenant.getBaseUrl());
             systemsClient.addDefaultHeader("x-tapis-token", serviceJWT.getAccessJWT(config.getSiteId()));
             systemsClient.addDefaultHeader("x-tapis-tenant", key.getTenantId());
             return systemsClient.getSystemWithCredentials(key.getSystemId(), null);

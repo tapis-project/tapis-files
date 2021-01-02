@@ -17,6 +17,7 @@ import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.UUID;
 
 @FilePermissionsAuthorization
@@ -24,8 +25,6 @@ public class FilePermissionsAuthz implements ContainerRequestFilter {
 
     private Logger log = LoggerFactory.getLogger(FilePermissionsAuthz.class);
     private AuthenticatedUser user;
-
-    @Inject private FilePermsService permsService;
 
     @Inject private SystemsCache systemsCache;
 
@@ -43,11 +42,11 @@ public class FilePermissionsAuthz implements ContainerRequestFilter {
 
         try {
             TSystem system = systemsCache.getSystem(tenantId, systemId);
-            if (!system.getOwner().equals(username)) {
+            if (!Objects.equals(system.getOwner(), username)) {
                 throw new NotAuthorizedException("User is not authorized to grant permissions on this system");
             }
         } catch (ServiceException ex) {
-            throw new IOException("Could not verify ownership of transfer task.");
+            throw new IOException("Could not verify permissions.");
         }
 
 

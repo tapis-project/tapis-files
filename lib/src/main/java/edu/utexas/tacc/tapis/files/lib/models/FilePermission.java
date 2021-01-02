@@ -2,8 +2,6 @@ package edu.utexas.tacc.tapis.files.lib.models;
 
 public class FilePermission   {
 
-
-
     private String tenantId;
     private String username;
     private String systemId;
