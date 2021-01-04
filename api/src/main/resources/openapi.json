@@ -1091,7 +1091,7 @@
         }
       },
       "TransferTaskRequest" : {
-        "required" : [ "elements", "tag" ],
+        "required" : [ "elements" ],
         "type" : "object",
         "properties" : {
           "tag" : {

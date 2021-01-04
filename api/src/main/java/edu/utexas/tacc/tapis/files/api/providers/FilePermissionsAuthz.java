@@ -47,7 +47,7 @@ public class FilePermissionsAuthz implements ContainerRequestFilter {
         String systemId = params.getFirst("systemId");
 
         try {
-            TSystem system = systemsCache.getSystem(tenantId, systemId);
+            TSystem system = systemsCache.getSystem(tenantId, systemId, username);
             if (!Objects.equals(system.getOwner(), username)) {
                 throw new NotAuthorizedException("User is not authorized to grant permissions on this system");
             }

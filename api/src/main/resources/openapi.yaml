@@ -778,7 +778,6 @@ components:
     TransferTaskRequest:
       required:
       - elements
-      - tag
       type: object
       properties:
         tag:

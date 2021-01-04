@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib;
 
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -120,14 +121,15 @@ public abstract class BaseDatabaseIntegrationTest  {
         transferMechs.add(TSystem.TransferMethodsEnum.SFTP);
         testSystemPKI.setTransferMethods(transferMechs);
 
-        var tenant = new Tenant();
+        Tenant tenant = new Tenant();
         tenant.setTenantId("testTenant");
         tenant.setBaseUrl("https://test.tapis.io");
         Map<String, Tenant> tenantMap = new HashMap<>();
         tenantMap.put(tenant.getTenantId(), tenant);
         when(tenantManager.getTenants()).thenReturn(tenantMap);
+        when(tenantManager.getTenant(any())).thenReturn(tenant);
         serviceJWT = Mockito.mock(ServiceJWT.class);
-        var serviceJWTFactory = Mockito.mock(ServiceJWTCacheFactory.class);
+        ServiceJWTCacheFactory serviceJWTFactory = Mockito.mock(ServiceJWTCacheFactory.class);
         when(serviceJWTFactory.provide()).thenReturn(serviceJWT);
         when(systemsClientFactory.getClient(any(), any())).thenReturn(systemsClient);
 
@@ -141,7 +143,7 @@ public abstract class BaseDatabaseIntegrationTest  {
                 bindAsContract(TransfersService.class);
                 bindAsContract(RemoteDataClientFactory.class);
                 bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-
+                bindAsContract(SystemsCache.class);
                 bind(systemsClientFactory).to(SystemsClientFactory.class);
                 bind(systemsClient).to(SystemsClient.class);
                 bind(tenantManager).to(TenantManager.class);

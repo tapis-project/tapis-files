@@ -93,7 +93,7 @@ public class OperationsApiResource extends BaseFilesResource {
         @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId);
+            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
@@ -135,7 +135,7 @@ public class OperationsApiResource extends BaseFilesResource {
         @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId);
+            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             fileOpsService.mkdir(path);
@@ -181,7 +181,7 @@ public class OperationsApiResource extends BaseFilesResource {
         @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId);
+            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             fileOpsService.insert(path, fileInputStream);
@@ -229,7 +229,7 @@ public class OperationsApiResource extends BaseFilesResource {
 
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId);
+            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             fileOpsService.move(path, newName);
@@ -277,7 +277,7 @@ public class OperationsApiResource extends BaseFilesResource {
         @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId);
+            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             fileOpsService.delete(path);

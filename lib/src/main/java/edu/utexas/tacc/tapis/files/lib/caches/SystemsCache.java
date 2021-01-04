@@ -41,9 +41,9 @@ public class SystemsCache {
     }
 
 
-    public TSystem getSystem(String tenantId, String systemId) throws ServiceException {
+    public TSystem getSystem(String tenantId, String systemId, String username) throws ServiceException {
         try {
-            SystemCacheKey key = new SystemCacheKey(tenantId, systemId);
+            SystemCacheKey key = new SystemCacheKey(tenantId, systemId, username);
             return cache.get(key);
         } catch (ExecutionException ex) {
             throw new ServiceException("Could not retrieve system", ex);
@@ -56,6 +56,7 @@ public class SystemsCache {
         public TSystem load(SystemCacheKey key) throws Exception {
             Tenant tenant = tenantCache.getTenant(key.getTenantId());
             systemsClient.setBasePath(tenant.getBaseUrl());
+            systemsClient.addDefaultHeader("x-tapis-user", key.getUsername());
             systemsClient.addDefaultHeader("x-tapis-token", serviceJWT.getAccessJWT(config.getSiteId()));
             systemsClient.addDefaultHeader("x-tapis-tenant", key.getTenantId());
             return systemsClient.getSystemWithCredentials(key.getSystemId(), null);
@@ -65,10 +66,12 @@ public class SystemsCache {
     private static class SystemCacheKey {
         private final String tenantId;
         private final String systemId;
+        private final String username;
 
-        public SystemCacheKey(String tenantId, String systemId) {
+        public SystemCacheKey(String tenantId, String systemId, String username) {
             this.systemId = systemId;
             this.tenantId = tenantId;
+            this.username = username;
         }
 
         public String getTenantId() {
@@ -77,6 +80,10 @@ public class SystemsCache {
 
         public String getSystemId() {
             return systemId;
+        }
+
+        public String getUsername() {
+            return username;
         }
 
 

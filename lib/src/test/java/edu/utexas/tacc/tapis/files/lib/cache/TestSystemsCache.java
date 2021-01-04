@@ -40,7 +40,7 @@ public class TestSystemsCache {
     @Test
     public void testCacheLoader() throws Exception {
         SystemsCache cache = new SystemsCache(systemsClient, serviceJWT, tenantManager);
-        TSystem check = cache.getSystem("testTenant", "testSystem");
+        TSystem check = cache.getSystem("testTenant", "testSystem", "testUser");
         Assert.assertEquals(check.getId(), "12345");
 
     }

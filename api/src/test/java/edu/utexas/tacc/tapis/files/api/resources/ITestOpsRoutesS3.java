@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
+import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -118,6 +120,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
                     bind(skClient).to(SKClient.class);
                     bind(tenantManager).to(TenantManager.class);
                     bind(serviceJWT).to(ServiceJWT.class);
+                    bindAsContract(FilePermsCache.class);
+                    bindAsContract(SystemsCache.class);
                     bindAsContract(RemoteDataClientFactory.class);
                     bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 }
@@ -266,10 +270,14 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
             .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
-        //TODO: Add asserts
+
         Assert.assertThrows(NotFoundException.class, () -> {
             client.ls("/a/b/c/test.txt");
         });
+
+        List<FileInfo> listing = client.ls("/dir1/renamed");
+        Assert.assertEquals(listing.size(), 1);
+        Assert.assertEquals(listing.get(0).getPath(), "dir1/renamed");
     }
 
     @Test
@@ -288,10 +296,11 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
             .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
-        //TODO: Add asserts
+
         Assert.assertThrows(NotFoundException.class, () -> {
-            client.ls("/a/b/c/test.txt");
+            client.ls("/dir1/1.txt");
         });
+        Assert.assertTrue(client.ls("/renamed").size() > 0);
     }
 
 
@@ -328,8 +337,28 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
 
     @Test
-    public void testDeleteManyObjects() {
+    public void testDeleteManyObjects() throws Exception {
+        S3DataClient client = new S3DataClient(testSystem);
+        addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
+        addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
+        addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/2.txt", 10 * 1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
 
+        FileStringResponse response = target("/v3/files/ops/testSystem/dir1/dir2/")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", user1jwt)
+            .delete(FileStringResponse.class);
+
+        List<FileInfo> listing = client.ls("dir1/1.txt");
+        Assert.assertEquals(listing.size(), 1);
+        listing = client.ls("dir1/");
+        Assert.assertEquals(listing.size(), 1);
+        Assert.assertThrows(NotFoundException.class, () -> {
+            client.ls("/dir1/dir2/");
+        });
     }
 
     @Test
@@ -362,8 +391,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testMkdir() throws Exception {
-
-
+        
         FileStringResponse response = target("/v3/files/ops/testSystem/newDirectory/")
             .request()
             .accept(MediaType.APPLICATION_JSON)

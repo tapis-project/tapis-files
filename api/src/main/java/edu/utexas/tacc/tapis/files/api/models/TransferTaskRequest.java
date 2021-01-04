@@ -13,7 +13,6 @@ public class TransferTaskRequest {
 	
 	private List<TransferTaskRequestElement> elements;
 
-	@NotEmpty
     public String getTag() {
 		return tag;
 	}

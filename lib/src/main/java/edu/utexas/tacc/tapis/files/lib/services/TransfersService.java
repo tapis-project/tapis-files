@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
@@ -29,6 +30,7 @@ import reactor.rabbitmq.*;
 
 import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
+import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -48,10 +50,9 @@ public class TransfersService implements ITransfersService {
     private final Receiver receiver;
     private final Sender sender;
 
-    private final ParentTaskFSM fsm;
     private final FileTransfersDAO dao;
-    private final SystemsClientFactory systemsClientFactory;
     private final RemoteDataClientFactory remoteDataClientFactory;
+    private final SystemsCache systemsCache;
 
     private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]{
         TransferTaskStatus.FAILED,
@@ -60,10 +61,9 @@ public class TransfersService implements ITransfersService {
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
 
     @Inject
-    public TransfersService(ParentTaskFSM fsm,
-                            FileTransfersDAO dao,
-                            SystemsClientFactory systemsClientFactory,
-                            RemoteDataClientFactory remoteDataClientFactory ) {
+    public TransfersService(FileTransfersDAO dao,
+                            RemoteDataClientFactory remoteDataClientFactory,
+                            SystemsCache systemsCache) {
         ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
         ReceiverOptions receiverOptions = new ReceiverOptions()
             .connectionFactory(connectionFactory)
@@ -74,9 +74,8 @@ public class TransfersService implements ITransfersService {
         receiver = RabbitFlux.createReceiver(receiverOptions);
         sender = RabbitFlux.createSender(senderOptions);
         this.dao = dao;
-        this.fsm = fsm;
-        this.systemsClientFactory = systemsClientFactory;
         this.remoteDataClientFactory = remoteDataClientFactory;
+        this.systemsCache = systemsCache;
     }
 
     public void setParentQueue(String name) {
@@ -261,8 +260,7 @@ public class TransfersService implements ITransfersService {
         // Has to be final for lambda below
         final TransferTask finalParentTask = parentTask;
         try {
-            SystemsClient systemsClient = systemsClientFactory.getClient(parentTask.getTenantId(), parentTask.getUsername());
-            sourceSystem = systemsClient.getSystemWithCredentials(parentTask.getSourceSystemId(), null);
+            sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), parentTask.getSourceSystemId(), parentTask.getUsername());
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
 
             //TODO: Retries will break this, should delete anything in the DB if it is a retry?
@@ -491,12 +489,11 @@ public class TransfersService implements ITransfersService {
         }
         //Step 2: Get clients for source / dest
         try {
-            SystemsClient systemsClient = systemsClientFactory.getClient(taskChild.getTenantId(), taskChild.getUsername());
-            sourceSystem = systemsClient.getSystemWithCredentials(taskChild.getSourceSystemId(), null);
+            sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), taskChild.getSourceSystemId(), taskChild.getUsername() );
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
-            destSystem = systemsClient.getSystemWithCredentials(taskChild.getDestinationSystemId(), null);
+            destSystem = systemsCache.getSystem(taskChild.getTenantId(), taskChild.getDestinationSystemId(), taskChild.getUsername());
             destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
-        } catch (TapisClientException | IOException | ServiceException ex) {
+        } catch (IOException | ServiceException ex) {
             log.error(ex.getMessage(), ex);
             throw new ServiceException(ex.getMessage(), ex);
         }
@@ -516,10 +513,12 @@ public class TransfersService implements ITransfersService {
                 .subscribe();
             destClient.insert(taskChild.getDestinationPath(), observableInputStream);
 
-        } catch (IOException | NotFoundException ex) {
+        } catch (IOException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
             throw new ServiceException(msg, ex);
-
+        } catch (NotFoundException ex) {
+            String msg = String.format("ERROR! could not find file: %s", taskChild.getSourcePath());
+            throw new ServiceException(msg, ex);
         }
         return taskChild;
     }
@@ -549,7 +548,6 @@ public class TransfersService implements ITransfersService {
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
             taskChild = dao.updateTransferTaskChild(taskChild);
             parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
-            String noteMessage = String.format("Transfer completed for %s", taskChild.getSourcePath());
             return taskChild;
         } catch (DAOException ex) {
             String msg = String.format("Error updating child task %s", taskChild.toString());

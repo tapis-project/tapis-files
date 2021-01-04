@@ -54,7 +54,7 @@ public class ContentApiResource extends BaseFilesResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
-            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId);
+            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             String mtype = MediaType.APPLICATION_OCTET_STREAM;

@@ -9,7 +9,6 @@ public class TransferTaskRequestElement {
     private String sourceURI;
     private String destinationURI;
 
-
     @Schema(required = true, description = "Fully qualified URI, such as tapis://{systemID}/{path} or https://myserver.com/path/to/inputs/")
     @NotBlank
     public String getSourceURI() {

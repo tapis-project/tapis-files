@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequestElement;
+import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
@@ -102,6 +104,8 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
                         bind(skClient).to(SKClient.class);
                         bind(serviceJWT).to(ServiceJWT.class);
                         bind(tenantManager).to(TenantManager.class);
+                        bindAsContract(SystemsCache.class);
+                        bindAsContract(FilePermsCache.class);
                         bindAsContract(ParentTaskFSM.class);
                         bindAsContract(TransfersService.class);
                         bindAsContract(FileTransfersDAO.class);

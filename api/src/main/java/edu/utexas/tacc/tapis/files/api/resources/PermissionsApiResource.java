@@ -88,7 +88,7 @@ public class PermissionsApiResource  {
 
         TSystem system;
         try {
-            system = systemsCache.getSystem(user.getTenantId(), systemId);
+            system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
         } catch (ServiceException ex) {
             throw new WebApplicationException("Could not retrieve system", ex);
         }
