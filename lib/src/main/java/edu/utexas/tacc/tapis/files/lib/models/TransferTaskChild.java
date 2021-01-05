@@ -1,8 +1,11 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
+import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 
 import javax.validation.constraints.NotNull;
+import java.net.URI;
+import java.net.URL;
 import java.nio.file.Path;
 import java.util.UUID;
 
@@ -31,16 +34,20 @@ public class TransferTaskChild extends TransferTaskParent {
      */
     public TransferTaskChild(@NotNull TransferTaskParent transferTaskParent, @NotNull FileInfo fileInfo) {
 
+        TapisUrl sourceUrl = TapisUrl.makeTapisUrl(transferTaskParent.getSourceURI());
+        TapisUrl destURL = TapisUrl.makeTapisUrl(transferTaskParent.getDestinationURI());
+
         Path destPath = PathUtils.relativizePathsForTransfer(
-            transferTaskParent.getSourcePath(),
+            sourceUrl.getPath(),
             fileInfo.getPath(),
-            transferTaskParent.getDestinationPath()
+            destURL.getPath()
         );
 
+        URI newDestUrl = URI.create()
+
         this.setParentTaskId(transferTaskParent.getId());
-        this.setSourcePath(fileInfo.getPath());
+        this.setTaskId(transferTaskParent.getTaskId());
         this.setSourceSystemId(transferTaskParent.getSourceSystemId());
-        this.setParentTaskId(transferTaskParent.getId());
         this.setDestinationPath(destPath.toString());
         this.setDestinationSystemId(transferTaskParent.getDestinationSystemId());
         this.setStatus(TransferTaskStatus.ACCEPTED.name());

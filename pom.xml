@@ -15,12 +15,27 @@
 
     <properties>
         <tapis-client-java.version>1.11.22</tapis-client-java.version>
-        <tapis-shared.version>1.11.48</tapis-shared.version>
+        <tapis-shared.version>1.11.51-SNAPSHOT</tapis-shared.version>
         <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
         <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
         <hk2.version>2.6.1</hk2.version>
         <skipITs>false</skipITs>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>tapis-local-snapshots</id>
+            <name>Local repo for snapshots</name>
+            <url>http://c002.rodeo.tacc.utexas.edu:30044/repository/maven-snapshots</url>
+            <releases>  <enabled>false</enabled> </releases>
+            <snapshots> <enabled>true</enabled>  </snapshots>
+        </repository>
+        <repository>
+            <id>tapis-local-releases</id>
+            <name>Local repo for releases</name>
+            <url>http://c002.rodeo.tacc.utexas.edu:30044/repository/maven-releases</url>
+        </repository>
+    </repositories>
 
     <profiles>
         <profile>
