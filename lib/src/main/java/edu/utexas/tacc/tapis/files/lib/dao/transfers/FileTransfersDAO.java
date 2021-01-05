@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
@@ -25,20 +26,17 @@ public class FileTransfersDAO implements IFileTransferDAO {
     private static final Logger log = LoggerFactory.getLogger(FileTransfersDAO.class);
 
     // TODO: There should be some way to not duplicate this code...
-    private class TransferTaskRowProcessor extends BasicRowProcessor {
+    private class TransferTaskParentRowProcessor extends BasicRowProcessor {
 
         @Override
-        public TransferTask toBean(ResultSet rs, Class type) throws SQLException {
-            TransferTask task = new TransferTask();
+        public TransferTaskParent toBean(ResultSet rs, Class type) throws SQLException {
+            TransferTaskParent task = new TransferTaskParent();
             task.setId(rs.getInt("id"));
             task.setUsername(rs.getString("username"));
             task.setTenantId(rs.getString("tenant_id"));
-            task.setSourceSystemId(rs.getString("source_system_id"));
-            task.setSourcePath(rs.getString("source_path"));
-            task.setDestinationSystemId(rs.getString("destination_system_id"));
-            task.setDestinationPath(rs.getString("destination_path"));
+            task.setSourceURI(rs.getString("source_uri"));
+            task.setDestinationURI(rs.getString("destination_uri"));
             task.setCreated(rs.getTimestamp("created").toInstant());
-            task.setRetries(rs.getInt("retries"));
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
             task.setTotalBytes(rs.getLong("total_bytes"));
@@ -47,8 +45,8 @@ public class FileTransfersDAO implements IFileTransferDAO {
         }
 
         @Override
-        public List<TransferTask> toBeanList(ResultSet rs, Class type) throws SQLException {
-            List<TransferTask> list = new ArrayList<>();
+        public List<TransferTaskParent> toBeanList(ResultSet rs, Class type) throws SQLException {
+            List<TransferTaskParent> list = new ArrayList<>();
             while (rs.next()) {
                 list.add(toBean(rs, type));
             }
@@ -65,10 +63,8 @@ public class FileTransfersDAO implements IFileTransferDAO {
             task.setParentTaskId(rs.getInt("parent_task_id"));
             task.setUsername(rs.getString("username"));
             task.setTenantId(rs.getString("tenant_id"));
-            task.setSourceSystemId(rs.getString("source_system_id"));
-            task.setSourcePath(rs.getString("source_path"));
-            task.setDestinationSystemId(rs.getString("destination_system_id"));
-            task.setDestinationPath(rs.getString("destination_path"));
+            task.setSourceURI(rs.getString("source_uri"));
+            task.setDestinationURI(rs.getString("destination_uri"));
             task.setCreated(rs.getTimestamp("created").toInstant());
             task.setRetries(rs.getInt("retries"));
             task.setUuid(UUID.fromString(rs.getString("uuid")));
@@ -102,7 +98,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
     }
 
     public TransferTask getTransferTaskByUUID(@NotNull UUID uuid) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_PARENT_TASK_BY_UUID;
@@ -115,7 +111,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
     }
 
     public TransferTask getTransferTaskById(@NotNull long id) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_PARENT_TASK_BY_ID;
@@ -135,7 +131,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
      * @param newBytes The size in bytes to be added to the total size of the transfer
      */
     public TransferTask updateTransferTaskSize(@NotNull TransferTask task, Long newBytes) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK_SIZE;
@@ -156,7 +152,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
      * @param newBytes The size in bytes to be added to the total size of the transfer
      */
     public TransferTask updateTransferTaskBytesTransferred(@NotNull long taskId, Long newBytes) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK_BYTES_TRANSFERRED;
@@ -172,7 +168,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
     }
 
     public TransferTask updateTransferTask(@NotNull TransferTask task) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK;
@@ -214,7 +210,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
     public TransferTask createTransferTask(@NotNull TransferTask task) throws DAOException {
 
         task.setStatus(TransferTaskStatus.ACCEPTED.name());
-        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.INSERT_PARENT_TASK;
@@ -306,7 +302,7 @@ public class FileTransfersDAO implements IFileTransferDAO {
     }
 
     public List<TransferTask> getAllTransfersForUser(@NotNull String tenantId, @NotNull String username) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
 
         try (Connection connection = HikariConnectionPool.getConnection()) {
             ResultSetHandler<List<TransferTask>> handler = new BeanListHandler<>(TransferTask.class, rowProcessor);

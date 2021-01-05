@@ -6,58 +6,60 @@ import javax.validation.constraints.NotNull;
 import java.nio.file.Path;
 import java.util.UUID;
 
-public class TransferTaskChild extends TransferTask implements ITransferTask {
+public class TransferTaskChild extends TransferTaskParent {
 
-    private long parentTaskId;
+    private int parentTaskId;
+    private int retries;
 
     public TransferTaskChild() {}
 
     public TransferTaskChild(String tenantId, String username,
-                             String sourceSystemId, String sourcePath,
-                             String destinationSystemId, String destinationPath, long parentTaskId) {
+                             String sourceURI,
+                             String destinationURI, int parentTaskId) {
         this.tenantId = tenantId;
         this.username = username;
-        this.sourceSystemId = sourceSystemId;
-        this.sourcePath = sourcePath;
-        this.destinationSystemId = destinationSystemId;
-        this.destinationPath = destinationPath;
+        this.sourceURI = sourceURI;
+        this.destinationURI = destinationURI;
         this.uuid = UUID.randomUUID();
         this.status = TransferTaskStatus.ACCEPTED.name();
         this.parentTaskId = parentTaskId;
     }
 
     /**
-     *  @param transferTask The TransferTask from which to derive this child
+     *  @param transferTaskParent The TransferTask from which to derive this child
      * @param fileInfo The path to the single file in the source system
      */
-    public TransferTaskChild(@NotNull TransferTask transferTask, @NotNull FileInfo fileInfo) {
+    public TransferTaskChild(@NotNull TransferTaskParent transferTaskParent, @NotNull FileInfo fileInfo) {
 
         Path destPath = PathUtils.relativizePathsForTransfer(
-            transferTask.getSourcePath(),
+            transferTaskParent.getSourcePath(),
             fileInfo.getPath(),
-            transferTask.getDestinationPath()
+            transferTaskParent.getDestinationPath()
         );
 
-        this.setParentTaskId(transferTask.getId());
+        this.setParentTaskId(transferTaskParent.getId());
         this.setSourcePath(fileInfo.getPath());
-        this.setSourceSystemId(transferTask.getSourceSystemId());
-        this.setParentTaskId(transferTask.getId());
+        this.setSourceSystemId(transferTaskParent.getSourceSystemId());
+        this.setParentTaskId(transferTaskParent.getId());
         this.setDestinationPath(destPath.toString());
-        this.setDestinationSystemId(transferTask.getDestinationSystemId());
+        this.setDestinationSystemId(transferTaskParent.getDestinationSystemId());
         this.setStatus(TransferTaskStatus.ACCEPTED.name());
-        this.setTenantId(transferTask.getTenantId());
-        this.setUsername(transferTask.getUsername());
+        this.setTenantId(transferTaskParent.getTenantId());
+        this.setUsername(transferTaskParent.getUsername());
         this.setBytesTransferred(0L);
         this.setTotalBytes(fileInfo.getSize());
     }
 
-    public long getParentTaskId() {
+    public int getParentTaskId() {
         return parentTaskId;
     }
 
-    public void setParentTaskId(long parentTaskId) {
+    public void setParentTaskId(int parentTaskId) {
         this.parentTaskId = parentTaskId;
     }
+
+    public int getRetries() {return retries; }
+    public void setRetries(int retries) {this.retries = retries;}
 
     @Override
     public boolean equals(Object o) {
@@ -75,17 +77,4 @@ public class TransferTaskChild extends TransferTask implements ITransferTask {
        return Long.hashCode(id);
     }
 
-    @Override
-    public String toString() {
-        return "TransferTaskChild{" +
-          "parentTaskId=" + parentTaskId +
-          ", id=" + id +
-          ", tenantId='" + tenantId + '\'' +
-          ", username='" + username + '\'' +
-          ", sourceSystemId='" + sourceSystemId + '\'' +
-          ", sourcePath='" + sourcePath + '\'' +
-          ", destinationSystemId='" + destinationSystemId + '\'' +
-          ", destinationPath='" + destinationPath + '\'' +
-          '}';
-    }
 }
