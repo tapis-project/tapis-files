@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 
 import javax.validation.constraints.NotNull;
@@ -17,8 +18,8 @@ public class TransferTaskChild extends TransferTaskParent {
     public TransferTaskChild() {}
 
     public TransferTaskChild(String tenantId, String username,
-                             String sourceURI,
-                             String destinationURI, int parentTaskId) {
+                             String sourceURI, String destinationURI,
+                             int parentTaskId) {
         this.tenantId = tenantId;
         this.username = username;
         this.sourceURI = sourceURI;
@@ -32,24 +33,26 @@ public class TransferTaskChild extends TransferTaskParent {
      *  @param transferTaskParent The TransferTask from which to derive this child
      * @param fileInfo The path to the single file in the source system
      */
-    public TransferTaskChild(@NotNull TransferTaskParent transferTaskParent, @NotNull FileInfo fileInfo) {
+    public TransferTaskChild(@NotNull TransferTaskParent transferTaskParent, @NotNull FileInfo fileInfo) throws TapisException {
 
-        TapisUrl sourceUrl = TapisUrl.makeTapisUrl(transferTaskParent.getSourceURI());
+        TapisUrl sourceURL = TapisUrl.makeTapisUrl(transferTaskParent.getSourceURI());
         TapisUrl destURL = TapisUrl.makeTapisUrl(transferTaskParent.getDestinationURI());
 
+
+        // Given a
         Path destPath = PathUtils.relativizePathsForTransfer(
-            sourceUrl.getPath(),
+            sourceURL.getPath(),
             fileInfo.getPath(),
             destURL.getPath()
         );
 
-        URI newDestUrl = URI.create()
+        TapisUrl newSourceURL = new TapisUrl(sourceURL.getHost(), sourceURL.getSystemId(), fileInfo.getPath());
+        TapisUrl newDestURL = new TapisUrl(destURL.getHost(), destURL.getSystemId(), destPath.toString());
 
         this.setParentTaskId(transferTaskParent.getId());
         this.setTaskId(transferTaskParent.getTaskId());
-        this.setSourceSystemId(transferTaskParent.getSourceSystemId());
-        this.setDestinationPath(destPath.toString());
-        this.setDestinationSystemId(transferTaskParent.getDestinationSystemId());
+        this.setSourceURI(newSourceURL.toString());
+        this.setDestinationURI(newDestURL.toString());
         this.setStatus(TransferTaskStatus.ACCEPTED.name());
         this.setTenantId(transferTaskParent.getTenantId());
         this.setUsername(transferTaskParent.getUsername());

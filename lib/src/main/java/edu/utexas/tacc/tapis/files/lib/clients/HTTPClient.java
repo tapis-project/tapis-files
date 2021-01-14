@@ -6,14 +6,18 @@ import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.NotActiveException;
 import java.util.List;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.apache.commons.lang3.NotImplementedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class HTTPClient implements IRemoteDataClient {
 
+    private static final Logger log = LoggerFactory.getLogger(HTTPClient.class);
 
     @Override
     public void makeBucket(String name) throws IOException {
@@ -57,7 +61,18 @@ public class HTTPClient implements IRemoteDataClient {
 
     @Override
     public InputStream getStream(@NotNull String path) throws IOException {
-        return null;
+        OkHttpClient client = new OkHttpClient.Builder().build();
+        Request request = new Request.Builder()
+            .url(path)
+            .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                log.error("Could not retrieve file at path {}", path);
+                throw new IOException("Unexpected code " + response);
+            }
+            return response.body().byteStream();
+        }
     }
 
     @Override

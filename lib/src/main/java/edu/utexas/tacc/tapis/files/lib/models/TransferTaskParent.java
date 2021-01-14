@@ -23,6 +23,10 @@ public class TransferTaskParent {
     protected String status;
 
     protected Instant created;
+    protected Instant startTime;
+    protected Instant endTime;
+
+
 
     public TransferTaskParent(){};
 
@@ -49,6 +53,22 @@ public class TransferTaskParent {
 
     public void setId(int id) {
         this.id = id;
+    }
+
+    public Instant getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(Instant startTime) {
+        this.startTime = startTime;
+    }
+
+    public Instant getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(Instant endTime) {
+        this.endTime = endTime;
     }
 
     public String getSourceURI() {

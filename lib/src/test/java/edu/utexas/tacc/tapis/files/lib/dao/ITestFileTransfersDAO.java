@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import org.flywaydb.core.api.Location;
 import org.mockito.*;
@@ -26,61 +27,54 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
     @Test
     public void testCreateTransfer() throws DAOException {
         FileTransfersDAO dao = new FileTransfersDAO();
-        TransferTask task = new TransferTask();
+        TransferTaskParent task = new TransferTaskParent();
         task.setTenantId("test");
         task.setUsername("test");
-        task.setDestinationSystemId("test");
-        task.setDestinationPath("/test");
-        task.setSourceSystemId("test2");
-        task.setSourcePath("/test2");
-        TransferTask t = dao.createTransferTask(task);
+        task.setSourceURI("tapis://test.tapis.io/test");
+        task.setDestinationURI("tapis://test.tapis.io/test2");
+        TransferTaskParent t = dao.createTransferTaskParent(task);
         Assert.assertTrue(t.getId() > 0);
     }
 
     @Test
     public void testGetTransfer() throws DAOException {
         FileTransfersDAO dao = new FileTransfersDAO();
-        TransferTask task = new TransferTask();
+        TransferTaskParent task = new TransferTaskParent();
         task.setTenantId("test");
         task.setUsername("test");
-        task.setDestinationSystemId("test");
-        task.setDestinationPath("/test");
-        task.setSourceSystemId("test2");
-        task.setSourcePath("/test2");
-        TransferTask t = dao.createTransferTask(task);
-        TransferTask tNew = dao.getTransferTaskById(t.getId());
+        task.setSourceURI("tapis://test.tapis.io/test");
+        task.setDestinationURI("tapis://test.tapis.io/test2");
+        TransferTaskParent t = dao.createTransferTaskParent(task);
+        TransferTaskParent tNew = dao.getTransferTaskParentById(t.getId());
         Assert.assertEquals(tNew.getStatus(), TransferTaskStatus.ACCEPTED.name());
         Assert.assertNotNull(tNew.getCreated());
+        Assert.assertEquals(t.getUuid(), tNew.getUuid());
     }
 
     @Test
     public void testGetAllForUser() throws DAOException {
         FileTransfersDAO dao = new FileTransfersDAO();
-        TransferTask task = new TransferTask();
+        TransferTaskParent task = new TransferTaskParent();
         task.setTenantId("test");
         task.setUsername("test");
-        task.setDestinationSystemId("test");
-        task.setDestinationPath("/test");
-        task.setSourceSystemId("test2");
-        task.setSourcePath("/test2");
-        dao.createTransferTask(task);
-        dao.createTransferTask(task);
+        task.setSourceURI("tapis://test.tapis.io/test");
+        task.setDestinationURI("tapis://test.tapis.io/test2");
+        dao.createTransferTaskParent(task);
+        dao.createTransferTaskParent(task);
 
         List<TransferTask> tasks = dao.getAllTransfersForUser(task.getTenantId(), task.getUsername());
         Assert.assertEquals(tasks.size(), 2);
     }
 
     @Test
-    public void testUpdateChild() throws DAOException {
+    public void testUpdateChild() throws Exception {
         FileTransfersDAO dao = new FileTransfersDAO();
-        TransferTask task = new TransferTask();
+        TransferTaskParent task = new TransferTaskParent();
         task.setTenantId("test");
         task.setUsername("test");
-        task.setDestinationSystemId("test");
-        task.setDestinationPath("/test");
-        task.setSourceSystemId("test2");
-        task.setSourcePath("/test2");
-        task = dao.createTransferTask(task);
+        task.setSourceURI("tapis://test.tapis.io/test");
+        task.setDestinationURI("tapis://test.tapis.io/test2");
+        task = dao.createTransferTaskParent(task);
 
         FileInfo fileInfo = new FileInfo();
         fileInfo.setPath("/a/b/c.txt");

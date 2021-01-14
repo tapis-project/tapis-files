@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
-import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -15,9 +14,6 @@ import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.*;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
-import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
-import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
-import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -27,10 +23,10 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
+import reactor.util.retry.Retry;
 
 import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
-import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,7 +37,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class TransfersService implements ITransfersService {
+public class TransfersService {
     private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
     private String PARENT_QUEUE = "tapis.files.transfers.parent";
     private String CHILD_QUEUE = "tapis.files.transfers.child";
@@ -99,7 +95,7 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public List<TransferTaskChild> getAllChildrenTasks(TransferTask task) throws ServiceException {
+    public List<TransferTaskChild> getAllChildrenTasks(TransferTaskParent task) throws ServiceException {
         try {
             return dao.getAllChildren(task);
         } catch (DAOException e) {
@@ -115,9 +111,9 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public TransferTask getTransferTask(@NotNull long taskId) throws ServiceException, NotFoundException {
+    public TransferTask getTransferTask(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
         try {
-            TransferTask task = dao.getTransferTaskById(taskId);
+            TransferTask task = dao.getTransferTaskByUUID(taskUUID);
             if (task == null) {
                 throw new NotFoundException("No transfer task with this ID found.");
             }
@@ -127,9 +123,9 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
+    public TransferTaskParent getTransferTaskParentByUUID(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
         try {
-            TransferTask task = dao.getTransferTaskByUUID(taskUUID);
+            TransferTaskParent task = dao.getTransferTaskParentByUUID(taskUUID);
             if (task == null) {
                 throw new NotFoundException("No transfer task with this UUID found.");
             }
@@ -139,16 +135,17 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId,
-                                       String sourceSystemId, String sourcePath,
-                                       String destinationSystemId, String destinationPath) throws ServiceException {
+    public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId, String tag, List<TransferTaskRequestElement> elements) throws ServiceException {
 
-        TransferTask task = new TransferTask(tenantId, username, sourceSystemId, sourcePath, destinationSystemId, destinationPath);
-
+        TransferTask task = new TransferTask();
+        task.setTenantId(tenantId);
+        task.setUsername(username);
+        task.setStatus(TransferTaskStatus.ACCEPTED.name());
+        task.setTag(tag);
         try {
             // TODO: check if requesting user has access to both the source and dest systems, throw an error back if not
             // TODO: Do this in a single transaction
-            TransferTask newTask = dao.createTransferTask(task);
+            TransferTask newTask = dao.createTransferTask(task, elements);
             this.publishParentTaskMessage(newTask);
             return newTask;
         } catch (DAOException ex) {
@@ -168,6 +165,7 @@ public class TransfersService implements ITransfersService {
         try {
             task.setStatus(TransferTaskStatus.CANCELLED.name());
             dao.updateTransferTask(task);
+            // todo: publish cancel message on the control queue
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
         }
@@ -204,14 +202,12 @@ public class TransfersService implements ITransfersService {
 
     private String groupByTenant(AcknowledgableDelivery message) throws ServiceException {
         try {
-            return mapper.readValue(message.getBody(), TransferTask.class).getTenantId();
+            return mapper.readValue(message.getBody(), TransferTaskParent.class).getTenantId();
         } catch (IOException ex) {
             log.error("invalid message", ex);
             throw new ServiceException("Something is terribly wrong, could not get a tenant???", ex);
         }
     }
-
-
 
 
     public Flux<AcknowledgableDelivery> streamParentMessages() {
@@ -222,7 +218,7 @@ public class TransfersService implements ITransfersService {
             .delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
     }
 
-    public Flux<TransferTask> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
+    public Flux<TransferTaskParent> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
         return messageStream
             .groupBy(m->{
                 try {
@@ -252,13 +248,14 @@ public class TransfersService implements ITransfersService {
         return Mono.empty();
     }
 
-    private TransferTask doParentChevronOne(TransferTask parentTask) throws ServiceException {
+    private TransferTask doParentChevronOne(TransferTaskParent parentTask) throws ServiceException {
         log.info("***** DOING doParentChevronOne ****");
         log.info(parentTask.toString());
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
+
         // Has to be final for lambda below
-        final TransferTask finalParentTask = parentTask;
+        final TransferTaskParent finalParentTask = parentTask;
         try {
             sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), parentTask.getSourceSystemId(), parentTask.getUsername());
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
@@ -275,7 +272,7 @@ public class TransfersService implements ITransfersService {
             }
             parentTask.setTotalBytes(totalBytes);
             parentTask.setStatus(TransferTaskStatus.STAGED.name());
-            parentTask = dao.updateTransferTask(parentTask);
+            parentTask = dao.updateTransferTaskParent(parentTask);
             dao.bulkInsertChildTasks(children);
             children = dao.getAllChildren(parentTask);
             publishBulkChildMessages(children);
@@ -335,7 +332,7 @@ public class TransfersService implements ITransfersService {
         }
     }
 
-    private Long groupByParentTask(AcknowledgableDelivery message) throws ServiceException {
+    private Integer groupByParentTask(AcknowledgableDelivery message) throws ServiceException {
         try {
             return mapper.readValue(message.getBody(), TransferTaskChild.class).getParentTaskId();
         } catch (IOException ex) {
@@ -373,25 +370,34 @@ public class TransfersService implements ITransfersService {
             })
             .flatMap(group-> {
                 Scheduler scheduler = Schedulers.newBoundedElastic(6,1,"ChildPool:"+group.key());
+
                 return group
                     .publishOn(scheduler)
                     .flatMap(
                         //Wwe need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
                             .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
-                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60), scheduler)
+                                .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
+                                    .scheduler(scheduler)
+                                    .maxBackoff(Duration.ofMinutes(30)))
                                 .onErrorResume(e -> doErrorChevronOne(m, e, t1))
                             )
                             .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2))
-                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60), scheduler)
+                                .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
+                                    .scheduler(scheduler)
+                                    .maxBackoff(Duration.ofMinutes(30)))
                                 .onErrorResume(e -> doErrorChevronOne(m, e, t2))
                             )
                             .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
-                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60), scheduler)
+                                .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
+                                    .scheduler(scheduler)
+                                    .maxBackoff(Duration.ofMinutes(30)))
                                 .onErrorResume(e -> doErrorChevronOne(m, e, t3))
                             )
                             .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4))
-                                .retryBackoff(MAX_RETRIES, Duration.ofSeconds(1), Duration.ofSeconds(60), scheduler)
+                                .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
+                                    .scheduler(scheduler)
+                                    .maxBackoff(Duration.ofMinutes(30)))
                                 .onErrorResume(e -> doErrorChevronOne(m, e, t4))
                             )
                             .flatMap(t5 -> {
@@ -443,7 +449,7 @@ public class TransfersService implements ITransfersService {
     private TransferTaskChild chevronOne(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.info("***** DOING chevronOne ****");
         try {
-            TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
+            TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED.name())) {
                 return taskChild;
             }
@@ -454,9 +460,9 @@ public class TransfersService implements ITransfersService {
             // If the parent task has not been set to IN_PROGRESS do it here.
             if (!parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS.name())) {
                 parentTask.setStatus(TransferTaskStatus.IN_PROGRESS.name());
-                dao.updateTransferTask(parentTask);
+                dao.updateTransferTaskParent(parentTask);
             }
-            String noteMessage = String.format("Transfer in progress for %s", taskChild.getSourcePath());
+            String noteMessage = String.format("Transfer in progress for %s", taskChild.getSourceURI());
             return taskChild;
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
@@ -503,7 +509,8 @@ public class TransfersService implements ITransfersService {
              ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream)
         ){
 
-            // Observe the progress event stream
+            // Observe the progress event stream, just get the last event from
+            // the past 1 second.
             final TransferTaskChild finalTaskChild = taskChild;
             observableInputStream.getEventStream()
                 .window(Duration.ofMillis(1000))
@@ -544,7 +551,7 @@ public class TransfersService implements ITransfersService {
     private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.info("***** DOING chevronThree **** {}", taskChild);
         try {
-            TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
+            TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
             taskChild = dao.updateTransferTaskChild(taskChild);
             parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
@@ -558,14 +565,14 @@ public class TransfersService implements ITransfersService {
     private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.info("***** DOING chevronFour **** {}", taskChild);
         try {
-            TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
+            TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             // Check to see if all the children are complete. If so, update the parent task
             // TODO: Race condition
             if (!parentTask.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
                 long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getParentTaskId());
                 if (incompleteCount == 0) {
                     parentTask.setStatus(TransferTaskStatus.COMPLETED.name());
-                    dao.updateTransferTask(parentTask);
+                    dao.updateTransferTaskParent(parentTask);
                     String noteMessage = String.format("Transfer %s complete", parentTask.getUuid());
                 }
             }
@@ -579,7 +586,7 @@ public class TransfersService implements ITransfersService {
     private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild, Scheduler scheduler) throws ServiceException {
         log.info("***** DOING chevronFive **** {}", taskChild);
         try {
-            TransferTask parentTask = dao.getTransferTaskById(taskChild.getParentTaskId());
+            TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             if (parentTask.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
                 log.info(scheduler.toString());
                 scheduler.dispose();

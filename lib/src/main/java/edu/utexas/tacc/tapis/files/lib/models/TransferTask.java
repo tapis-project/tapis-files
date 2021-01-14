@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public class TransferTask {
 
-    private long id;
+    private int id;
     private String username;
     private String tenantId;
     private String tag;
@@ -16,11 +16,11 @@ public class TransferTask {
     private String status;
 
 
-    public long getId() {
+    public int getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(int id) {
         this.id = id;
     }
 
