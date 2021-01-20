@@ -14,6 +14,8 @@ import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.*;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -63,10 +65,10 @@ public class TransfersService {
         ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
         ReceiverOptions receiverOptions = new ReceiverOptions()
             .connectionFactory(connectionFactory)
-            .connectionSubscriptionScheduler(Schedulers.newElastic("receiver"));
+            .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "receiver"));
         SenderOptions senderOptions = new SenderOptions()
             .connectionFactory(connectionFactory)
-            .resourceManagementScheduler(Schedulers.newElastic("sender"));
+            .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "sender"));
         receiver = RabbitFlux.createReceiver(receiverOptions);
         sender = RabbitFlux.createSender(senderOptions);
         this.dao = dao;
@@ -95,7 +97,7 @@ public class TransfersService {
         }
     }
 
-    public List<TransferTaskChild> getAllChildrenTasks(TransferTaskParent task) throws ServiceException {
+    public List<TransferTaskChild> getAllChildrenTasks(TransferTask task) throws ServiceException {
         try {
             return dao.getAllChildren(task);
         } catch (DAOException e) {
@@ -146,7 +148,9 @@ public class TransfersService {
             // TODO: check if requesting user has access to both the source and dest systems, throw an error back if not
             // TODO: Do this in a single transaction
             TransferTask newTask = dao.createTransferTask(task, elements);
-            this.publishParentTaskMessage(newTask);
+            for (TransferTaskParent parent: newTask.getParentTasks()) {
+                this.publishParentTaskMessage(parent);
+            }
             return newTask;
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
@@ -175,7 +179,7 @@ public class TransfersService {
         return sender.delete(QueueSpecification.queue(qName));
     }
 
-    private void publishParentTaskMessage(@NotNull TransferTask task) throws ServiceException {
+    private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException {
         try {
             String m = mapper.writeValueAsString(task);
             OutboundMessage message = new OutboundMessage("", PARENT_QUEUE, m.getBytes());
@@ -189,10 +193,10 @@ public class TransfersService {
         }
     }
 
-    private Mono<TransferTask> deserializeParentMessage(AcknowledgableDelivery message) {
+    private Mono<TransferTaskParent> deserializeParentMessage(AcknowledgableDelivery message) {
         try {
-            TransferTask child = mapper.readValue(message.getBody(), TransferTask.class);
-            return Mono.just(child);
+            TransferTaskParent parent = mapper.readValue(message.getBody(), TransferTaskParent.class);
+            return Mono.just(parent);
         } catch (IOException ex) {
             // DO NOT requeue the message if it fails here!
             message.nack(false);
@@ -241,44 +245,57 @@ public class TransfersService {
             );
     }
 
-    private Mono<TransferTask> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTask t) {
+    private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent t) {
         //TODO: Add task failure, set status etc
         log.error("Error callback", e);
         m.nack(false);
         return Mono.empty();
     }
 
-    private TransferTask doParentChevronOne(TransferTaskParent parentTask) throws ServiceException {
+    private TransferTaskParent doParentChevronOne(TransferTaskParent parentTask) throws ServiceException {
         log.info("***** DOING doParentChevronOne ****");
         log.info(parentTask.toString());
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
 
         // Has to be final for lambda below
-        final TransferTaskParent finalParentTask = parentTask;
         try {
-            sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), parentTask.getSourceSystemId(), parentTask.getUsername());
-            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
+            String sourceURI = parentTask.getSourceURI();
 
-            //TODO: Retries will break this, should delete anything in the DB if it is a retry?
-            List<FileInfo> fileListing;
-            fileListing = sourceClient.ls(parentTask.getSourcePath());
-            List<TransferTaskChild> children = new ArrayList<>();
-            long totalBytes = 0;
-            for (FileInfo f : fileListing) {
-                totalBytes += f.getSize();
-                TransferTaskChild child = new TransferTaskChild(finalParentTask, f);
-                children.add(child);
+            if (sourceURI.startsWith("tapis://")) {
+                TapisUrl sourceURL = TapisUrl.makeTapisUrl(parentTask.getSourceURI());
+                sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURL.getSystemId(), parentTask.getUsername());
+                sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
+
+                //TODO: Retries will break this, should delete anything in the DB if it is a retry?
+                List<FileInfo> fileListing;
+                fileListing = sourceClient.ls(sourceURL.getPath());
+                List<TransferTaskChild> children = new ArrayList<>();
+                long totalBytes = 0;
+                for (FileInfo f : fileListing) {
+                    totalBytes += f.getSize();
+                    TransferTaskChild child = new TransferTaskChild(parentTask, f);
+                    children.add(child);
+                }
+                parentTask.setTotalBytes(totalBytes);
+                parentTask.setStatus(TransferTaskStatus.STAGED.name());
+                parentTask = dao.updateTransferTaskParent(parentTask);
+                dao.bulkInsertChildTasks(children);
+                children = dao.getAllChildren(parentTask);
+                publishBulkChildMessages(children);
+            } else if (sourceURI.startsWith("http://") || sourceURI.startsWith("https://")) {
+                TransferTaskChild task = new TransferTaskChild();
+                task.setSourceURI(parentTask.getSourceURI());
+                task.setParentTaskId(parentTask.getId());
+                task.setTaskId(parentTask.getTaskId());
+                task.setDestinationURI(parentTask.getDestinationURI());
+                task.setStatus(TransferTaskStatus.ACCEPTED.name());
+                task.setTenantId(parentTask.getTenantId());
+                task.setUsername(parentTask.getUsername());
+                dao.insertChildTask(task);
             }
-            parentTask.setTotalBytes(totalBytes);
-            parentTask.setStatus(TransferTaskStatus.STAGED.name());
-            parentTask = dao.updateTransferTaskParent(parentTask);
-            dao.bulkInsertChildTasks(children);
-            children = dao.getAllChildren(parentTask);
-            publishBulkChildMessages(children);
-            String noteMessage = String.format("Transfer %s staged", parentTask.getUuid());
             return parentTask;
-        } catch (Exception e) {
+        } catch (DAOException | TapisException | IOException e) {
             log.error("Error processing {}", parentTask);
             throw new ServiceException(e.getMessage(), e);
         }
@@ -288,7 +305,6 @@ public class TransfersService {
     /**
      * Child task message processing
      */
-
     public void publishBulkChildMessages(List<TransferTaskChild> children) {
             Flux<OutboundMessageResult> messages = sender.sendWithPublishConfirms(
                 Flux.fromIterable(children)
@@ -453,7 +469,7 @@ public class TransfersService {
             if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED.name())) {
                 return taskChild;
             }
-            taskChild = dao.getChildTask(taskChild);
+            taskChild = dao.getChildTaskByUUID(taskChild);
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS.name());
             dao.updateTransferTaskChild(taskChild);
 
@@ -493,11 +509,21 @@ public class TransfersService {
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
         }
+
+        TapisUrl sourceURL;
+        TapisUrl destURL;
+        try {
+            sourceURL = TapisUrl.makeTapisUrl(taskChild.getSourceURI());
+            destURL = TapisUrl.makeTapisUrl(taskChild.getDestinationURI());
+        } catch (TapisException ex) {
+            throw new ServiceException("Invalid URI", ex);
+        }
+
         //Step 2: Get clients for source / dest
         try {
-            sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), taskChild.getSourceSystemId(), taskChild.getUsername() );
+            sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername() );
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
-            destSystem = systemsCache.getSystem(taskChild.getTenantId(), taskChild.getDestinationSystemId(), taskChild.getUsername());
+            destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
             destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
         } catch (IOException | ServiceException ex) {
             log.error(ex.getMessage(), ex);
@@ -505,7 +531,7 @@ public class TransfersService {
         }
 
         //Step 3: Stream the file contents to dest
-        try (InputStream sourceStream =  sourceClient.getStream(taskChild.getSourcePath());
+        try (InputStream sourceStream =  sourceClient.getStream(sourceURL.getPath());
              ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream)
         ){
 
@@ -518,13 +544,13 @@ public class TransfersService {
                 .publishOn(Schedulers.elastic())
                 .flatMap((prog)->this.updateProgress(prog, finalTaskChild))
                 .subscribe();
-            destClient.insert(taskChild.getDestinationPath(), observableInputStream);
+            destClient.insert(destURL.getPath(), observableInputStream);
 
         } catch (IOException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
             throw new ServiceException(msg, ex);
         } catch (NotFoundException ex) {
-            String msg = String.format("ERROR! could not find file: %s", taskChild.getSourcePath());
+            String msg = String.format("ERROR! could not find file: %s", taskChild.getSourceURI());
             throw new ServiceException(msg, ex);
         }
         return taskChild;
@@ -554,7 +580,7 @@ public class TransfersService {
             TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
             taskChild = dao.updateTransferTaskChild(taskChild);
-            parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
+//            parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
             return taskChild;
         } catch (DAOException ex) {
             String msg = String.format("Error updating child task %s", taskChild.toString());

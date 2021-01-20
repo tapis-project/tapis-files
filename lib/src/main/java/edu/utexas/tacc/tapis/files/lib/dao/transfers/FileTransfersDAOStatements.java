@@ -9,7 +9,11 @@ public class FileTransfersDAOStatements {
 
     //language=SQL
     public static final String GET_PARENT_TASK_BY_UUID =
-        "SELECT * FROM transfer_tasks where uuid = ?";
+        "SELECT * FROM transfer_tasks_parent where uuid = ?";
+
+    //language=SQL
+    public static final String GET_PARENTS_FOR_TASK_BY_ID =
+        "SELECT * FROM transfer_tasks_parent where task_id = ?";
 
     //language=SQL
     public static final String GET_PARENT_TASK_BY_ID =
@@ -45,7 +49,9 @@ public class FileTransfersDAOStatements {
         "UPDATE transfer_tasks_child " +
             " SET bytes_transferred = ?, " +
             "     status = ?, " +
-            "     retries = ? " +
+            "     retries = ?, " +
+            "     start_time = ?, " +
+            "     end_time = ? " +
             "WHERE id = ? " +
             "RETURNING *";
 
@@ -68,7 +74,7 @@ public class FileTransfersDAOStatements {
         "UPDATE transfer_tasks_parent " +
             "SET bytes_transferred = bytes_transferred + ?" +
             "WHERE id = ? " +
-            "RETURNING transfer_tasks_parent.*";
+            "RETURNING *";
 
     //language=SQL
     public static final String UPDATE_PARENT_TASK =

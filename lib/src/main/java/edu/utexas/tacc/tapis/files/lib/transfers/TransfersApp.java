@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -51,7 +52,7 @@ public class TransfersApp {
 
 
         Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
-        Flux<TransferTask> parentTaskFlux = transfersService.processParentTasks(parentMessageStream);
+        Flux<TransferTaskParent> parentTaskFlux = transfersService.processParentTasks(parentMessageStream);
         parentTaskFlux.subscribe();
 
         Flux<AcknowledgableDelivery> childMessageStream = transfersService.streamChildMessages();

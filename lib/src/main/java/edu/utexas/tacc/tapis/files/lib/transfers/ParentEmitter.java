@@ -33,31 +33,31 @@ public class ParentEmitter {
         sender = RabbitFlux.createSender(senderOptions);
 
 
-        Flux<OutboundMessage> messageFlux = Flux.range(1, count)
-          .groupBy((i) -> {
-              return i / 100;
-          })
-          .flatMap(group -> group.map(i -> {
-              TransferTask task = new TransferTask();
-              task.setId(i);
-              task.setUsername("user1");
-              task.setTenantId("tenant-" + group.key());
-              task.setDestinationPath("/a/b/c");
-              task.setSourcePath("/d/e/f");
-              task.setSourceSystemId("systemA");
-              task.setDestinationSystemId("systemB");
-              task.setCreated(Instant.now());
-              try {
-                  String m = mapper.writeValueAsString(task);
-                  return new OutboundMessage("", QUEUE, m.getBytes(StandardCharsets.UTF_8));
-              } catch (Exception e) {
-                  log.info(e.getMessage());
-                  return null;
-              }
-
-          }));
-
-        sender.send(messageFlux).subscribe();
+//        Flux<OutboundMessage> messageFlux = Flux.range(1, count)
+//          .groupBy((i) -> {
+//              return i / 100;
+//          })
+//          .flatMap(group -> group.map(i -> {
+//              TransferTask task = new TransferTask();
+//              task.setId(i);
+//              task.setUsername("user1");
+//              task.setTenantId("tenant-" + group.key());
+//              task.setDestinationPath("/a/b/c");
+//              task.setSourcePath("/d/e/f");
+//              task.setSourceSystemId("systemA");
+//              task.setDestinationSystemId("systemB");
+//              task.setCreated(Instant.now());
+//              try {
+//                  String m = mapper.writeValueAsString(task);
+//                  return new OutboundMessage("", QUEUE, m.getBytes(StandardCharsets.UTF_8));
+//              } catch (Exception e) {
+//                  log.info(e.getMessage());
+//                  return null;
+//              }
+//
+//          }));
+//
+//        sender.send(messageFlux).subscribe();
     }
 
     public static void main(String[] args) {

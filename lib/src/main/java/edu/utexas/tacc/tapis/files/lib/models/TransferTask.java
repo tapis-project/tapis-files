@@ -1,6 +1,9 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public class TransferTask {
@@ -14,6 +17,7 @@ public class TransferTask {
     private Instant startTime;
     private Instant endTime;
     private String status;
+    private List<TransferTaskParent> parentTasks;
 
 
     public int getId() {
@@ -86,5 +90,14 @@ public class TransferTask {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    @JsonIgnore
+    public List<TransferTaskParent> getParentTasks() {
+        return parentTasks;
+    }
+
+    public void setParentTasks(List<TransferTaskParent> parentTasks) {
+        this.parentTasks = parentTasks;
     }
 }

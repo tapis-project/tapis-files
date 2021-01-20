@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
@@ -57,8 +58,8 @@ public class ITestFileOpsService {
         testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setId("testSystem");
         testSystemSSH.setEffectiveUserId("testuser");
-        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.SFTP);
+        List<TransferMethodEnum> transferMechs = new ArrayList<>();
+        transferMechs.add(TransferMethodEnum.SFTP);
         testSystemSSH.setTransferMethods(transferMechs);
 
         // PKI Keys system
@@ -73,7 +74,7 @@ public class ITestFileOpsService {
         testSystemPKI.setId("testSystem");
         testSystemPKI.setEffectiveUserId("testuser");
         transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.SFTP);
+        transferMechs.add(TransferMethodEnum.SFTP);
         testSystemPKI.setTransferMethods(transferMechs);
 
         //S3 system
@@ -88,7 +89,7 @@ public class ITestFileOpsService {
         testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
         transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.S3);
+        transferMechs.add(TransferMethodEnum.S3);
         testSystemS3.setTransferMethods(transferMechs);
     }
 

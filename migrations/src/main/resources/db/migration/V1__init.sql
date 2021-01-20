@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS transfer_tasks
     start_time               TIMESTAMP WITH TIME ZONE,
     end_time               TIMESTAMP WITH TIME ZONE
 );
+CREATE INDEX ON transfer_tasks (uuid);
 
 
 CREATE TABLE IF NOT EXISTS transfer_tasks_parent
@@ -33,7 +34,7 @@ CREATE TABLE IF NOT EXISTS transfer_tasks_parent
     task_id int REFERENCES transfer_tasks(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE index on transfer_tasks_parent (tenant_id, username, uuid, task_id);
-
+CREATE INDEX ON transfer_tasks_parent (uuid);
 
 CREATE TABLE IF NOT EXISTS transfer_tasks_child
 (
@@ -55,8 +56,7 @@ CREATE TABLE IF NOT EXISTS transfer_tasks_child
     task_id int REFERENCES transfer_tasks(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE INDEX on transfer_tasks_child (tenant_id, username, uuid, parent_task_id, task_id);
-
-
+CREATE INDEX ON transfer_tasks_child (uuid);
 
 CREATE TABLE IF NOT EXISTS shares
 (

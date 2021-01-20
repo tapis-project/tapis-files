@@ -15,6 +15,7 @@ import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.io.IOUtils;
 import org.flywaydb.core.Flyway;
@@ -86,8 +87,8 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setId("destSystem");
         testSystemSSH.setEffectiveUserId("testuser");
-        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.SFTP);
+        List<TransferMethodEnum> transferMechs = new ArrayList<>();
+        transferMechs.add(TransferMethodEnum.SFTP);
         testSystemSSH.setTransferMethods(transferMechs);
 
         //S3 system
@@ -103,7 +104,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
         transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.S3);
+        transferMechs.add(TransferMethodEnum.S3);
         testSystemS3.setTransferMethods(transferMechs);
 
         // PKI Keys system
@@ -118,7 +119,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemPKI.setId("testSystem");
         testSystemPKI.setEffectiveUserId("testuser");
         transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.SFTP);
+        transferMechs.add(TransferMethodEnum.SFTP);
         testSystemPKI.setTransferMethods(transferMechs);
 
         Tenant tenant = new Tenant();
