@@ -6,8 +6,7 @@
     <parent>
         <groupId>edu.utexas.tacc.tapis</groupId>
         <artifactId>tapis-bom</artifactId>
-<!--        <version>[1.11,2.0)</version>-->
-        <version>1.11.37</version>
+        <version>[1.11,2.0)</version>
     </parent>
 
     <artifactId>tapis-files</artifactId>
@@ -15,8 +14,8 @@
     <version>1.0</version>
 
     <properties>
-        <tapis-client-java.version>1.11.27</tapis-client-java.version>
-        <tapis-shared.version>1.11.50</tapis-shared.version>
+        <tapis-client-java.version>1.11.37</tapis-client-java.version>
+        <tapis-shared.version>[1.11, 2.0]</tapis-shared.version>
         <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
         <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
         <hk2.version>2.6.1</hk2.version>
@@ -36,15 +35,6 @@
             <id>tapis-local-releases</id>
             <name>Local repo for releases</name>
             <url>http://c002.rodeo.tacc.utexas.edu:30044/repository/maven-releases</url>
-        </repository>
-        <repository>
-            <id>central</id>
-            <name>Maven Central</name>
-            <layout>default</layout>
-            <url>https://repo1.maven.org/maven2</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
         </repository>
     </repositories>
 
@@ -202,11 +192,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>security-client</artifactId>
-            <version>${tapis-client-java.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>files-client</artifactId>
             <version>${tapis-client-java.version}</version>
         </dependency>
         <!--        JSR 380 Validation deps-->

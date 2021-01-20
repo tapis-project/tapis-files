@@ -901,23 +901,6 @@
           }
         }
       },
-      "FilePermissionStringResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "string"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
       "FilePermission" : {
         "type" : "object",
         "properties" : {
@@ -950,6 +933,23 @@
           },
           "result" : {
             "$ref" : "#/components/schemas/FilePermission"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "FilePermissionStringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
           },
           "version" : {
             "type" : "string"
