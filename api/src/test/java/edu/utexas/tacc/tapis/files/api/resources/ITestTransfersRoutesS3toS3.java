@@ -21,6 +21,7 @@ import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import org.apache.commons.codec.Charsets;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -74,8 +75,8 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         testSystem.setId("testSystem");
         testSystem.setAuthnCredential(creds);
         testSystem.setRootDir("/");
-        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.S3);
+        List<TransferMethodEnum> transferMechs = new ArrayList<>();
+        transferMechs.add(TransferMethodEnum.S3);
         testSystem.setTransferMethods(transferMechs);
 
         tenant = new Tenant();
@@ -181,8 +182,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
 
         Assert.assertNotNull(newTask.getUuid());
         Assert.assertNotNull(newTask.getCreated());
-        Assert.assertEquals(newTask.getSourceSystemId(), "sourceSystem");
-        Assert.assertEquals(newTask.getSourcePath(), "sourcePath");
+        Assert.assertEquals(newTask.getParentTasks().size(), 1);
         Assert.assertEquals(newTask.getUsername(), "testuser1");
         Assert.assertEquals(newTask.getTenantId(), "dev");
         Assert.assertEquals(newTask.getStatus(), TransferTaskStatus.ACCEPTED.name());
@@ -194,11 +194,6 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         TransferTask t = createTransferTask();
 
         TransferTask task = getTransferTask(t.getUuid().toString());
-
-        Assert.assertEquals(t.getDestinationPath(), task.getDestinationPath());
-        Assert.assertEquals(t.getDestinationSystemId(), task.getDestinationSystemId());
-        Assert.assertEquals(t.getSourcePath(), task.getSourcePath());
-        Assert.assertEquals(t.getSourceSystemId(), task.getSourceSystemId());
         Assert.assertNotNull(task.getUuid());
         Assert.assertNotNull(task.getCreated());
     }

@@ -9,6 +9,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
@@ -85,8 +86,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         testSystem.setId("testSystem");
         testSystem.setAuthnCredential(creds);
         testSystem.setRootDir("/");
-        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.S3);
+        List<TransferMethodEnum> transferMechs = new ArrayList<>();
+        transferMechs.add(TransferMethodEnum.S3);
         testSystem.setTransferMethods(transferMechs);
 
         tenant = new Tenant();

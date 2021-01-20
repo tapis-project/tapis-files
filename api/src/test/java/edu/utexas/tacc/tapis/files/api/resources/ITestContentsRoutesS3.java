@@ -14,6 +14,7 @@ import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.codec.Charsets;
@@ -68,8 +69,8 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         testSystem.setId("testSystem");
         testSystem.setAuthnCredential(creds);
         testSystem.setRootDir("/");
-        List<TSystem.TransferMethodsEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TSystem.TransferMethodsEnum.S3);
+        List<TransferMethodEnum> transferMechs = new ArrayList<>();
+        transferMechs.add(TransferMethodEnum.S3);
         testSystem.setTransferMethods(transferMechs);
 
         tenant = new Tenant();
