@@ -113,7 +113,7 @@ public class TransfersService {
         }
     }
 
-    public TransferTask getTransferTask(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
+    public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
         try {
             TransferTask task = dao.getTransferTaskByUUID(taskUUID);
             if (task == null) {

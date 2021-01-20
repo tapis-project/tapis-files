@@ -355,7 +355,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Thread.sleep(2000);
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 2);
-        t1 = transfersService.getTransferTask(t1.getUuid());
+        t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED.name());
         transfersService.deleteQueue(parentQ).subscribe();
         transfersService.deleteQueue(childQ).subscribe();

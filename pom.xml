@@ -7,7 +7,7 @@
         <groupId>edu.utexas.tacc.tapis</groupId>
         <artifactId>tapis-bom</artifactId>
 <!--        <version>[1.11,2.0)</version>-->
-        <version>1.11.35</version>
+        <version>1.11.37-SNAPSHOT</version>
     </parent>
 
     <artifactId>tapis-files</artifactId>
