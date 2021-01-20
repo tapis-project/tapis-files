@@ -10,7 +10,6 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tapis-files-api</artifactId>
 
-
     <dependencies>
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
@@ -92,6 +91,18 @@
                     <outputPath>${project.basedir}/src/main/resources/</outputPath>
                     <outputFormat>JSONANDYAML</outputFormat>
                     <prettyPrint>true</prettyPrint>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${maven-jar-plugin.version}</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>edu.utexas.tacc.tapis.files.api.FilesApplication</mainClass>
+                        </manifest>
+                    </archive>
                 </configuration>
             </plugin>
         </plugins>

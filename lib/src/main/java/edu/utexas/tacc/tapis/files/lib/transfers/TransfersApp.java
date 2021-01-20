@@ -30,6 +30,9 @@ public class TransfersApp {
     private static Logger log = LoggerFactory.getLogger(TransfersApp.class);
 
     public static void main(String[] args) throws Exception {
+
+        log.info("Starting transfers application");
+
         ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
         ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
             @Override
@@ -58,6 +61,7 @@ public class TransfersApp {
         Flux<AcknowledgableDelivery> childMessageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> childTaskFlux = transfersService.processChildTasks(childMessageStream);
         childTaskFlux.subscribe();
+
     }
 
     private void logSuccess(TransferTask t) {
