@@ -18,7 +18,7 @@
         <tapis-shared.version>[1.11, 2.0]</tapis-shared.version>
         <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
         <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
-        <hk2.version>2.6.1</hk2.version>
+        <hk2.inhabitant.version>3.0.1</hk2.inhabitant.version>
         <skipITs>true</skipITs>
     </properties>
 
@@ -85,7 +85,7 @@
             <plugin>
                 <groupId>org.glassfish.hk2</groupId>
                 <artifactId>hk2-inhabitant-generator</artifactId>
-                <version>${hk2.version}</version>
+                <version>3.0.0</version>
                 <executions>
                     <execution>
                         <goals>
