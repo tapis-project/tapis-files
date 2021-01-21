@@ -84,8 +84,8 @@ public class PermissionsApiResource  {
             @Parameter(description = "path",required=true) @PathParam("path") String path,
             @Parameter(description = "Username to remove",required=true) @QueryParam("username") String username,
             @Context SecurityContext securityContext) throws NotFoundException {
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         TSystem system;
         try {
             system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
@@ -98,8 +98,6 @@ public class PermissionsApiResource  {
         }
         //check if user==owner
         // if not, username = user.getName() regardless of query string.
-
-
         try {
             boolean allPermitted = permsService.isPermitted(user.getTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
             boolean readPermitted = permsService.isPermitted(user.getTenantId(), username, systemId, path, FilePermissionsEnum.READ);
@@ -135,6 +133,7 @@ public class PermissionsApiResource  {
             @Parameter(description = "path",required=true) @PathParam("path") String path,
             @Parameter(description = "Username to remove",required=true) @QueryParam("username") String username,
             @Context SecurityContext securityContext) throws NotFoundException {
+
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             permsService.grantPermission(user.getTenantId(), username, systemId, path, FilePermissionsEnum.ALL);

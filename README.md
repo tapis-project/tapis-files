@@ -23,9 +23,10 @@ Get into a postgres shell. The default username is dev
 Run the following commands in the postgres shell.
 
 ``` 
-# create database test;
-# create user test with encrypted password 'test';
-# alter user test WITH SUPERUSER;   
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+create database test;
+create user test with encrypted password 'test';
+alter user test WITH SUPERUSER;   
 ```
 
 ### Run a build
@@ -39,7 +40,7 @@ mvn clean install
 The integration tests are configured to use the `test` database created above.
 
 ```
-mvn clean install -DskipTests=false -DAPP_ENV=test
+mvn clean install -DskipITs=false -DAPP_ENV=test
 ```
 
 ### Run migrations

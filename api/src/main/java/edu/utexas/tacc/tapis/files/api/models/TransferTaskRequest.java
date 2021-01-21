@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
+
 import java.util.List;
 
 import javax.validation.constraints.NotEmpty;

@@ -7,11 +7,12 @@ import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 public class RabbitMQConnection {
 
     private static ConnectionFactory INSTANCE;
-    private static IRuntimeConfig conf = RuntimeSettings.get();
+    private static final IRuntimeConfig conf = RuntimeSettings.get();
 
     public static synchronized ConnectionFactory getInstance() {
         if (INSTANCE == null) {
             INSTANCE = new ConnectionFactory();
+            INSTANCE.setHost(conf.getRabbitMQHost());
             INSTANCE.setUsername(conf.getRabbitMQUsername());
             INSTANCE.setPassword(conf.getRabbitmqPassword());
             INSTANCE.setVirtualHost(conf.getRabbitMQVHost());

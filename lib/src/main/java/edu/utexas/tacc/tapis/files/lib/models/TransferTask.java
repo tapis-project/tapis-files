@@ -59,6 +59,10 @@ public class TransferTask {
     public void setCreated(Instant created) {
         this.created = created;
     }
+    public void setCreated(String created) {
+        this.created = Instant.parse(created);
+    }
+
 
     public UUID getUuid() {
         return uuid;
@@ -92,7 +96,6 @@ public class TransferTask {
         this.status = status;
     }
 
-    @JsonIgnore
     public List<TransferTaskParent> getParentTasks() {
         return parentTasks;
     }

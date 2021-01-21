@@ -1,7 +1,8 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
-import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequestElement;
+import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
@@ -20,6 +21,7 @@ import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import org.apache.commons.codec.Charsets;
@@ -60,6 +62,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     private TenantManager tenantManager;
     private ServiceJWT serviceJWT;
     private Tenant tenant;
+    private Site testSite;
     private Map<String, Tenant> tenantMap = new HashMap<>();
 
 
@@ -83,6 +86,9 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         tenant.setTenantId("testTenant");
         tenant.setBaseUrl("test.tapis.io");
         tenantMap.put(tenant.getTenantId(), tenant);
+
+        testSite = new Site();
+        testSite.setSiteId("test");
     }
 
     @Override
@@ -107,7 +113,6 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
                         bind(tenantManager).to(TenantManager.class);
                         bindAsContract(SystemsCache.class);
                         bindAsContract(FilePermsCache.class);
-                        bindAsContract(ParentTaskFSM.class);
                         bindAsContract(TransfersService.class);
                         bindAsContract(FileTransfersDAO.class);
                         bindAsContract(RemoteDataClientFactory.class);
@@ -141,6 +146,8 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
+        when(tenantManager.getSite(any())).thenReturn(testSite);
+
     }
 
 
@@ -150,18 +157,23 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
      * @return
      */
     private TransferTask createTransferTask() {
-        TransferTaskRequestElement payload = new TransferTaskRequestElement();
-        payload.setSourceURI("tapis://sourceSystem/sourcePath");
-        payload.setDestinationURI("tapis://destSystem/destinationPath");
+        TransferTaskRequest request = new TransferTaskRequest();
+        request.setTag("testTag");
+        TransferTaskRequestElement element1 = new TransferTaskRequestElement();
+        element1.setSourceURI("tapis://test.edu/sourceSystem/sourcePath");
+        element1.setDestinationURI("tapis://tests.edu/destSystem/destinationPath");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element1);
+        request.setElements(elements);
 
 
-        Response createTaskResponse = target("/v3/files/transfers")
+        TransferTaskResponse createTaskResponse = target("/v3/files/transfers")
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
+                .header("content-type", MediaType.APPLICATION_JSON)
                 .header("x-tapis-token", user1jwt)
-                .post(Entity.json(payload));
-        TransferTaskResponse t = createTaskResponse.readEntity(TransferTaskResponse.class);
-        return t.getResult();
+                .post(Entity.json(request), TransferTaskResponse.class);
+        return createTaskResponse.getResult();
     }
 
     private TransferTask getTransferTask(String taskUUID) {

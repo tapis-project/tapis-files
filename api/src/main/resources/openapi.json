@@ -695,36 +695,6 @@
         }
       }
     },
-    "/v3/files/transfers" : {
-      "post" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Transfer data",
-        "description" : "This creates a background task which will transfer files into the storage system",
-        "operationId" : "createTransferTask",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TransferTaskRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v3/files/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -797,6 +767,36 @@
           },
           "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
         } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/transfers" : {
+      "post" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Transfer data",
+        "description" : "This creates a background task which will transfer files into the storage system",
+        "operationId" : "createTransferTask",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -901,6 +901,23 @@
           }
         }
       },
+      "FilePermissionStringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "FilePermission" : {
         "type" : "object",
         "properties" : {
@@ -933,23 +950,6 @@
           },
           "result" : {
             "$ref" : "#/components/schemas/FilePermission"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
-      "FilePermissionStringResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "string"
           },
           "version" : {
             "type" : "string"
@@ -1033,6 +1033,68 @@
           },
           "status" : {
             "type" : "string"
+          },
+          "parentTasks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTaskParent"
+            }
+          }
+        }
+      },
+      "TransferTaskParent" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "tenantId" : {
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "sourceURI" : {
+            "type" : "string"
+          },
+          "destinationURI" : {
+            "type" : "string"
+          },
+          "totalBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bytesTransferred" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "taskId" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "startTime" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "endTime" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "uuid" : {
+            "type" : "string",
+            "description" : "Unique ID of the task.",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
+            "example" : "PENDING"
+          },
+          "created" : {
+            "type" : "integer",
+            "description" : "Timestamp in UTC of task creation.",
+            "format" : "int64"
           }
         }
       },
@@ -1047,6 +1109,23 @@
           },
           "result" : {
             "$ref" : "#/components/schemas/TransferTask"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
           },
           "version" : {
             "type" : "string"
@@ -1079,23 +1158,6 @@
           "destinationURI" : {
             "type" : "string",
             "description" : "Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}"
-          }
-        }
-      },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
           }
         }
       }

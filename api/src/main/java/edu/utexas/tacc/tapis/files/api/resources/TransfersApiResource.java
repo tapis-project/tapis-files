@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
-import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequestElement;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
@@ -147,20 +147,19 @@ public class TransfersApiResource {
             )
     })
     public Response createTransferTask(
-            @Valid @Parameter(required = true) TransferTaskRequest transferTask,
+            @Valid @Parameter(required = true) TransferTaskRequest transferTaskRequest,
             @Context SecurityContext securityContext) {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-//            TransferTask task = transfersService.createTransfer(
-//                    user.getName(),
-//                    user.getTenantId(),
-//                    transferTask.getSourceSystemId(),
-//                    transferTask.getSourcePath(),
-//                    transferTask.getDestinationSystemId(),
-//                    transferTask.getDestinationPath()
-//            );
-//            TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse();
-            return Response.ok("ok").build();
+            TransferTask task = transfersService.createTransfer(
+                    user.getName(),
+                    user.getTenantId(),
+                    transferTaskRequest.getTag(),
+                    transferTaskRequest.getElements()
+            );
+            TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
+            resp.setMessage("Transfer created.");
+            return Response.ok(resp).build();
         } catch (Exception ex) {
             log.error("createTransferTask", ex);
             throw new WebApplicationException("server error");
