@@ -184,6 +184,18 @@ public class FileTransfersDAO {
         }
     }
 
+    public TransferTask getTransferTaskByID(@NotNull int taskId) throws DAOException {
+        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        try (Connection connection = HikariConnectionPool.getConnection()) {
+            BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
+            String query = FileTransfersDAOStatements.GET_TASK_BY_ID;
+            QueryRunner runner = new QueryRunner();
+            return runner.query(connection, query, handler, taskId);
+        } catch (SQLException ex) {
+            throw new DAOException(ex.getMessage(), ex);
+        }
+    }
+
     public TransferTaskChild getTransferTaskChild(@NotNull UUID taskUUID) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {

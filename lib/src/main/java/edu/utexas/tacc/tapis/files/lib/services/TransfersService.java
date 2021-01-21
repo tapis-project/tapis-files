@@ -577,7 +577,6 @@ public class TransfersService {
     private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.info("***** DOING chevronThree **** {}", taskChild);
         try {
-            TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
             taskChild = dao.updateTransferTaskChild(taskChild);
 //            parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
@@ -591,15 +590,14 @@ public class TransfersService {
     private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.info("***** DOING chevronFour **** {}", taskChild);
         try {
-            TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
+            TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
             // Check to see if all the children are complete. If so, update the parent task
             // TODO: Race condition
-            if (!parentTask.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
-                long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getParentTaskId());
+            if (!task.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
+                long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getTaskId());
                 if (incompleteCount == 0) {
-                    parentTask.setStatus(TransferTaskStatus.COMPLETED.name());
-                    dao.updateTransferTaskParent(parentTask);
-                    String noteMessage = String.format("Transfer %s complete", parentTask.getUuid());
+                    task.setStatus(TransferTaskStatus.COMPLETED.name());
+                    dao.updateTransferTask(task);
                 }
             }
             return taskChild;

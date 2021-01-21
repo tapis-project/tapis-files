@@ -53,19 +53,15 @@
     </profiles>
     <build>
         <plugins>
-<!--            <plugin>-->
-<!--                <groupId>org.flywaydb</groupId>-->
-<!--                <artifactId>flyway-maven-plugin</artifactId>-->
-<!--                <configuration>-->
-<!--                    <user>test</user>-->
-<!--                    <password>test</password>-->
-<!--                    <url>jdbc:postgresql://localhost/test</url>-->
-<!--                </configuration>-->
-<!--            </plugin>-->
-<!--            <plugin>-->
-<!--                <groupId>org.apache.maven.plugins</groupId>-->
-<!--                <artifactId>maven-compiler-plugin</artifactId>-->
-<!--            </plugin>-->
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <configuration>
+                    <user>test</user>
+                    <password>test</password>
+                    <url>jdbc:postgresql://localhost/test</url>
+                </configuration>
+            </plugin>
 
             <!-- Generate the openapi documentation from the code -->
             <plugin>

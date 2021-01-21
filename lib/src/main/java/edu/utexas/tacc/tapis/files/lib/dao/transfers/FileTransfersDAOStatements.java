@@ -8,6 +8,10 @@ public class FileTransfersDAOStatements {
         "SELECT * FROM transfer_tasks where uuid = ?";
 
     //language=SQL
+    public static final String GET_TASK_BY_ID =
+        "SELECT * FROM transfer_tasks where id = ?";
+
+    //language=SQL
     public static final String GET_PARENT_TASK_BY_UUID =
         "SELECT * FROM transfer_tasks_parent where uuid = ?";
 
