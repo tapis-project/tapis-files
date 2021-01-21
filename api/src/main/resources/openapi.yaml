@@ -637,17 +637,6 @@ components:
             $ref: '#/components/schemas/FileInfo'
         version:
           type: string
-    FilePermissionStringResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: string
-        version:
-          type: string
     FilePermission:
       type: object
       properties:
@@ -674,6 +663,17 @@ components:
           type: string
         result:
           $ref: '#/components/schemas/FilePermission'
+        version:
+          type: string
+    FilePermissionStringResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: string
         version:
           type: string
     SharedFileObject:
