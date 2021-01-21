@@ -39,18 +39,18 @@ mvn clean install
 The integration tests are configured to use the `test` database created above.
 
 ```
-docker exec -it deploy_api_1 mvn -P integration-test verify
+mvn clean install -DskipTests=false -DAPP_ENV=test
 ```
 
 ### Run migrations
 
 ```
-docker exec -it deploy_api_1 mvn -pl migrations flyway:migrate
+╰─$ mvn -pl migrations flyway:clean flyway:migrate -Dflyway.url=jdbc:postgresql://localhost:5432/dev -Dflyway.user=dev -Dflyway.password=dev -U
 ```
 
 ### Hit the API
 You should also be able to hit the API from postman at 
-`localhost:8080/ops/{systemID}/{path}` 
+`localhost:8080/v3/files/ops/{systemID}/{path}` 
 
 Profit
 
