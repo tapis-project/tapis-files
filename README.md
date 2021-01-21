@@ -23,10 +23,10 @@ Get into a postgres shell. The default username is dev
 Run the following commands in the postgres shell.
 
 ``` 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-create database test;
-create user test with encrypted password 'test';
-alter user test WITH SUPERUSER;   
+# create database test;
+# create user test with encrypted password 'test';
+# alter user test WITH SUPERUSER;   
+# CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 ```
 
 ### Run a build
