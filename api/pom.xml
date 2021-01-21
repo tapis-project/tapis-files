@@ -74,6 +74,16 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <configuration>
+                    <user>test</user>
+                    <password>test</password>
+                    <url>jdbc:postgresql://localhost/test</url>
+                </configuration>
+            </plugin>
+
             <!-- Generate the openapi documentation from the code -->
             <plugin>
                 <groupId>io.swagger.core.v3</groupId>
