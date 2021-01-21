@@ -315,7 +315,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test(enabled = false)
+    @Test()
     public void testFullPipeline() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
