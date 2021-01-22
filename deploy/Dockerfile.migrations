@@ -1,6 +1,8 @@
 FROM flyway/flyway:7-alpine
 
-COPY ./migrations/ .
+COPY ./migrations/src/main/resources/db/migration/ ./migrations
+
+
 
 
 
