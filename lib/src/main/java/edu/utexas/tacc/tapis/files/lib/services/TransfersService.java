@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -233,7 +234,8 @@ public class TransfersService {
             })
             .flatMap(group ->
                 group
-                    .publishOn(Schedulers.newBoundedElastic(10, 1, "ParentPool:" + group.key()))
+                    .parallel()
+                    .runOn(Schedulers.newBoundedElastic(10, 10, "ParentPool:" + group.key()))
                     .flatMap(m->
                         deserializeParentMessage(m)
                         .flatMap(t1->Mono.fromCallable(()-> doParentChevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e -> doErrorParentChevronOne(m, e, t1)))
@@ -247,18 +249,42 @@ public class TransfersService {
 
     private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent t) {
         //TODO: Add task failure, set status etc
+        t.setStatus(TransferTaskStatus.FAILED.name());
+        try {
+            dao.updateTransferTaskParent(t);
+        } catch (DAOException ex) {
+            log.error("Could not update task", ex);
+        }
         log.error("Error callback", e);
         m.nack(false);
         return Mono.empty();
     }
 
+
+    /**
+     * We prepare a "bill of materials" for the total transfer task. This includes doing a recursive listing and
+     * inserting the records into the DB, then publishing all of the messages to rabbitmq. After that, the child task workers
+     * will pick them up and begin the actual transferring of bytes.
+     * @param parentTask
+     * @return
+     * @throws ServiceException
+     */
     private TransferTaskParent doParentChevronOne(TransferTaskParent parentTask) throws ServiceException {
         log.info("***** DOING doParentChevronOne ****");
         log.info(parentTask.toString());
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
 
-        // Has to be final for lambda below
+        // Update the top level task first, if it is not already updateted with the startTime
+        try {
+            TransferTask task = dao.getTransferTaskByID(parentTask.getTaskId());
+            task.setStartTime(Instant.now());
+            dao.updateTransferTask(task);
+        } catch (DAOException ex) {
+            throw new ServiceException("Could not update task!", ex);
+        }
+
+
         try {
             String sourceURI = parentTask.getSourceURI();
 
@@ -278,6 +304,7 @@ public class TransfersService {
                     children.add(child);
                 }
                 parentTask.setTotalBytes(totalBytes);
+                parentTask.setStartTime(Instant.now());
                 parentTask.setStatus(TransferTaskStatus.STAGED.name());
                 parentTask = dao.updateTransferTaskParent(parentTask);
                 dao.bulkInsertChildTasks(children);
@@ -385,10 +412,11 @@ public class TransfersService {
                 }
             })
             .flatMap(group-> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(6,1,"ChildPool:"+group.key());
+                Scheduler scheduler = Schedulers.newBoundedElastic(10,10,"ChildPool:"+group.key());
 
                 return group
-                    .publishOn(scheduler)
+                    .parallel()
+                    .runOn(scheduler)
                     .flatMap(
                         //Wwe need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
@@ -471,6 +499,7 @@ public class TransfersService {
             }
             taskChild = dao.getChildTaskByUUID(taskChild);
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS.name());
+            taskChild.setStartTime(Instant.now());
             dao.updateTransferTaskChild(taskChild);
 
             // If the parent task has not been set to IN_PROGRESS do it here.
@@ -541,7 +570,7 @@ public class TransfersService {
             observableInputStream.getEventStream()
                 .window(Duration.ofMillis(1000))
                 .flatMap(window->window.takeLast(1))
-                .publishOn(Schedulers.elastic())
+                .publishOn(Schedulers.boundedElastic())
                 .flatMap((prog)->this.updateProgress(prog, finalTaskChild))
                 .subscribe();
             destClient.insert(destURL.getPath(), observableInputStream);
@@ -578,6 +607,7 @@ public class TransfersService {
         log.info("***** DOING chevronThree **** {}", taskChild);
         try {
             taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
+            taskChild.setEndTime(Instant.now());
             taskChild = dao.updateTransferTaskChild(taskChild);
 //            parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
             return taskChild;
@@ -591,15 +621,29 @@ public class TransfersService {
         log.info("***** DOING chevronFour **** {}", taskChild);
         try {
             TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
+            TransferTaskParent parent = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             // Check to see if all the children are complete. If so, update the parent task
             // TODO: Race condition
             if (!task.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
                 long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getTaskId());
                 if (incompleteCount == 0) {
                     task.setStatus(TransferTaskStatus.COMPLETED.name());
+                    task.setEndTime(Instant.now());
                     dao.updateTransferTask(task);
                 }
             }
+
+            if (!parent.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
+                long incompleteCount = dao.getIncompleteChildrenCountForParent(taskChild.getParentTaskId());
+                if (incompleteCount == 0) {
+                    parent.setStatus(TransferTaskStatus.COMPLETED.name());
+                    parent.setEndTime(Instant.now());
+                    parent.setBytesTransferred(parent.getBytesTransferred() + taskChild.getBytesTransferred());
+                    dao.updateTransferTaskParent(parent);
+                    log.info("Updated parent task {}", parent);
+                }
+            }
+
             return taskChild;
         } catch (DAOException ex) {
             String msg = String.format("Error updating child task %s", taskChild.toString());
@@ -610,13 +654,18 @@ public class TransfersService {
     private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild, Scheduler scheduler) throws ServiceException {
         log.info("***** DOING chevronFive **** {}", taskChild);
         try {
-            TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-            if (parentTask.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
+            TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
+            if (task.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
+                try {
+                    dao.updateTransferTask(task);
+                } catch (DAOException ex) {
+                    log.error("Could not update task {}", task, ex);
+                    throw new ServiceException("Could not update task!", ex);
+                }
+
                 log.info(scheduler.toString());
-                scheduler.dispose();
-                log.warn("PARENT TASK {} COMPLETE", parentTask.getId());
-                log.warn("CHILD TASK RETRIES: {}", taskChild.getRetries());
-                log.warn("SCHEDULER DISPOSED: {}", scheduler.isDisposed());
+                log.info("PARENT TASK {} COMPLETE", taskChild);
+                log.info("CHILD TASK RETRIES: {}", taskChild.getRetries());
             }
             return taskChild;
         } catch (DAOException ex) {

@@ -2,9 +2,29 @@ package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.ConnectionFactory;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
+import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
+import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
+import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
+import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.tenants.client.TenantsClient;
+import edu.utexas.tacc.tapis.tokens.client.TokensClient;
+import org.glassfish.hk2.api.ServiceLocator;
+import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
+import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -12,57 +32,48 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.*;
 
+import javax.inject.Singleton;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class ParentEmitter {
     private Logger log = LoggerFactory.getLogger(ParentEmitter.class);
-    private static final String QUEUE = "tapis.files.transfers.parent";
-    private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
 
-    public void run(int count) {
-        final Sender sender;
-        ConnectionFactory connectionFactory = new ConnectionFactory();
-        connectionFactory.setUsername("dev");
-        connectionFactory.setPassword("dev");
-        connectionFactory.setVirtualHost("dev");
-        connectionFactory.useNio();
-        SenderOptions senderOptions = new SenderOptions()
-          .connectionFactory(connectionFactory)
-          .resourceManagementScheduler(Schedulers.newElastic("child-sender"));
-        sender = RabbitFlux.createSender(senderOptions);
+    private static void run(int count) throws ServiceException {
 
+        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
+        ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
+            @Override
+            protected void configure() {
+                bindAsContract(RemoteDataClientFactory.class);
+                bindAsContract(SystemsCache.class);
+                bindAsContract(FileTransfersDAO.class);
+                bindAsContract(TransfersService.class);
+                bindAsContract(SKClient.class);
+                bindAsContract(SystemsClient.class);
+                bindAsContract(TokensClient.class);
+                bindAsContract(TenantsClient.class);
+                bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                bindFactory(ServiceJWTCacheFactory.class).to(ServiceJWT.class).in(Singleton.class);
+                bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
+            }
+        });
 
-//        Flux<OutboundMessage> messageFlux = Flux.range(1, count)
-//          .groupBy((i) -> {
-//              return i / 100;
-//          })
-//          .flatMap(group -> group.map(i -> {
-//              TransferTask task = new TransferTask();
-//              task.setId(i);
-//              task.setUsername("user1");
-//              task.setTenantId("tenant-" + group.key());
-//              task.setDestinationPath("/a/b/c");
-//              task.setSourcePath("/d/e/f");
-//              task.setSourceSystemId("systemA");
-//              task.setDestinationSystemId("systemB");
-//              task.setCreated(Instant.now());
-//              try {
-//                  String m = mapper.writeValueAsString(task);
-//                  return new OutboundMessage("", QUEUE, m.getBytes(StandardCharsets.UTF_8));
-//              } catch (Exception e) {
-//                  log.info(e.getMessage());
-//                  return null;
-//              }
-//
-//          }));
-//
-//        sender.send(messageFlux).subscribe();
+        TransfersService transfersService = locator.getService(TransfersService.class);
+
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("tapis://dev.develop.tapis.io/tapis-demo/IMG_20200516_144049_1.jpg");
+        element.setDestinationURI("tapis://dev.edvelop.tapis.io/tapis-demo/destFolder");
+        elements.add(element);
+        transfersService.createTransfer("testuser2", "dev", "testTag", elements);
     }
 
-    public static void main(String[] args) {
-        ParentEmitter e = new ParentEmitter();
-        e.run(2000);
+    public static void main(String[] args) throws Exception {
+        run(1);
     }
 
 }

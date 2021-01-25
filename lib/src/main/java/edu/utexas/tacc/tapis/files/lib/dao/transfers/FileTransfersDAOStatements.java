@@ -65,6 +65,12 @@ public class FileTransfersDAOStatements {
             "WHERE task_id = ? " +
             "AND status != 'COMPLETED' ";
 
+    //language=SQL
+    public static final String GET_CHILD_TASK_INCOMPLETE_COUNT_FOR_PARENT =
+        "SELECT count(id) from transfer_tasks_child " +
+            "WHERE parent_task_id = ? " +
+            "AND status != 'COMPLETED' ";
+
 
     //language=SQL
     public static final String UPDATE_PARENT_TASK_SIZE =
@@ -86,6 +92,9 @@ public class FileTransfersDAOStatements {
             " SET source_uri = ?, " +
             "     destination_uri = ?, " +
             "     status = ?, " +
+            "     start_time = ?, " +
+            "     end_time = ?, " +
+            "     bytes_transferred =?, " +
             "     total_bytes = ? " +
             "WHERE uuid = ? " +
             "RETURNING *";

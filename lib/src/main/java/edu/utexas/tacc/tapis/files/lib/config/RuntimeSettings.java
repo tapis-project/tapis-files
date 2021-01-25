@@ -12,13 +12,13 @@ public class RuntimeSettings {
         protected String dbUsername = settings.get("DB_USERNAME", "dev");
         protected String dbPassword = settings.get("DB_PASSWORD", "dev");
         protected String dbPort = settings.get("DB_PORT", "5432");
+        protected String rabbitMQHost = settings.get("RABBITMQ_HOSTNAME", "localhost");
         protected String rabbitMQUsername = settings.get("RABBITMQ_USERNAME", "dev");
         protected String rabbitMQVHost = settings.get("RABBITMQ_VHOST", "dev");
         protected String rabbitmqPassword = settings.get("RABBITMQ_PASSWORD", "dev");
         protected String servicePassword = settings.get("SERVICE_PASSWORD", "dev");
         protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
-        protected String rabbitMQHost = settings.get("RABBITMQ_HOSTNAME", "localhost");
 
         public String getDbHost() {
             return dbHost;

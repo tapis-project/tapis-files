@@ -292,10 +292,11 @@ public class S3DataClient implements IRemoteDataClient {
      */
     @Override
     public InputStream getStream(@NotNull String path) throws IOException, NotFoundException {
+        String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         try {
             GetObjectRequest req = GetObjectRequest.builder()
                 .bucket(bucket)
-                .key(path)
+                .key(remotePath)
                 .build();
             return client.getObject(req, ResponseTransformer.toInputStream());
         } catch (NoSuchKeyException ex) {
@@ -323,13 +324,14 @@ public class S3DataClient implements IRemoteDataClient {
 
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException, NotFoundException {
+        String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         try {
             // S3 api includes the final byte, different than posix, so we subtract one to get the proper count.
             String brange = String.format("bytes=%s-%s", startByte, startByte + count - 1);
             GetObjectRequest req = GetObjectRequest.builder()
                 .bucket(bucket)
                 .range(brange)
-                .key(path)
+                .key(remotePath)
                 .build();
             return client.getObject(req, ResponseTransformer.toInputStream());
         } catch (NoSuchKeyException ex) {

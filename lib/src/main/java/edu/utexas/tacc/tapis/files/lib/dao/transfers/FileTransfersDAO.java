@@ -254,15 +254,23 @@ public class FileTransfersDAO {
      * @param task
      */
     public TransferTask updateTransferTask(@NotNull TransferTask task) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
+        RowProcessor rowProcessor = new TransferTaskRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.UPDATE_TRANSFER_TASK;
             QueryRunner runner = new QueryRunner();
+            Timestamp startTime = null;
+            Timestamp endTime = null;
+            if (task.getStartTime() != null) {
+                startTime = Timestamp.from(task.getStartTime());
+            }
+            if (task.getEndTime() != null) {
+                endTime = Timestamp.from(task.getEndTime());
+            }
             TransferTask updatedTask = runner.query(connection, stmt, handler,
                 task.getStatus(),
-                task.getStartTime(),
-                task.getEndTime(),
+                startTime,
+                endTime,
                 task.getId());
             return updatedTask;
         } catch (SQLException ex) {
@@ -277,7 +285,7 @@ public class FileTransfersDAO {
      * @param task
      * @param newBytes The size in bytes to be added to the total size of the transfer
      */
-    public TransferTaskParent updateTransferTaskSize(@NotNull TransferTask task, Long newBytes) throws DAOException {
+    public TransferTaskParent updateTransferTaskParentSize(@NotNull TransferTask task, Long newBytes) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
@@ -298,13 +306,13 @@ public class FileTransfersDAO {
      * @param taskId
      * @param newBytes The size in bytes to be added to the total size of the transfer
      */
-    public TransferTask updateTransferTaskBytesTransferred(@NotNull long taskId, Long newBytes) throws DAOException {
+    public TransferTaskParent updateTransferTaskParentBytesTransferred(@NotNull long taskId, Long newBytes) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
-            BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
+            BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK_BYTES_TRANSFERRED;
             QueryRunner runner = new QueryRunner();
-            TransferTask updatedTask = runner.query(connection, stmt, handler,
+            TransferTaskParent updatedTask = runner.query(connection, stmt, handler,
                 newBytes,
                 taskId);
             return updatedTask;
@@ -320,10 +328,21 @@ public class FileTransfersDAO {
             BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK;
             QueryRunner runner = new QueryRunner();
+            Timestamp startTime = null;
+            Timestamp endTime = null;
+            if (task.getStartTime() != null) {
+                startTime = Timestamp.from(task.getStartTime());
+            }
+            if (task.getEndTime() != null) {
+                endTime = Timestamp.from(task.getEndTime());
+            }
             TransferTaskParent updatedTask = runner.query(connection, stmt, handler,
                 task.getSourceURI(),
                 task.getDestinationURI(),
                 task.getStatus(),
+                startTime,
+                endTime,
+                task.getBytesTransferred(),
                 task.getTotalBytes(),
                 task.getUuid()
             );
@@ -346,7 +365,7 @@ public class FileTransfersDAO {
                 startTime = Timestamp.from(task.getStartTime());
             }
             if (task.getEndTime() != null) {
-                endTime = Timestamp.from(task.getStartTime());
+                endTime = Timestamp.from(task.getEndTime());
             }
 
             TransferTaskChild updatedTask = runner.query(connection, stmt, handler,
@@ -478,6 +497,18 @@ public class FileTransfersDAO {
         String query = FileTransfersDAOStatements.GET_CHILD_TASK_INCOMPLETE_COUNT;
         try (Connection connection = HikariConnectionPool.getConnection()) {
             long count = runner.query(connection, query, scalarHandler, taskId);
+            return count;
+        } catch (SQLException ex) {
+            throw new DAOException(ex.getMessage(), ex);
+        }
+    }
+
+    public long getIncompleteChildrenCountForParent(@NotNull long parentTaskId) throws DAOException {
+        ScalarHandler<Long> scalarHandler = new ScalarHandler<>();
+        QueryRunner runner = new QueryRunner();
+        String query = FileTransfersDAOStatements.GET_CHILD_TASK_INCOMPLETE_COUNT_FOR_PARENT;
+        try (Connection connection = HikariConnectionPool.getConnection()) {
+            long count = runner.query(connection, query, scalarHandler, parentTaskId);
             return count;
         } catch (SQLException ex) {
             throw new DAOException(ex.getMessage(), ex);
