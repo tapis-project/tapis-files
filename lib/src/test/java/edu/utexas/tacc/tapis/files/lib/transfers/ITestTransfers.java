@@ -362,7 +362,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
-    @Test(groups = {"performance"})
+    @Test(groups = {"performance"}, enabled = false)
     public void testPerformance() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);

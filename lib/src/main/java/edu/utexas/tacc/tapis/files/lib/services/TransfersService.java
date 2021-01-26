@@ -412,7 +412,7 @@ public class TransfersService {
                 }
             })
             .flatMap(group-> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(10,10,"ChildPool:"+group.key());
+                Scheduler scheduler = Schedulers.newBoundedElastic(5,100,"ChildPool:"+group.key());
 
                 return group
                     .parallel()
