@@ -173,7 +173,7 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testStreamLargeFile() throws Exception {
-        long filesize = 100 * 1000 * 1000;
+        long filesize = 1000 * 1000 * 1000;
         addTestFilesToBucket(testSystem, "testfile1.txt", filesize);
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
             .request()
