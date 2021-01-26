@@ -4,6 +4,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -40,12 +42,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
+public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
-    private Logger log = LoggerFactory.getLogger(ITestContentsRoutesS3.class);
+    private Logger log = LoggerFactory.getLogger(ITestContentsRoutes.class);
     private String user1jwt;
     private String user2jwt;
     private TSystem testSystem;
+    private TSystem testSystemSSH;
     private Tenant tenant;
     private Credential creds;
     private Map<String, Tenant> tenantMap = new HashMap<>();
@@ -56,8 +59,10 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
     private SKClient skClient;
     private TenantManager tenantManager;
     private ServiceJWT serviceJWT;
+    private SSHConnectionCache sshConnectionCache = new SSHConnectionCache(1, TimeUnit.SECONDS);
+    private RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
 
-    private ITestContentsRoutesS3() throws Exception {
+    private ITestContentsRoutes() throws Exception {
         //List<String> creds = new ArrayList<>();
         creds = new Credential();
         creds.setAccessKey("user");
@@ -72,6 +77,22 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         List<TransferMethodEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TransferMethodEnum.S3);
         testSystem.setTransferMethods(transferMechs);
+
+
+        //SSH system with username/password
+        Credential sshCreds = new Credential();
+        sshCreds.setAccessKey("testuser");
+        sshCreds.setPassword("password");
+        testSystemSSH = new TSystem();
+        testSystemSSH.setAuthnCredential(sshCreds);
+        testSystemSSH.setHost("localhost");
+        testSystemSSH.setPort(2222);
+        testSystemSSH.setRootDir("/data/home/testuser/");
+        testSystemSSH.setId("destSystem");
+        testSystemSSH.setEffectiveUserId("testuser");
+        List<TransferMethodEnum> tMechs = new ArrayList<>();
+        tMechs.add(TransferMethodEnum.SFTP);
+        testSystemSSH.setTransferMethods(tMechs);
 
         tenant = new Tenant();
         tenant.setTenantId("testTenant");
@@ -104,13 +125,15 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
                     bindAsContract(SystemsCache.class);
                     bindAsContract(FilePermsCache.class);
                     bindAsContract(RemoteDataClientFactory.class);
-                    bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                    bind(sshConnectionCache).to(SSHConnectionCache.class);
                 }
             });
 
         app.register(ContentApiResource.class);
         return app;
     }
+
+
 
     public class RandomInputStream extends InputStream {
 
@@ -140,7 +163,7 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
     }
 
     private void addTestFilesToBucket(TSystem system, String fileName, long fileSize) throws Exception{
-        S3DataClient client = new S3DataClient(system);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, "testuser");
         InputStream f1 = makeFakeFile(fileSize);
         client.insert(fileName, f1);
     }
@@ -150,6 +173,9 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
     public void tearDownTest() throws Exception {
         S3DataClient client = new S3DataClient(testSystem);
         client.delete("/");
+
+        IRemoteDataClient client2 = remoteDataClientFactory.getRemoteDataClient(testSystemSSH, "testuser");
+        client2.delete("/");
     }
 
     @BeforeMethod
@@ -157,9 +183,8 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         when(tenantManager.getTenants()).thenReturn(tenantMap);
         when(tenantManager.getTenant(any())).thenReturn(tenant);
         when(tenantManager.getSite(any())).thenReturn(site);
-        when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
         user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
     }
@@ -170,11 +195,16 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         super.setUp();
     }
 
+    @DataProvider(name = "testSystemsDataProvider")
+    public Object[] mkdirDataProvider() {
+        return new TSystem[]{testSystem, testSystemSSH};
+    }
 
-    @Test
-    public void testStreamLargeFile() throws Exception {
-        long filesize = 1000 * 1000 * 1000;
-        addTestFilesToBucket(testSystem, "testfile1.txt", filesize);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testStreamLargeFile(TSystem system) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+        long filesize = 10 * 1000 * 1000 * 1000;
+        addTestFilesToBucket(system, "testfile1.txt", filesize);
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
             .request()
             .header("X-Tapis-Token", user1jwt)
@@ -188,26 +218,27 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
             fsize += chunk;
         }
         Duration time = Duration.between(start, Instant.now());
-        log.info("fileize={} MB: Download took {} ms: throughput={} MB/s", filesize /1E6, time.toMillis(), filesize / (1E6 * time.toMillis()/1000));
+        log.info("file size={} MB: Download took {} ms: throughput={} MB/s", filesize /1E6, time.toMillis(), filesize / (1E6 * time.toMillis()/1000));
         Assert.assertEquals(fsize, filesize);
         contents.close();
     }
 
 
-    @Test
-    public void testSimpleGetContents() throws Exception {
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testSimpleGetContents(TSystem system) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+        addTestFilesToBucket(system, "testfile1.txt", 10*1000);
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
                 .request()
                 .header("X-Tapis-Token", user1jwt)
                 .get();
         byte[] contents = response.readEntity(byte[].class);
-        Assert.assertEquals(contents.length, 10*1024);
+        Assert.assertEquals(contents.length, 10*1000);
     }
 
-    @Test
-    public void testNotFound() throws Exception {
-
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testNotFound(TSystem system) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         Response response = target("/v3/files/content/testSystem/NOT-THERE.txt")
                 .request()
                 .header("X-Tapis-Token", user1jwt)
@@ -215,10 +246,10 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(response.getStatus(), 404);
     }
 
-    @Test
-    public void testGetWithRange() throws Exception {
-        addTestFilesToBucket(testSystem, "words.txt", 10*1024);
-
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testGetWithRange(TSystem system) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+        addTestFilesToBucket(system, "words.txt", 10*1024);
         Response response = target("/v3/files/content/testSystem/words.txt")
                 .request()
                 .header("range", "0,1000")
@@ -229,9 +260,10 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(contents.length, 1000);
     }
 
-    @Test
-    public void testGetWithMore() throws Exception {
-        addTestFilesToBucket(testSystem, "words.txt", 10*1024);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testGetWithMore(TSystem system) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+        addTestFilesToBucket(system, "words.txt", 10*1024);
         Response response = target("/v3/files/content/testSystem/words.txt")
                 .request()
                 .header("more", "1")
@@ -245,10 +277,11 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         Assert.assertTrue(contents.length() > 0);
     }
 
-    @Test
-    public void testGetContentsHeaders() throws Exception {
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testGetContentsHeaders(TSystem system) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         // make sure content-type is application/octet-stream and filename is correct
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10*1024);
+        addTestFilesToBucket(system, "testfile1.txt", 10*1024);
 
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
                 .request()
@@ -259,8 +292,10 @@ public class ITestContentsRoutesS3 extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(contentDisposition, "attachment; filename=testfile1.txt");
     }
 
-    @Test
-    public void testBadRequest() throws Exception {
+
+    // Tries to serve a folder, which is not allowed resulting in 400
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testBadRequest(TSystem system) throws Exception {
 
         Response response = target("/v3/files/content/testSystem/BAD-PATH/")
                 .request()
