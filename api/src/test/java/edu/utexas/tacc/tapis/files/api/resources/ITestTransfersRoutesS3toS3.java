@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import javax.ws.rs.core.Response.Status;
+
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
@@ -11,6 +13,7 @@ import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
 import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
@@ -29,6 +32,7 @@ import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.TestProperties;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Stubber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -36,7 +40,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.apache.commons.io.IOUtils;
-
+import org.apache.http.HttpResponse;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
@@ -149,8 +153,6 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         when(tenantManager.getSite(any())).thenReturn(testSite);
 
     }
-
-
 
     /**
      * Helper method to create transfer tasks
@@ -271,6 +273,53 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(resp.getStatus(), 404);
 
     }
+//    
+//    @Test
+//    public void unauthorizedForSystem() throws Exception {
+//    	// create a transfer task where user does not have access to the system 
+//    	// this will override what it is in the mockinit 
+//    	// make this throw throw exception instead permission error 
+//    	// test it when it throws different exceptions 
+//    	// look at systems, but may just be tapis clients exceptions 
+//    	Mockito.doReturn(((Stubber) Response.status(Status.FORBIDDEN)).when(systemsClient.getSystemWithCredentials(any(String.class), any())));
+//        
+//        
+//
+//    }
+//    
+//    @Test
+//    public void unauthorizedForSourceUri() throws Exception {
+//    	// create a transfer task where user does not have access to the source URI
+//    	// copy     private TransferTask createTransferTask() { and use incorrect 
+//    	// make a helper method, puts in source and dest uri 
+//    	// annotation - testData, specify array or list (see ITestOpsRouteS3
+//
+//    }
+//    
+//    @Test
+//    public void unauthorizedToDestinationUri() throws Exception {
+//    	// create a transfer task where user does not have access to the destination URI 
+//    }
+//    
+//    @Test
+//    public void nonexistentSystem() throws Exception {
+//    	// create a transfer task where the system does not exist 
+//    	// will return status NOT FOUND (404)
+//    	Mockito.doReturn(((Stubber) Response.status(Status.NOT_FOUND)).when(systemsClient.getSystemWithCredentials(any(String.class), any())));
+//    	TransferTask t = createTransferTask();
+//    	System.out.println(t.getStatus());
+//    	
+//    }
+//    
+//    @Test
+//    public void invalidSourceUri() throws Exception {
+//    	// create a transfer task where the source URI is invalid
+//    }
+//    
+//    @Test
+//    public void invalidDestUri() throws Exception {
+//    	// create a transfer task where the destination URI is invalid
+//    }
 
 
 }

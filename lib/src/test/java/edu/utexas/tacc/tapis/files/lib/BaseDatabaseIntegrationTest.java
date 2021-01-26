@@ -98,7 +98,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemS3 = new TSystem();
         testSystemS3.setTenant("dev");
         testSystemS3.setHost("http://localhost");
-        testSystemS3.setBucketName("test1");
+        testSystemS3.setBucketName("test");
         testSystemS3.setId("sourceSystem");
         testSystemS3.setPort(9000);
         testSystemS3.setAuthnCredential(creds);
@@ -168,7 +168,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         flyway.migrate();
     }
 
-    @BeforeTest
+    @BeforeClass
     public void createTestBucket() {
         Region region = Region.US_WEST_2;
         String bucket = "test";

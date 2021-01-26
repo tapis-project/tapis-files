@@ -695,22 +695,22 @@
         }
       }
     },
-    "/v3/files/transfers" : {
-      "post" : {
+    "/v3/files/transfers/{transferTaskId}/history" : {
+      "get" : {
         "tags" : [ "transfers" ],
-        "summary" : "Transfer data",
-        "description" : "This creates a background task which will transfer files into the storage system",
-        "operationId" : "createTransferTask",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TransferTaskRequest"
-              }
-            }
+        "summary" : "Get history of a transfer task",
+        "operationId" : "getTransferTaskHistory",
+        "parameters" : [ {
+          "name" : "transferTaskId",
+          "in" : "path",
+          "description" : "Transfer task ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
           },
-          "required" : true
-        },
+          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -781,22 +781,22 @@
         }
       }
     },
-    "/v3/files/transfers/{transferTaskId}/history" : {
-      "get" : {
+    "/v3/files/transfers" : {
+      "post" : {
         "tags" : [ "transfers" ],
-        "summary" : "Get history of a transfer task",
-        "operationId" : "getTransferTaskHistory",
-        "parameters" : [ {
-          "name" : "transferTaskId",
-          "in" : "path",
-          "description" : "Transfer task ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
+        "summary" : "Transfer data",
+        "description" : "This creates a background task which will transfer files into the storage system",
+        "operationId" : "createTransferTask",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
           },
-          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
-        } ],
+          "required" : true
+        },
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -901,6 +901,23 @@
           }
         }
       },
+      "FilePermissionStringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "FilePermission" : {
         "type" : "object",
         "properties" : {
@@ -933,23 +950,6 @@
           },
           "result" : {
             "$ref" : "#/components/schemas/FilePermission"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
-      "FilePermissionStringResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "string"
           },
           "version" : {
             "type" : "string"

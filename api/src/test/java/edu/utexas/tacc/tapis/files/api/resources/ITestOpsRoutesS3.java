@@ -480,6 +480,15 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     }
 
     //TODO: Add tests for strange chars in filename or path.
+    @Test
+    public void testInsertFileInvalidCharsInFileName() throws Exception {
+        // test attempting to make a new file with invalid characters in file name 
+    }
+    
+    @Test
+    public void testMkdirInvalidCharsInPath() throws Exception {
+        // test attempting to make a new directory with invalid characters in file path 
+    }
 
 
 }
