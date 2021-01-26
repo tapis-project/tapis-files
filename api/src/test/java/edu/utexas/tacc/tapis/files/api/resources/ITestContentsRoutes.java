@@ -203,7 +203,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "testSystemsDataProvider")
     public void testStreamLargeFile(TSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
-        long filesize = 10 * 1000 * 1000 * 1000;
+        long filesize =  100 * 1000 * 1000;
         addTestFilesToBucket(system, "testfile1.txt", filesize);
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
             .request()
