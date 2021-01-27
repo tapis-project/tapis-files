@@ -40,6 +40,7 @@ public class FileTransfersDAO {
             task.setCreated(rs.getTimestamp("created").toInstant());
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
+            task.setTag(rs.getString("tag"));
             Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
             Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
             return task;

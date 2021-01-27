@@ -23,6 +23,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.test.StepVerifier;
+import software.amazon.awssdk.annotations.SdkTestInternalApi;
 
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
@@ -61,6 +62,31 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         fileOpsService = new FileOpsService(client);
         fileOpsService.delete("/");
     }
+
+    @Test
+    public void testTagSaveAndReturned() throws Exception {
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("tapis://test.edu/sourceSystem/");
+        element.setDestinationURI("tapis://test.edu/destSystem/");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element);
+        TransferTask t1 = transfersService.createTransfer(
+            "testuser",
+            "dev",
+            "testTag",
+            elements
+        );
+
+        Assert.assertEquals(t1.getTag(), "testTag");
+    }
+
+
 
     @Test
     public void testUpdatesTransferSize() throws Exception {
