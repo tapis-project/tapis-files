@@ -80,17 +80,17 @@ public class ContentApiResource extends BaseFilesResource {
                 stream = fileOpsService.getStream(path);
             }
 
-            InputStream finalStream = stream;
-            StreamingOutput outStream = output -> {
-                try {
-                    IOUtils.copy(finalStream, output);
-                } catch (Exception e) {
-                    throw new WebApplicationException(e);
-                }
-            };
+//            InputStream finalStream = stream;
+//            StreamingOutput outStream = output -> {
+//                try {
+//                    IOUtils.copy(finalStream, output);
+//                } catch (Exception e) {
+//                    throw new WebApplicationException(e);
+//                }
+//            };
 
             return Response
-                    .ok(outStream, mtype)
+                    .ok(stream, mtype)
                     .header("content-disposition", contentDisposition)
                     .header("cache-control", "max-age=3600")
                     .build();
