@@ -14,11 +14,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.Min;
 import javax.ws.rs.*;
+import javax.ws.rs.container.AsyncResponse;
+import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.*;
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,6 +37,7 @@ public class ContentApiResource extends BaseFilesResource {
     private static final Logger log = LoggerFactory.getLogger(ContentApiResource.class);
 
     @GET
+    @ManagedAsync
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "content" })
@@ -43,12 +47,13 @@ public class ContentApiResource extends BaseFilesResource {
         @ApiResponse(responseCode = "404", description = "Not Found"),
         @ApiResponse(responseCode = "403", description = "Not Authorized")
     })
-    public Response filesGetContents(
+    public void filesGetContents(
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
             @Parameter(description = "File path",required=true, example = EXAMPLE_PATH) @PathParam("path") String path,
             @Parameter(description = "Range of bytes to send", example = "range=0,999") @HeaderParam("range") HeaderByteRange range,
             @Parameter(description = "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1") @Min(1) @HeaderParam("more") Long moreStartPage,
-            @Context SecurityContext securityContext) {
+            @Context SecurityContext securityContext,
+            @Suspended final AsyncResponse asyncResponse) {
 
         InputStream stream = null;
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
@@ -89,11 +94,12 @@ public class ContentApiResource extends BaseFilesResource {
 //                }
 //            };
 
-            return Response
+            Response response =  Response
                     .ok(stream, mtype)
                     .header("content-disposition", contentDisposition)
                     .header("cache-control", "max-age=3600")
                     .build();
+            asyncResponse.resume(response);
         } catch (TapisClientException ex) {
             throw new BadRequestException("Only files can be served");
         } catch (ServiceException | IOException ex) {
