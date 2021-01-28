@@ -105,49 +105,6 @@ public class OperationsApiResource extends BaseFilesResource {
         }
     }
 
-
-    @POST
-    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
-    @Path("/{systemId}/{path:.+}")
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Operation(summary = "Create a directory", description = "Create a directory in the system at path the given path", tags = {"file operations"})
-    @ApiResponses(value = {
-        @ApiResponse(
-            responseCode = "200",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "OK"),
-        @ApiResponse(
-            responseCode = "401",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Not Authenticated"),
-        @ApiResponse(
-            responseCode = "403",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Not Authorized"),
-        @ApiResponse(
-            responseCode = "500",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Internal Error")
-    })
-    public Response mkdir(
-        @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
-        @Parameter(description = "Path", required = true) @Pattern(regexp = "^(?!.*\\.).+", message = ". not allowed in path") @PathParam("path") String path,
-        @Context SecurityContext securityContext) {
-        try {
-            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
-            fileOpsService.mkdir(path);
-            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-            return Response.ok(resp).build();
-        } catch (ServiceException | IOException | TapisClientException ex) {
-            log.error("mkdir", ex);
-            throw new WebApplicationException("Something went wrong...");
-        }
-    }
-
-
     @POST
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
     @Path("/{systemId}/{path:.+}")
@@ -192,6 +149,50 @@ public class OperationsApiResource extends BaseFilesResource {
             throw new WebApplicationException();
         }
     }
+
+
+    @POST
+    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
+    @Path("/{systemId}")
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Create a directory", description = "Create a directory in the system at path the given path", tags = {"file operations"})
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "OK"),
+        @ApiResponse(
+            responseCode = "401",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Not Authenticated"),
+        @ApiResponse(
+            responseCode = "403",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Not Authorized"),
+        @ApiResponse(
+            responseCode = "500",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Internal Error")
+    })
+    public Response mkdir(
+        @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
+        @Parameter(description = "Path", required = true) @Pattern(regexp = "^(?!.*\\.).+", message = ". not allowed in path") @QueryParam("path") String path,
+        @Context SecurityContext securityContext) {
+        try {
+            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+            TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
+            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+            IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
+            fileOpsService.mkdir(path);
+            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+            return Response.ok(resp).build();
+        } catch (ServiceException | IOException | TapisClientException ex) {
+            log.error("mkdir", ex);
+            throw new WebApplicationException("Something went wrong...");
+        }
+    }
+
 
 
     @PUT

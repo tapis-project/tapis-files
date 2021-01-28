@@ -393,10 +393,10 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     @Test
     public void testMkdir() throws Exception {
         
-        FileStringResponse response = target("/v3/files/ops/testSystem/newDirectory/")
+        FileStringResponse response = target("/v3/files/ops/testSystem/")
+            .queryParam("path", "newDirectory")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("content-type", ContentType.TEXT_PLAIN)
             .header("x-tapis-token", user1jwt)
             .post(Entity.text(""), FileStringResponse.class);
 
@@ -414,7 +414,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     @Test
     public void testMkdirNoSlash() throws Exception {
 
-        FileStringResponse response = target("/v3/files/ops/testSystem/newDirectory")
+        FileStringResponse response = target("/v3/files/ops/testSystem/")
+            .queryParam("path", "newDirectory")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
@@ -443,7 +444,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "mkdirDataProvider")
     public void testMkdirWithSlashes(String path) throws Exception {
 
-        FileStringResponse response = target("/v3/files/ops/testSystem/" + path)
+        FileStringResponse response = target("/v3/files/ops/testSystem/")
+            .queryParam("path", path)
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
@@ -470,7 +472,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "mkdirBadDataProvider")
     public void testMkdirWithBadData(String path) throws Exception {
 
-        Response response = target("/v3/files/ops/testSystem/" + path)
+        Response response = target("/v3/files/ops/testSystem/")
+            .queryParam("path", path)
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)

@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.UUID;
 
 public class TransferTaskParent {
@@ -189,15 +190,21 @@ public class TransferTaskParent {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("class TransferTask {\n");
-        sb.append("    id: ").append(toIndentedString(id)).append("\n");
-        sb.append("    uuid: ").append(toIndentedString(uuid)).append("\n");
-        sb.append("    tenantId: ").append(toIndentedString(tenantId)).append("\n");
-        sb.append("    created: ").append(toIndentedString(created)).append("\n");
-        sb.append("    status: ").append(toIndentedString(status)).append("\n");
-        sb.append("}");
-        return sb.toString();
+        return new StringJoiner(", ", TransferTaskParent.class.getSimpleName() + "[", "]")
+            .add("id=" + id)
+            .add("tenantId='" + tenantId + "'")
+            .add("username='" + username + "'")
+            .add("sourceURI='" + sourceURI + "'")
+            .add("destinationURI='" + destinationURI + "'")
+            .add("uuid=" + uuid)
+            .add("totalBytes=" + totalBytes)
+            .add("bytesTransferred=" + bytesTransferred)
+            .add("taskId=" + taskId)
+            .add("status='" + status + "'")
+            .add("created=" + created)
+            .add("startTime=" + startTime)
+            .add("endTime=" + endTime)
+            .toString();
     }
 
     /**

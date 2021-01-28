@@ -271,7 +271,6 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
                 .get();
         Assert.assertEquals(response.getStatus(), 200);
         String contents = response.readEntity(String.class);
-        System.out.println(contents);
         Assert.assertEquals(response.getHeaders().getFirst("content-disposition"), "inline");
         //TODO: Its hard to say how many chars should be in there, some UTF-8 chars are 1 byte, some are 4. Need to have a better fixture
         Assert.assertTrue(contents.length() > 0);

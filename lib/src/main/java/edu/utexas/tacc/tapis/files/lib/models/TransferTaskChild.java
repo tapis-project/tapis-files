@@ -8,6 +8,7 @@ import javax.validation.constraints.NotNull;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.StringJoiner;
 import java.util.UUID;
 
 public class TransferTaskChild extends TransferTaskParent {
@@ -87,4 +88,23 @@ public class TransferTaskChild extends TransferTaskParent {
        return Long.hashCode(id);
     }
 
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", TransferTaskChild.class.getSimpleName() + "[", "]")
+            .add("parentTaskId=" + parentTaskId)
+            .add("retries=" + retries)
+            .add("id=" + id)
+            .add("tenantId='" + tenantId + "'")
+            .add("username='" + username + "'")
+            .add("sourceURI='" + sourceURI + "'")
+            .add("destinationURI='" + destinationURI + "'")
+            .add("uuid=" + uuid)
+            .add("totalBytes=" + totalBytes)
+            .add("bytesTransferred=" + bytesTransferred)
+            .add("status='" + status + "'")
+            .add("created=" + created)
+            .add("startTime=" + startTime)
+            .add("endTime=" + endTime)
+            .toString();
+    }
 }

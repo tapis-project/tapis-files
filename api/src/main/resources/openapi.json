@@ -303,9 +303,9 @@
       },
       "post" : {
         "tags" : [ "file operations" ],
-        "summary" : "Create a directory",
-        "description" : "Create a directory in the system at path the given path",
-        "operationId" : "mkdir",
+        "summary" : "Upload a file",
+        "description" : "The file will be added at the {path} independent of the original file name",
+        "operationId" : "insert",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -323,11 +323,27 @@
             "type" : "string"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "required" : [ "file" ],
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses" : {
           "200" : {
             "description" : "OK",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/FileStringResponse"
                 }
@@ -337,7 +353,7 @@
           "401" : {
             "description" : "Not Authenticated",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/FileStringResponse"
                 }
@@ -347,7 +363,7 @@
           "403" : {
             "description" : "Not Authorized",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/FileStringResponse"
                 }
@@ -357,7 +373,7 @@
           "500" : {
             "description" : "Internal Error",
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/FileStringResponse"
                 }
@@ -421,6 +437,73 @@
           },
           "404" : {
             "description" : "Not Found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/ops/{systemId}" : {
+      "post" : {
+        "tags" : [ "file operations" ],
+        "summary" : "Create a directory",
+        "description" : "Create a directory in the system at path the given path",
+        "operationId" : "mkdir",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "query",
+          "description" : "Path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -695,36 +778,6 @@
         }
       }
     },
-    "/v3/files/transfers" : {
-      "post" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Transfer data",
-        "description" : "This creates a background task which will transfer files into the storage system",
-        "operationId" : "createTransferTask",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TransferTaskRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v3/files/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -797,6 +850,36 @@
           },
           "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
         } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/transfers" : {
+      "post" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Transfer data",
+        "description" : "This creates a background task which will transfer files into the storage system",
+        "operationId" : "createTransferTask",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -901,6 +984,23 @@
           }
         }
       },
+      "FilePermissionStringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "FilePermission" : {
         "type" : "object",
         "properties" : {
@@ -933,23 +1033,6 @@
           },
           "result" : {
             "$ref" : "#/components/schemas/FilePermission"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
-      "FilePermissionStringResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "string"
           },
           "version" : {
             "type" : "string"
@@ -1115,6 +1198,23 @@
           }
         }
       },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "TransferTaskRequest" : {
         "required" : [ "elements" ],
         "type" : "object",
@@ -1141,23 +1241,6 @@
           "destinationURI" : {
             "type" : "string",
             "description" : "Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}"
-          }
-        }
-      },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
           }
         }
       }

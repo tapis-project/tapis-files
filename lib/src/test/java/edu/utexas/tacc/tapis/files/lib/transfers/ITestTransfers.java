@@ -47,6 +47,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         destSystem = testSystemSSH;
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         IFileOpsService fileOpsService = new FileOpsService(client);
+        fileOpsService.delete("/");
         InputStream in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert("file1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
