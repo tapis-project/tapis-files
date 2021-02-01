@@ -40,6 +40,16 @@ public class FileTransfersDAOStatements {
         "SELECT * FROM transfer_tasks where tenant_id = ? AND username = ?";
 
     //language=SQL
+    public static final String GET_TASK_FULL_HISTORY_BY_UUID =
+        """
+        SELECT * from 
+            transfer_tasks as tasks 
+            JOIN  transfer_tasks_parent as parents on parents.task_id = tasks.id
+            JOIN transfer_tasks_child as children  on parents.id = children.parent_task_id
+            WHERE tasks.uuid = ?
+        """;
+
+    //language=SQL
     public static final String UPDATE_TRANSFER_TASK =
         "UPDATE transfer_tasks " +
             " SET status = ?, " +

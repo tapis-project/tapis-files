@@ -21,7 +21,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 
-import javax.validation.constraints.NotNull;
+import org.jetbrains.annotations.NotNull;
 
 public class FileTransfersDAO {
 
@@ -307,7 +307,7 @@ public class FileTransfersDAO {
      * @param taskId
      * @param newBytes The size in bytes to be added to the total size of the transfer
      */
-    public TransferTaskParent updateTransferTaskParentBytesTransferred(@NotNull long taskId, Long newBytes) throws DAOException {
+    public TransferTaskParent updateTransferTaskParentBytesTransferred(long taskId, Long newBytes) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
@@ -559,4 +559,24 @@ public class FileTransfersDAO {
             throw new DAOException(ex.getMessage(), ex);
         }
     }
+
+
+    /**
+     * Returns a TransferTask
+     * @param taskUUID
+     * @return
+     * @throws DAOException
+     */
+    public TransferTask getHistory(@NotNull UUID taskUUID) throws DAOException {
+        //TODO: This could be done in one query with a couple of joins quicker
+        TransferTask task = this.getTransferTaskByUUID(taskUUID);
+        List<TransferTaskParent> parents = this.getAllParentsForTaskByID(task.getId());
+        for (TransferTaskParent parent: parents) {
+            List<TransferTaskChild> children = this.getAllChildren(parent);
+            parent.setChildren(children);
+        }
+        task.setParentTasks(parents);
+        return task;
+    }
+
 }

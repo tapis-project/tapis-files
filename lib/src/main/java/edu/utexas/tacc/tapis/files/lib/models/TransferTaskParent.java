@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.UUID;
@@ -26,6 +27,7 @@ public class TransferTaskParent {
     protected Instant created;
     protected Instant startTime;
     protected Instant endTime;
+    protected List<TransferTaskChild> children;
 
 
 
@@ -132,7 +134,13 @@ public class TransferTaskParent {
         this.username = username;
     }
 
+    public List<TransferTaskChild> getChildren() {
+        return children;
+    }
 
+    public void setChildren(List<TransferTaskChild> children) {
+        this.children = children;
+    }
 
     @JsonProperty("created")
     @Schema(description = "Timestamp in UTC of task creation.", format = "date-time")

@@ -32,6 +32,12 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         element.setDestinationURI("tapis://test.edu/sourceSystem/path");
         element.setSourceURI("tapis://test.edu/destSystem/path");
         elements.add(element);
+
+        TransferTaskRequestElement element2 = new TransferTaskRequestElement();
+        element2.setDestinationURI("tapis://test.edu/sourceSystem2/path");
+        element2.setSourceURI("tapis://test.edu/destSystem2/path");
+        elements.add(element2);
+
         task = dao.createTransferTask(task, elements);
        return task;
     }
@@ -101,6 +107,29 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(child.getBytesTransferred(), 10000);
         Assert.assertNotNull(child.getStartTime());
         Assert.assertNotNull(child.getEndTime());
+    }
+
+
+    @Test
+    public void testGetHistory() throws Exception {
+
+        TransferTask t1 = createTransferTask();
+        TransferTaskParent parent = t1.getParentTasks().get(0);
+        FileInfo fileInfo = new FileInfo();
+        fileInfo.setPath("/a/b/c.txt");
+        fileInfo.setSize(1000);
+
+        //create 3 children on the first parent
+        TransferTaskChild child = new TransferTaskChild(parent, fileInfo);
+        dao.insertChildTask(child);
+        dao.insertChildTask(child);
+        dao.insertChildTask(child);
+
+        TransferTask task = dao.getHistory(t1.getUuid());
+        Assert.assertNotNull(task.getParentTasks());
+        Assert.assertNotNull(task.getParentTasks().get(0).getChildren());
+        Assert.assertEquals(task.getParentTasks().get(0).getChildren().size(), 3);
+
     }
 
 
