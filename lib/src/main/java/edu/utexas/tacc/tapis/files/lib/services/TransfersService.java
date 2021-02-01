@@ -656,13 +656,7 @@ public class TransfersService {
         try {
             TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
             if (task.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
-                try {
-                    dao.updateTransferTask(task);
-                } catch (DAOException ex) {
-                    log.error("Could not update task {}", task, ex);
-                    throw new ServiceException("Could not update task!", ex);
-                }
-
+                dao.updateTransferTask(task);
                 log.info(scheduler.toString());
                 log.info("PARENT TASK {} COMPLETE", taskChild);
                 log.info("CHILD TASK RETRIES: {}", taskChild.getRetries());
