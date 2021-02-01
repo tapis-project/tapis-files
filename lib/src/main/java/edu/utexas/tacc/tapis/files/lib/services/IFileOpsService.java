@@ -8,7 +8,9 @@ import org.glassfish.jersey.spi.Contract;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
+import java.util.zip.ZipOutputStream;
 
 public interface IFileOpsService {
 
@@ -21,4 +23,5 @@ public interface IFileOpsService {
     InputStream getStream(String path) throws ServiceException, NotFoundException;
     InputStream getBytes(String path, long startByte, long endByte) throws ServiceException, NotFoundException;
     InputStream more(String path, long startByte) throws ServiceException;
+    void getZip(OutputStream outputStream, String path) throws ServiceException;
 }

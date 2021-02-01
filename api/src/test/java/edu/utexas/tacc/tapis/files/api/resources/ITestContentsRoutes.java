@@ -37,6 +37,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -199,6 +201,30 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     public Object[] mkdirDataProvider() {
         return new TSystem[]{testSystem, testSystemSSH};
     }
+
+
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testZipOutput(TSystem system) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+        addTestFilesToBucket(system, "a/test1.txt", 10*1000);
+        addTestFilesToBucket(system, "a/test2.txt", 10*1000);
+        Response response = target("/v3/files/content/testSystem/a/")
+            .queryParam("zip", true)
+            .request()
+            .header("X-Tapis-Token", user1jwt)
+            .get();
+
+        InputStream is = response.readEntity(InputStream.class);
+        ZipInputStream zis = new ZipInputStream(is);
+        ZipEntry ze;
+        while ( (ze = zis.getNextEntry()) != null) {
+            log.info(ze.toString());
+            String fname = ze.getName();
+            Assert.assertTrue(fname.startsWith("a/test"));
+        }
+    }
+
+
 
     @Test(dataProvider = "testSystemsDataProvider")
     public void testStreamLargeFile(TSystem system) throws Exception {

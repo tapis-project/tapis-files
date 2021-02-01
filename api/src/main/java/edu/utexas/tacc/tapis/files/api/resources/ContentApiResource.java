@@ -25,8 +25,10 @@ import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.*;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.zip.ZipOutputStream;
 
 
 @Path("/v3/files/content")
@@ -51,6 +53,7 @@ public class ContentApiResource extends BaseFilesResource {
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
             @Parameter(description = "File path",required=true, example = EXAMPLE_PATH) @PathParam("path") String path,
             @Parameter(description = "Range of bytes to send", example = "range=0,999") @HeaderParam("range") HeaderByteRange range,
+            @Parameter(description = "Zip the contents of folder?", example = "false") @QueryParam("zip") boolean zip,
             @Parameter(description = "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1") @Min(1) @HeaderParam("more") Long moreStartPage,
             @Context SecurityContext securityContext,
             @Suspended final AsyncResponse asyncResponse) {
@@ -62,17 +65,33 @@ public class ContentApiResource extends BaseFilesResource {
             TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
+
             String mtype = MediaType.APPLICATION_OCTET_STREAM;
             String contentDisposition;
+            java.nio.file.Path filepath = Paths.get(path);
+            String filename = filepath.getFileName().toString();
+            contentDisposition = String.format("attachment; filename=%s", filename);
 
-            // Ensure that the path is not a dir?
+            if (zip) {
+                StreamingOutput outStream = output -> {
+                    try {
+                        fileOpsService.getZip(output, path);
+                    } catch (Exception e) {
+                        throw new WebApplicationException(e);
+                    }
+                };
+
+                Response resp =  Response.ok(outStream, mtype)
+                    .header("content-disposition", contentDisposition)
+                    .build();
+                asyncResponse.resume(resp);
+            }
+
+            // Ensure that the path is not a dir, if not zip, then this will error out
             if (path.endsWith("/")) {
                 throw new BadRequestException("Only files can be served.");
             }
 
-            java.nio.file.Path filepath = Paths.get(path);
-            String filename = filepath.getFileName().toString();
-            contentDisposition = String.format("attachment; filename=%s", filename);
 
             if (range != null) {
                 stream = fileOpsService.getBytes(path, range.getMin(), range.getMax());
@@ -84,15 +103,6 @@ public class ContentApiResource extends BaseFilesResource {
             else {
                 stream = fileOpsService.getStream(path);
             }
-
-//            InputStream finalStream = stream;
-//            StreamingOutput outStream = output -> {
-//                try {
-//                    IOUtils.copy(finalStream, output);
-//                } catch (Exception e) {
-//                    throw new WebApplicationException(e);
-//                }
-//            };
 
             Response response =  Response
                     .ok(stream, mtype)
@@ -106,5 +116,8 @@ public class ContentApiResource extends BaseFilesResource {
             throw new WebApplicationException(ex);
         }
     }
+
+
+
 
 }

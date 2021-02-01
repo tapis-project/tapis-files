@@ -21,12 +21,13 @@ import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 
-import javax.validation.constraints.NotNull;
+import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.UriBuilder;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
@@ -36,6 +37,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 public class S3DataClient implements IRemoteDataClient {
 
@@ -341,6 +344,10 @@ public class S3DataClient implements IRemoteDataClient {
             throw new IOException();
         }
     }
+
+
+
+
 
     @Override
     public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {

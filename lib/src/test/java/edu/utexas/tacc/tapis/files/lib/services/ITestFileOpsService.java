@@ -8,21 +8,33 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
+import jdk.jshell.execution.Util;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
 import javax.inject.Singleton;
 import javax.ws.rs.NotFoundException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import static org.mockito.ArgumentMatchers.any;
 
@@ -37,6 +49,7 @@ public class ITestFileOpsService {
     TSystem testSystemS3;
     TSystem testSystemPKI;
     private RemoteDataClientFactory remoteDataClientFactory;
+    private static final Logger log  = LoggerFactory.getLogger(ITestFileOpsService.class);
 
     private ITestFileOpsService() throws IOException {
         String privateKey = IOUtils.toString(
@@ -204,6 +217,31 @@ public class ITestFileOpsService {
         fileOpsService.insert("test.txt", in);
         InputStream result = fileOpsService.getBytes("test.txt", 0, 1000);
         Assert.assertEquals(result.readAllBytes().length, 1000);
+    }
+
+    @Test(dataProvider = "testSystems")
+    public void testZipFolder(TSystem testSystem) throws Exception {
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(testSystem, "testuser");
+        IFileOpsService fileOpsService = new FileOpsService(client);
+        fileOpsService.insert("a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
+        fileOpsService.insert("a/test2.txt", Utils.makeFakeFile(1000 * 1024));
+        File file = File.createTempFile("test", ".zip");
+        OutputStream outputStream = new FileOutputStream(file);
+        fileOpsService.getZip(outputStream, "a/");
+
+        try (FileInputStream fis = new FileInputStream(file);
+             ZipInputStream zis = new ZipInputStream(fis);
+        ) {
+            ZipEntry ze;
+            while ( (ze = zis.getNextEntry()) != null) {
+                log.info(ze.toString());
+                String fname = ze.getName();
+                Assert.assertTrue(fname.startsWith("a/test"));
+            }
+
+        }
+        file.deleteOnExit();
+
     }
 
 }

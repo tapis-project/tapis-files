@@ -438,6 +438,9 @@ public class SSHDataClient implements IRemoteDataClient {
         }
     }
 
+
+
+
     private ChannelExec openCommandChannel() throws IOException {
         String CHANNEL_TYPE = "exec";
         return (ChannelExec) sshConnection.createChannel(CHANNEL_TYPE);

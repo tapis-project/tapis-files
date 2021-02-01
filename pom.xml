@@ -19,6 +19,7 @@
         <maven-jar-plugin.version>3.2.0</maven-jar-plugin.version>
         <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
         <hk2.inhabitant.version>3.0.1</hk2.inhabitant.version>
+        <jetbrains.annotations.version>20.1.0</jetbrains.annotations.version>
         <skipITs>true</skipITs>
     </properties>
 
@@ -138,6 +139,11 @@
     </build>
 
     <dependencies>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>${jetbrains.annotations.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>

@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import edu.utexas.tacc.tapis.files.lib.clients.DataClientUtils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -9,11 +10,14 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
+import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 
 public class FileOpsService implements IFileOpsService {
@@ -136,6 +140,32 @@ public class FileOpsService implements IFileOpsService {
         } catch (IOException ex) {
             log.error("ERROR", ex);
             throw new ServiceException("get contents failed");
+        }
+    }
+
+    /**
+     * Genereate a streaming zip archive of a target path.
+     * @param outputStream
+     * @param path
+     * @return
+     * @throws IOException
+     */
+    public void getZip(@NotNull OutputStream outputStream, @NotNull String path) throws ServiceException {
+
+        List<FileInfo> listing = this.ls(path);
+        try (ZipOutputStream zipStream = new ZipOutputStream(outputStream)) {
+            for (FileInfo fileInfo: listing) {
+                try (InputStream inputStream = this.getStream(fileInfo.getPath()) ) {
+                    ZipEntry entry = new ZipEntry(fileInfo.getPath());
+                    zipStream.putNextEntry(entry);
+                    inputStream.transferTo(zipStream);
+                    zipStream.closeEntry();
+                    log.info("Added {} to zip", fileInfo);
+                }
+            }
+        } catch (IOException ex) {
+            String msg = String.format("Could not zip path: %s", path);
+            throw new ServiceException(msg, ex);
         }
     }
 }

@@ -5,9 +5,10 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 
-import javax.validation.constraints.NotNull;
+import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
 public interface IRemoteDataClient {
