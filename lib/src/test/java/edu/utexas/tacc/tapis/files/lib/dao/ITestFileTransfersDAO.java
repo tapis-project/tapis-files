@@ -47,7 +47,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
     public void testCreateTransfer() throws DAOException {
         TransferTask task = createTransferTask();
         Assert.assertTrue(task.getId() > 0);
-        Assert.assertEquals(task.getParentTasks().size(), 1);
+        Assert.assertEquals(task.getParentTasks().size(), 2);
         TransferTaskParent parent = task.getParentTasks().get(0);
         Assert.assertTrue(parent.getId() > 0);
     }
@@ -74,7 +74,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
 
         TransferTask t = createTransferTask();
         List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(t.getId());
-        Assert.assertEquals(parents.size(), 1);
+        Assert.assertEquals(parents.size(), 2);
     }
 
     @Test

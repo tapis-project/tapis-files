@@ -19,6 +19,7 @@ import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.tenants.client.TenantsClient;
 import edu.utexas.tacc.tapis.tokens.client.TokensClient;
+import io.netty.channel.Channel;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
@@ -30,9 +31,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
+import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
 import org.glassfish.grizzly.threadpool.ThreadPoolConfig;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
+import org.glassfish.jersey.netty.httpserver.NettyHttpContainerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,9 +117,9 @@ public class FilesApplication extends BaseResourceConfig {
                 bindAsContract(SystemsClient.class);
                 bindAsContract(TokensClient.class);
                 bindAsContract(TenantsClient.class);
-                bindAsContract(SystemsCache.class);
-                bindAsContract(FilePermsService.class);
-                bindAsContract(FilePermsCache.class);
+                bindAsContract(SystemsCache.class).in(Singleton.class);
+                bindAsContract(FilePermsService.class).in(Singleton.class);
+                bindAsContract(FilePermsCache.class).in(Singleton.class);
                 bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
                 bindFactory(ServiceJWTCacheFactory.class).to(ServiceJWT.class).in(Singleton.class);
@@ -133,10 +136,26 @@ public class FilesApplication extends BaseResourceConfig {
         final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(BASE_URI, config, false);
         Collection<NetworkListener> listeners = server.getListeners();
         for(NetworkListener listener : listeners) {
+            log.info(listener.toString());
             final TCPNIOTransport transport = listener.getTransport();
             transport.setKeepAlive(true);
             transport.setWriteTimeout(0, TimeUnit.MINUTES);
+            final ThreadPoolConfig tpc = transport.getWorkerThreadPoolConfig();
+            tpc.setQueueLimit(-1).setCorePoolSize(100).setMaxPoolSize(100);
         }
+
         server.start();
+
+//        final Channel server = NettyHttpContainerProvider.createHttp2Server(BASE_URI, config, null);
+//
+//        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                server.close();
+//            }
+//        }));
+//        Thread.currentThread().join();
+
+
     }
 }

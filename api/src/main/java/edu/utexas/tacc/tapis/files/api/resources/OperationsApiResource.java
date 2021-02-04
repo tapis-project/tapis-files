@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,8 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.container.AsyncResponse;
+import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -42,6 +45,8 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 @Path("/v3/files/ops")
@@ -93,10 +98,12 @@ public class OperationsApiResource extends BaseFilesResource {
         @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+            Instant now = Instant.now();
             TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
+            log.debug("Listing operation took {}", Duration.between(Instant.now(), now).toMillis());
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
             return Response.status(Status.OK).entity(resp).build();
         } catch (ServiceException | IOException | TapisClientException e) {

@@ -1133,6 +1133,70 @@
           }
         }
       },
+      "TransferTaskChild" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "tenantId" : {
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "sourceURI" : {
+            "type" : "string"
+          },
+          "destinationURI" : {
+            "type" : "string"
+          },
+          "totalBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bytesTransferred" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "taskId" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "startTime" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "endTime" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "parentTaskId" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "retries" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "uuid" : {
+            "type" : "string",
+            "description" : "Unique ID of the task.",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
+            "example" : "PENDING"
+          },
+          "created" : {
+            "type" : "integer",
+            "description" : "Timestamp in UTC of task creation.",
+            "format" : "int64"
+          }
+        }
+      },
       "TransferTaskParent" : {
         "type" : "object",
         "properties" : {
@@ -1171,6 +1235,12 @@
           "endTime" : {
             "type" : "integer",
             "format" : "int64"
+          },
+          "children" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTaskChild"
+            }
           },
           "uuid" : {
             "type" : "string",

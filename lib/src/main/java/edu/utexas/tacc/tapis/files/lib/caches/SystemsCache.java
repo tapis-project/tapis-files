@@ -12,7 +12,10 @@ import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
+import org.apache.commons.logging.Log;
 import org.jvnet.hk2.annotations.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.time.Duration;
@@ -22,7 +25,7 @@ import java.util.concurrent.ExecutionException;
 @Service
 public class SystemsCache {
 
-
+    private static final Logger log = LoggerFactory.getLogger(SystemsCache.class);
     private final SystemsClient systemsClient;
     private final ServiceJWT serviceJWT;
     private final IRuntimeConfig config;
@@ -31,6 +34,7 @@ public class SystemsCache {
 
     @Inject
     public SystemsCache(SystemsClient systemsClient, ServiceJWT serviceJWT, TenantManager tenantCache) {
+        log.info("Instantiating new SystemsCache");
         this.systemsClient = systemsClient;
         this.serviceJWT = serviceJWT;
         this.tenantCache = tenantCache;
@@ -44,7 +48,8 @@ public class SystemsCache {
     public TSystem getSystem(String tenantId, String systemId, String username) throws ServiceException {
         try {
             SystemCacheKey key = new SystemCacheKey(tenantId, systemId, username);
-            return cache.get(key);
+            TSystem system = cache.get(key);
+            return system;
         } catch (ExecutionException ex) {
             throw new ServiceException("Could not retrieve system", ex);
         }
@@ -91,16 +96,18 @@ public class SystemsCache {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
+
             SystemCacheKey that = (SystemCacheKey) o;
-            if (!Objects.equals(tenantId, that.tenantId)) return false;
-            return Objects.equals(systemId, that.systemId);
+
+            if (!tenantId.equals(that.tenantId)) return false;
+            if (!systemId.equals(that.systemId)) return false;
+            return username.equals(that.username);
         }
 
         @Override
         public int hashCode() {
-            int result = tenantId != null ? tenantId.hashCode() : 0;
-            result = 31 * result + (systemId != null ? systemId.hashCode() : 0);
-            return result;
+            return Objects.hash(tenantId, systemId, username);
+
         }
     }
 
