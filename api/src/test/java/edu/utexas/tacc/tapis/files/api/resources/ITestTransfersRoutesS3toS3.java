@@ -38,6 +38,7 @@ import org.testng.annotations.Test;
 import org.apache.commons.io.IOUtils;
 
 
+import javax.inject.Singleton;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -111,9 +112,9 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
                         bind(skClient).to(SKClient.class);
                         bind(serviceJWT).to(ServiceJWT.class);
                         bind(tenantManager).to(TenantManager.class);
-                        bindAsContract(SystemsCache.class);
-                        bindAsContract(FilePermsCache.class);
-                        bindAsContract(TransfersService.class);
+                        bindAsContract(SystemsCache.class).in(Singleton.class);
+                        bindAsContract(FilePermsCache.class).in(Singleton.class);
+                        bindAsContract(TransfersService.class).in(Singleton.class);
                         bindAsContract(FileTransfersDAO.class);
                         bindAsContract(RemoteDataClientFactory.class);
                         bindAsContract(SystemsClientFactory.class);
@@ -121,7 +122,6 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
 
                     }
                 });
-
         app.register(TransfersApiResource.class);
         return app;
     }
