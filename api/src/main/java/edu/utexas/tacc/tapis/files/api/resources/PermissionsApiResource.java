@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
+import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -21,6 +23,9 @@ import org.slf4j.LoggerFactory;
 
 
 import javax.inject.Inject;
+import javax.validation.Valid;
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -56,7 +61,7 @@ public class PermissionsApiResource  {
     public Response permissionsSystemIdPathDelete(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "path",required=true) @PathParam("path") String path,
-            @Parameter(description = "Username to remove",required=true) @QueryParam("username") String username,
+            @NotEmpty @Parameter(description = "Username to remove",required=true) @QueryParam("username") String username,
             @Context SecurityContext securityContext) throws NotFoundException {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
@@ -82,7 +87,7 @@ public class PermissionsApiResource  {
     public Response permissionsSystemIdPathGet(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "path",required=true) @PathParam("path") String path,
-            @Parameter(description = "Username to remove",required=true) @QueryParam("username") String username,
+            @Parameter(description = "Username to list") @QueryParam("username") String username,
             @Context SecurityContext securityContext) throws NotFoundException {
 
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
@@ -131,12 +136,12 @@ public class PermissionsApiResource  {
     public Response permissionsSystemIdPathPost(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "path",required=true) @PathParam("path") String path,
-            @Parameter(description = "Username to remove",required=true) @QueryParam("username") String username,
+            @Valid @Parameter(required = true) CreatePermissionRequest createPermissionRequest,
             @Context SecurityContext securityContext) throws NotFoundException {
 
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            permsService.grantPermission(user.getTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
+            permsService.grantPermission(user.getTenantId(), createPermissionRequest.getUsername(), systemId, path, createPermissionRequest.getPermission());
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions granted.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {

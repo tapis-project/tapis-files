@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.api;
 
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthzSystemPath;
+import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
+import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
 import edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper;
 import edu.utexas.tacc.tapis.sharedapi.providers.ValidationExceptionMapper;
@@ -23,7 +25,8 @@ public class BaseResourceConfig extends ResourceConfig {
         register(TapisExceptionMapper.class);
         register(ValidationExceptionMapper.class);
 
-        // AuthZ filter
+        // AuthZ filters
         register(FileOpsAuthzSystemPath.class);
+        register(FilePermissionsAuthz.class);
     }
 }

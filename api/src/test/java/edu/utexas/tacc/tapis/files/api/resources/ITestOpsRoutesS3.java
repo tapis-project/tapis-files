@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
+import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
@@ -114,6 +115,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         JWTValidateRequestFilter.setService("files");
         ResourceConfig app = new BaseResourceConfig()
             .register(new JWTValidateRequestFilter(tenantManager))
+            .register(FilePermissionsAuthz.class)
             .register(new AbstractBinder() {
                 @Override
                 protected void configure() {
