@@ -29,7 +29,7 @@
             <name>Local repo for snapshots</name>
             <url>http://c002.rodeo.tacc.utexas.edu:30044/repository/maven-snapshots</url>
             <releases>  <enabled>false</enabled> </releases>
-            <snapshots> <enabled>true</enabled>  </snapshots>
+            <snapshots> <enabled>false</enabled>  </snapshots>
         </repository>
         <repository>
             <id>tapis-local-releases</id>
