@@ -120,6 +120,9 @@ public class TransfersService {
             if (task == null) {
                 throw new NotFoundException("No transfer task with this ID found.");
             }
+            List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
+            task.setParentTasks(parents);
+
             return task;
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
