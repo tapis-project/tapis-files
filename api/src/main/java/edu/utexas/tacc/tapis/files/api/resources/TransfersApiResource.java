@@ -24,6 +24,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import java.util.List;
 import java.util.UUID;
 
 
@@ -37,11 +38,41 @@ public class TransfersApiResource {
     TransfersService transfersService;
 
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
+    private static class TransferTaskListResponse extends TapisResponse<List<TransferTask>>{}
+
 
     private void isPermitted(TransferTask task, AuthenticatedUser user) throws NotAuthorizedException {
         if (!task.getUsername().equals(user.getName())) throw new NotAuthorizedException("");
         if (!task.getTenantId().equals(user.getTenantId())) throw new NotAuthorizedException("");
     }
+
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get a list of recent transfer tasks", description = "Get a list of recent transfer tasks", tags={ "transfers" })
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(schema = @Schema(implementation = TransferTaskListResponse.class))
+        )
+    })
+    public Response getRecentTransferTasks(
+        @Context SecurityContext securityContext) {
+
+
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+
+        try {
+            List<TransferTask> tasks = transfersService.getRecentTransfers(user.getTenantId(), user.getName());
+            TapisResponse<List<TransferTask>> resp = TapisResponse.createSuccessResponse(tasks);
+            return Response.ok(resp).build();
+        } catch (ServiceException e) {
+            log.error("getTransferTaskStatus", e);
+            throw new WebApplicationException("server error");
+        }
+    }
+
 
     @GET
     @Path("/{transferTaskId}/")

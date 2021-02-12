@@ -474,7 +474,7 @@ public class FileTransfersDAO {
         }
     }
 
-    public List<TransferTask> getAllTransfersForUser(@NotNull String tenantId, @NotNull String username) throws DAOException {
+    public List<TransferTask> getRecentTransfersForUser(@NotNull String tenantId, @NotNull String username) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
 
         try (Connection connection = HikariConnectionPool.getConnection()) {

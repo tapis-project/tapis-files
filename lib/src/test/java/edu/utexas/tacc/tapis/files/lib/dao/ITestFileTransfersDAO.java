@@ -82,7 +82,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         TransferTask t1 = createTransferTask();
         TransferTask t2 = createTransferTask();
 
-        List<TransferTask> tasks = dao.getAllTransfersForUser("testTenant", "testUser");
+        List<TransferTask> tasks = dao.getRecentTransfersForUser("testTenant", "testUser");
         Assert.assertEquals(tasks.size(), 2);
     }
 

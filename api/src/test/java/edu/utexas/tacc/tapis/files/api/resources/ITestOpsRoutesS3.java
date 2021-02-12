@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -36,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
+import javax.inject.Singleton;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
@@ -123,7 +125,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
                     bind(skClient).to(SKClient.class);
                     bind(tenantManager).to(TenantManager.class);
                     bind(serviceJWT).to(ServiceJWT.class);
-                    bindAsContract(FilePermsCache.class);
+                    bindAsContract(FilePermsService.class);
+                    bindAsContract(FilePermsCache.class).in(Singleton.class);
                     bindAsContract(SystemsCache.class);
                     bindAsContract(RemoteDataClientFactory.class);
                     bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);

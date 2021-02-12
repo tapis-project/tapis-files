@@ -106,9 +106,9 @@ public class TransfersService {
         }
     }
 
-    public List<TransferTask> getAllTransfersForUser(String tenantId, String username) throws ServiceException {
+    public List<TransferTask> getRecentTransfers(String tenantId, String username) throws ServiceException {
         try {
-            return dao.getAllTransfersForUser(tenantId, username);
+            return dao.getRecentTransfersForUser(tenantId, username);
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
         }

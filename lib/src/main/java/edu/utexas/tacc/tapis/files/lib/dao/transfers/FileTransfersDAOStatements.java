@@ -37,7 +37,7 @@ public class FileTransfersDAOStatements {
 
     //language=SQL
     public static final String GET_ALL_TASKS_FOR_USER =
-        "SELECT * FROM transfer_tasks where tenant_id = ? AND username = ?";
+        "SELECT * FROM transfer_tasks where tenant_id = ? AND username = ? limit 1000";
 
     //language=SQL
     public static final String GET_TASK_FULL_HISTORY_BY_UUID =

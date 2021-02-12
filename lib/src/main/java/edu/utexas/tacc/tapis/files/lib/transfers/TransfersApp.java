@@ -11,7 +11,6 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
-import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;

@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -125,6 +126,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
                     bind(tenantManager).to(TenantManager.class);
                     bind(serviceJWT).to(ServiceJWT.class);
                     bindAsContract(SystemsCache.class);
+                    bindAsContract(FilePermsService.class);
                     bindAsContract(FilePermsCache.class);
                     bindAsContract(RemoteDataClientFactory.class);
                     bind(sshConnectionCache).to(SSHConnectionCache.class);

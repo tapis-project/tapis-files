@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
@@ -29,7 +30,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
     private Logger log = LoggerFactory.getLogger(FileOpsAuthzSystemPath.class);
 
     @Inject
-    FilePermsCache filePermsCache;
+    FilePermsService filePermsService;
 
     @Context
     private ResourceInfo resourceInfo;
@@ -55,7 +56,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
         }
 
         try {
-            boolean isPermitted = filePermsCache.checkPerms(tenantId, username, systemId, path, requiredPerms.permsRequired());
+            boolean isPermitted = filePermsService.isPermitted(tenantId, username, systemId, path, requiredPerms.permsRequired());
             if (!isPermitted) {
                throw new NotAuthorizedException("Authorization failed.");
             }

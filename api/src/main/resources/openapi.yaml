@@ -392,8 +392,7 @@ paths:
           type: string
       - name: username
         in: query
-        description: Username to remove
-        required: true
+        description: Username to list
         schema:
           type: string
       responses:
@@ -424,12 +423,12 @@ paths:
         required: true
         schema:
           type: string
-      - name: username
-        in: query
-        description: Username to remove
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePermissionRequest'
         required: true
-        schema:
-          type: string
       responses:
         200:
           description: FilePermission
@@ -556,20 +555,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
-  /v3/files/transfers:
-    post:
+  /v3/files/transfers/{transferTaskId}/history:
+    get:
       tags:
       - transfers
-      summary: Transfer data
-      description: This creates a background task which will transfer files into the
-        storage system
-      operationId: createTransferTask
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TransferTaskRequest'
+      summary: Get history of a transfer task
+      operationId: getTransferTaskHistory
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
         required: true
+        schema:
+          type: string
+          format: uuid
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
       responses:
         200:
           description: OK
@@ -618,21 +618,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TapisResponse'
-  /v3/files/transfers/{transferTaskId}/history:
+  /v3/files/transfers:
     get:
       tags:
       - transfers
-      summary: Get history of a transfer task
-      operationId: getTransferTaskHistory
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
+      summary: Get a list of recent transfer tasks
+      description: Get a list of recent transfer tasks
+      operationId: getRecentTransferTasks
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskListResponse'
+    post:
+      tags:
+      - transfers
+      summary: Transfer data
+      description: This creates a background task which will transfer files into the
+        storage system
+      operationId: createTransferTask
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferTaskRequest'
         required: true
-        schema:
-          type: string
-          format: uuid
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
       responses:
         200:
           description: OK
@@ -739,6 +751,20 @@ components:
           $ref: '#/components/schemas/FilePermission'
         version:
           type: string
+    CreatePermissionRequest:
+      required:
+      - permission
+      - username
+      type: object
+      properties:
+        username:
+          type: string
+        permission:
+          type: string
+          enum:
+          - READ
+          - READWRITE
+          - ALL
     SharedFileObject:
       type: object
       properties:
@@ -909,6 +935,17 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string
     TransferTaskRequest:
       required:
       - elements
@@ -932,7 +969,7 @@ components:
         destinationURI:
           type: string
           description: Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}
-    TapisResponse:
+    TransferTaskListResponse:
       type: object
       properties:
         status:
@@ -940,6 +977,8 @@ components:
         message:
           type: string
         result:
-          type: object
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
         version:
           type: string

@@ -108,6 +108,9 @@ public class PermissionsApiResource  {
             boolean readPermitted = permsService.isPermitted(user.getTenantId(), username, systemId, path, FilePermissionsEnum.READ);
             FilePermission permission = new FilePermission();
             permission.setPath(path);
+            permission.setSystemId(systemId);
+            permission.setUsername(username);
+            permission.setTenantId(user.getTenantId());
             if (readPermitted)
                 permission.setPermissions(FilePermissionsEnum.READ);
             if (allPermitted)

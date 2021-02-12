@@ -64,7 +64,8 @@ public class SystemsCache {
             systemsClient.addDefaultHeader("x-tapis-user", key.getUsername());
             systemsClient.addDefaultHeader("x-tapis-token", serviceJWT.getAccessJWT(config.getSiteId()));
             systemsClient.addDefaultHeader("x-tapis-tenant", key.getTenantId());
-            return systemsClient.getSystemWithCredentials(key.getSystemId(), null);
+            TSystem system = systemsClient.getSystemWithCredentials(key.getSystemId(), null);
+            return system;
         }
     }
 

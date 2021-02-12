@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib;
 
+import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
@@ -8,7 +9,6 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
 import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
-import edu.utexas.tacc.tapis.files.lib.utils.SystemsClientFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -35,6 +35,7 @@ import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException
 import software.amazon.awssdk.services.s3.model.CreateBucketConfiguration;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 
+import javax.inject.Singleton;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -61,7 +62,6 @@ public abstract class BaseDatabaseIntegrationTest  {
     protected TenantManager tenantManager = Mockito.mock(TenantManager.class);
     protected SKClient skClient = Mockito.mock(SKClient.class);
     protected SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-    protected SystemsClientFactory systemsClientFactory = Mockito.mock(SystemsClientFactory.class);
     protected ServiceJWT serviceJWT;
     protected TransfersService transfersService;
 
@@ -132,26 +132,25 @@ public abstract class BaseDatabaseIntegrationTest  {
         serviceJWT = Mockito.mock(ServiceJWT.class);
         ServiceJWTCacheFactory serviceJWTFactory = Mockito.mock(ServiceJWTCacheFactory.class);
         when(serviceJWTFactory.provide()).thenReturn(serviceJWT);
-        when(systemsClientFactory.getClient(any(), any())).thenReturn(systemsClient);
 
 //        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
 
         locator = ServiceLocatorUtilities.bind(new AbstractBinder() {
             @Override
             protected void configure() {
-                bindAsContract(ParentTaskFSM.class);
-                bindAsContract(FileTransfersDAO.class);
-                bindAsContract(TransfersService.class);
-                bindAsContract(RemoteDataClientFactory.class);
-                bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-                bindAsContract(SystemsCache.class);
-                bind(systemsClientFactory).to(SystemsClientFactory.class);
+
                 bind(systemsClient).to(SystemsClient.class);
                 bind(tenantManager).to(TenantManager.class);
                 bind(skClient).to(SKClient.class);
-                bind(serviceJWTFactory).to(ServiceJWTCacheFactory.class);
                 bind(serviceJWT).to(ServiceJWT.class);
                 bind(tenantManager).to(TenantManager.class);
+                bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                bind(serviceJWTFactory).to(ServiceJWTCacheFactory.class);
+                bindAsContract(SystemsCache.class).in(Singleton.class);
+                bindAsContract(FilePermsCache.class).in(Singleton.class);
+                bindAsContract(TransfersService.class).in(Singleton.class);
+                bindAsContract(FileTransfersDAO.class);
+                bindAsContract(RemoteDataClientFactory.class);
             }
         });
         remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);

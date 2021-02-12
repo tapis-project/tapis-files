@@ -8,13 +8,11 @@ import edu.utexas.tacc.tapis.files.client.gen.model.FilePermission;
 import edu.utexas.tacc.tapis.files.client.gen.model.FilePermissionResponse;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
@@ -26,7 +24,6 @@ import org.apache.commons.codec.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.test.JerseyTestNg;
 import org.glassfish.jersey.test.TestProperties;
 import org.mockito.Mockito;
 
@@ -46,8 +43,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-@Test(groups = {"integration"})
-public class ITestPermissionsResource extends JerseyTestNg.ContainerPerClassTest {
+@Test(groups={"integration"})
+public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
 
 
     private TSystem testSystem;
@@ -97,8 +94,15 @@ public class ITestPermissionsResource extends JerseyTestNg.ContainerPerClassTest
         user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
     }
 
+    @BeforeClass
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+    }
+
     @Override
     protected ResourceConfig configure() {
+        forceSet(TestProperties.CONTAINER_PORT, "0");
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
         tenantManager = Mockito.mock(TenantManager.class);
