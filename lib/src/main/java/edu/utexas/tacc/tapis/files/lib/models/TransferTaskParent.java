@@ -22,7 +22,7 @@ public class TransferTaskParent {
     protected long totalBytes;
     protected long bytesTransferred;
     private int taskId;
-    protected String status;
+    protected TransferTaskStatus status;
 
     protected Instant created;
     protected Instant startTime;
@@ -38,7 +38,7 @@ public class TransferTaskParent {
         this.username = username;
         this.sourceURI = sourceURI;
         this.destinationURI = destinationURI;
-        this.status = TransferTaskStatus.ACCEPTED.name();
+        this.status = TransferTaskStatus.ACCEPTED;
         this.uuid = UUID.randomUUID();
     }
     /**
@@ -167,12 +167,16 @@ public class TransferTaskParent {
      **/
     @JsonProperty("status")
     @Schema(example = "PENDING", description = "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED")
-    public String getStatus() {
+    public TransferTaskStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) throws IllegalArgumentException {
-        this.status = TransferTaskStatus.valueOf(status).name();
+    public void setStatus(TransferTaskStatus status) {
+        this.status = status;
+    }
+
+    public void setStatus(String status) {
+        this.status = TransferTaskStatus.valueOf(status);
     }
 
 

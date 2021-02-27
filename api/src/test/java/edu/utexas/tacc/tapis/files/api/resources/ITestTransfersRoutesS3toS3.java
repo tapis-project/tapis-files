@@ -196,7 +196,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(newTask.getParentTasks().size(), 1);
         Assert.assertEquals(newTask.getUsername(), "testuser1");
         Assert.assertEquals(newTask.getTenantId(), "dev");
-        Assert.assertEquals(newTask.getStatus(), TransferTaskStatus.ACCEPTED.name());
+        Assert.assertEquals(newTask.getStatus(), TransferTaskStatus.ACCEPTED);
     }
 
     @Test
@@ -254,7 +254,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
                 .delete();
 
         TransferTask task = getTransferTask(t.getUuid().toString());
-        Assert.assertEquals(task.getStatus(), TransferTaskStatus.CANCELLED.name());
+        Assert.assertEquals(task.getStatus(), TransferTaskStatus.CANCELLED);
         Assert.assertEquals(resp.getStatus(), 200);
 
     }

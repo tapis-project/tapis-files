@@ -113,7 +113,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         // Task should be STAGED after the pipeline runs
         StepVerifier
             .create(tasks)
-            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.STAGED))
             .thenCancel()
             .verify();
         TransferTaskParent task = transfersService.getTransferTaskParentByUUID(t1.getParentTasks().get(0).getUuid());
@@ -160,9 +160,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Flux<TransferTaskParent> tasks = transfersService.processParentTasks(messages);
         StepVerifier
             .create(tasks)
-            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
-            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
-            .assertNext(t -> Assert.assertEquals(t.getStatus(), "STAGED"))
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.STAGED))
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.STAGED))
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.STAGED))
             .thenCancel()
             .verify();
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
@@ -206,7 +206,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         StepVerifier
             .create(tasks)
             .assertNext(t -> {
-                Assert.assertEquals(t.getStatus(), "STAGED");
+                Assert.assertEquals(t.getStatus(), TransferTaskStatus.STAGED);
                 Assert.assertEquals(t.getId(), t1.getId());
             })
             .thenCancel()
@@ -269,11 +269,11 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         StepVerifier
             .create(stream)
             .assertNext(k->{
-                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
                 Assert.assertEquals(k.getBytesTransferred(), FILESIZE);
             })
             .assertNext(k->{
-                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
                 Assert.assertEquals(k.getBytesTransferred(), FILESIZE);
             })
             .thenCancel()
@@ -328,7 +328,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         StepVerifier
             .create(stream)
             .assertNext(k->{
-                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED.name());
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
             })
             .thenCancel()
             .verify();
@@ -383,7 +383,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 2);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
-        Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED.name());
+        Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
         transfersService.deleteQueue(parentQ).subscribe();
         transfersService.deleteQueue(childQ).subscribe();
     }
@@ -518,7 +518,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             .take(40)
             .subscribeOn(Schedulers.boundedElastic())
             .map(child -> {
-                Assert.assertEquals(child.getStatus(), TransferTaskStatus.COMPLETED.name());
+                Assert.assertEquals(child.getStatus(), TransferTaskStatus.COMPLETED);
                 return child;
             })
             .blockLast();

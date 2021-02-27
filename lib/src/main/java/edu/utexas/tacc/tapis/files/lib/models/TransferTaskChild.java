@@ -26,7 +26,7 @@ public class TransferTaskChild extends TransferTaskParent {
         this.sourceURI = sourceURI;
         this.destinationURI = destinationURI;
         this.uuid = UUID.randomUUID();
-        this.status = TransferTaskStatus.ACCEPTED.name();
+        this.status = TransferTaskStatus.ACCEPTED;
         this.parentTaskId = parentTaskId;
     }
 

@@ -141,7 +141,7 @@ public class FileTransfersDAO {
             TransferTask transferTask =  runner.query(connection, query, handler,
                 task.getTenantId(),
                 task.getUsername(),
-                task.getStatus(),
+                task.getStatus().name(),
                 task.getTag()
             );
 
@@ -162,7 +162,7 @@ public class FileTransfersDAO {
                     parent.getUsername(),
                     parent.getSourceURI(),
                     parent.getDestinationURI(),
-                    parent.getStatus()
+                    parent.getStatus().name()
                 );
                 parentTasks.add(parent);
             }
@@ -269,7 +269,7 @@ public class FileTransfersDAO {
                 endTime = Timestamp.from(task.getEndTime());
             }
             TransferTask updatedTask = runner.query(connection, stmt, handler,
-                task.getStatus(),
+                task.getStatus().name(),
                 startTime,
                 endTime,
                 task.getId());
@@ -340,7 +340,7 @@ public class FileTransfersDAO {
             TransferTaskParent updatedTask = runner.query(connection, stmt, handler,
                 task.getSourceURI(),
                 task.getDestinationURI(),
-                task.getStatus(),
+                task.getStatus().name(),
                 startTime,
                 endTime,
                 task.getBytesTransferred(),
@@ -371,7 +371,7 @@ public class FileTransfersDAO {
 
             TransferTaskChild updatedTask = runner.query(connection, stmt, handler,
                 task.getBytesTransferred(),
-                task.getStatus(),
+                task.getStatus().name(),
                 task.getRetries(),
                 startTime,
                 endTime,
@@ -397,7 +397,7 @@ public class FileTransfersDAO {
                 task.getUsername(),
                 task.getSourceURI(),
                 task.getDestinationURI(),
-                task.getStatus()
+                task.getStatus().name()
                 );
             return insertedTask;
         } catch (SQLException ex) {
@@ -415,7 +415,7 @@ public class FileTransfersDAO {
                 child.getUsername(),
                 child.getSourceURI(),
                 child.getDestinationURI(),
-                child.getStatus(),
+                child.getStatus().name(),
                 child.getBytesTransferred(),
                 child.getTotalBytes()
             });
@@ -445,7 +445,7 @@ public class FileTransfersDAO {
                 task.getUsername(),
                 task.getSourceURI(),
                 task.getDestinationURI(),
-                task.getStatus(),
+                task.getStatus().name(),
                 task.getBytesTransferred(),
                 task.getTotalBytes()
             );

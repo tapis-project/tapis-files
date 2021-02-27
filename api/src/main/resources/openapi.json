@@ -1155,7 +1155,8 @@
             "format" : "int64"
           },
           "status" : {
-            "type" : "string"
+            "type" : "string",
+            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
           },
           "parentTasks" : {
             "type" : "array",
@@ -1220,7 +1221,8 @@
           "status" : {
             "type" : "string",
             "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
-            "example" : "PENDING"
+            "example" : "PENDING",
+            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
           },
           "created" : {
             "type" : "integer",
@@ -1282,7 +1284,8 @@
           "status" : {
             "type" : "string",
             "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
-            "example" : "PENDING"
+            "example" : "PENDING",
+            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
           },
           "created" : {
             "type" : "integer",

@@ -54,10 +54,5 @@ public class FilePermissionsAuthz implements ContainerRequestFilter {
         } catch (ServiceException ex) {
             throw new IOException("Could not verify permissions.");
         }
-
-
-
-
-
     }
 }

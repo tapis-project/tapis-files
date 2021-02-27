@@ -826,6 +826,15 @@ components:
           format: int64
         status:
           type: string
+          enum:
+          - ACCEPTED
+          - STAGING
+          - STAGED
+          - IN_PROGRESS
+          - COMPLETED
+          - CANCELLED
+          - FAILED
+          - PAUSED
         parentTasks:
           type: array
           items:
@@ -874,6 +883,15 @@ components:
           description: The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED,
             CANCELLED
           example: PENDING
+          enum:
+          - ACCEPTED
+          - STAGING
+          - STAGED
+          - IN_PROGRESS
+          - COMPLETED
+          - CANCELLED
+          - FAILED
+          - PAUSED
         created:
           type: integer
           description: Timestamp in UTC of task creation.
@@ -920,6 +938,15 @@ components:
           description: The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED,
             CANCELLED
           example: PENDING
+          enum:
+          - ACCEPTED
+          - STAGING
+          - STAGED
+          - IN_PROGRESS
+          - COMPLETED
+          - CANCELLED
+          - FAILED
+          - PAUSED
         created:
           type: integer
           description: Timestamp in UTC of task creation.

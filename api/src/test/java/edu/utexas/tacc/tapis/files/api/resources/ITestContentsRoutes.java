@@ -137,7 +137,11 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         return app;
     }
 
-
+    @BeforeClass
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+    }
 
     public class RandomInputStream extends InputStream {
 
@@ -173,7 +177,6 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     }
 
 
-    @AfterClass
     public void tearDownTest() throws Exception {
         S3DataClient client = new S3DataClient(testSystem);
         client.delete("/");
@@ -193,11 +196,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
     }
 
-    @BeforeClass
-    @Override
-    public void setUp() throws Exception {
-        super.setUp();
-    }
+
 
     @DataProvider(name = "testSystemsDataProvider")
     public Object[] mkdirDataProvider() {

@@ -16,7 +16,7 @@ public class TransferTask {
     private UUID uuid;
     private Instant startTime;
     private Instant endTime;
-    private String status;
+    private TransferTaskStatus status;
     private List<TransferTaskParent> parentTasks;
 
 
@@ -88,13 +88,17 @@ public class TransferTask {
         this.endTime = endTime;
     }
 
-    public String getStatus() {
+    public TransferTaskStatus getStatus() {
         return status;
     }
 
     public void setStatus(String status) {
+        this.status = TransferTaskStatus.valueOf(status);
+    }
+    public void setStatus(TransferTaskStatus status) {
         this.status = status;
     }
+
 
     public List<TransferTaskParent> getParentTasks() {
         return parentTasks;
