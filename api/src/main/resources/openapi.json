@@ -787,54 +787,6 @@
         }
       }
     },
-    "/v3/files/transfers" : {
-      "get" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Get a list of recent transfer tasks",
-        "description" : "Get a list of recent transfer tasks",
-        "operationId" : "getRecentTransferTasks",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskListResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Transfer data",
-        "description" : "This creates a background task which will transfer files into the storage system",
-        "operationId" : "createTransferTask",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TransferTaskRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v3/files/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -907,6 +859,54 @@
           },
           "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
         } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/transfers" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get a list of recent transfer tasks",
+        "description" : "Get a list of recent transfer tasks",
+        "operationId" : "getRecentTransferTasks",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Transfer data",
+        "description" : "This creates a background task which will transfer files into the storage system",
+        "operationId" : "createTransferTask",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -1311,15 +1311,29 @@
           }
         }
       },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "TransferTaskRequest" : {
         "required" : [ "elements" ],
         "type" : "object",
         "properties" : {
           "tag" : {
             "type" : "string"
-          },
-          "optional" : {
-            "type" : "boolean"
           },
           "elements" : {
             "type" : "array",
@@ -1340,6 +1354,10 @@
           "destinationURI" : {
             "type" : "string",
             "description" : "Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}"
+          },
+          "optional" : {
+            "type" : "boolean",
+            "description" : "Allow the full transfer to succeed even if this portion fails? Default is false"
           }
         }
       },
@@ -1357,23 +1375,6 @@
             "items" : {
               "$ref" : "#/components/schemas/TransferTask"
             }
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
           },
           "version" : {
             "type" : "string"
