@@ -12,7 +12,7 @@ public class TransferTaskRequest {
 	// transfer and any of its children.  Since this tag value is present
 	// in all events, it can be used in Notification subscription filters.
 	private String tag;
-	
+	private boolean optional;
 	private List<TransferTaskRequestElement> elements;
 
     public String getTag() {
@@ -30,5 +30,13 @@ public class TransferTaskRequest {
 
     public void setElements(List<TransferTaskRequestElement> elements) {
         this.elements = elements;
+    }
+
+    public boolean isOptional() {
+        return optional;
+    }
+
+    public void setOptional(boolean optional) {
+        this.optional = optional;
     }
 }

@@ -969,6 +969,8 @@ components:
       properties:
         tag:
           type: string
+        optional:
+          type: boolean
         elements:
           type: array
           items:
