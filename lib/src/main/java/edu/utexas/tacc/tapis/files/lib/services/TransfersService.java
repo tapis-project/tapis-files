@@ -146,7 +146,7 @@ public class TransfersService {
         TransferTask task = new TransferTask();
         task.setTenantId(tenantId);
         task.setUsername(username);
-        task.setStatus(TransferTaskStatus.ACCEPTED.name());
+        task.setStatus(TransferTaskStatus.ACCEPTED);
         task.setTag(tag);
         try {
             // TODO: check if requesting user has access to both the source and dest systems, throw an error back if not
@@ -171,7 +171,7 @@ public class TransfersService {
 
     public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException {
         try {
-            task.setStatus(TransferTaskStatus.CANCELLED.name());
+            task.setStatus(TransferTaskStatus.CANCELLED);
             dao.updateTransferTask(task);
             // todo: publish cancel message on the control queue
         } catch (DAOException ex) {
@@ -252,7 +252,7 @@ public class TransfersService {
 
     private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent t) {
         //TODO: Add task failure, set status etc
-        t.setStatus(TransferTaskStatus.FAILED.name());
+        t.setStatus(TransferTaskStatus.FAILED);
         try {
             dao.updateTransferTaskParent(t);
         } catch (DAOException ex) {
@@ -308,7 +308,7 @@ public class TransfersService {
                 }
                 parentTask.setTotalBytes(totalBytes);
                 parentTask.setStartTime(Instant.now());
-                parentTask.setStatus(TransferTaskStatus.STAGED.name());
+                parentTask.setStatus(TransferTaskStatus.STAGED);
                 parentTask = dao.updateTransferTaskParent(parentTask);
                 dao.bulkInsertChildTasks(children);
                 children = dao.getAllChildren(parentTask);
@@ -319,7 +319,7 @@ public class TransfersService {
                 task.setParentTaskId(parentTask.getId());
                 task.setTaskId(parentTask.getTaskId());
                 task.setDestinationURI(parentTask.getDestinationURI());
-                task.setStatus(TransferTaskStatus.ACCEPTED.name());
+                task.setStatus(TransferTaskStatus.ACCEPTED);
                 task.setTenantId(parentTask.getTenantId());
                 task.setUsername(parentTask.getUsername());
                 dao.insertChildTask(task);
@@ -497,17 +497,17 @@ public class TransfersService {
         log.info("***** DOING chevronOne ****");
         try {
             TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-            if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED.name())) {
+            if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED)) {
                 return taskChild;
             }
             taskChild = dao.getChildTaskByUUID(taskChild);
-            taskChild.setStatus(TransferTaskStatus.IN_PROGRESS.name());
+            taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
             taskChild.setStartTime(Instant.now());
             dao.updateTransferTaskChild(taskChild);
 
             // If the parent task has not been set to IN_PROGRESS do it here.
-            if (!parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS.name())) {
-                parentTask.setStatus(TransferTaskStatus.IN_PROGRESS.name());
+            if (!parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS)) {
+                parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
                 dao.updateTransferTaskParent(parentTask);
             }
             String noteMessage = String.format("Transfer in progress for %s", taskChild.getSourceURI());
@@ -535,7 +535,7 @@ public class TransfersService {
 
         //Step 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
         try {
-            taskChild.setStatus(TransferTaskStatus.IN_PROGRESS.name());
+            taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
             taskChild.setRetries(taskChild.getRetries() + 1);
             taskChild = dao.updateTransferTaskChild(taskChild);
         } catch (DAOException ex) {
@@ -609,7 +609,7 @@ public class TransfersService {
     private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.info("***** DOING chevronThree **** {}", taskChild);
         try {
-            taskChild.setStatus(TransferTaskStatus.COMPLETED.name());
+            taskChild.setStatus(TransferTaskStatus.COMPLETED);
             taskChild.setEndTime(Instant.now());
             taskChild = dao.updateTransferTaskChild(taskChild);
 //            parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
@@ -626,20 +626,20 @@ public class TransfersService {
             TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
             TransferTaskParent parent = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             // Check to see if all the children are complete. If so, update the parent task
-            // TODO: Race condition
-            if (!task.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
+            // TODO: Race condition?
+            if (!task.getStatus().equals(TransferTaskStatus.COMPLETED)) {
                 long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getTaskId());
                 if (incompleteCount == 0) {
-                    task.setStatus(TransferTaskStatus.COMPLETED.name());
+                    task.setStatus(TransferTaskStatus.COMPLETED);
                     task.setEndTime(Instant.now());
                     dao.updateTransferTask(task);
                 }
             }
 
-            if (!parent.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
+            if (!parent.getStatus().equals(TransferTaskStatus.COMPLETED)) {
                 long incompleteCount = dao.getIncompleteChildrenCountForParent(taskChild.getParentTaskId());
                 if (incompleteCount == 0) {
-                    parent.setStatus(TransferTaskStatus.COMPLETED.name());
+                    parent.setStatus(TransferTaskStatus.COMPLETED);
                     parent.setEndTime(Instant.now());
                     parent.setBytesTransferred(parent.getBytesTransferred() + taskChild.getBytesTransferred());
                     dao.updateTransferTaskParent(parent);
@@ -658,7 +658,7 @@ public class TransfersService {
         log.info("***** DOING chevronFive **** {}", taskChild);
         try {
             TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
-            if (task.getStatus().equals(TransferTaskStatus.COMPLETED.name())) {
+            if (task.getStatus().equals(TransferTaskStatus.COMPLETED)) {
                 dao.updateTransferTask(task);
                 log.info(scheduler.toString());
                 log.info("PARENT TASK {} COMPLETE", taskChild);
