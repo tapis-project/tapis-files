@@ -8,6 +8,7 @@ public class TransferTaskRequestElement {
 
     private String sourceURI;
     private String destinationURI;
+    private boolean optional;
 
     @Schema(required = true, description = "Fully qualified URI, such as tapis://{systemID}/{path} or https://myserver.com/path/to/inputs/")
     @NotBlank
@@ -27,5 +28,14 @@ public class TransferTaskRequestElement {
 
     public void setSourceURI(String sourceURI) {
         this.sourceURI = sourceURI;
+    }
+
+    @Schema(description = "Allow the full transfer to succeed even if this portion fails? Default is false")
+    public boolean isOptional() {
+        return optional;
+    }
+
+    public void setOptional(boolean optional) {
+        this.optional = optional;
     }
 }
