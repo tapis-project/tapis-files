@@ -18,6 +18,7 @@ public interface IFileOpsService {
     List<FileInfo> ls(@NotNull String path, long limit, long offset) throws ServiceException, NotFoundException;
     void mkdir(String path) throws ServiceException;
     void move(String path, String newPath) throws ServiceException;
+    void copy(String path, String newPath) throws ServiceException;
     void delete(String path) throws ServiceException, NotFoundException;
     void insert(String path, InputStream in) throws ServiceException;
     InputStream getStream(String path) throws ServiceException, NotFoundException;

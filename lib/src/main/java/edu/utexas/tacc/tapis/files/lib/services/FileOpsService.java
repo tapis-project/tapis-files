@@ -88,6 +88,17 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
+    public void copy(String path, String newPath) throws ServiceException, NotFoundException {
+        try {
+            client.copy(path, newPath);
+        } catch (IOException ex) {
+            log.error("ERROR", ex);
+            throw new ServiceException("move/rename failed", ex);
+        }
+    }
+
+
+    @Override
     public void delete(@NotNull String path) throws ServiceException, NotFoundException {
         try {
             client.delete(path);

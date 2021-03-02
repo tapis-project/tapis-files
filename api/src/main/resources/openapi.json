@@ -230,7 +230,7 @@
         "tags" : [ "file operations" ],
         "summary" : "Rename a file or folder",
         "description" : "Move/Rename a file in {systemID} at path {path}.",
-        "operationId" : "rename",
+        "operationId" : "moveCopyRename",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -247,15 +247,16 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "name" : "newName",
-          "in" : "query",
-          "description" : "The new name of the file/folder",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MoveCopyRenameRequest"
+              }
+            }
+          }
+        },
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -1008,6 +1009,20 @@
           },
           "version" : {
             "type" : "string"
+          }
+        }
+      },
+      "MoveCopyRenameRequest" : {
+        "required" : [ "newPath", "operation" ],
+        "type" : "object",
+        "properties" : {
+          "operation" : {
+            "type" : "string",
+            "enum" : [ "MOVE", "COPY", "RENAME" ]
+          },
+          "newPath" : {
+            "type" : "string",
+            "description" : "Paths must be absolute, ../.. is not allowed"
           }
         }
       },

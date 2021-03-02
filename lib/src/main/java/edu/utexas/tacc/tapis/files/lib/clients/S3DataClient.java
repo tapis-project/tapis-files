@@ -8,6 +8,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -18,27 +19,31 @@ import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
-import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 
-import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.UriBuilder;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 public class S3DataClient implements IRemoteDataClient {
 
@@ -206,46 +211,45 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
 
-    private void doRename(S3Object object, String newPath) throws IOException {
+    private void renameObject(S3Object object, String newPath, boolean withDelete) throws IOException {
         //Copy object to new path
-        copy(object.key(), newPath);
+        doCopy(object.key(), newPath);
         //Delete old object
-        delete(object.key());
+        if (withDelete) {
+            delete(object.key());
+        }
     }
+
 
     /**
      * @param currentPath
      * @param newName
      */
     @Override
-    public void move(@NotNull String currentPath, @NotNull String newName) throws IOException, NotFoundException {
-
+    public void move(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
         String oldRemotePath;
         oldRemotePath = FilenameUtils.normalizeNoEndSeparator(DataClientUtils.getRemotePath(rootDir, currentPath));
         Path tmp = Paths.get(oldRemotePath);
-        String newRoot = FilenameUtils.normalizeNoEndSeparator(FilenameUtils.concat(tmp.getParent().toString(), newName));
-
+        String newRoot = FilenameUtils.normalizeNoEndSeparator(FilenameUtils.concat(tmp.getParent().toString(), newPath));
         Stream<S3Object> response = listWithIterator(oldRemotePath);
-
         response.forEach(object -> {
             try {
                 String key = object.key();
                 String newKey = key.replaceFirst(oldRemotePath, newRoot);
-                doRename(object, newKey);
+                renameObject(object, newKey, true);
             } catch (IOException ex) {
-                log.error("S3DataClient::rename " + object.key(), ex);
+                log.error("S3DataClient::move " + object.key(), ex);
             }
         });
     }
 
-    @Override
-    public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
+    private void doCopy(@NotNull String currentPath, @NotNull String newPath) throws NotFoundException, IOException {
         String encodedSourcePath = bucket + "/" + DataClientUtils.getRemotePath(rootDir, currentPath);
         String remoteDestinationPath = DataClientUtils.getRemotePathForS3(rootDir, newPath);
         CopyObjectRequest req = CopyObjectRequest.builder()
-            .bucket(bucket)
+            .destinationBucket(bucket)
             .copySource(encodedSourcePath)
-            .key(remoteDestinationPath)
+            .destinationKey(remoteDestinationPath)
             .build();
         try {
             client.copyObject(req);
@@ -255,7 +259,24 @@ public class S3DataClient implements IRemoteDataClient {
             log.error("S3DataClient::copy " + encodedSourcePath, ex);
             throw new IOException("Copy object failed at path " + encodedSourcePath);
         }
+    }
 
+    @Override
+    public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
+        String oldRemotePath;
+        oldRemotePath = FilenameUtils.normalizeNoEndSeparator(DataClientUtils.getRemotePath(rootDir, currentPath));
+        Path tmp = Paths.get(oldRemotePath);
+        String newRoot = FilenameUtils.normalizeNoEndSeparator(FilenameUtils.concat(tmp.getParent().toString(), newPath));
+        Stream<S3Object> response = listWithIterator(oldRemotePath);
+        response.forEach(object -> {
+            try {
+                String key = object.key();
+                String newKey = key.replaceFirst(oldRemotePath, newRoot);
+                renameObject(object, newKey, false);
+            } catch (IOException ex) {
+                log.error("S3DataClient::move " + object.key(), ex);
+            }
+        });
     }
 
     private void deleteObject(String remotePath) throws S3Exception {

@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
+import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
+import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -270,12 +272,15 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10 * 1024);
 
+        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
+        request.setOperation(MoveCopyRenameOperation.RENAME);
+        request.setNewPath("renamed");
+
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/testfile3.txt")
-            .queryParam("newName", "renamed")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
-            .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
+            .put(Entity.json(request), FileStringResponse.class);
 
         Assert.assertThrows(NotFoundException.class, () -> {
             client.ls("/a/b/c/test.txt");
@@ -296,12 +301,16 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
 
+        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
+        request.setOperation(MoveCopyRenameOperation.RENAME);
+        request.setNewPath("renamed");
+
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/")
             .queryParam("newName", "renamed/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
-            .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
+            .put(Entity.json(request), FileStringResponse.class);
 
         Assert.assertThrows(NotFoundException.class, () -> {
             client.ls("/dir1/1.txt");
@@ -325,19 +334,23 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
 
+        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
+        request.setOperation(MoveCopyRenameOperation.RENAME);
+        request.setNewPath("renamed");
+
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/dir2/")
             .queryParam("newName", "renamed")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
-            .put(Entity.entity("", MediaType.TEXT_PLAIN), FileStringResponse.class);
-        //TODO: Add asserts
+            .put(Entity.json(request), FileStringResponse.class);
+
         List<FileInfo> listing = client.ls("dir1/1.txt");
         Assert.assertEquals(listing.size(), 1);
         listing = client.ls("dir1/renamed/2.txt");
         Assert.assertEquals(listing.size(), 1);
         Assert.assertThrows(NotFoundException.class, () -> {
-            client.ls("/a/b/c/test.txt");
+            client.ls("/dir1/dir2/");
         });
     }
 

@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
+import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -22,6 +24,7 @@ import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Pattern;
@@ -45,6 +48,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -207,6 +211,7 @@ public class OperationsApiResource extends BaseFilesResource {
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Rename a file or folder", description = "Move/Rename a file in {systemID} at path {path}.", tags = {"file operations"})
     @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",
@@ -229,10 +234,10 @@ public class OperationsApiResource extends BaseFilesResource {
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "Internal Error")
     })
-    public Response rename(
+    public Response moveCopyRename(
         @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
         @Parameter(description = "File path", required = true) @PathParam("path") String path,
-        @Parameter(description = "The new name of the file/folder", required = true) @QueryParam("newName") String newName,
+        @Valid MoveCopyRenameRequest request,
         @Context SecurityContext securityContext) {
 
         try {
@@ -240,7 +245,14 @@ public class OperationsApiResource extends BaseFilesResource {
             TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
-            fileOpsService.move(path, newName);
+            MoveCopyRenameOperation operation = request.getOperation();
+            if (operation.equals(MoveCopyRenameOperation.MOVE)) {
+                fileOpsService.move(path, request.getNewPath());
+            } else if (operation.equals(MoveCopyRenameOperation.COPY)) {
+                fileOpsService.copy(path, request.getNewPath());
+            } else if (operation.equals(MoveCopyRenameOperation.RENAME)) {
+                fileOpsService.move(path, request.getNewPath());
+            }
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException | TapisClientException ex) {
