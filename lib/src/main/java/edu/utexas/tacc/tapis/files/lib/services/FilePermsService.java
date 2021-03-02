@@ -12,9 +12,7 @@ import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.jvnet.hk2.annotations.Service;
-
 import javax.inject.Inject;
-import java.security.Principal;
 
 
 @Service

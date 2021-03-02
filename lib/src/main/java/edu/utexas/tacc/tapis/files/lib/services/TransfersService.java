@@ -39,6 +39,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static reactor.retry.Retry.any;
+
 @Service
 public class TransfersService {
     private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
@@ -424,28 +426,33 @@ public class TransfersService {
                         //Wwe need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
                             .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
-                                .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
-                                    .scheduler(scheduler)
-                                    .maxBackoff(Duration.ofMinutes(30)))
-                                .onErrorResume(e -> doErrorChevronOne(m, e, t1))
+                                .retryWhen(
+                                    Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
+                                        .maxBackoff(Duration.ofSeconds(10))
+                                        .scheduler(scheduler)
+                                ).onErrorResume(e -> doErrorChevronOne(m, e, t1))
                             )
                             .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2))
-                                .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
-                                    .scheduler(scheduler)
-                                    .maxBackoff(Duration.ofMinutes(30)))
-                                .onErrorResume(e -> doErrorChevronOne(m, e, t2))
+                                .retryWhen(
+                                    Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
+                                        .maxBackoff(Duration.ofMinutes(30))
+                                        .scheduler(scheduler)
+                                        .filter(e -> e.getClass() != NotFoundException.class)
+                                ).onErrorResume(e -> doErrorChevronOne(m, e, t2))
                             )
                             .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
-                                .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
-                                    .scheduler(scheduler)
-                                    .maxBackoff(Duration.ofMinutes(30)))
-                                .onErrorResume(e -> doErrorChevronOne(m, e, t3))
+                                .retryWhen(
+                                    Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
+                                        .maxBackoff(Duration.ofSeconds(10))
+                                        .scheduler(scheduler)
+                                ).onErrorResume(e -> doErrorChevronOne(m, e, t3))
                             )
                             .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4))
-                                .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
-                                    .scheduler(scheduler)
-                                    .maxBackoff(Duration.ofMinutes(30)))
-                                .onErrorResume(e -> doErrorChevronOne(m, e, t4))
+                                .retryWhen(
+                                    Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
+                                        .maxBackoff(Duration.ofSeconds(10))
+                                        .scheduler(scheduler)
+                                ).onErrorResume(e -> doErrorChevronOne(m, e, t4))
                             )
                             .flatMap(t5 -> {
                                 m.ack();
@@ -460,32 +467,37 @@ public class TransfersService {
     /**
      *
      * @param message Message from rabbitmq
-     * @param ex Exception that was thrown
-     * @param task the Child task that failed
+     * @param cause Exception that was thrown
+     * @param child the Child task that failed
      * @return
      */
-    private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
+    private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable cause, TransferTaskChild child) {
         message.nack(false);
-        log.error("ERROR: {}", task);
-        //TODO: Update task status to FAILED for both child and parent
-        log.error(ex.getMessage(), ex);
+        log.error("ERROR Transferring: {}", child);
+        log.error("Transfer failed!", cause);
+
+        //TODO: Fix this for the "optional" flag
+        try {
+            // Child First
+            child.setStatus(TransferTaskStatus.FAILED);
+            dao.updateTransferTaskChild(child);
+
+            //Now parent
+            TransferTaskParent parent = dao.getTransferTaskParentById(child.getParentTaskId());
+            parent.setStatus(TransferTaskStatus.FAILED);
+            dao.updateTransferTaskParent(parent);
+
+            //Finally the top level task
+            TransferTask topTask = dao.getTransferTaskByID(child.getTaskId());
+            topTask.setStatus(TransferTaskStatus.FAILED);
+            dao.updateTransferTask(topTask);
+
+
+        } catch (DAOException ignored) {
+
+        }
         return Mono.empty();
     }
-
-    private Mono<Void> doErrorChevronTwo(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
-        message.nack(false);
-        //TODO: Update task status to FAILED for both child and parent
-        log.error(ex.getMessage(), ex);
-        return Mono.error(ex);
-    }
-
-    private Mono<Void> doErrorChevronThree(AcknowledgableDelivery message, Throwable ex, TransferTaskChild task) {
-        message.nack(false);
-        //TODO: Update task status to FAILED for both child and parent
-        log.error(ex.getMessage(), ex);
-        return Mono.error(ex);
-    }
-
 
     /**
      * Step one: We update the task's status and the parent task if necessary
@@ -525,7 +537,7 @@ public class TransfersService {
      * @return
      * @throws ServiceException
      */
-    private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException {
+    private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException {
         log.info("***** DOING chevronTwo ****");
         log.info(taskChild.toString());
         TSystem sourceSystem;
@@ -551,6 +563,7 @@ public class TransfersService {
             throw new ServiceException("Invalid URI", ex);
         }
 
+        //TODO: Are the usernames correct here? What if its a service request from jobs?
         //Step 2: Get clients for source / dest
         try {
             sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername() );
@@ -580,9 +593,6 @@ public class TransfersService {
 
         } catch (IOException ex) {
             String msg = String.format("Error transferring %s", taskChild.toString());
-            throw new ServiceException(msg, ex);
-        } catch (NotFoundException ex) {
-            String msg = String.format("ERROR! could not find file: %s", taskChild.getSourceURI());
             throw new ServiceException(msg, ex);
         }
         return taskChild;

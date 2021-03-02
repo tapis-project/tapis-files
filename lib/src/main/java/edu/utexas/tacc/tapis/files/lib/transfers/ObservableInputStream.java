@@ -1,11 +1,8 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import org.jetbrains.annotations.NotNull;
-import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
+import reactor.core.publisher.Sinks;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -19,8 +16,7 @@ import java.io.InputStream;
  */
 public class ObservableInputStream extends FilterInputStream {
 
-    private final EmitterProcessor<Long> events = EmitterProcessor.create();
-    private final FluxSink<Long> sink = events.sink();
+    private final Sinks.Many<Long> sink = Sinks.many().multicast().onBackpressureBuffer();
 
     public ObservableInputStream(InputStream in) {
         super(in);
@@ -30,7 +26,8 @@ public class ObservableInputStream extends FilterInputStream {
     @Override
     public int read() throws IOException {
         int b = super.read();
-        return (int) updateProgress(b);
+        updateProgress(b);
+        return b;
     }
 
     @Override
@@ -40,22 +37,23 @@ public class ObservableInputStream extends FilterInputStream {
 
     @Override
     public int read(@NotNull byte[] b, int off, int len) throws IOException {
-        return (int) updateProgress(super.read(b, off, len));
+        int bytes = super.read(b, off, len);
+        updateProgress(bytes);
+        return bytes;
     }
 
     public Flux<Long> getEventStream() {
-        return events;
+        return sink.asFlux();
     }
 
-    private long updateProgress(long bytesRead) {
+    private void updateProgress(int bytesRead) {
         if (bytesRead != -1) {
             this.totalBytesRead += bytesRead;
             // Send event to whoever is listening
-            sink.next(this.totalBytesRead);
+            sink.tryEmitNext(this.totalBytesRead);
         } else {
             // If no more bytes, kill off the emitter also
-            sink.complete();
+            sink.tryEmitComplete();
         }
-        return bytesRead;
     }
 }
