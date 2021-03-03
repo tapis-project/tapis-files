@@ -209,7 +209,7 @@ public class OperationsApiResource extends BaseFilesResource {
     @PUT
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
     @Path("/{systemId}/{path:.+}")
-    @Operation(summary = "Rename a file or folder", description = "Move/Rename a file in {systemID} at path {path}.", tags = {"file operations"})
+    @Operation(summary = "Move/copy/rename a file or folder", description = "Move/Rename a file in {systemID} at path {path}.", tags = {"file operations"})
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiResponses(value = {

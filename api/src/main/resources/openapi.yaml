@@ -166,7 +166,7 @@ paths:
     put:
       tags:
       - file operations
-      summary: Rename a file or folder
+      summary: Move/copy/rename a file or folder
       description: Move/Rename a file in {systemID} at path {path}.
       operationId: moveCopyRename
       parameters:

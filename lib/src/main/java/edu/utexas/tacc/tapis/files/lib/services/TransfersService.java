@@ -131,6 +131,21 @@ public class TransfersService {
         }
     }
 
+    public TransferTask getTransferTaskById(@NotNull int id) throws ServiceException, NotFoundException {
+        try {
+            TransferTask task = dao.getTransferTaskByID(id);
+            if (task == null) {
+                throw new NotFoundException("No transfer task with this ID found.");
+            }
+            List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
+            task.setParentTasks(parents);
+
+            return task;
+        } catch (DAOException ex) {
+            throw new ServiceException(ex.getMessage(), ex);
+        }
+    }
+
     public TransferTaskParent getTransferTaskParentByUUID(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
         try {
             TransferTaskParent task = dao.getTransferTaskParentByUUID(taskUUID);
@@ -223,8 +238,8 @@ public class TransfersService {
     public Flux<AcknowledgableDelivery> streamParentMessages() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
-        Flux<AcknowledgableDelivery> childMessageStream = receiver.consumeManualAck(PARENT_QUEUE, options);
-        return childMessageStream
+        Flux<AcknowledgableDelivery> parentStream = receiver.consumeManualAck(PARENT_QUEUE, options);
+        return parentStream
             .delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
     }
 
@@ -243,7 +258,10 @@ public class TransfersService {
                     .runOn(Schedulers.newBoundedElastic(10, 10, "ParentPool:" + group.key()))
                     .flatMap(m->
                         deserializeParentMessage(m)
-                        .flatMap(t1->Mono.fromCallable(()-> doParentChevronOne(t1)).retry(MAX_RETRIES).onErrorResume(e -> doErrorParentChevronOne(m, e, t1)))
+                        .flatMap(t1->Mono.fromCallable(()-> doParentChevronOne(t1))
+                            .retry(MAX_RETRIES)
+                            .onErrorResume(e -> doErrorParentChevronOne(m, e, t1))
+                        )
                         .flatMap(t2->{
                             m.ack();
                             return Mono.just(t2);
@@ -252,15 +270,27 @@ public class TransfersService {
             );
     }
 
-    private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent t) {
-        //TODO: Add task failure, set status etc
-        t.setStatus(TransferTaskStatus.FAILED);
+    private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent) {
+        log.error("Parent task failed! {}", parent);
+        log.error("Exception: ", e);
+        parent.setStatus(TransferTaskStatus.FAILED);
+
+        //TODO: UPDATE this when the Optional stuff gets integrated
         try {
-            dao.updateTransferTaskParent(t);
+            TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
+            task.setStatus(TransferTaskStatus.FAILED);
+            task.setEndTime(Instant.now());
+            task = dao.updateTransferTask(task);
+        } catch (DAOException ex) {
+            log.error("CRITICAL ERROR: ", ex);
+        }
+
+        try {
+            parent = dao.updateTransferTaskParent(parent);
+            return Mono.just(parent);
         } catch (DAOException ex) {
             log.error("Could not update task", ex);
         }
-        log.error("Error callback", e);
         m.nack(false);
         return Mono.empty();
     }
@@ -280,15 +310,22 @@ public class TransfersService {
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
 
-        // Update the top level task first, if it is not already updateted with the startTime
+        // Update the top level task first, if it is not already updated with the startTime
         try {
             TransferTask task = dao.getTransferTaskByID(parentTask.getTaskId());
-            task.setStartTime(Instant.now());
-            dao.updateTransferTask(task);
+            if (task.getStartTime() == null) {
+                task.setStartTime(Instant.now());
+                task.setStatus(TransferTaskStatus.IN_PROGRESS);
+                dao.updateTransferTask(task);
+            }
+
+            //update parent task status, start time
+            parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
+            parentTask.setStartTime(Instant.now());
+
         } catch (DAOException ex) {
             throw new ServiceException("Could not update task!", ex);
         }
-
 
         try {
             String sourceURI = parentTask.getSourceURI();
@@ -309,7 +346,6 @@ public class TransfersService {
                     children.add(child);
                 }
                 parentTask.setTotalBytes(totalBytes);
-                parentTask.setStartTime(Instant.now());
                 parentTask.setStatus(TransferTaskStatus.STAGED);
                 parentTask = dao.updateTransferTaskParent(parentTask);
                 dao.bulkInsertChildTasks(children);
@@ -491,7 +527,6 @@ public class TransfersService {
             TransferTask topTask = dao.getTransferTaskByID(child.getTaskId());
             topTask.setStatus(TransferTaskStatus.FAILED);
             dao.updateTransferTask(topTask);
-
 
         } catch (DAOException ignored) {
 
