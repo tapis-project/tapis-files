@@ -1026,23 +1026,6 @@
           }
         }
       },
-      "FilePermissionStringResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "string"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
       "FilePermission" : {
         "type" : "object",
         "properties" : {
@@ -1091,6 +1074,23 @@
           "permission" : {
             "type" : "string",
             "enum" : [ "READ", "READWRITE", "ALL" ]
+          }
+        }
+      },
+      "FilePermissionStringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
           }
         }
       },

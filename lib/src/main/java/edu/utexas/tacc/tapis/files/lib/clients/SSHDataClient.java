@@ -7,7 +7,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-import javax.validation.constraints.NotNull;
+import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
 import com.jcraft.jsch.*;
@@ -79,8 +79,8 @@ public class SSHDataClient implements IRemoteDataClient {
      *
      * @param remotePath
      * @return list of FileInfo
-     * @throws IOException
-     * @throws NotFoundException
+     * @throws IOException Generally a network error
+     * @throws NotFoundException No file at target
      */
     @Override
     public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
@@ -206,11 +206,11 @@ public class SSHDataClient implements IRemoteDataClient {
     /**
      * Rename/move oldPath to newPath
      *
-     * @param oldPath
-     * @param newPath
+     * @param oldPath current location
+     * @param newPath desired location
      * @return
-     * @throws IOException
-     * @throws NotFoundException
+     * @throws IOException Network errors generally
+     * @throws NotFoundException No file found at target
      */
     @Override
     public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException {

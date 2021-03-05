@@ -2,7 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 
-import javax.validation.constraints.NotNull;
+import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -66,13 +66,12 @@ public class HTTPClient implements IRemoteDataClient {
             .url(path)
             .build();
 
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                log.error("Could not retrieve file at path {}", path);
-                throw new IOException("Unexpected code " + response);
-            }
-            return response.body().byteStream();
+        Response response = client.newCall(request).execute();
+        if (!response.isSuccessful()) {
+            log.error("Could not retrieve file at path {}", path);
+            throw new IOException("Unexpected code " + response);
         }
+        return response.body().byteStream();
     }
 
     @Override

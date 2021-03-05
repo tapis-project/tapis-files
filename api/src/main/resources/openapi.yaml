@@ -726,17 +726,6 @@ components:
         newPath:
           type: string
           description: Paths must be absolute, ../.. is not allowed
-    FilePermissionStringResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: string
-        version:
-          type: string
     FilePermission:
       type: object
       properties:
@@ -779,6 +768,17 @@ components:
           - READ
           - READWRITE
           - ALL
+    FilePermissionStringResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: string
+        version:
+          type: string
     SharedFileObject:
       type: object
       properties:

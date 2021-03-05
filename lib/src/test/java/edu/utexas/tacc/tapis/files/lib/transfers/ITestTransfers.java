@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
@@ -28,6 +29,7 @@ import software.amazon.awssdk.annotations.SdkTestInternalApi;
 
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
+import java.time.Duration;
 import java.util.*;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -266,13 +268,18 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
+    @DataProvider
+    private Object[] testSourcesProvider() {
+        return new String[] {"tapis://test.edu/sourceSystem/a/", "https://google.com"};
+    }
+
     /**
-     * This test is important, basically testing a simple but complete transfer. we check the entries in the database
+     * This test is important, basically testing a simple but complete transfer. We check the entries in the database
      * as well as the files at the destination to make sure it actually completed. If this test fails, something needs to
      * be fixed.
      * @throws Exception
      */
-    @Test(enabled = true)
+    @Test
     public void testDoesTransfer() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
@@ -292,6 +299,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         fileOpsServiceSource.insert("a/1.txt", in);
         in = Utils.makeFakeFile(FILESIZE);
         fileOpsServiceSource.insert("a/2.txt", in);
+
+        //Fix the queues to something random to avoid any lingering messages
         String childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(childQ);
         String parentQ = UUID.randomUUID().toString();
@@ -329,7 +338,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                 Assert.assertNotNull(k.getEndTime());
             })
             .thenCancel()
-            .verify();
+            .verify(Duration.ofSeconds(5));
 
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
@@ -348,6 +357,84 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.deleteQueue(childQ).subscribe();
         transfersService.deleteQueue(parentQ).subscribe();
     }
+
+
+    /**
+     * This test is important, basically testing a simple but complete transfer. We check the entries in the database
+     * as well as the files at the destination to make sure it actually completed. If this test fails, something needs to
+     * be fixed.
+     * @throws Exception
+     */
+    @Test
+    public void testHttpInputs() throws Exception {
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        IFileOpsService fileOpsServiceSource = new FileOpsService(sourceClient);
+        // Double check that the files really are in the destination
+        IFileOpsService fileOpsServiceDest = new FileOpsService(destClient);
+        //wipe out the dest folder just in case
+        fileOpsServiceDest = new FileOpsService(destClient);
+        fileOpsServiceDest.delete("/");
+
+
+        //Fix the queues to something random to avoid any lingering messages
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
+
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("https://google.com");
+        element.setDestinationURI("tapis://test.edu/destSystem/b/");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element);
+        TransferTask t1 = transfersService.createTransfer(
+            "testuser",
+            "dev1",
+            "tag",
+            elements
+        );
+
+        Flux<AcknowledgableDelivery> parentTaskStream = transfersService.streamParentMessages();
+        transfersService.processParentTasks(parentTaskStream).subscribe();
+
+        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
+        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
+        StepVerifier
+            .create(stream)
+            .assertNext(k->{
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
+                Assert.assertTrue(k.getBytesTransferred() > 0);
+                Assert.assertNotNull(k.getStartTime());
+                Assert.assertNotNull(k.getEndTime());
+            })
+            .thenCancel()
+            .verify(Duration.ofSeconds(5));
+
+        t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
+        Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
+        Assert.assertNotNull(t1.getStartTime());
+        Assert.assertNotNull(t1.getEndTime());
+
+        //Check for parent Task properties too
+        TransferTaskParent parent = t1.getParentTasks().get(0);
+        Assert.assertEquals(parent.getStatus(), TransferTaskStatus.COMPLETED);
+        Assert.assertNotNull(parent.getEndTime());
+        Assert.assertNotNull(parent.getStartTime());
+        Assert.assertTrue(parent.getBytesTransferred() > 0);
+
+        List<FileInfo> listing = fileOpsServiceDest.ls("/b");
+        Assert.assertEquals(listing.size(), 1);
+
+        transfersService.deleteQueue(childQ).subscribe();
+        transfersService.deleteQueue(parentQ).subscribe();
+    }
+
+
+
+
 
     @Test(enabled = true)
     public void testDoesTransfersWhenOneErrors() throws Exception {

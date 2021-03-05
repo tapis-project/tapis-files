@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
@@ -28,7 +29,7 @@ import reactor.rabbitmq.*;
 import reactor.util.retry.Retry;
 
 import javax.inject.Inject;
-import javax.validation.constraints.NotNull;
+import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -360,7 +361,10 @@ public class TransfersService {
                 task.setStatus(TransferTaskStatus.ACCEPTED);
                 task.setTenantId(parentTask.getTenantId());
                 task.setUsername(parentTask.getUsername());
-                dao.insertChildTask(task);
+                task = dao.insertChildTask(task);
+                publishChildMessage(task);
+                parentTask.setStatus(TransferTaskStatus.STAGED);
+                parentTask = dao.updateTransferTaskParent(parentTask);
             }
             return parentTask;
         } catch (DAOException | TapisException | IOException e) {
@@ -438,8 +442,8 @@ public class TransfersService {
      * This is the main processing workflow. Starting with the raw message stream created by streamChildMessages(),
      * we walk through the transfer process. A Flux<TransferTaskChild> is returned and can be subscribed to later
      * for further processing / notifications / logging
-     * @param messageStream
-     * @return
+     * @param messageStream stream of messages from RabbitMQ
+     * @return a Flux of TransferTaskChild
      */
     public Flux<TransferTaskChild> processChildTasks(@NotNull Flux<AcknowledgableDelivery> messageStream) {
         // Deserialize the message so that we can pass that into the reactor chain.
@@ -470,10 +474,11 @@ public class TransfersService {
                             )
                             .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2))
                                 .retryWhen(
-                                    Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
+                                    Retry.backoff(MAX_RETRIES, Duration.ofMillis(100))
                                         .maxBackoff(Duration.ofMinutes(30))
                                         .scheduler(scheduler)
-                                        .filter(e -> e.getClass() != NotFoundException.class)
+                                        .filter(e -> e.getClass() == IOException.class)
+//                                        .filter(e -> e.getClass() != TapisException.class)
                                 ).onErrorResume(e -> doErrorChevronOne(m, e, t2))
                             )
                             .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
@@ -557,7 +562,6 @@ public class TransfersService {
                 parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
                 dao.updateTransferTaskParent(parentTask);
             }
-            String noteMessage = String.format("Transfer in progress for %s", taskChild.getSourceURI());
             return taskChild;
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
@@ -572,7 +576,7 @@ public class TransfersService {
      * @return
      * @throws ServiceException
      */
-    private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException {
+    private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException, TapisException {
         log.info("***** DOING chevronTwo ****");
         log.info(taskChild.toString());
         TSystem sourceSystem;
@@ -589,20 +593,32 @@ public class TransfersService {
             throw new ServiceException(ex.getMessage(), ex);
         }
 
-        TapisUrl sourceURL;
+        // Because of the difference between Tapis URLs and http urls,
+        // We have to set this accordingly
+        String sourcePath;
+
         TapisUrl destURL;
         try {
-            sourceURL = TapisUrl.makeTapisUrl(taskChild.getSourceURI());
             destURL = TapisUrl.makeTapisUrl(taskChild.getDestinationURI());
         } catch (TapisException ex) {
             throw new ServiceException("Invalid URI", ex);
         }
 
+
+        if (taskChild.getSourceURI().startsWith("https://") || taskChild.getSourceURI().startsWith("http://")) {
+            sourceClient = new HTTPClient();
+            sourcePath = taskChild.getSourceURI();
+        } else  {
+            TapisUrl sourceURL = TapisUrl.makeTapisUrl(taskChild.getSourceURI());
+            sourcePath = sourceURL.getPath();
+            sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
+            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
+
+        }
+
         //TODO: Are the usernames correct here? What if its a service request from jobs?
         //Step 2: Get clients for source / dest
         try {
-            sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername() );
-            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
             destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
             destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
         } catch (IOException | ServiceException ex) {
@@ -611,7 +627,7 @@ public class TransfersService {
         }
 
         //Step 3: Stream the file contents to dest
-        try (InputStream sourceStream =  sourceClient.getStream(sourceURL.getPath());
+        try (InputStream sourceStream =  sourceClient.getStream(sourcePath);
              ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream)
         ){
 
@@ -626,9 +642,6 @@ public class TransfersService {
                 .subscribe();
             destClient.insert(destURL.getPath(), observableInputStream);
 
-        } catch (IOException ex) {
-            String msg = String.format("Error transferring %s", taskChild.toString());
-            throw new ServiceException(msg, ex);
         }
         return taskChild;
     }
