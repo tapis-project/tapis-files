@@ -44,7 +44,6 @@ public class FilePermsCache {
             .build(new PermsLoader());
     }
 
-
     public boolean checkPerms(String tenantId, String username, String systemId, String path, FilePermissionsEnum perms) throws ServiceException {
         try {
             FilePermsCacheKey key = new FilePermsCacheKey(tenantId, systemId, path, username, perms);

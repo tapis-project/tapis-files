@@ -1,13 +1,20 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.validators.ValidUUID;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
+
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,11 +26,16 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
+import javax.validation.constraints.NotEmpty;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
+import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
+
+import java.util.List;
 import java.util.UUID;
 
 
@@ -32,9 +44,12 @@ public class TransfersApiResource {
 
     private final String EXAMPLE_TASK_ID = "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c";
     private Logger log = LoggerFactory.getLogger(TransfersApiResource.class);
-
+    
     @Inject
     TransfersService transfersService;
+    
+    @Inject
+    FilePermsService filePermsService; 
 
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
 
@@ -69,6 +84,13 @@ public class TransfersApiResource {
             isPermitted(task, user);
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
+        } catch (NotAuthorizedException e) {
+        	log.error("Permission Denied", e);
+			throw new WebApplicationException(Response
+			          .status(Status.FORBIDDEN)
+			          .type(MediaType.TEXT_PLAIN)
+			          .entity("Permission denied")
+			          .build());
         } catch (ServiceException e) {
             log.error("getTransferTaskStatus", e);
             throw new WebApplicationException("server error");
@@ -94,7 +116,7 @@ public class TransfersApiResource {
 
 
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-
+        // TODO BRANDI HERE
         return Response.ok().build();
     }
 
@@ -150,6 +172,28 @@ public class TransfersApiResource {
             @Valid @Parameter(required = true) TransferTaskRequest transferTaskRequest,
             @Context SecurityContext securityContext) {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+        
+        // Input checking. 
+        // Make sure the user has access READ access to the source URI and READWRITE access to the destination URI. 
+        @NotEmpty List<TransferTaskRequestElement> uris = transferTaskRequest.getElements();
+        try {
+			TapisUrl destTapisUri = TapisUrl.makeTapisUrl(uris.get(0).getDestinationURI());
+			checkTransferUriPermissions(user, destTapisUri, FilePermissionsEnum.READWRITE); 
+			
+			TapisUrl sourceTapisUri = TapisUrl.makeTapisUrl(uris.get(0).getSourceURI());
+			checkTransferUriPermissions(user, sourceTapisUri, FilePermissionsEnum.READ); 
+		} catch (TapisException e) {
+			log.error("Permission Denied", e);
+			throw new WebApplicationException(Response
+			          .status(Status.FORBIDDEN)
+			          .type(MediaType.TEXT_PLAIN)
+			          .entity("Permission denied")
+			          .build());
+		} catch (ServiceException e) {
+			log.error("ERROR: createTransferTask", e);
+            throw new WebApplicationException("Error retrieving permissions.");
+		}
+
         try {
             TransferTask task = transfersService.createTransfer(
                     user.getName(),
@@ -157,12 +201,30 @@ public class TransfersApiResource {
                     transferTaskRequest.getTag(),
                     transferTaskRequest.getElements()
             );
+
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             resp.setMessage("Transfer created.");
             return Response.ok(resp).build();
         } catch (Exception ex) {
             log.error("createTransferTask", ex);
             throw new WebApplicationException("server error");
+        
         }
     }
-}
+    
+    /**
+     * Method that checks the user has provided permission on a given URI. 
+     * @param user
+     * @param tapisUrl
+     * @param pem
+     * @throws TapisException
+     * @throws ServiceException
+     */
+    private void checkTransferUriPermissions(AuthenticatedUser user, TapisUrl tapisUrl, FilePermissionsEnum pem) 
+    		throws TapisException, ServiceException {
+			String system = tapisUrl.getHost(); 
+			String uri = tapisUrl.toString(); 
+			if (!filePermsService.isPermitted(user.getTenantId(), user.getName(), system, uri, pem))
+				throw new TapisException("User does not have permission for transfer.");
+			}
+    }

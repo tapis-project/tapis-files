@@ -479,16 +479,29 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(response.getStatus(), 400);
     }
 
-    //TODO: Add tests for strange chars in filename or path.
+    // TODO THESE 
     @Test
     public void testInsertFileInvalidCharsInFileName() throws Exception {
-        // test attempting to make a new file with invalid characters in file name 
+    	FileStringResponse response = target("/v3/files/ops/testSystem/newD!rectory")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .post(Entity.text(""), FileStringResponse.class);
+    	
+    	Assert.assertEquals(response.getStatus(), 500);
+        Assert.assertEquals(response.getStatus(), "error");       
     }
     
     @Test
     public void testMkdirInvalidCharsInPath() throws Exception {
-        // test attempting to make a new directory with invalid characters in file path 
+    	FileStringResponse response = target("/v3/files/ops/test::System/newDirectory")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .post(Entity.text(""), FileStringResponse.class);
+    	
+    	Assert.assertEquals(response.getStatus(), 500);
+        Assert.assertEquals(response.getStatus(), "error");
     }
-
 
 }
