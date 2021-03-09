@@ -474,7 +474,7 @@ public class FileTransfersDAO {
         }
     }
 
-    public List<TransferTask> getRecentTransfersForUser(@NotNull String tenantId, @NotNull String username) throws DAOException {
+    public List<TransferTask> getRecentTransfersForUser(@NotNull String tenantId, @NotNull String username, int limit, int offset) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
 
         try (Connection connection = HikariConnectionPool.getConnection()) {
@@ -483,7 +483,9 @@ public class FileTransfersDAO {
             QueryRunner runner = new QueryRunner();
             List<TransferTask> tasks = runner.query(connection, query, handler,
                 tenantId,
-                username
+                username,
+                limit,
+                offset
             );
             return tasks;
         } catch (SQLException ex) {

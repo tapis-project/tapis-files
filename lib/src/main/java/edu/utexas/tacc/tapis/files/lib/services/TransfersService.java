@@ -109,9 +109,11 @@ public class TransfersService {
         }
     }
 
-    public List<TransferTask> getRecentTransfers(String tenantId, String username) throws ServiceException {
+    public List<TransferTask> getRecentTransfers(String tenantId, String username, int limit, int offset) throws ServiceException {
+        limit = Math.min(limit, 1000);
+        offset = Math.max(0, offset);
         try {
-            return dao.getRecentTransfersForUser(tenantId, username);
+            return dao.getRecentTransfersForUser(tenantId, username, limit, offset);
         } catch (DAOException ex) {
             throw new ServiceException(ex.getMessage(), ex);
         }

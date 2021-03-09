@@ -189,6 +189,7 @@ public class OperationsApiResource extends BaseFilesResource {
     public Response mkdir(
         @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
         @Parameter(description = "Path", required = true) @Pattern(regexp = "^(?!.*\\.).+", message = ". not allowed in path") @QueryParam("path") String path,
+        @Parameter(required = false) String body,
         @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();

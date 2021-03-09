@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -49,7 +51,7 @@ public class TransfersApiResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Get a list of recent transfer tasks", description = "Get a list of recent transfer tasks", tags={ "transfers" })
+    @Operation(summary = "Get a list of recent transfer tasks starting with the most recent", description = "Get a list of recent transfer tasks starting with the most recent", tags={ "transfers" })
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",
@@ -58,13 +60,12 @@ public class TransfersApiResource {
         )
     })
     public Response getRecentTransferTasks(
+        @Parameter(description = "pagination limit", example = "100") @DefaultValue("1000") @QueryParam("limit") @Max(1000) int limit,
+        @Parameter(description = "pagination offset", example = "1000") @DefaultValue("0") @QueryParam("offset") @Min(0) int offset,
         @Context SecurityContext securityContext) {
-
-
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-
         try {
-            List<TransferTask> tasks = transfersService.getRecentTransfers(user.getTenantId(), user.getName());
+            List<TransferTask> tasks = transfersService.getRecentTransfers(user.getTenantId(), user.getName(), limit, offset);
             TapisResponse<List<TransferTask>> resp = TapisResponse.createSuccessResponse(tasks);
             return Response.ok(resp).build();
         } catch (ServiceException e) {
