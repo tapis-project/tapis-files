@@ -48,6 +48,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -60,6 +61,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     private Logger log = LoggerFactory.getLogger(ITestOpsRoutesS3.class);
     private String user1jwt;
     private String user2jwt;
+    private String serviceUserJwt;
+
 
     private static class FileListResponse extends TapisResponse<List<FileInfo>> {
     }
@@ -156,6 +159,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     public void setUpUsers() throws Exception {
         user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
         user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
+        serviceUserJwt = IOUtils.resourceToString("/service1jwt", StandardCharsets.UTF_8);
     }
 
     @BeforeMethod
@@ -428,6 +432,8 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory/");
         Assert.assertTrue(listing.getResult().get(0).isDir());
     }
+
+
 
     @Test
     public void testMkdirNoSlash() throws Exception {

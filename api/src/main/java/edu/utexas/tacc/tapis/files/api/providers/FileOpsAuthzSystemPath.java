@@ -44,8 +44,8 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
         FileOpsAuthorization requiredPerms = resourceInfo.getResourceMethod().getAnnotation(FileOpsAuthorization.class);
 
         final AuthenticatedUser user = (AuthenticatedUser) requestContext.getSecurityContext().getUserPrincipal();
-        String username = user.getName();
-        String tenantId = user.getTenantId();
+        String username = user.getOboUser();
+        String tenantId = user.getOboTenantId();
         MultivaluedMap<String, String> params = requestContext.getUriInfo().getPathParameters();
         String path = params.getFirst("path");
         String systemId = params.getFirst("systemId");
