@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
+import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
@@ -414,13 +415,16 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testMkdir() throws Exception {
+
+        MkdirRequest req = new MkdirRequest();
+        req.setPath("newDirectory");
         
         FileStringResponse response = target("/v3/files/ops/testSystem/")
             .queryParam("path", "newDirectory")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
-            .post(Entity.text(""), FileStringResponse.class);
+            .post(Entity.json(req), FileStringResponse.class);
 
         FileListResponse listing = target("/v3/files/ops/testSystem/newDirectory")
             .request()
@@ -437,13 +441,14 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testMkdirNoSlash() throws Exception {
+        MkdirRequest req = new MkdirRequest();
+        req.setPath("newDirectory");
 
         FileStringResponse response = target("/v3/files/ops/testSystem/")
-            .queryParam("path", "newDirectory")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
-            .post(Entity.text(""), FileStringResponse.class);
+            .post(Entity.json(req), FileStringResponse.class);
 
         FileListResponse listing = target("/v3/files/ops/testSystem/newDirectory")
             .request()
@@ -468,12 +473,14 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "mkdirDataProvider")
     public void testMkdirWithSlashes(String path) throws Exception {
 
+        MkdirRequest req = new MkdirRequest();
+        req.setPath(path);
+
         FileStringResponse response = target("/v3/files/ops/testSystem/")
-            .queryParam("path", path)
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
-            .post(Entity.text(""), FileStringResponse.class);
+            .post(Entity.json(req), FileStringResponse.class);
 
         FileListResponse listing = target("/v3/files/ops/testSystem/newDirectory/test")
             .request()
@@ -495,13 +502,13 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test(dataProvider = "mkdirBadDataProvider")
     public void testMkdirWithBadData(String path) throws Exception {
-
+        MkdirRequest req = new MkdirRequest();
+        req.setPath(path);
         Response response = target("/v3/files/ops/testSystem/")
-            .queryParam("path", path)
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", user1jwt)
-            .post(Entity.text(""), Response.class);
+            .post(Entity.json(req), Response.class);
 
         Assert.assertEquals(response.getStatus(), 400);
     }

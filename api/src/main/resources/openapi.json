@@ -481,20 +481,12 @@
           "schema" : {
             "type" : "string"
           }
-        }, {
-          "name" : "path",
-          "in" : "query",
-          "description" : "Path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
         } ],
         "requestBody" : {
           "content" : {
-            "text/plain" : {
+            "application/json" : {
               "schema" : {
-                "type" : "string"
+                "$ref" : "#/components/schemas/MkdirRequest"
               }
             }
           }
@@ -797,75 +789,6 @@
         }
       }
     },
-    "/v3/files/transfers" : {
-      "get" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Get a list of recent transfer tasks starting with the most recent",
-        "description" : "Get a list of recent transfer tasks starting with the most recent",
-        "operationId" : "getRecentTransferTasks",
-        "parameters" : [ {
-          "name" : "limit",
-          "in" : "query",
-          "description" : "pagination limit",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 1000
-          },
-          "example" : 100
-        }, {
-          "name" : "offset",
-          "in" : "query",
-          "description" : "pagination offset",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 0
-          },
-          "example" : 1000
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskListResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Transfer data",
-        "description" : "This creates a background task which will transfer files into the storage system",
-        "operationId" : "createTransferTask",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TransferTaskRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v3/files/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -951,6 +874,75 @@
           }
         }
       }
+    },
+    "/v3/files/transfers" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get a list of recent transfer tasks starting with the most recent",
+        "description" : "Get a list of recent transfer tasks starting with the most recent",
+        "operationId" : "getRecentTransferTasks",
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "pagination limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1000
+          },
+          "example" : 100
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "pagination offset",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          },
+          "example" : 1000
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Transfer data",
+        "description" : "This creates a background task which will transfer files into the storage system",
+        "operationId" : "createTransferTask",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components" : {
@@ -998,6 +990,16 @@
             "type" : "string"
           },
           "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MkdirRequest" : {
+        "required" : [ "path" ],
+        "type" : "object",
+        "properties" : {
+          "path" : {
+            "pattern" : "^(?!.*\\.).+",
             "type" : "string"
           }
         }
@@ -1356,6 +1358,23 @@
           }
         }
       },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "TransferTaskRequest" : {
         "required" : [ "elements" ],
         "type" : "object",
@@ -1403,23 +1422,6 @@
             "items" : {
               "$ref" : "#/components/schemas/TransferTask"
             }
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
           },
           "version" : {
             "type" : "string"

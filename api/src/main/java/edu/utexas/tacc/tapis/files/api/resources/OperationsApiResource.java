@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
@@ -165,7 +166,7 @@ public class OperationsApiResource extends BaseFilesResource {
     @POST
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
     @Path("/{systemId}")
-    @Consumes(MediaType.TEXT_PLAIN)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Create a directory", description = "Create a directory in the system at path the given path", tags = {"file operations"})
     @ApiResponses(value = {
@@ -188,15 +189,14 @@ public class OperationsApiResource extends BaseFilesResource {
     })
     public Response mkdir(
         @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
-        @Parameter(description = "Path", required = true) @Pattern(regexp = "^(?!.*\\.).+", message = ". not allowed in path") @QueryParam("path") String path,
-        @Parameter(required = false) String body,
+        @Valid @Parameter MkdirRequest mkdirRequest,
         @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
-            fileOpsService.mkdir(path);
+            fileOpsService.mkdir(mkdirRequest.getPath());
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException | TapisClientException ex) {
