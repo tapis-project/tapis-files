@@ -87,7 +87,7 @@ public class TransferTaskParent {
 
     @JsonProperty("startTime")
     public void setStartTime(String startTime) {
-        this.startTime = Instant.parse(startTime);
+        if (startTime != null) this.startTime = Instant.parse(startTime);
     }
 
     @Schema(type="string", format = "date-time")
@@ -101,7 +101,8 @@ public class TransferTaskParent {
 
     @JsonProperty("endTime")
     public void setEndTime(String endTime) {
-        this.endTime = Instant.parse(endTime);
+
+        if (endTime != null) this.endTime = Instant.parse(endTime);
     }
     public String getSourceURI() {
         return sourceURI;

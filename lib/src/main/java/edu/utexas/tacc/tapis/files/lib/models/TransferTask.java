@@ -69,7 +69,7 @@ public class TransferTask {
 
     @JsonProperty("created")
     public void setCreated(String created) {
-        this.created = Instant.parse(created);
+        if (created != null) this.created = Instant.parse(created);
     }
 
 
@@ -92,7 +92,7 @@ public class TransferTask {
 
     @JsonProperty("startTime")
     public void setStartTime(String startTime) {
-        this.startTime = Instant.parse(startTime);
+        if (startTime != null) this.startTime = Instant.parse(startTime);
     }
 
     @Schema(type="string", format = "date-time")
@@ -106,7 +106,7 @@ public class TransferTask {
 
     @JsonProperty("endTime")
     public void setEndTime(String endTime) {
-        this.endTime = Instant.parse(endTime);
+        if (endTime != null) this.endTime = Instant.parse(endTime);
     }
 
     public TransferTaskStatus getStatus() {
