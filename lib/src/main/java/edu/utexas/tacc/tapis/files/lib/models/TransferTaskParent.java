@@ -24,8 +24,11 @@ public class TransferTaskParent {
     private int taskId;
     protected TransferTaskStatus status;
 
+    @Schema(type="string", format = "date-time")
     protected Instant created;
+    @Schema(type="string", format = "date-time")
     protected Instant startTime;
+    @Schema(type="string", format = "date-time")
     protected Instant endTime;
     protected List<TransferTaskChild> children;
 
@@ -58,6 +61,22 @@ public class TransferTaskParent {
         this.id = id;
     }
 
+    @Schema(type="string", format = "date-time")
+    public Instant getCreated() {
+        return created;
+    }
+
+    public void setCreated(Instant created) {
+        this.created = created;
+    }
+
+    @JsonProperty("created")
+    public void setCreated(String created) {
+        this.created = Instant.parse(created);
+    }
+
+
+    @Schema(type="string", format = "date-time")
     public Instant getStartTime() {
         return startTime;
     }
@@ -66,6 +85,12 @@ public class TransferTaskParent {
         this.startTime = startTime;
     }
 
+    @JsonProperty("startTime")
+    public void setStartTime(String startTime) {
+        this.startTime = Instant.parse(startTime);
+    }
+
+    @Schema(type="string", format = "date-time")
     public Instant getEndTime() {
         return endTime;
     }
@@ -74,6 +99,10 @@ public class TransferTaskParent {
         this.endTime = endTime;
     }
 
+    @JsonProperty("endTime")
+    public void setEndTime(String endTime) {
+        this.endTime = Instant.parse(endTime);
+    }
     public String getSourceURI() {
         return sourceURI;
     }
@@ -140,25 +169,6 @@ public class TransferTaskParent {
 
     public void setChildren(List<TransferTaskChild> children) {
         this.children = children;
-    }
-
-    @JsonProperty("created")
-    @Schema(description = "Timestamp in UTC of task creation.", format = "date-time")
-    public Instant getCreated() {
-        return created;
-    }
-
-    @JsonIgnore
-    public void setCreated(Instant created) {
-        this.created = created;
-    }
-
-    public void setCreated(String created) {
-        this.created = Instant.parse(created);
-    }
-
-    public void setCreated(Timestamp created) {
-        this.created = created.toInstant();
     }
 
     /**

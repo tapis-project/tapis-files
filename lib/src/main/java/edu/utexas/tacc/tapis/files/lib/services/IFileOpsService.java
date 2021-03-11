@@ -5,7 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import org.glassfish.jersey.spi.Contract;
 
-import javax.validation.constraints.NotNull;
+import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
 import java.io.OutputStream;

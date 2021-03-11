@@ -2,7 +2,7 @@
 *.class
 
 dependency-reduced-pom.xml
-
+*.versionsBackup
 # Log file
 *.log
 

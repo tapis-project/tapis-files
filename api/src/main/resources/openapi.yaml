@@ -553,6 +553,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
+  /v3/files/transfers:
+    get:
+      tags:
+      - transfers
+      summary: Get a list of recent transfer tasks starting with the most recent
+      description: Get a list of recent transfer tasks starting with the most recent
+      operationId: getRecentTransferTasks
+      parameters:
+      - name: limit
+        in: query
+        description: pagination limit
+        schema:
+          type: integer
+          format: int32
+          default: 1000
+        example: 100
+      - name: offset
+        in: query
+        description: pagination offset
+        schema:
+          type: integer
+          format: int32
+          default: 0
+        example: 1000
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskListResponse'
+    post:
+      tags:
+      - transfers
+      summary: Transfer data
+      description: This creates a background task which will transfer files into the
+        storage system
+      operationId: createTransferTask
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferTaskRequest'
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
   /v3/files/transfers/{transferTaskId}:
     get:
       tags:
@@ -609,57 +660,6 @@ paths:
           type: string
           format: uuid
         example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskResponse'
-  /v3/files/transfers:
-    get:
-      tags:
-      - transfers
-      summary: Get a list of recent transfer tasks starting with the most recent
-      description: Get a list of recent transfer tasks starting with the most recent
-      operationId: getRecentTransferTasks
-      parameters:
-      - name: limit
-        in: query
-        description: pagination limit
-        schema:
-          type: integer
-          format: int32
-          default: 1000
-        example: 100
-      - name: offset
-        in: query
-        description: pagination offset
-        schema:
-          type: integer
-          format: int32
-          default: 0
-        example: 1000
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskListResponse'
-    post:
-      tags:
-      - transfers
-      summary: Transfer data
-      description: This creates a background task which will transfer files into the
-        storage system
-      operationId: createTransferTask
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TransferTaskRequest'
-        required: true
       responses:
         200:
           description: OK
@@ -853,15 +853,6 @@ components:
         uuid:
           type: string
           format: uuid
-        created:
-          type: string
-          format: date-time
-        startTime:
-          type: string
-          format: date-time
-        endTime:
-          type: string
-          format: date-time
         status:
           type: string
           enum:
@@ -877,6 +868,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TransferTaskParent'
+        created:
+          type: string
+          format: date-time
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
     TransferTaskChild:
       type: object
       properties:
@@ -900,12 +900,6 @@ components:
         taskId:
           type: integer
           format: int32
-        startTime:
-          type: integer
-          format: int64
-        endTime:
-          type: integer
-          format: int64
         parentTaskId:
           type: integer
           format: int32
@@ -931,9 +925,14 @@ components:
           - FAILED
           - PAUSED
         created:
-          type: integer
-          description: Timestamp in UTC of task creation.
-          format: int64
+          type: string
+          format: date-time
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
     TransferTaskParent:
       type: object
       properties:
@@ -957,12 +956,6 @@ components:
         taskId:
           type: integer
           format: int32
-        startTime:
-          type: integer
-          format: int64
-        endTime:
-          type: integer
-          format: int64
         children:
           type: array
           items:
@@ -986,9 +979,14 @@ components:
           - FAILED
           - PAUSED
         created:
-          type: integer
-          description: Timestamp in UTC of task creation.
-          format: int64
+          type: string
+          format: date-time
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
     TransferTaskResponse:
       type: object
       properties:
@@ -998,17 +996,6 @@ components:
           type: string
         result:
           $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
         version:
           type: string
     TransferTaskRequest:
@@ -1049,5 +1036,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
         version:
           type: string
