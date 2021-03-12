@@ -209,6 +209,23 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(task.getCreated());
     }
 
+    @Test
+    public void testGetTransferDetails() throws Exception {
+
+        TransferTask t = createTransferTask();
+
+        Response response = target("/v3/files/transfers/" + t.getUuid().toString() + "/details")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", user1jwt)
+                .get();
+
+        TransferTaskResponse data = response.readEntity(TransferTaskResponse.class);
+        TransferTask task = data.getResult();
+        Assert.assertNotNull(task.getParentTasks());
+        Assert.assertEquals(task.getParentTasks().size(), 1);
+    }
+
 
     /**
      * This request should throw a 400 as the ValidUUID validator will fail

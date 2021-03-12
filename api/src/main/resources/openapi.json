@@ -789,6 +789,75 @@
         }
       }
     },
+    "/v3/files/transfers" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get a list of recent transfer tasks starting with the most recent",
+        "description" : "Get a list of recent transfer tasks starting with the most recent",
+        "operationId" : "getRecentTransferTasks",
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "pagination limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1000
+          },
+          "example" : 100
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "pagination offset",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          },
+          "example" : 1000
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Transfer data",
+        "description" : "This creates a background task which will transfer files into the storage system",
+        "operationId" : "createTransferTask",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v3/files/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -845,10 +914,10 @@
         }
       }
     },
-    "/v3/files/transfers/{transferTaskId}/history" : {
+    "/v3/files/transfers/{transferTaskId}/details" : {
       "get" : {
         "tags" : [ "transfers" ],
-        "summary" : "Get history of a transfer task",
+        "summary" : "Get details of a transfer task",
         "operationId" : "getTransferTaskHistory",
         "parameters" : [ {
           "name" : "transferTaskId",
@@ -856,80 +925,10 @@
           "description" : "Transfer task ID",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "format" : "uuid"
+            "type" : "string"
           },
           "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
         } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v3/files/transfers" : {
-      "get" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Get a list of recent transfer tasks starting with the most recent",
-        "description" : "Get a list of recent transfer tasks starting with the most recent",
-        "operationId" : "getRecentTransferTasks",
-        "parameters" : [ {
-          "name" : "limit",
-          "in" : "query",
-          "description" : "pagination limit",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 1000
-          },
-          "example" : 100
-        }, {
-          "name" : "offset",
-          "in" : "query",
-          "description" : "pagination offset",
-          "schema" : {
-            "type" : "integer",
-            "format" : "int32",
-            "default" : 0
-          },
-          "example" : 1000
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskListResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Transfer data",
-        "description" : "This creates a background task which will transfer files into the storage system",
-        "operationId" : "createTransferTask",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TransferTaskRequest"
-              }
-            }
-          },
-          "required" : true
-        },
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -1058,6 +1057,23 @@
           }
         }
       },
+      "FilePermissionStringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "FilePermission" : {
         "type" : "object",
         "properties" : {
@@ -1106,23 +1122,6 @@
           "permission" : {
             "type" : "string",
             "enum" : [ "READ", "READWRITE", "ALL" ]
-          }
-        }
-      },
-      "FilePermissionStringResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "string"
-          },
-          "version" : {
-            "type" : "string"
           }
         }
       },
@@ -1293,6 +1292,26 @@
           }
         }
       },
+      "TransferTaskListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTask"
+            }
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
       "TransferTaskParent" : {
         "type" : "object",
         "properties" : {
@@ -1419,26 +1438,6 @@
           "optional" : {
             "type" : "boolean",
             "description" : "Allow the full transfer to succeed even if this portion fails? Default is false"
-          }
-        }
-      },
-      "TransferTaskListResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/TransferTask"
-            }
-          },
-          "version" : {
-            "type" : "string"
           }
         }
       }

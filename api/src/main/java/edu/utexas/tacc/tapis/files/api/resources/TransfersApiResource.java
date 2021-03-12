@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -33,8 +35,8 @@ import java.util.UUID;
 @Path("/v3/files/transfers")
 public class TransfersApiResource {
 
-    private final String EXAMPLE_TASK_ID = "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c";
-    private Logger log = LoggerFactory.getLogger(TransfersApiResource.class);
+    private static final String EXAMPLE_TASK_ID = "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c";
+    private static final Logger log = LoggerFactory.getLogger(TransfersApiResource.class);
 
     @Inject
     TransfersService transfersService;
@@ -78,7 +80,7 @@ public class TransfersApiResource {
     @GET
     @Path("/{transferTaskId}/")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Get a transfer task", description = "", tags={ "transfers" })
+    @Operation(summary = "Get a transfer task", tags={ "transfers" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -111,9 +113,9 @@ public class TransfersApiResource {
     }
 
     @GET
-    @Path("/{transferTaskId}/history/")
+    @Path("/{transferTaskId}/details/")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Get history of a transfer task", description = "", tags={ "transfers" })
+    @Operation(summary = "Get details of a transfer task", tags={ "transfers" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -124,20 +126,30 @@ public class TransfersApiResource {
     public Response getTransferTaskHistory(
             @ValidUUID
             @Parameter(description = "Transfer task ID", required=true, example = EXAMPLE_TASK_ID)
-            @PathParam("transferTaskId") UUID transferTaskId,
+            @PathParam("transferTaskId") String transferTaskId,
             @Context SecurityContext securityContext) {
 
 
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-
-        return Response.ok().build();
+        try {
+            UUID transferTaskUUID = UUID.fromString(transferTaskId);
+            TransferTask task = transfersService.getTransferTaskDetails(transferTaskUUID);
+            if (task == null) {
+                throw new NotFoundException("Transfer task not found");
+            }
+            isPermitted(task, user);
+            TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
+            return Response.ok(resp).build();
+        } catch (ServiceException ex) {
+            throw new WebApplicationException(ex.getMessage());
+        }
     }
 
 
     @DELETE
     @Path("/{transferTaskId}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Stop/Cancel a transfer task", description = "", tags={ "transfers" })
+    @Operation(summary = "Stop/Cancel a transfer task", tags={ "transfers" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",

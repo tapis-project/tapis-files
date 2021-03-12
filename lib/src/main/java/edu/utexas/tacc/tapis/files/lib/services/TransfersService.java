@@ -101,6 +101,24 @@ public class TransfersService {
         }
     }
 
+    public TransferTask getTransferTaskDetails(UUID uuid) throws ServiceException {
+
+        try {
+            TransferTask task = dao.getTransferTaskByUUID(uuid);
+            List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
+            task.setParentTasks(parents);
+            for (TransferTaskParent parent: parents) {
+                List<TransferTaskChild> children = dao.getAllChildren(parent);
+                parent.setChildren(children);
+            }
+            return task;
+        } catch (DAOException ex) {
+            throw new ServiceException(ex.getMessage(), ex);
+        }
+
+
+    }
+
     public List<TransferTaskChild> getAllChildrenTasks(TransferTask task) throws ServiceException {
         try {
             return dao.getAllChildren(task);
