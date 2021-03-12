@@ -98,6 +98,9 @@ public class TransfersApiResource {
         try {
             UUID transferTaskUUID = UUID.fromString(transferTaskId);
             TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
+            if (task == null) {
+                throw new NotFoundException("Transfer task not found");
+            }
             isPermitted(task, user);
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
@@ -151,6 +154,9 @@ public class TransfersApiResource {
         try {
             UUID transferTaskUUID = UUID.fromString(transferTaskId);
             TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
+            if (task == null) {
+                throw new NotFoundException("Transfer task not found");
+            }
             isPermitted(task, user);
             transfersService.cancelTransfer(task);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);

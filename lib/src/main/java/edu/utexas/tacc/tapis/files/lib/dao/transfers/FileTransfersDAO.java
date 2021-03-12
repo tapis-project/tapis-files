@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskSummary;
 import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
@@ -26,6 +27,29 @@ import org.jetbrains.annotations.NotNull;
 public class FileTransfersDAO {
 
     private static final Logger log = LoggerFactory.getLogger(FileTransfersDAO.class);
+
+
+    private static class TransferTaskSummaryRowProcessor extends  BasicRowProcessor {
+        @Override
+        public TransferTaskSummary toBean(ResultSet rs, Class type) throws SQLException {
+            TransferTaskSummary summary = new TransferTaskSummary();
+            summary.setCompleteTransfers(rs.getInt("complete"));
+            summary.setTotalTransfers(rs.getInt("total_transfers"));
+            summary.setEstimatedTotalBytes(rs.getLong("total_bytes"));
+            summary.setTotalBytesTransferred(rs.getLong("total_bytes_transferred"));
+            return summary;
+        }
+
+        @Override
+        public List<TransferTaskSummary> toBeanList(ResultSet rs, Class type) throws SQLException {
+            List<TransferTaskSummary> list = new ArrayList<>();
+            while (rs.next()) {
+                list.add(toBean(rs, type));
+            }
+            return list;
+        }
+    }
+
 
 
     // TODO: There should be some way to not duplicate this code...
@@ -57,7 +81,7 @@ public class FileTransfersDAO {
     }
 
     // TODO: There should be some way to not duplicate this code...
-    private class TransferTaskParentRowProcessor extends BasicRowProcessor {
+    private static class TransferTaskParentRowProcessor extends BasicRowProcessor {
 
         @Override
         public TransferTaskParent toBean(ResultSet rs, Class type) throws SQLException {
@@ -89,7 +113,7 @@ public class FileTransfersDAO {
     }
 
 
-    private class TransferTaskChildRowProcessor extends BasicRowProcessor {
+    private static class TransferTaskChildRowProcessor extends BasicRowProcessor {
 
         @Override
         public TransferTaskChild toBean(ResultSet rs, Class type) throws SQLException {
@@ -175,11 +199,26 @@ public class FileTransfersDAO {
 
     public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor summaryRowProcessor = new TransferTaskSummaryRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_TASK_BY_UUID;
             QueryRunner runner = new QueryRunner();
-            return runner.query(connection, query, handler, taskUUID);
+            TransferTask task = runner.query(connection, query, handler, taskUUID);
+            if (task ==null) {
+                return null;
+            }
+
+            BeanHandler<TransferTaskSummary> summaryHandler = new BeanHandler<>(TransferTaskSummary.class, summaryRowProcessor);
+            String summaryQuery = FileTransfersDAOStatements.GET_TRANSFER_TASK_SUMMARY_BY_UUID;
+            QueryRunner summaryRunner = new QueryRunner();
+            TransferTaskSummary summary = summaryRunner.query(connection, summaryQuery, summaryHandler, taskUUID);
+            task.setTotalTransfers(summary.getTotalTransfers());
+            task.setCompleteTransfers(summary.getCompleteTransfers());
+            task.setTotalBytesTransferred(summary.getTotalBytesTransferred());
+            task.setEstimatedTotalBytes(summary.getEstimatedTotalBytes());
+
+            return task;
         } catch (SQLException ex) {
             throw new DAOException(ex.getMessage(), ex);
         }
@@ -187,11 +226,26 @@ public class FileTransfersDAO {
 
     public TransferTask getTransferTaskByID(@NotNull int taskId) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor summaryRowProcessor = new TransferTaskSummaryRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_TASK_BY_ID;
             QueryRunner runner = new QueryRunner();
-            return runner.query(connection, query, handler, taskId);
+            TransferTask task = runner.query(connection, query, handler, taskId);
+            if (task ==null) {
+                return null;
+            }
+
+            BeanHandler<TransferTaskSummary> summaryHandler = new BeanHandler<>(TransferTaskSummary.class, summaryRowProcessor);
+            String summaryQuery = FileTransfersDAOStatements.GET_TRANSFER_TASK_SUMMARY_BY_ID;
+            QueryRunner summaryRunner = new QueryRunner();
+            TransferTaskSummary summary = summaryRunner.query(connection, summaryQuery, summaryHandler, taskId);
+            task.setTotalTransfers(summary.getTotalTransfers());
+            task.setCompleteTransfers(summary.getCompleteTransfers());
+            task.setTotalBytesTransferred(summary.getTotalBytesTransferred());
+            task.setEstimatedTotalBytes(summary.getEstimatedTotalBytes());
+
+            return task;
         } catch (SQLException ex) {
             throw new DAOException(ex.getMessage(), ex);
         }
@@ -562,13 +616,6 @@ public class FileTransfersDAO {
         }
     }
 
-
-    /**
-     * Returns a TransferTask
-     * @param taskUUID
-     * @return
-     * @throws DAOException
-     */
     public TransferTask getHistory(@NotNull UUID taskUUID) throws DAOException {
         //TODO: This could be done in one query with a couple of joins quicker
         TransferTask task = this.getTransferTaskByUUID(taskUUID);

@@ -40,18 +40,43 @@ public class FileTransfersDAOStatements {
         "SELECT * FROM transfer_tasks where tenant_id = ? AND username = ? order by created DESC limit ? offset ?";
 
     //language=SQL
-    public static final String GET_TRANSFER_TASK_META =
+    public static final String GET_TRANSFER_TASK_SUMMARY_BY_UUID =
+         """
+         with tmp as (
+             select
+                 transfer_tasks.id as taskId,
+                 ttc.bytes_transferred as bytes_transferred,
+                 ttc.total_bytes as total_bytes,
+                 ttc.status
+             FROM transfer_tasks
+             JOIN transfer_tasks_child ttc on transfer_tasks.id = ttc.task_id
+             WHERE transfer_tasks.uuid = ?
+        ) SELECT
+         sum(tmp.total_bytes) as total_bytes,
+         sum(tmp.bytes_transferred) as total_bytes_transferred,
+         count(tmp.taskId) as total_transfers,
+         count(tmp.taskId) FILTER ( WHERE  tmp.status = 'COMPLETED' ) as complete
+         from tmp;
+        """;
+
+    //language=SQL
+    public static final String GET_TRANSFER_TASK_SUMMARY_BY_ID =
         """
-            WITH tmp as (
-                SELECT tasks.uuid, tasks.tag, children.* from 
-                transfer_tasks as tasks 
-                JOIN transfer_tasks_child as children  on tasks.id = children.parent_task_id
-                WHERE tasks.uuid = ?
-            ) select 
-                sum(tmp.total_bytes) as total_bytes,
-                sum(tmp.bytes_transferred) as total_bytes_transferred,
-                count(*) as total_transfers,
-                count(*) FILTER ( WHERE  tmp.status = 'COMPLETED' ) as complete 
+         with tmp as (
+         select
+             transfer_tasks.id as taskId,
+             ttc.bytes_transferred as bytes_transferred,
+             ttc.total_bytes as total_bytes,
+             ttc.status
+         FROM transfer_tasks
+         JOIN transfer_tasks_child ttc on transfer_tasks.id = ttc.task_id
+         WHERE transfer_tasks.id = ?
+        ) SELECT
+             sum(tmp.total_bytes) as total_bytes,
+             sum(tmp.bytes_transferred) as total_bytes_transferred,
+             count(tmp.taskId) as total_transfers,
+             count(tmp.taskId) FILTER ( WHERE  tmp.status = 'COMPLETED' ) as complete
+         from tmp;
         """;
 
     //language=SQL
