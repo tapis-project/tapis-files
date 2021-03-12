@@ -40,6 +40,21 @@ public class FileTransfersDAOStatements {
         "SELECT * FROM transfer_tasks where tenant_id = ? AND username = ? order by created DESC limit ? offset ?";
 
     //language=SQL
+    public static final String GET_TRANSFER_TASK_META =
+        """
+            WITH tmp as (
+                SELECT tasks.uuid, tasks.tag, children.* from 
+                transfer_tasks as tasks 
+                JOIN transfer_tasks_child as children  on tasks.id = children.parent_task_id
+                WHERE tasks.uuid = ?
+            ) select 
+                sum(tmp.total_bytes) as total_bytes,
+                sum(tmp.bytes_transferred) as total_bytes_transferred,
+                count(*) as total_transfers,
+                count(*) FILTER ( WHERE  tmp.status = 'COMPLETED' ) as complete 
+        """;
+
+    //language=SQL
     public static final String GET_TASK_FULL_HISTORY_BY_UUID =
         """
         SELECT * from 
@@ -129,6 +144,7 @@ public class FileTransfersDAOStatements {
             " (tenant_id, task_id, parent_task_id, username, source_uri, destination_uri, status, bytes_transferred, total_bytes) " +
             " values (?, ?, ?, ?, ?, ?, ?, ?, ?) " +
             " RETURNING * ";
+
 
 
 }

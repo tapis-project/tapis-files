@@ -221,17 +221,17 @@
             <version>${tapis-client-java.version}</version>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
+            <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>tokens-client</artifactId>
             <version>${tapis-client-java.version}</version>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
+            <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>tenants-client</artifactId>
             <version>${tapis-client-java.version}</version>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
+            <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>security-client</artifactId>
             <version>${tapis-client-java.version}</version>
         </dependency>
