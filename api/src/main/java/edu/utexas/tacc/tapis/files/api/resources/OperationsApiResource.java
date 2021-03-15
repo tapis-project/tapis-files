@@ -108,6 +108,7 @@ public class OperationsApiResource extends BaseFilesResource {
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
             List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
+            Tenant tenant =
             log.debug("Listing operation took {}", Duration.between(Instant.now(), now).toMillis());
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
             return Response.status(Status.OK).entity(resp).build();

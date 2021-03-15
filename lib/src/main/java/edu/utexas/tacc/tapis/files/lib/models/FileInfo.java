@@ -8,12 +8,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 
 public class FileInfo   {
 
-    public FileInfo(S3Object listing) {
+    public FileInfo(@NotNull S3Object listing) {
         this.name = StringUtils.stripStart(listing.key(), "/");
         this.lastModified = listing.lastModified();
         this.size = listing.size();
@@ -41,6 +42,15 @@ public class FileInfo   {
         return this.path.endsWith("/");
     }
 
+    private String uri;
+
+    public String getUri() {
+        return uri;
+    }
+
+    public void setUri(String uri) {
+        this.uri = uri;
+    }
 
     /**
      * Get lastModified

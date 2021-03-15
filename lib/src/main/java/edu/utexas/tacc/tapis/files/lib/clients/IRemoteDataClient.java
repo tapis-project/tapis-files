@@ -8,10 +8,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 
+import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
 public interface IRemoteDataClient {
+
+//    TSystem getSystem();
 
     void makeBucket(String name) throws IOException;
     // without limit/offset, just a helper method for convenience

@@ -223,7 +223,7 @@ public class S3DataClient implements IRemoteDataClient {
 
     /**
      * @param currentPath
-     * @param newName
+     * @param newPath
      */
     @Override
     public void move(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
