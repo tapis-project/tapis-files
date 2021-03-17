@@ -1214,6 +1214,9 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "errorMessage" : {
+            "type" : "string"
+          },
           "created" : {
             "type" : "string",
             "format" : "date-time"
@@ -1258,6 +1261,9 @@
           "taskId" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "errorMessage" : {
+            "type" : "string"
           },
           "parentTaskId" : {
             "type" : "integer",
@@ -1328,6 +1334,9 @@
             "items" : {
               "$ref" : "#/components/schemas/TransferTaskChild"
             }
+          },
+          "errorMessage" : {
+            "type" : "string"
           },
           "uuid" : {
             "type" : "string",

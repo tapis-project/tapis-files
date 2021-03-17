@@ -879,6 +879,8 @@ components:
         completeTransfers:
           type: integer
           format: int32
+        errorMessage:
+          type: string
         created:
           type: string
           format: date-time
@@ -911,6 +913,8 @@ components:
         taskId:
           type: integer
           format: int32
+        errorMessage:
+          type: string
         parentTaskId:
           type: integer
           format: int32
@@ -971,6 +975,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TransferTaskChild'
+        errorMessage:
+          type: string
         uuid:
           type: string
           description: Unique ID of the task.
