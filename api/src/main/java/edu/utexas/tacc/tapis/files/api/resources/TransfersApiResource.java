@@ -46,8 +46,8 @@ public class TransfersApiResource {
 
 
     private void isPermitted(TransferTask task, AuthenticatedUser user) throws NotAuthorizedException {
-        if (!task.getUsername().equals(user.getName())) throw new NotAuthorizedException("");
-        if (!task.getTenantId().equals(user.getTenantId())) throw new NotAuthorizedException("");
+        if (!task.getUsername().equals(user.getOboUser())) throw new NotAuthorizedException("");
+        if (!task.getTenantId().equals(user.getOboTenantId())) throw new NotAuthorizedException("");
     }
 
 

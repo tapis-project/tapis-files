@@ -91,23 +91,30 @@ public class FileTransfersDAOStatements {
 
     //language=SQL
     public static final String UPDATE_TRANSFER_TASK =
-        "UPDATE transfer_tasks " +
-            " SET status = ?, " +
-            "     start_time = ?, " +
-            "     end_time = ? " +
-            "WHERE id = ? " +
-            "RETURNING *";
+        """
+            UPDATE transfer_tasks 
+             SET status = ?, 
+                 start_time = ?, 
+                 end_time = ?,
+                 error_message = ?
+            WHERE id = ? 
+            RETURNING *
+        """;
+
 
     //language=SQL
     public static final String UPDATE_CHILD_TASK =
-        "UPDATE transfer_tasks_child " +
-            " SET bytes_transferred = ?, " +
-            "     status = ?, " +
-            "     retries = ?, " +
-            "     start_time = ?, " +
-            "     end_time = ? " +
-            "WHERE id = ? " +
-            "RETURNING *";
+        """
+            UPDATE transfer_tasks_child
+            SET bytes_transferred = ?, 
+                     status = ?,
+                     retries = ?, 
+                     start_time = ?, 
+                     end_time = ?,
+                     error_message = ?
+                WHERE id = ? 
+                RETURNING *
+        """;
 
     //language=SQL
     public static final String GET_CHILD_TASK_INCOMPLETE_COUNT =
@@ -138,16 +145,20 @@ public class FileTransfersDAOStatements {
 
     //language=SQL
     public static final String UPDATE_PARENT_TASK =
-        "UPDATE transfer_tasks_parent " +
-            " SET source_uri = ?, " +
-            "     destination_uri = ?, " +
-            "     status = ?, " +
-            "     start_time = ?, " +
-            "     end_time = ?, " +
-            "     bytes_transferred =?, " +
-            "     total_bytes = ? " +
-            "WHERE uuid = ? " +
-            "RETURNING *";
+        """
+            UPDATE transfer_tasks_parent 
+                     SET source_uri = ?, 
+                         destination_uri = ?, 
+                         status = ?, 
+                         start_time = ?, 
+                         end_time = ?, 
+                         bytes_transferred =?, 
+                         total_bytes = ?,
+                         error_message = ?
+                    WHERE uuid = ? 
+                    RETURNING *
+        """;
+
 
     //language=SQL
     public static final String INSERT_TASK =

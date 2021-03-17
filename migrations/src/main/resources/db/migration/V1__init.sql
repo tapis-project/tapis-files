@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS transfer_tasks
     status                VARCHAR(128)             NOT NULL,
     tag                   VARCHAR(265),
     start_time               TIMESTAMP WITH TIME ZONE,
-    end_time               TIMESTAMP WITH TIME ZONE
+    end_time               TIMESTAMP WITH TIME ZONE,
+    error_message           TEXT
 );
 CREATE INDEX ON transfer_tasks (uuid);
 
@@ -29,8 +30,9 @@ CREATE TABLE IF NOT EXISTS transfer_tasks_parent
     bytes_transferred     BIGINT                   NOT NULL default 0,
     total_bytes           BIGINT                   NOT NULL default 0,
     final_message         VARCHAR,
-    start_time               TIMESTAMP WITH TIME ZONE,
-    end_time               TIMESTAMP WITH TIME ZONE,
+    start_time            TIMESTAMP WITH TIME ZONE,
+    end_time              TIMESTAMP WITH TIME ZONE,
+    error_message         TEXT,
     task_id int REFERENCES transfer_tasks(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 CREATE index on transfer_tasks_parent (tenant_id, username, uuid, task_id);
@@ -51,7 +53,7 @@ CREATE TABLE IF NOT EXISTS transfer_tasks_child
     retries               INT                      NOT NULL default 0,
     start_time               TIMESTAMP WITH TIME ZONE,
     end_time               TIMESTAMP WITH TIME ZONE,
-    final_message         VARCHAR,
+    error_message         VARCHAR,
     parent_task_id int REFERENCES transfer_tasks_parent(id) ON DELETE CASCADE ON UPDATE CASCADE,
     task_id int REFERENCES transfer_tasks(id) ON DELETE CASCADE ON UPDATE CASCADE
 );

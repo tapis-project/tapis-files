@@ -65,6 +65,7 @@ public class FileTransfersDAO {
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
             task.setTag(rs.getString("tag"));
+            task.setErrorMessage(rs.getString("error_message"));
             Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
             Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
             return task;
@@ -97,6 +98,7 @@ public class FileTransfersDAO {
             task.setStatus(rs.getString("status"));
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
+            task.setErrorMessage(rs.getString("error_message"));
             Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
             Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
             return task;
@@ -131,6 +133,7 @@ public class FileTransfersDAO {
             task.setStatus(rs.getString("status"));
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
+            task.setErrorMessage(rs.getString("error_message"));
             Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
             Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
             return task;
@@ -326,6 +329,7 @@ public class FileTransfersDAO {
                 task.getStatus().name(),
                 startTime,
                 endTime,
+                task.getErrorMessage(),
                 task.getId());
             return updatedTask;
         } catch (SQLException ex) {
@@ -399,6 +403,7 @@ public class FileTransfersDAO {
                 endTime,
                 task.getBytesTransferred(),
                 task.getTotalBytes(),
+                task.getErrorMessage(),
                 task.getUuid()
             );
 
@@ -429,6 +434,7 @@ public class FileTransfersDAO {
                 task.getRetries(),
                 startTime,
                 endTime,
+                task.getErrorMessage(),
                 task.getId()
             );
             return updatedTask;

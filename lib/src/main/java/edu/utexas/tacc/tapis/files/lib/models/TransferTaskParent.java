@@ -31,10 +31,9 @@ public class TransferTaskParent {
     @Schema(type="string", format = "date-time")
     protected Instant endTime;
     protected List<TransferTaskChild> children;
+    protected String errorMessage;
 
-
-
-    public TransferTaskParent(){};
+    public TransferTaskParent(){}
 
     public TransferTaskParent(String tenantId, String username, String sourceURI, String destinationURI) {
         this.tenantId = tenantId;
@@ -44,6 +43,15 @@ public class TransferTaskParent {
         this.status = TransferTaskStatus.ACCEPTED;
         this.uuid = UUID.randomUUID();
     }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
     /**
      * Unique ID of the task.
      * @return uuid
