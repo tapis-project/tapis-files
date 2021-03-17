@@ -1,5 +1,4 @@
---CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS transfer_tasks
 (
