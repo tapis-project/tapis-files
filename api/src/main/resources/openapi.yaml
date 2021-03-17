@@ -944,19 +944,6 @@ components:
         endTime:
           type: string
           format: date-time
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
     TransferTaskParent:
       type: object
       properties:
@@ -1022,17 +1009,6 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
     TransferTaskRequest:
       required:
       - elements
@@ -1052,11 +1028,33 @@ components:
       properties:
         sourceURI:
           type: string
-          description: Fully qualified URI, such as tapis://{systemID}/{path} or https://myserver.com/path/to/inputs/
         destinationURI:
           type: string
-          description: Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}
         optional:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string

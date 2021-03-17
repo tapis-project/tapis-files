@@ -184,8 +184,8 @@ public class FileTransfersDAO {
                     parent.getTenantId(),
                     parent.getTaskId(),
                     parent.getUsername(),
-                    parent.getSourceURI(),
-                    parent.getDestinationURI(),
+                    parent.getSourceURI().toString(),
+                    parent.getDestinationURI().toString(),
                     parent.getStatus().name()
                 );
                 parentTasks.add(parent);
@@ -392,8 +392,8 @@ public class FileTransfersDAO {
                 endTime = Timestamp.from(task.getEndTime());
             }
             TransferTaskParent updatedTask = runner.query(connection, stmt, handler,
-                task.getSourceURI(),
-                task.getDestinationURI(),
+                task.getSourceURI().toString(),
+                task.getDestinationURI().toString(),
                 task.getStatus().name(),
                 startTime,
                 endTime,
@@ -449,8 +449,8 @@ public class FileTransfersDAO {
                 task.getTenantId(),
                 task.getTaskId(),
                 task.getUsername(),
-                task.getSourceURI(),
-                task.getDestinationURI(),
+                task.getSourceURI().toString(),
+                task.getDestinationURI().toString(),
                 task.getStatus().name()
                 );
             return insertedTask;
@@ -467,8 +467,8 @@ public class FileTransfersDAO {
                 child.getTaskId(),
                 child.getParentTaskId(),
                 child.getUsername(),
-                child.getSourceURI(),
-                child.getDestinationURI(),
+                child.getSourceURI().toString(),
+                child.getDestinationURI().toString(),
                 child.getStatus().name(),
                 child.getBytesTransferred(),
                 child.getTotalBytes()
@@ -497,8 +497,8 @@ public class FileTransfersDAO {
                 task.getTaskId(),
                 task.getParentTaskId(),
                 task.getUsername(),
-                task.getSourceURI(),
-                task.getDestinationURI(),
+                task.getSourceURI().toString(),
+                task.getDestinationURI().toString(),
                 task.getStatus().name(),
                 task.getBytesTransferred(),
                 task.getTotalBytes()

@@ -16,7 +16,6 @@ import edu.utexas.tacc.tapis.files.lib.models.*;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -250,6 +249,7 @@ public class TransfersService {
         try {
             return mapper.readValue(message.getBody(), TransferTaskParent.class).getTenantId();
         } catch (IOException ex) {
+            message.nack(false);
             log.error("invalid message", ex);
             throw new ServiceException("Something is terribly wrong, could not get a tenant???", ex);
         }
@@ -274,13 +274,17 @@ public class TransfersService {
                 }
             })
             .flatMap(group ->
+
                 group
                     .parallel()
                     .runOn(Schedulers.newBoundedElastic(10, 10, "ParentPool:" + group.key()))
                     .flatMap(m->
                         deserializeParentMessage(m)
                         .flatMap(t1->Mono.fromCallable(()-> doParentChevronOne(t1))
-                            .retry(MAX_RETRIES)
+                                .retryWhen(
+                                        Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
+                                                .maxBackoff(Duration.ofMinutes(60))
+                                )
                             .onErrorResume(e -> doErrorParentChevronOne(m, e, t1))
                         )
                         .flatMap(t2->{
@@ -294,7 +298,7 @@ public class TransfersService {
     private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent) {
         log.error("Parent task failed! {}", parent);
         log.error("Exception: ", e);
-        parent.setStatus(TransferTaskStatus.FAILED);
+        m.nack(false);
 
         //TODO: UPDATE this when the Optional stuff gets integrated
         try {
@@ -306,13 +310,19 @@ public class TransfersService {
             log.error("CRITICAL ERROR: ", ex);
         }
 
+        parent.setStatus(TransferTaskStatus.FAILED);
+        parent.setEndTime(Instant.now());
         try {
             parent = dao.updateTransferTaskParent(parent);
+            // This should really never happen, it means that the parent with that ID
+            // was not even in the database.
+            if (parent == null) {
+                return Mono.empty();
+            }
             return Mono.just(parent);
         } catch (DAOException ex) {
             log.error("Could not update task", ex);
         }
-        m.nack(false);
         return Mono.empty();
     }
 
@@ -349,16 +359,15 @@ public class TransfersService {
         }
 
         try {
-            String sourceURI = parentTask.getSourceURI();
+            TransferURI sourceURI = parentTask.getSourceURI();
 
-            if (sourceURI.startsWith("tapis://")) {
-                TapisUrl sourceURL = TapisUrl.makeTapisUrl(parentTask.getSourceURI());
-                sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURL.getSystemId(), parentTask.getUsername());
+            if (sourceURI.toString().startsWith("tapis://")) {
+                sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURI.getSystemId(), parentTask.getUsername());
                 sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
 
                 //TODO: Retries will break this, should delete anything in the DB if it is a retry?
                 List<FileInfo> fileListing;
-                fileListing = sourceClient.ls(sourceURL.getPath());
+                fileListing = sourceClient.ls(sourceURI.getPath());
                 List<TransferTaskChild> children = new ArrayList<>();
                 long totalBytes = 0;
                 for (FileInfo f : fileListing) {
@@ -372,7 +381,7 @@ public class TransfersService {
                 dao.bulkInsertChildTasks(children);
                 children = dao.getAllChildren(parentTask);
                 publishBulkChildMessages(children);
-            } else if (sourceURI.startsWith("http://") || sourceURI.startsWith("https://")) {
+            } else if (sourceURI.toString().startsWith("http://") || sourceURI.toString().startsWith("https://")) {
                 TransferTaskChild task = new TransferTaskChild();
                 task.setSourceURI(parentTask.getSourceURI());
                 task.setParentTaskId(parentTask.getId());
@@ -613,30 +622,23 @@ public class TransfersService {
             throw new ServiceException(ex.getMessage(), ex);
         }
 
-        // Because of the difference between Tapis URLs and http urls,
-        // We have to set this accordingly
         String sourcePath;
+        TransferURI destURL;
+        TransferURI sourceURL = taskChild.getSourceURI();
 
-        TapisUrl destURL;
-        try {
-            destURL = TapisUrl.makeTapisUrl(taskChild.getDestinationURI());
-        } catch (TapisException ex) {
-            throw new ServiceException("Invalid URI", ex);
-        }
+        destURL = taskChild.getDestinationURI();
 
-
-        if (taskChild.getSourceURI().startsWith("https://") || taskChild.getSourceURI().startsWith("http://")) {
+        if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://")) {
             sourceClient = new HTTPClient();
-            sourcePath = taskChild.getSourceURI();
+            //This should be the full string URL such as http://google.com
+            sourcePath = sourceURL.toString();
         } else  {
-            TapisUrl sourceURL = TapisUrl.makeTapisUrl(taskChild.getSourceURI());
             sourcePath = sourceURL.getPath();
             sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
             sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
 
         }
 
-        //TODO: Are the usernames correct here? What if its a service request from jobs?
         //Step 2: Get clients for source / dest
         try {
             destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());

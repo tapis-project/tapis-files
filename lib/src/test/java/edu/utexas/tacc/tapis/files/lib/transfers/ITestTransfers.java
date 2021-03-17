@@ -76,8 +76,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://test.edu/sourceSystem/");
-        element.setDestinationURI("tapis://test.edu/destSystem/");
+        element.setSourceURI("tapis://sourceSystem/");
+        element.setDestinationURI("tapis://destSystem/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -100,8 +100,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://test.edu/sourceSystem/");
-        element.setDestinationURI("tapis://test.edu/destSystem/");
+        element.setSourceURI("tapis://sourceSystem/");
+        element.setDestinationURI("tapis://destSystem/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -136,8 +136,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://test.edu/sourceSystem/");
-        element.setDestinationURI("tapis://test.edu/destSystem/");
+        element.setSourceURI("tapis://sourceSystem/");
+        element.setDestinationURI("tapis://destSystem/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -187,8 +187,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         String parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(parentQ);
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://test.edu/sourceSystem/");
-        element.setDestinationURI("tapis://test.edu/destSystem/");
+        element.setSourceURI("tapis://sourceSystem/");
+        element.setDestinationURI("tapis://destSystem/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -237,8 +237,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setParentQueue(parentQ);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://test.edu/sourceSystem/a");
-        element.setDestinationURI("tapis://test.edu/destSystem/b");
+        element.setSourceURI("tapis://sourceSystem/a");
+        element.setDestinationURI("tapis://destSystem/b");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -270,7 +270,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     @DataProvider
     private Object[] testSourcesProvider() {
-        return new String[] {"tapis://test.edu/sourceSystem/a/", "https://google.com"};
+        return new String[] {"tapis://sourceSystem/a/", "https://google.com"};
     }
 
     /**
@@ -307,8 +307,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setParentQueue(parentQ);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://test.edu/sourceSystem/a/");
-        element.setDestinationURI("tapis://test.edu/destSystem/b/");
+        element.setSourceURI("tapis://sourceSystem/a/");
+        element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -387,7 +387,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("https://google.com");
-        element.setDestinationURI("tapis://test.edu/destSystem/b/");
+        element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -454,8 +454,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setParentQueue(parentQ);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://test.edu/sourceSystem/a/");
-        element.setDestinationURI("tapis://test.edu/destSystem/b/");
+        element.setSourceURI("tapis://sourceSystem/a/");
+        element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -510,8 +510,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setParentQueue(parentQ);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://test.edu/sourceSystem/a/");
-        element.setDestinationURI("tapis://test.edu/destSystem/b/");
+        element.setSourceURI("tapis://sourceSystem/a/");
+        element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -576,8 +576,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
             for (var j=0;j<NUM_TRANSFERS;j++) {
                 TransferTaskRequestElement element = new TransferTaskRequestElement();
-                element.setSourceURI("tapis://test.edu/sourceSystem/a/");
-                element.setDestinationURI("tapis://test.edu/destSystem/b/");
+                element.setSourceURI("tapis://sourceSystem/a/");
+                element.setDestinationURI("tapis://destSystem/b/");
                 List<TransferTaskRequestElement> elements = new ArrayList<>();
                 elements.add(element);
                 TransferTask t1 = transfersService.createTransfer(
@@ -643,8 +643,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
             for (var j=0;j<NUMTRANSFERS;j++) {
                 TransferTaskRequestElement element = new TransferTaskRequestElement();
-                element.setSourceURI("tapis://test.edu/sourceSystem/a/");
-                element.setDestinationURI("tapis://test.edu/destSystem/b/");
+                element.setSourceURI("tapis://sourceSystem/a/");
+                element.setDestinationURI("tapis://destSystem/b/");
                 List<TransferTaskRequestElement> elements = new ArrayList<>();
                 elements.add(element);
                 TransferTask t1 = transfersService.createTransfer(

@@ -85,6 +85,7 @@ public class SSHDataClient implements IRemoteDataClient {
     @Override
     public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
 
+        remotePath = remotePath.equals("") ? "" : remotePath;
         List<FileInfo> filesList = new ArrayList<>();
         List<?> filelist;
         Path absolutePath = Paths.get(rootDir, remotePath);
@@ -124,13 +125,16 @@ public class SSHDataClient implements IRemoteDataClient {
             ZonedDateTime lastModified = ZonedDateTime.parse(attrs.getMtimeString(), dateTimeformatter);
             fileInfo.setLastModified(lastModified.toInstant());
             fileInfo.setSize(attrs.getSize());
-            //Check if the entry is a directory or a file
-            if (attrs.isReg()) {
-                Path fullPath = Paths.get(remotePath, entry.getFilename());
-                fileInfo.setPath(fullPath.toString());
+
+            //TODO: This path munging is tricky, but it seems to work as far as listings are concerned
+            Path fullPath;
+            if (absolutePath.getFileName().equals(Paths.get(entry.getFilename()))) {
+                fullPath = Paths.get(remotePath);
             } else {
-                fileInfo.setPath(remotePath);
+                fullPath = Paths.get(remotePath).resolve(entry.getFilename());
             }
+
+            fileInfo.setPath(fullPath.toString());
             filesList.add(fileInfo);
         }
         return filesList;

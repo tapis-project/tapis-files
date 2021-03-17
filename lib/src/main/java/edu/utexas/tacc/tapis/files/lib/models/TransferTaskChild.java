@@ -19,7 +19,7 @@ public class TransferTaskChild extends TransferTaskParent {
     public TransferTaskChild() {}
 
     public TransferTaskChild(String tenantId, String username,
-                             String sourceURI, String destinationURI,
+                             TransferURI sourceURI, TransferURI destinationURI,
                              int parentTaskId) {
         this.tenantId = tenantId;
         this.username = username;
@@ -36,19 +36,17 @@ public class TransferTaskChild extends TransferTaskParent {
      */
     public TransferTaskChild(@NotNull TransferTaskParent transferTaskParent, @NotNull FileInfo fileInfo) throws TapisException {
 
-        TapisUrl sourceURL = TapisUrl.makeTapisUrl(transferTaskParent.getSourceURI());
-        TapisUrl destURL = TapisUrl.makeTapisUrl(transferTaskParent.getDestinationURI());
+        TransferURI sourceURL = transferTaskParent.getSourceURI();
+        TransferURI destURL =transferTaskParent.getDestinationURI();
 
-
-        // Given a
         Path destPath = PathUtils.relativizePathsForTransfer(
             sourceURL.getPath(),
             fileInfo.getPath(),
             destURL.getPath()
         );
 
-        TapisUrl newSourceURL = new TapisUrl(sourceURL.getHost(), sourceURL.getSystemId(), fileInfo.getPath());
-        TapisUrl newDestURL = new TapisUrl(destURL.getHost(), destURL.getSystemId(), destPath.toString());
+        TransferURI newSourceURL = new TransferURI(sourceURL.getProtocol(), sourceURL.getSystemId(), fileInfo.getPath());
+        TransferURI newDestURL = new TransferURI(destURL.getProtocol(), destURL.getSystemId(), destPath.toString());
 
         this.setParentTaskId(transferTaskParent.getId());
         this.setTaskId(transferTaskParent.getTaskId());

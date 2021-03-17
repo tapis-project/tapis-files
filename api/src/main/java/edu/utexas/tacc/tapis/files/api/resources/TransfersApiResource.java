@@ -202,8 +202,8 @@ public class TransfersApiResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             TransferTask task = transfersService.createTransfer(
-                    user.getName(),
-                    user.getTenantId(),
+                    user.getOboUser(),
+                    user.getOboTenantId(),
                     transferTaskRequest.getTag(),
                     transferTaskRequest.getElements()
             );

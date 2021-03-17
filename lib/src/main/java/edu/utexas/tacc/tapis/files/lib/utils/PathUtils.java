@@ -25,13 +25,19 @@ public class PathUtils {
         Path destBasePath = Paths.get(StringUtils.prependIfMissing(destBase, "/"));
         Path srcFilePath = Paths.get(StringUtils.prependIfMissing(srcPath, "/"));
 
-        // This catches when the listing for the file is in the root of the tree.
+        // This catches when the listing for the file is in the root of the tree, for instance
+        // if srcPath = /jobs/input/file1.txt and destPath = /testFile.txt,
+        //
+        Path finalDestPath;
         if ( srcFilePath.equals(srcBasePath) ) {
-            return destBasePath.resolve(srcFilePath).normalize();
+            finalDestPath = destBasePath.normalize();
+        } else {
+            Path sourceRelativeToBase = srcBasePath.relativize(srcFilePath);
+            finalDestPath = destBasePath.resolve(sourceRelativeToBase).normalize();
         }
-        Path sourceRelativeToBase = srcBasePath.relativize(srcFilePath);
-        Path finalDestPath = destBasePath.resolve(sourceRelativeToBase).normalize();
-        return finalDestPath;
+
+        Path tmp = Paths.get(StringUtils.stripStart(finalDestPath.toString(), "/"));
+        return tmp;
     }
 
 }

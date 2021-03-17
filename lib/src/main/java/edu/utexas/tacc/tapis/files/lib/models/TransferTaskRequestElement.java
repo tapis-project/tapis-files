@@ -6,28 +6,33 @@ import javax.validation.constraints.NotBlank;
 
 public class TransferTaskRequestElement {
 
-    private String sourceURI;
-    private String destinationURI;
+    private TransferURI sourceURI;
+    private TransferURI destinationURI;
     private boolean optional;
 
     @Schema(required = true, description = "Fully qualified URI, such as tapis://{systemID}/{path} or https://myserver.com/path/to/inputs/")
     @NotBlank
-    public String getSourceURI() {
+    public TransferURI getSourceURI() {
         return sourceURI;
     }
 
     @Schema(required = true, description = "Fully qualified URI to a tapis system, such as tapis://{systemID}/{path}")
     @NotBlank
-    public String getDestinationURI() {
+    public TransferURI getDestinationURI() {
         return destinationURI;
     }
 
-    public void setDestinationURI(String destinationURI) {
+    public void setDestinationURI(TransferURI destinationURI) {
         this.destinationURI = destinationURI;
     }
-
-    public void setSourceURI(String sourceURI) {
+    public void setDestinationURI(String destinationURI) {
+        this.destinationURI = new TransferURI(destinationURI);
+    }
+    public void setSourceURI(TransferURI sourceURI) {
         this.sourceURI = sourceURI;
+    }
+    public void setSourceURI(String sourceURI) {
+        this.sourceURI = new TransferURI(sourceURI);
     }
 
     @Schema(description = "Allow the full transfer to succeed even if this portion fails? Default is false")

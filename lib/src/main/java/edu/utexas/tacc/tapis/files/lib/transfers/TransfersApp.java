@@ -68,11 +68,11 @@ public class TransfersApp {
 
     }
 
-    private void logSuccess(TransferTask t) {
+    private static void logSuccess(TransferTask t) {
         log.info(t.toString());
     }
 
-    private void logError(Throwable t) {
+    private static void logError(Throwable t) {
         log.error(t.getMessage(), t);
     }
 

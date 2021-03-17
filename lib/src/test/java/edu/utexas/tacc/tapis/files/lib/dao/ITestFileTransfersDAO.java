@@ -29,13 +29,13 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         task.setStatus(TransferTaskStatus.ACCEPTED.name());
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setDestinationURI("tapis://test.edu/sourceSystem/path");
-        element.setSourceURI("tapis://test.edu/destSystem/path");
+        element.setDestinationURI("tapis://sourceSystem/path");
+        element.setSourceURI("tapis://destSystem/path");
         elements.add(element);
 
         TransferTaskRequestElement element2 = new TransferTaskRequestElement();
-        element2.setDestinationURI("tapis://test.edu/sourceSystem2/path");
-        element2.setSourceURI("tapis://test.edu/destSystem2/path");
+        element2.setDestinationURI("tapis://sourceSystem2/path");
+        element2.setSourceURI("tapis://destSystem2/path");
         elements.add(element2);
 
         task = dao.createTransferTask(task, elements);

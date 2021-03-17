@@ -16,8 +16,8 @@ public class TransferTaskParent {
     protected int id;
     protected String tenantId;
     protected String username;
-    protected String sourceURI;
-    protected String destinationURI;
+    protected TransferURI sourceURI;
+    protected TransferURI destinationURI;
     protected UUID uuid;
     protected long totalBytes;
     protected long bytesTransferred;
@@ -39,8 +39,8 @@ public class TransferTaskParent {
     public TransferTaskParent(String tenantId, String username, String sourceURI, String destinationURI) {
         this.tenantId = tenantId;
         this.username = username;
-        this.sourceURI = sourceURI;
-        this.destinationURI = destinationURI;
+        this.sourceURI = new TransferURI(sourceURI);
+        this.destinationURI = new TransferURI(destinationURI);
         this.status = TransferTaskStatus.ACCEPTED;
         this.uuid = UUID.randomUUID();
     }
@@ -104,19 +104,25 @@ public class TransferTaskParent {
 
         if (endTime != null) this.endTime = Instant.parse(endTime);
     }
-    public String getSourceURI() {
+    public TransferURI getSourceURI() {
         return sourceURI;
     }
 
     public void setSourceURI(String sourceURI) {
+        this.sourceURI = new TransferURI(sourceURI);
+    }
+    public void setSourceURI(TransferURI sourceURI) {
         this.sourceURI = sourceURI;
     }
 
-    public String getDestinationURI() {
+    public TransferURI getDestinationURI() {
         return destinationURI;
     }
 
     public void setDestinationURI(String destinationURI) {
+        this.destinationURI = new TransferURI(destinationURI);
+    }
+    public void setDestinationURI(TransferURI destinationURI) {
         this.destinationURI = destinationURI;
     }
 
