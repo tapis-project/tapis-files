@@ -10,10 +10,10 @@ import java.util.regex.Pattern;
  */
 public class S3URLParser {
 
-    private static Pattern p1 = Pattern.compile("^https?://(.+).s3.amazonaws.com/?+");
-    private static Pattern p2 = Pattern.compile("^https?://(.+).s3.([^.]+).amazonaws.com/?+");
-    private static Pattern p3 = Pattern.compile("^https?://s3.amazonaws.com/([^/]+)");
-    private static Pattern p4 = Pattern.compile("^https?://s3.([^.]+).amazonaws.com/([^/]+)");
+    private static Pattern p1 = Pattern.compile("(https://)?([^.]+).s3.amazonaws.com/?+");
+    private static Pattern p2 = Pattern.compile("(https://)?([^.]+).s3.([^.]+).amazonaws.com");
+    private static Pattern p3 = Pattern.compile("(https://)?s3.amazonaws.com/([^/]+)");
+    private static Pattern p4 = Pattern.compile("(https://)?s3.([^.]+).amazonaws.com/([^/]+)");
 
 
     public static boolean isAWSUrl(String host) {
@@ -45,7 +45,7 @@ public class S3URLParser {
         }
         matcher = p2.matcher(url);
         if (matcher.matches()) {
-            return matcher.group(2);
+            return matcher.group(3);
         }
         matcher = p3.matcher(url);
         if (matcher.matches()) {
@@ -53,7 +53,7 @@ public class S3URLParser {
         }
         matcher = p4.matcher(url);
         if (matcher.matches()) {
-            return matcher.group(1);
+            return matcher.group(2);
         }
         return null;
 
