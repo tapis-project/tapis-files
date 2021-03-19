@@ -87,22 +87,32 @@ public class PermissionsApiResource  {
     public Response permissionsSystemIdPathGet(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "path",required=true) @PathParam("path") String path,
-            @Parameter(description = "Username to list") @QueryParam("username") String username,
+            @Parameter(description = "Username to list") @QueryParam("username") String queryUsername,
             @Context SecurityContext securityContext) throws NotFoundException {
 
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         TSystem system;
+        String username;
+        if (queryUsername == null) {
+            username = user.getOboUser();
+        } else {
+            username = queryUsername;
+        }
         try {
             system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
         } catch (ServiceException ex) {
             throw new WebApplicationException("Could not retrieve system", ex);
         }
+        if (system == null) {
+            throw new NotFoundException("System not found");
+        }
+
+        // Only the owner should be able to check for OTHER peoples permissions
         String systemOwner = system.getOwner();
         if (!systemOwner.equals(user.getOboUser())) {
-            username = user.getName();
+            username = user.getOboUser();
         }
-        //check if user==owner
-        // if not, username = user.getName() regardless of query string.
+
         try {
             boolean allPermitted = permsService.isPermitted(user.getOboTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
             boolean readPermitted = permsService.isPermitted(user.getOboTenantId(), username, systemId, path, FilePermissionsEnum.READ);

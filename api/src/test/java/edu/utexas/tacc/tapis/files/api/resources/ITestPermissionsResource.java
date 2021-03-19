@@ -136,6 +136,13 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         }
     }
 
+
+    /**
+     * This test uses a serviceJWT to make a request to the permissions GET route
+     * OBO testuser2, but for a system that is mocked to be owned by testuser1
+     * so this should throw a 403 since testuser2 has no access to the system.
+     * @throws Exception
+     */
     @Test
     public void testPermissionsWithServiceJwtShould403() throws Exception {
         testSystem.setOwner("testuser1");

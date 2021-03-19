@@ -11,6 +11,7 @@ import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
+import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import javax.inject.Inject;
 
@@ -48,7 +49,7 @@ public class FilePermsService {
         }
     }
 
-    public synchronized boolean isPermitted(String tenantId, String username, String systemId, String path, FilePermissionsEnum perm) throws ServiceException {
+    public synchronized boolean isPermitted(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path, @NotNull FilePermissionsEnum perm) throws ServiceException {
         boolean isPermitted = permsCache.checkPerms(tenantId, username, systemId, path, perm);
         return isPermitted;
     }
