@@ -47,23 +47,24 @@ import java.util.concurrent.TimeUnit;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@Test(groups={"integration"})
+@Test(groups = {"integration"})
 public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
 
-    private Logger log = LoggerFactory.getLogger(ITestTransfersRoutesS3toS3.class);
-    private String user1jwt;
-    private String user2jwt;
-    private TSystem testSystem;
-    private Credential creds;
-    private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
+    private final Logger log = LoggerFactory.getLogger(ITestTransfersRoutesS3toS3.class);
+    private final TSystem testSystem;
+    private final Credential creds;
+
+    private static class TransferTaskResponse extends TapisResponse<TransferTask> {
+    }
+
     // mocking out the services
     private SystemsClient systemsClient;
     private SKClient skClient;
     private TenantManager tenantManager;
     private ServiceJWT serviceJWT;
-    private Tenant tenant;
-    private Site testSite;
-    private Map<String, Tenant> tenantMap = new HashMap<>();
+    private final Tenant tenant;
+    private final Site testSite;
+    private final Map<String, Tenant> tenantMap = new HashMap<>();
 
 
     private ITestTransfersRoutesS3toS3() throws Exception {
@@ -88,7 +89,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         tenantMap.put(tenant.getTenantId(), tenant);
 
         testSite = new Site();
-        testSite.setSiteId("test");
+        testSite.setSiteId("tacc");
     }
 
     @Override
@@ -100,27 +101,27 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         skClient = Mockito.mock(SKClient.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
-        JWTValidateRequestFilter.setSiteId("dev");
+        JWTValidateRequestFilter.setSiteId("tacc");
         JWTValidateRequestFilter.setService("files");
         ResourceConfig app = new BaseResourceConfig()
-                .register(new JWTValidateRequestFilter(tenantManager))
-                .register(new AbstractBinder() {
-                    @Override
-                    protected void configure() {
-                        bind(systemsClient).to(SystemsClient.class);
-                        bind(skClient).to(SKClient.class);
-                        bind(serviceJWT).to(ServiceJWT.class);
-                        bind(tenantManager).to(TenantManager.class);
-                        bindAsContract(SystemsCache.class).in(Singleton.class);
-                        bindAsContract(FilePermsCache.class).in(Singleton.class);
-                        bindAsContract(FilePermsService.class).in(Singleton.class);
-                        bindAsContract(TransfersService.class).in(Singleton.class);
-                        bindAsContract(FileTransfersDAO.class);
-                        bindAsContract(RemoteDataClientFactory.class);
-                        bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+            .register(new JWTValidateRequestFilter(tenantManager))
+            .register(new AbstractBinder() {
+                @Override
+                protected void configure() {
+                    bind(systemsClient).to(SystemsClient.class);
+                    bind(skClient).to(SKClient.class);
+                    bind(serviceJWT).to(ServiceJWT.class);
+                    bind(tenantManager).to(TenantManager.class);
+                    bindAsContract(SystemsCache.class).in(Singleton.class);
+                    bindAsContract(FilePermsCache.class).in(Singleton.class);
+                    bindAsContract(FilePermsService.class).in(Singleton.class);
+                    bindAsContract(TransfersService.class).in(Singleton.class);
+                    bindAsContract(FileTransfersDAO.class);
+                    bindAsContract(RemoteDataClientFactory.class);
+                    bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
 
-                    }
-                });
+                }
+            });
         app.register(TransfersApiResource.class);
         return app;
     }
@@ -131,12 +132,6 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         super.setUp();
     }
 
-
-    @BeforeClass
-    public void setUpUsers() throws Exception {
-        user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
-        user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
-    }
 
     @BeforeMethod
     public void initMocks() throws Exception {
@@ -150,9 +145,9 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     }
 
 
-
     /**
      * Helper method to create transfer tasks
+     *
      * @return
      */
     private TransferTask createTransferTask() {
@@ -167,20 +162,20 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
 
 
         TransferTaskResponse createTaskResponse = target("/v3/files/transfers")
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("content-type", MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", user1jwt)
-                .post(Entity.json(request), TransferTaskResponse.class);
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("content-type", MediaType.APPLICATION_JSON)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .post(Entity.json(request), TransferTaskResponse.class);
         return createTaskResponse.getResult();
     }
 
     private TransferTask getTransferTask(String taskUUID) {
-        TransferTaskResponse getTaskResponse = target("/v3/files/transfers/" +taskUUID)
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", user1jwt)
-                .get(TransferTaskResponse.class);
+        TransferTaskResponse getTaskResponse = target("/v3/files/transfers/" + taskUUID)
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get(TransferTaskResponse.class);
 
         TransferTask task = getTaskResponse.getResult();
         return task;
@@ -188,7 +183,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     }
 
     @Test
-    public void postTransferTask() throws Exception{
+    public void postTransferTask() throws Exception {
         TransferTask newTask = createTransferTask();
 
         Assert.assertNotNull(newTask.getUuid());
@@ -215,10 +210,10 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         TransferTask t = createTransferTask();
 
         Response response = target("/v3/files/transfers/" + t.getUuid().toString() + "/details")
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", user1jwt)
-                .get();
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
 
         TransferTaskResponse data = response.readEntity(TransferTaskResponse.class);
         TransferTask task = data.getResult();
@@ -234,10 +229,10 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     public void getTransfer400() {
 
         Response response = target("/v3/files/transfers/INVALID")
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", user1jwt)
-                .get();
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
 
         TransferTaskResponse data = response.readEntity(TransferTaskResponse.class);
         Assert.assertEquals(response.getStatus(), 400);
@@ -251,10 +246,10 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     public void getTransfer404() {
         String uuid = UUID.randomUUID().toString();
         Response response = target("/v3/files/transfers/" + uuid)
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", user1jwt)
-                .get();
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
 
         TransferTaskResponse data = response.readEntity(TransferTaskResponse.class);
         Assert.assertEquals(response.getStatus(), 404);
@@ -265,10 +260,10 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     public void deleteTransfer() throws Exception {
         TransferTask t = createTransferTask();
         Response resp = target("/v3/files/transfers/" + t.getUuid().toString())
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", user1jwt)
-                .delete();
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .delete();
 
         TransferTask task = getTransferTask(t.getUuid().toString());
         Assert.assertEquals(task.getStatus(), TransferTaskStatus.CANCELLED);
@@ -279,10 +274,10 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     @Test
     public void deleteTransfer404() throws Exception {
         Response resp = target("/v3/files/transfers/" + UUID.randomUUID())
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", user1jwt)
-                .delete();
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .delete();
 
         Assert.assertEquals(resp.getStatus(), 404);
 

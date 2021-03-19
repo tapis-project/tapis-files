@@ -65,7 +65,7 @@ public class PermissionsApiResource  {
             @Context SecurityContext securityContext) throws NotFoundException {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            permsService.revokePermission(user.getTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
+            permsService.revokePermission(user.getOboTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions revoked.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {
@@ -93,24 +93,24 @@ public class PermissionsApiResource  {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         TSystem system;
         try {
-            system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
+            system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
         } catch (ServiceException ex) {
             throw new WebApplicationException("Could not retrieve system", ex);
         }
         String systemOwner = system.getOwner();
-        if (!systemOwner.equals(user.getName())) {
+        if (!systemOwner.equals(user.getOboUser())) {
             username = user.getName();
         }
         //check if user==owner
         // if not, username = user.getName() regardless of query string.
         try {
-            boolean allPermitted = permsService.isPermitted(user.getTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
-            boolean readPermitted = permsService.isPermitted(user.getTenantId(), username, systemId, path, FilePermissionsEnum.READ);
+            boolean allPermitted = permsService.isPermitted(user.getOboTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
+            boolean readPermitted = permsService.isPermitted(user.getOboTenantId(), username, systemId, path, FilePermissionsEnum.READ);
             FilePermission permission = new FilePermission();
             permission.setPath(path);
             permission.setSystemId(systemId);
             permission.setUsername(username);
-            permission.setTenantId(user.getTenantId());
+            permission.setTenantId(user.getOboTenantId());
             if (readPermitted)
                 permission.setPermissions(FilePermissionsEnum.READ);
             if (allPermitted)
@@ -144,7 +144,7 @@ public class PermissionsApiResource  {
 
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            permsService.grantPermission(user.getTenantId(), createPermissionRequest.getUsername(), systemId, path, createPermissionRequest.getPermission());
+            permsService.grantPermission(user.getOboTenantId(), createPermissionRequest.getUsername(), systemId, path, createPermissionRequest.getPermission());
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions granted.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {

@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -30,6 +31,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.*;
+
+import javax.inject.Singleton;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -47,23 +50,20 @@ import static org.mockito.Mockito.when;
 @Test(groups = {"integration"})
 public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
-    private Logger log = LoggerFactory.getLogger(ITestContentsRoutes.class);
-    private String user1jwt;
-    private String user2jwt;
-    private TSystem testSystem;
-    private TSystem testSystemSSH;
-    private Tenant tenant;
-    private Credential creds;
-    private Map<String, Tenant> tenantMap = new HashMap<>();
+    private final Logger log = LoggerFactory.getLogger(ITestContentsRoutes.class);
+    private final TSystem testSystem;
+    private final TSystem testSystemSSH;
+    private final Tenant tenant;
+    private final Credential creds;
+    private final Map<String, Tenant> tenantMap = new HashMap<>();
     Site site;
 
     // mocking out the services test
     private SystemsClient systemsClient;
     private SKClient skClient;
-    private TenantManager tenantManager;
     private ServiceJWT serviceJWT;
-    private SSHConnectionCache sshConnectionCache = new SSHConnectionCache(1, TimeUnit.SECONDS);
-    private RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
+    private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(1, TimeUnit.SECONDS);
+    private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
 
     private ITestContentsRoutes() throws Exception {
         //List<String> creds = new ArrayList<>();
@@ -102,7 +102,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         tenant.setBaseUrl("https://test.tapis.io");
         tenantMap.put(tenant.getTenantId(), tenant);
         site = new Site();
-        site.setSiteId("dev");
+        site.setSiteId("tacc");
 
     }
 
@@ -110,20 +110,19 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     protected ResourceConfig configure() {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
-        tenantManager = Mockito.mock(TenantManager.class);
         skClient = Mockito.mock(SKClient.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
         JWTValidateRequestFilter.setService("files");
-        JWTValidateRequestFilter.setSiteId("dev");
+        JWTValidateRequestFilter.setSiteId("tacc");
         ResourceConfig app = new BaseResourceConfig()
-            .register(new JWTValidateRequestFilter(tenantManager))
+            .register(JWTValidateRequestFilter.class)
             .register(new AbstractBinder() {
                 @Override
                 protected void configure() {
                     bind(systemsClient).to(SystemsClient.class);
                     bind(skClient).to(SKClient.class);
-                    bind(tenantManager).to(TenantManager.class);
+                    bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
                     bind(serviceJWT).to(ServiceJWT.class);
                     bindAsContract(SystemsCache.class);
                     bindAsContract(FilePermsService.class);
@@ -145,9 +144,9 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
     public class RandomInputStream extends InputStream {
 
-        private long length;
+        private final long length;
         private long count;
-        private Random random;
+        private final Random random;
 
         public RandomInputStream(long length) {
             this.length = length;
@@ -164,13 +163,13 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         }
     }
 
-    private InputStream makeFakeFile(long size){
+    private InputStream makeFakeFile(long size) {
 
         InputStream is = new RandomInputStream(size);
         return is;
     }
 
-    private void addTestFilesToBucket(TSystem system, String fileName, long fileSize) throws Exception{
+    private void addTestFilesToBucket(TSystem system, String fileName, long fileSize) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, "testuser");
         InputStream f1 = makeFakeFile(fileSize);
         client.insert(fileName, f1);
@@ -187,15 +186,9 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
     @BeforeMethod
     public void beforeTest() throws Exception {
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(tenantManager.getSite(any())).thenReturn(site);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
-        user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
-        user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
     }
-
 
 
     @DataProvider(name = "testSystemsDataProvider")
@@ -207,18 +200,18 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "testSystemsDataProvider")
     public void testZipOutput(TSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
-        addTestFilesToBucket(system, "a/test1.txt", 10*1000);
-        addTestFilesToBucket(system, "a/test2.txt", 10*1000);
+        addTestFilesToBucket(system, "a/test1.txt", 10 * 1000);
+        addTestFilesToBucket(system, "a/test2.txt", 10 * 1000);
         Response response = target("/v3/files/content/testSystem/a/")
             .queryParam("zip", true)
             .request()
-            .header("X-Tapis-Token", user1jwt)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .get();
 
         InputStream is = response.readEntity(InputStream.class);
         ZipInputStream zis = new ZipInputStream(is);
         ZipEntry ze;
-        while ( (ze = zis.getNextEntry()) != null) {
+        while ((ze = zis.getNextEntry()) != null) {
             log.info(ze.toString());
             String fname = ze.getName();
             Assert.assertTrue(fname.startsWith("a/test"));
@@ -226,26 +219,25 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     }
 
 
-
     @Test(dataProvider = "testSystemsDataProvider")
     public void testStreamLargeFile(TSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
-        long filesize =  100 * 1000 * 1000;
+        long filesize = 100 * 1000 * 1000;
         addTestFilesToBucket(system, "testfile1.txt", filesize);
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
             .request()
-            .header("X-Tapis-Token", user1jwt)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .get();
         InputStream contents = response.readEntity(InputStream.class);
         Instant start = Instant.now();
-        long fsize=0;
-        long chunk=0;
+        long fsize = 0;
+        long chunk = 0;
         byte[] buffer = new byte[1024];
-        while((chunk = contents.read(buffer)) != -1){
+        while ((chunk = contents.read(buffer)) != -1) {
             fsize += chunk;
         }
         Duration time = Duration.between(start, Instant.now());
-        log.info("file size={} MB: Download took {} ms: throughput={} MB/s", filesize /1E6, time.toMillis(), filesize / (1E6 * time.toMillis()/1000));
+        log.info("file size={} MB: Download took {} ms: throughput={} MB/s", filesize / 1E6, time.toMillis(), filesize / (1E6 * time.toMillis() / 1000));
         Assert.assertEquals(fsize, filesize);
         contents.close();
     }
@@ -254,34 +246,34 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "testSystemsDataProvider")
     public void testSimpleGetContents(TSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
-        addTestFilesToBucket(system, "testfile1.txt", 10*1000);
+        addTestFilesToBucket(system, "testfile1.txt", 10 * 1000);
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
-                .request()
-                .header("X-Tapis-Token", user1jwt)
-                .get();
+            .request()
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
         byte[] contents = response.readEntity(byte[].class);
-        Assert.assertEquals(contents.length, 10*1000);
+        Assert.assertEquals(contents.length, 10 * 1000);
     }
 
     @Test(dataProvider = "testSystemsDataProvider")
     public void testNotFound(TSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         Response response = target("/v3/files/content/testSystem/NOT-THERE.txt")
-                .request()
-                .header("X-Tapis-Token", user1jwt)
-                .get();
+            .request()
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
         Assert.assertEquals(response.getStatus(), 404);
     }
 
     @Test(dataProvider = "testSystemsDataProvider")
     public void testGetWithRange(TSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
-        addTestFilesToBucket(system, "words.txt", 10*1024);
+        addTestFilesToBucket(system, "words.txt", 10 * 1024);
         Response response = target("/v3/files/content/testSystem/words.txt")
-                .request()
-                .header("range", "0,1000")
-                .header("X-Tapis-Token", user1jwt)
-                .get();
+            .request()
+            .header("range", "0,1000")
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
         Assert.assertEquals(response.getStatus(), 200);
         byte[] contents = response.readEntity(byte[].class);
         Assert.assertEquals(contents.length, 1000);
@@ -290,12 +282,12 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "testSystemsDataProvider")
     public void testGetWithMore(TSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
-        addTestFilesToBucket(system, "words.txt", 10*1024);
+        addTestFilesToBucket(system, "words.txt", 10 * 1024);
         Response response = target("/v3/files/content/testSystem/words.txt")
-                .request()
-                .header("more", "1")
-                .header("X-Tapis-Token", user1jwt)
-                .get();
+            .request()
+            .header("more", "1")
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
         Assert.assertEquals(response.getStatus(), 200);
         String contents = response.readEntity(String.class);
         Assert.assertEquals(response.getHeaders().getFirst("content-disposition"), "inline");
@@ -307,12 +299,12 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     public void testGetContentsHeaders(TSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         // make sure content-type is application/octet-stream and filename is correct
-        addTestFilesToBucket(system, "testfile1.txt", 10*1024);
+        addTestFilesToBucket(system, "testfile1.txt", 10 * 1024);
 
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
-                .request()
-                .header("x-tapis-token", user1jwt)
-                .get();
+            .request()
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
         MultivaluedMap<String, Object> headers = response.getHeaders();
         String contentDisposition = (String) headers.getFirst("content-disposition");
         Assert.assertEquals(contentDisposition, "attachment; filename=testfile1.txt");
@@ -324,9 +316,9 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     public void testBadRequest(TSystem system) throws Exception {
 
         Response response = target("/v3/files/content/testSystem/BAD-PATH/")
-                .request()
-                .header("x-tapis-token", user1jwt)
-                .get();
+            .request()
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
         Assert.assertEquals(response.getStatus(), 400);
     }
 

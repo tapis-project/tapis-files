@@ -4,16 +4,17 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
-import edu.utexas.tacc.tapis.files.client.gen.model.FilePermission;
-import edu.utexas.tacc.tapis.files.client.gen.model.FilePermissionResponse;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -27,6 +28,8 @@ import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.TestProperties;
 import org.mockito.Mockito;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -46,7 +49,7 @@ import static org.mockito.Mockito.when;
 @Test(groups={"integration"})
 public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
 
-
+    private static final Logger log = LoggerFactory.getLogger(ITestPermissionsResource.class);
     private TSystem testSystem;
     private Tenant tenant;
     private Credential creds;
@@ -56,10 +59,8 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
     // mocking out the services
     private SystemsClient systemsClient;
     private SKClient skClient;
-    private TenantManager tenantManager;
     private ServiceJWT serviceJWT;
-    private String user1jwt;
-    private String user2jwt;
+    private static class FilePermissionResponse extends TapisResponse<FilePermission> {}
 
 
     private ITestPermissionsResource() throws Exception {
@@ -77,21 +78,6 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         transferMechs.add(TransferMethodEnum.S3);
         testSystem.setTransferMethods(transferMechs);
 
-        tenant = new Tenant();
-        tenant.setTenantId("dev");
-        tenant.setBaseUrl("https://test.tapis.io");
-        tenant.setSiteId("test");
-        tenantMap.put(tenant.getTenantId(), tenant);
-
-        testSite = new Site();
-        testSite.setSiteId("test");
-
-    }
-
-    @BeforeClass
-    public void setUpUsers() throws Exception {
-        user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
-        user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
     }
 
     @BeforeClass
@@ -105,21 +91,20 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         forceSet(TestProperties.CONTAINER_PORT, "0");
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
-        tenantManager = Mockito.mock(TenantManager.class);
         skClient = Mockito.mock(SKClient.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
-        JWTValidateRequestFilter.setSiteId("test");
+        JWTValidateRequestFilter.setSiteId("tacc");
         JWTValidateRequestFilter.setService("files");
         ResourceConfig app = new BaseResourceConfig()
-            .register(new JWTValidateRequestFilter(tenantManager))
+            .register(JWTValidateRequestFilter.class)
             .register(FilePermissionsAuthz.class)
             .register(new AbstractBinder() {
                 @Override
                 protected void configure() {
                     bind(systemsClient).to(SystemsClient.class);
                     bind(skClient).to(SKClient.class);
-                    bind(tenantManager).to(TenantManager.class);
+                    bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
                     bind(serviceJWT).to(ServiceJWT.class);
                     bindAsContract(FilePermsService.class).in(Singleton.class);
                     bindAsContract(FilePermsCache.class).in(Singleton.class);
@@ -131,6 +116,41 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         return app;
     }
 
+    @Test
+    public void testPermissionsWithServiceJwt() throws Exception {
+        testSystem.setOwner("testuser2");
+        log.info(getServiceJwt());
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
+        try {
+            FilePermissionResponse response = target("/v3/files/permissions/testSystem/a/")
+                .queryParam("username", "testuser2")
+                .request()
+                .header("X-Tapis-Token", getServiceJwt())
+                .header("x-tapis-tenant", "dev")
+                .header("x-tapis-user", "testuser2")
+                .get(FilePermissionResponse.class);
+            Assert.assertEquals(response.getResult().getPermissions(), FilePermissionsEnum.ALL);
+        } catch (Exception e) {
+            log.info(e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void testPermissionsWithServiceJwtShould403() throws Exception {
+        testSystem.setOwner("testuser1");
+        when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
+        FilePermissionResponse response = target("/v3/files/permissions/testSystem/a/")
+            .queryParam("username", "testuser2")
+            .request()
+            .header("X-Tapis-Token", getServiceJwt())
+            .header("x-tapis-tenant", "dev")
+            .header("x-tapis-user", "testuser2")
+            .get(FilePermissionResponse.class);
+        Assert.assertEquals(response.getResult().getPermissions(), FilePermissionsEnum.ALL);
+    }
 
     @Test
     public void testAuthzAnnotation() throws Exception {
@@ -139,17 +159,16 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         but testuser1 is making the request. Should return 403
          */
         testSystem.setOwner("testuser2");
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
+
         CreatePermissionRequest req = new CreatePermissionRequest();
         req.setPermission(FilePermissionsEnum.ALL);
         req.setUsername("testuser3");
         Response response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
             .request()
-            .header("X-Tapis-Token", user1jwt)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .post(Entity.json(req));
         Assert.assertEquals(response.getStatus(), 403);
     }
@@ -160,9 +179,6 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         Test the authz filter for permissions operations. Should return 200
          */
         testSystem.setOwner("testuser1");
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         CreatePermissionRequest req = new CreatePermissionRequest();
         req.setPermission(FilePermissionsEnum.ALL);
@@ -170,7 +186,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         Response response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
             .request()
-            .header("X-Tapis-Token", user1jwt)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .post(Entity.json(req));
         Assert.assertEquals(response.getStatus(), 200);
     }
@@ -178,9 +194,6 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
     @Test
     public void testAddPermissions() throws Exception {
         testSystem.setOwner("testuser1");
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         CreatePermissionRequest req = new CreatePermissionRequest();
         req.setPermission(FilePermissionsEnum.ALL);
@@ -188,7 +201,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         Response response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
             .request()
-            .header("X-Tapis-Token", user1jwt)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .post(Entity.json(req));
         Assert.assertEquals(response.getStatus(), 200);
         Mockito.verify(skClient).grantUserPermission("dev", "testuser3", "files:dev:ALL:testSystem:a");
@@ -201,14 +214,11 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         // see get their own permissions. testuser1, the owner of the system is making this request, but checking
         // to see what permissions testuser3 has.
         testSystem.setOwner("testuser1");
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         Response response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
             .request()
-            .header("X-Tapis-Token", user1jwt)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .get();
         Assert.assertEquals(response.getStatus(), 200);
         Mockito.verify(skClient).isPermitted("dev", "testuser3", "files:dev:*:testSystem:a");
@@ -221,35 +231,29 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         // see get their own permissions. testuser2, the owner of the system is making this request, but checking
         // to see what permissions the API user, testuser1 has.
         testSystem.setOwner("testuser2");
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
 
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
         FilePermissionResponse response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
             .request()
-            .header("X-Tapis-Token", user1jwt)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .get(FilePermissionResponse.class);
         Assert.assertEquals(response.getStatus(), "success");
 
         Mockito.verify(skClient).isPermitted("dev", "testuser1", "files:dev:*:testSystem:a");
-        Assert.assertEquals(response.getResult().getPermissions(), FilePermission.PermissionsEnum.ALL);
+        Assert.assertEquals(response.getResult().getPermissions(), FilePermissionsEnum.ALL);
     }
 
     @Test
     public void testDeletePermsNoUsername() throws Exception {
 
         testSystem.setOwner("testuser1");
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
 
         Response response = target("/v3/files/permissions/testSystem/a/")
             .request()
-            .header("X-Tapis-Token", user1jwt)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .delete();
         Assert.assertEquals(response.getStatus(), 400);
 

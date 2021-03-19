@@ -9,6 +9,7 @@ import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -60,11 +61,6 @@ import static org.mockito.Mockito.when;
 public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     private Logger log = LoggerFactory.getLogger(ITestOpsRoutesS3.class);
-    private String user1jwt;
-    private String user2jwt;
-    private String serviceUserJwt;
-
-
     private static class FileListResponse extends TapisResponse<List<FileInfo>> {
     }
 
@@ -80,7 +76,6 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     // mocking out the services
     private SystemsClient systemsClient;
     private SKClient skClient;
-    private TenantManager tenantManager;
     private ServiceJWT serviceJWT;
 
 
@@ -89,6 +84,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
         testSystem = new TSystem();
+        testSystem.setOwner("testuser1");
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
@@ -98,16 +94,6 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         List<TransferMethodEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TransferMethodEnum.S3);
         testSystem.setTransferMethods(transferMechs);
-
-        tenant = new Tenant();
-        tenant.setTenantId("testTenant");
-        tenant.setBaseUrl("https://test.tapis.io");
-        tenant.setSiteId("test");
-        tenantMap.put(tenant.getTenantId(), tenant);
-
-        testSite = new Site();
-        testSite.setSiteId("test");
-
     }
 
     @Override
@@ -115,25 +101,25 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
         forceSet(TestProperties.CONTAINER_PORT, "0");
-        tenantManager = Mockito.mock(TenantManager.class);
         skClient = Mockito.mock(SKClient.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
-        JWTValidateRequestFilter.setSiteId("test");
+        JWTValidateRequestFilter.setSiteId("tacc");
         JWTValidateRequestFilter.setService("files");
+        //JWT validation
         ResourceConfig app = new BaseResourceConfig()
-            .register(new JWTValidateRequestFilter(tenantManager))
+            .register(JWTValidateRequestFilter.class)
             .register(FilePermissionsAuthz.class)
             .register(new AbstractBinder() {
                 @Override
                 protected void configure() {
                     bind(systemsClient).to(SystemsClient.class);
                     bind(skClient).to(SKClient.class);
-                    bind(tenantManager).to(TenantManager.class);
+                    bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
                     bind(serviceJWT).to(ServiceJWT.class);
-                    bindAsContract(FilePermsService.class);
+                    bindAsContract(FilePermsService.class).in(Singleton.class);
                     bindAsContract(FilePermsCache.class).in(Singleton.class);
-                    bindAsContract(SystemsCache.class);
+                    bindAsContract(SystemsCache.class).in(Singleton.class);
                     bindAsContract(RemoteDataClientFactory.class);
                     bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 }
@@ -155,22 +141,10 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         config.register(MultiPartFeature.class);
    }
 
-
-    @BeforeClass
-    public void setUpUsers() throws Exception {
-        user1jwt = IOUtils.resourceToString("/user1jwt", Charsets.UTF_8);
-        user2jwt = IOUtils.resourceToString("/user2jwt", Charsets.UTF_8);
-        serviceUserJwt = IOUtils.resourceToString("/service1jwt", StandardCharsets.UTF_8);
-    }
-
     @BeforeMethod
     public void initMocks() throws Exception {
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
-        when(tenantManager.getSite(any())).thenReturn(testSite);
-        when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
-        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
+        when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
     }
 
 
@@ -187,7 +161,23 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         FileListResponse response = target("/v3/files/ops/testSystem/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .get(FileListResponse.class);
+        FileInfo file = response.getResult().get(0);
+        Assert.assertEquals(file.getName(), "testfile1.txt");
+        Assert.assertEquals(file.getSize(), 10 * 1024);
+    }
+
+    @Test
+    public void testGetS3ListWithObo() throws Exception {
+        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
+
+        FileListResponse response = target("/v3/files/ops/testSystem/")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getServiceJwt())
+            .header("x-tapis-user", "testuser1")
+            .header("x-tapis-tenant", "dev")
             .get(FileListResponse.class);
         FileInfo file = response.getResult().get(0);
         Assert.assertEquals(file.getName(), "testfile1.txt");
@@ -228,7 +218,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
             .queryParam("offset", "2")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .get(FileListResponse.class);
         List<FileInfo> listing = response.getResult();
         Assert.assertEquals(listing.size(), 2);
@@ -243,7 +233,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         Response response = target("/v3/files/ops/testSystem/testfile1.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .get();
         Assert.assertEquals(response.getStatus(), 403);
     }
@@ -259,7 +249,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/testfile3.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .delete(FileStringResponse.class);
 
         Assert.assertThrows(NotFoundException.class, () -> {
@@ -284,7 +274,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/testfile3.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .put(Entity.json(request), FileStringResponse.class);
 
         Assert.assertThrows(NotFoundException.class, () -> {
@@ -314,7 +304,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
             .queryParam("newName", "renamed/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .put(Entity.json(request), FileStringResponse.class);
 
         Assert.assertThrows(NotFoundException.class, () -> {
@@ -347,7 +337,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
             .queryParam("newName", "renamed")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .put(Entity.json(request), FileStringResponse.class);
 
         List<FileInfo> listing = client.ls("dir1/1.txt");
@@ -373,7 +363,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/dir2/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .delete(FileStringResponse.class);
 
         List<FileInfo> listing = client.ls("dir1/1.txt");
@@ -400,14 +390,14 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         FileStringResponse response = target("/v3/files/ops/testSystem/test-inserted.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .post(Entity.entity(multiPart, MediaType.MULTIPART_FORM_DATA_TYPE), FileStringResponse.class);
 
         Assert.assertEquals(response.getStatus(), "success");
 
         FileListResponse listing = target("/v3/files/ops/testSystem/test-inserted.txt")
             .request()
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .get(FileListResponse.class);
         Assert.assertEquals(listing.getResult().size(), 1);
         Assert.assertEquals(listing.getResult().get(0).getName(), "test-inserted.txt");
@@ -423,17 +413,17 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
             .queryParam("path", "newDirectory")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .post(Entity.json(req), FileStringResponse.class);
 
         FileListResponse listing = target("/v3/files/ops/testSystem/newDirectory")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .get(FileListResponse.class);
 
         Assert.assertEquals(listing.getResult().size(), 1);
-        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory/");
+        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
         Assert.assertTrue(listing.getResult().get(0).isDir());
     }
 
@@ -447,16 +437,16 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         FileStringResponse response = target("/v3/files/ops/testSystem/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .post(Entity.json(req), FileStringResponse.class);
 
         FileListResponse listing = target("/v3/files/ops/testSystem/newDirectory")
             .request()
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .get(FileListResponse.class);
 
         Assert.assertEquals(listing.getResult().size(), 1);
-        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory/");
+        Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
         Assert.assertEquals(listing.getResult().get(0).isDir(), true);
     }
 
@@ -479,12 +469,12 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         FileStringResponse response = target("/v3/files/ops/testSystem/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .post(Entity.json(req), FileStringResponse.class);
 
         FileListResponse listing = target("/v3/files/ops/testSystem/newDirectory/test")
             .request()
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .get(FileListResponse.class);
 
         Assert.assertEquals(listing.getResult().size(), 1);
@@ -507,7 +497,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         Response response = target("/v3/files/ops/testSystem/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", user1jwt)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .post(Entity.json(req), Response.class);
 
         Assert.assertEquals(response.getStatus(), 400);

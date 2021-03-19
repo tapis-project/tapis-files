@@ -282,8 +282,9 @@ public class TransfersService {
                         deserializeParentMessage(m)
                         .flatMap(t1->Mono.fromCallable(()-> doParentChevronOne(t1))
                                 .retryWhen(
-                                        Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
-                                                .maxBackoff(Duration.ofMinutes(60))
+                                    Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
+                                            .maxBackoff(Duration.ofMinutes(60))
+                                            .filter(e -> e.getClass() == IOException.class)
                                 )
                             .onErrorResume(e -> doErrorParentChevronOne(m, e, t1))
                         )
@@ -305,6 +306,7 @@ public class TransfersService {
             TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
             task.setStatus(TransferTaskStatus.FAILED);
             task.setEndTime(Instant.now());
+            task.setErrorMessage(e.getMessage());
             task = dao.updateTransferTask(task);
         } catch (DAOException ex) {
             log.error("CRITICAL ERROR: ", ex);
@@ -312,6 +314,7 @@ public class TransfersService {
 
         parent.setStatus(TransferTaskStatus.FAILED);
         parent.setEndTime(Instant.now());
+        parent.setErrorMessage(e.getMessage());
         try {
             parent = dao.updateTransferTaskParent(parent);
             // This should really never happen, it means that the parent with that ID
@@ -336,8 +339,8 @@ public class TransfersService {
      * @throws ServiceException
      */
     private TransferTaskParent doParentChevronOne(TransferTaskParent parentTask) throws ServiceException {
-        log.info("***** DOING doParentChevronOne ****");
-        log.info(parentTask.toString());
+        log.debug("***** DOING doParentChevronOne ****");
+        log.debug(parentTask.toString());
         TSystem sourceSystem;
         IRemoteDataClient sourceClient;
 
@@ -397,7 +400,6 @@ public class TransfersService {
             }
             return parentTask;
         } catch (DAOException | TapisException | IOException e) {
-            log.error("Error processing {}", parentTask);
             throw new ServiceException(e.getMessage(), e);
         }
     }
@@ -548,22 +550,26 @@ public class TransfersService {
 
         //TODO: Fix this for the "optional" flag
         try {
+
             // Child First
             child.setStatus(TransferTaskStatus.FAILED);
+            child.setErrorMessage(cause.getMessage());
             dao.updateTransferTaskChild(child);
 
             //Now parent
             TransferTaskParent parent = dao.getTransferTaskParentById(child.getParentTaskId());
             parent.setStatus(TransferTaskStatus.FAILED);
+            parent.setErrorMessage(cause.getMessage());
             dao.updateTransferTaskParent(parent);
 
             //Finally the top level task
             TransferTask topTask = dao.getTransferTaskByID(child.getTaskId());
             topTask.setStatus(TransferTaskStatus.FAILED);
+            topTask.setErrorMessage(cause.getMessage());
             dao.updateTransferTask(topTask);
 
         } catch (DAOException ignored) {
-
+            log.error("Could not update tasks!", ignored);
         }
         return Mono.empty();
     }
@@ -575,7 +581,7 @@ public class TransfersService {
      * @return
      */
     private TransferTaskChild chevronOne(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        log.info("***** DOING chevronOne ****");
+        log.debug("***** DOING chevronOne ****");
         try {
             TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED)) {
@@ -606,8 +612,8 @@ public class TransfersService {
      * @throws ServiceException
      */
     private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException, TapisException {
-        log.info("***** DOING chevronTwo ****");
-        log.info(taskChild.toString());
+        log.debug("***** DOING chevronTwo ****");
+        log.debug(taskChild.toString());
         TSystem sourceSystem;
         TSystem destSystem;
         IRemoteDataClient sourceClient;
@@ -692,7 +698,6 @@ public class TransfersService {
             taskChild.setStatus(TransferTaskStatus.COMPLETED);
             taskChild.setEndTime(Instant.now());
             taskChild = dao.updateTransferTaskChild(taskChild);
-//            parentTask = dao.updateTransferTaskBytesTransferred(parentTask.getId(), taskChild.getBytesTransferred());
             return taskChild;
         } catch (DAOException ex) {
             String msg = String.format("Error updating child task %s", taskChild.toString());

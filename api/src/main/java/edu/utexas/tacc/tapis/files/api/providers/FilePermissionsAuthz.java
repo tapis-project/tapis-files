@@ -41,8 +41,8 @@ public class FilePermissionsAuthz implements ContainerRequestFilter {
     public void filter(ContainerRequestContext requestContext) throws NotAuthorizedException, IOException {
 
         user = (AuthenticatedUser) requestContext.getSecurityContext().getUserPrincipal();
-        String username = user.getName();
-        String tenantId = user.getTenantId();
+        String username = user.getOboUser();
+        String tenantId = user.getOboTenantId();
         MultivaluedMap<String, String> params = requestContext.getUriInfo().getPathParameters();
         String systemId = params.getFirst("systemId");
 

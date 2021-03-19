@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
 import java.math.BigInteger;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -14,7 +15,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 public class FileInfo   {
 
     public FileInfo(S3Object listing) {
-        this.name = StringUtils.stripStart(listing.key(), "/");
+        this.name = Paths.get(listing.key()).getFileName().toString();
         this.lastModified = listing.lastModified();
         this.size = listing.size();
         this.path = listing.key();

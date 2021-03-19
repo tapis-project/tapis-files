@@ -178,7 +178,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     @Test
     public void failsTransferWhenParentFails() throws Exception {
-        //this is a cheesy way to make this break, but it does.
+        //TODO: this is a cheesy way to make this break, but it does.
         sourceSystem.setHost("");
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
@@ -204,10 +204,12 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             .create(tasks)
             .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.FAILED))
             .thenCancel()
-            .verify();
+            .verify(Duration.ofSeconds(60));
 
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.FAILED);
+        Assert.assertNotNull(t1.getErrorMessage());
+        Assert.assertNotNull(t1.getParentTasks().get(0).getErrorMessage());
 
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
 
@@ -527,11 +529,21 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
+        StepVerifier
+                .create(stream)
+                 .assertNext(t-> {
+                     Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+                 })
+                 .assertNext(t->{
+                     Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+                 })
+                .thenCancel()
+                .verify(Duration.ofSeconds(5));
+
         stream.subscribe(taskChild -> log.info(taskChild.toString()));
         IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
         // MUST sleep here for a bit for a bit for things to resolve. Alternatively could
         // use a StepVerifier or put some of this in the subscribe callback
-        Thread.sleep(2000);
         List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
         Assert.assertEquals(listing.size(), 2);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
@@ -596,7 +608,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
         stream
-            .take(200)
+            .take(Duration.ofSeconds(2))
             .map(taskChild -> {
                 log.warn("CURRENT THREAD COUNT: {}", ManagementFactory.getThreadMXBean().getThreadCount() );
                 log.info(taskChild.toString());
@@ -666,14 +678,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
         Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
+
         stream
-            .take(40)
-            .subscribeOn(Schedulers.boundedElastic())
-            .map(child -> {
-                Assert.assertEquals(child.getStatus(), TransferTaskStatus.COMPLETED);
-                return child;
+            .take(Duration.ofSeconds(2))
+            .map(k->{
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
+                return k;
             })
             .blockLast();
+
 
 
         transfersService.deleteQueue(parentQ).subscribe();
