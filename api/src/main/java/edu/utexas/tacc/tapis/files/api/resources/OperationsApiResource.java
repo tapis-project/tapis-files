@@ -112,8 +112,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
             return Response.status(Status.OK).entity(resp).build();
         } catch (ServiceException | IOException | TapisClientException e) {
-            log.error("listFiles", e);
-            throw new WebApplicationException("Something went wrong!");
+            throw new WebApplicationException("Something went wrong!", e);
         }
     }
 
@@ -156,9 +155,8 @@ public class OperationsApiResource extends BaseFilesResource {
             fileOpsService.insert(path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | IOException | TapisClientException ex) {
-            log.error(ex.getMessage());
-            throw new WebApplicationException();
+        } catch (ServiceException | IOException | TapisClientException e) {
+            throw new WebApplicationException("Something went wrong!", e);
         }
     }
 
@@ -199,9 +197,8 @@ public class OperationsApiResource extends BaseFilesResource {
             fileOpsService.mkdir(mkdirRequest.getPath());
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | IOException | TapisClientException ex) {
-            log.error("mkdir", ex);
-            throw new WebApplicationException("Something went wrong...");
+        } catch (ServiceException | IOException | TapisClientException e) {
+            throw new WebApplicationException("Something went wrong!", e);
         }
     }
 
@@ -256,9 +253,8 @@ public class OperationsApiResource extends BaseFilesResource {
             }
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | IOException | TapisClientException ex) {
-            log.error("rename", ex);
-            throw new WebApplicationException();
+        } catch (ServiceException | IOException | TapisClientException e) {
+            throw new WebApplicationException("Something went wrong!", e);
         }
 
 
@@ -305,8 +301,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException | TapisClientException ex) {
-            log.error("delete", ex);
-            throw new WebApplicationException(ex.getMessage());
+            throw new WebApplicationException(ex.getMessage(), ex);
         }
     }
 

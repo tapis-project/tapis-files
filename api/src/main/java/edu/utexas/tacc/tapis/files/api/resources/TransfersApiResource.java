@@ -33,7 +33,7 @@ import java.util.UUID;
 
 
 @Path("/v3/files/transfers")
-public class TransfersApiResource {
+public class  TransfersApiResource {
 
     private static final String EXAMPLE_TASK_ID = "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c";
     private static final Logger log = LoggerFactory.getLogger(TransfersApiResource.class);

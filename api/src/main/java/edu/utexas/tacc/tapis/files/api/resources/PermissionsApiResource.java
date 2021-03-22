@@ -93,11 +93,6 @@ public class PermissionsApiResource  {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         TSystem system;
         String username;
-        if (queryUsername == null) {
-            username = user.getOboUser();
-        } else {
-            username = queryUsername;
-        }
         try {
             system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
         } catch (ServiceException ex) {
@@ -107,10 +102,10 @@ public class PermissionsApiResource  {
             throw new NotFoundException("System not found");
         }
 
-        // Only the owner should be able to check for OTHER peoples permissions
-        String systemOwner = system.getOwner();
-        if (!systemOwner.equals(user.getOboUser())) {
+        if (queryUsername == null) {
             username = user.getOboUser();
+        } else {
+            username = queryUsername;
         }
 
         try {

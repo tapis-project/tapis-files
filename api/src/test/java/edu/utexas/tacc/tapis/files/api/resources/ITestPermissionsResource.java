@@ -248,8 +248,35 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
             .get(FilePermissionResponse.class);
         Assert.assertEquals(response.getStatus(), "success");
 
-        Mockito.verify(skClient).isPermitted("dev", "testuser1", "files:dev:*:testSystem:a");
+        //Verify that the SK got called with the correct things
+        Mockito.verify(skClient).isPermitted("dev", "testuser3", "files:dev:*:testSystem:a");
         Assert.assertEquals(response.getResult().getPermissions(), FilePermissionsEnum.ALL);
+        Assert.assertEquals(response.getResult().getUsername(), "testuser3");
+    }
+
+    @Test
+    public void testGetUserPermissionsAsDifferentUser() throws Exception {
+
+        // Owners of the system can check permissions for other users. Normal API users only can only
+        // see get their own permissions.
+
+        //testuser1 is a user of the system,
+        // testuser2 is the owner
+        // testuser3 is who testuser1 is asking about
+        testSystem.setOwner("testuser2");
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+
+        when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
+        FilePermissionResponse response = target("/v3/files/permissions/testSystem/a/")
+            .queryParam("username", "testuser3")
+            .request()
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get(FilePermissionResponse.class);
+
+        //Verify that the SK got called with the correct things
+        Mockito.verify(skClient).isPermitted("dev", "testuser3", "files:dev:*:testSystem:a");
+        Assert.assertEquals(response.getResult().getPermissions(), FilePermissionsEnum.ALL);
+        Assert.assertEquals(response.getResult().getUsername(), "testuser3");
     }
 
     @Test
