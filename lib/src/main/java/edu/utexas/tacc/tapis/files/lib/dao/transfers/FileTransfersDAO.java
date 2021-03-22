@@ -157,46 +157,47 @@ public class FileTransfersDAO {
      * @throws DAOException
      */
     public TransferTask createTransferTask(TransferTask task, List<TransferTaskRequestElement> elements) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskRowProcessor();
-        RowProcessor parentRowProcessor = new TransferTaskParentRowProcessor();
-        BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
-        BeanHandler<TransferTaskParent> parentHandler = new BeanHandler<>(TransferTaskParent.class, parentRowProcessor);
 
         try (Connection connection = HikariConnectionPool.getConnection()) {
-            String query = FileTransfersDAOStatements.INSERT_TASK;
-            QueryRunner runner = new QueryRunner();
-            TransferTask transferTask =  runner.query(connection, query, handler,
-                task.getTenantId(),
-                task.getUsername(),
-                task.getStatus().name(),
-                task.getTag()
-            );
+            connection.setAutoCommit(false);
+            try (PreparedStatement statement = connection.prepareStatement(FileTransfersDAOStatements.INSERT_TASK, Statement.RETURN_GENERATED_KEYS);
+                 PreparedStatement insertParentStatement = connection.prepareStatement(FileTransfersDAOStatements.INSERT_PARENT_TASK)) {
+                statement.setString(1, task.getTenantId());
+                statement.setString(2, task.getUsername());
+                statement.setString(3, TransferTaskStatus.ACCEPTED.name());
+                statement.setString(4, task.getTag());
+                statement.execute();
 
-            // TODO: Bulk insert in one transaction
-            List<TransferTaskParent> parentTasks = new ArrayList<>();
-            for(TransferTaskRequestElement element: elements) {
-                String insertParentTaskQuery = FileTransfersDAOStatements.INSERT_PARENT_TASK;
-                TransferTaskParent parent = new TransferTaskParent();
-                parent.setTenantId(transferTask.getTenantId());
-                parent.setUsername(transferTask.getUsername());
-                parent.setSourceURI(element.getSourceURI());
-                parent.setDestinationURI(element.getDestinationURI());
-                parent.setTaskId(transferTask.getId());
-                parent.setStatus(TransferTaskStatus.ACCEPTED.name());
-                parent =  runner.query(connection, insertParentTaskQuery, parentHandler,
-                    parent.getTenantId(),
-                    parent.getTaskId(),
-                    parent.getUsername(),
-                    parent.getSourceURI().toString(),
-                    parent.getDestinationURI().toString(),
-                    parent.getStatus().name()
-                );
-                parentTasks.add(parent);
+                ResultSet rs = statement.getGeneratedKeys();
+                int taskId = 0;
+                if (rs.next()) {
+                    taskId = rs.getInt(1);
+                }
+
+                for (TransferTaskRequestElement element : elements) {
+                    insertParentStatement.setString(1, task.getTenantId());
+                    insertParentStatement.setInt(2, taskId);
+                    insertParentStatement.setString(3, task.getUsername());
+                    insertParentStatement.setString(4, element.getSourceURI().toString());
+                    insertParentStatement.setString(5, element.getDestinationURI().toString());
+                    insertParentStatement.setString(6, TransferTaskStatus.ACCEPTED.name());
+                    insertParentStatement.setBoolean(7, element.isOptional());
+                    insertParentStatement.addBatch();
+                }
+                insertParentStatement.executeBatch();
+                connection.commit();
+                TransferTask newTask = getTransferTaskByID(taskId);
+                List<TransferTaskParent> parents = getAllParentsForTaskByID(newTask.getId());
+                newTask.setParentTasks(parents);
+                return newTask;
+            } catch (SQLException ex) {
+                throw new SQLException("Could not insert tasks?", ex);
+            } finally {
+                connection.rollback();
+                connection.setAutoCommit(true);
             }
-            transferTask.setParentTasks(parentTasks);
-            return transferTask;
         } catch (SQLException ex) {
-            throw new DAOException(ex.getMessage(), ex);
+            throw new DAOException("Could not insert transfer tasks", ex);
         }
     }
 

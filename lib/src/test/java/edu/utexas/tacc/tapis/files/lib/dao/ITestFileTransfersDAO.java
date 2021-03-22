@@ -50,6 +50,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(task.getParentTasks().size(), 2);
         TransferTaskParent parent = task.getParentTasks().get(0);
         Assert.assertTrue(parent.getId() > 0);
+        Assert.assertEquals(parent.getTaskId(), task.getId());
     }
 
 
