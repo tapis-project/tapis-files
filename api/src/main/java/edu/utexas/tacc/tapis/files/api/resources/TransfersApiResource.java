@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
@@ -73,7 +73,7 @@ public class  TransfersApiResource {
             TapisResponse<List<TransferTask>> resp = TapisResponse.createSuccessResponse(tasks);
             return Response.ok(resp).build();
         } catch (ServiceException e) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, e.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -111,7 +111,7 @@ public class  TransfersApiResource {
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (ServiceException e) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, e.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -147,7 +147,7 @@ public class  TransfersApiResource {
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (ServiceException ex) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
@@ -184,7 +184,7 @@ public class  TransfersApiResource {
             resp.setMessage("Transfer deleted.");
             return Response.ok(resp).build();
         } catch (ServiceException e) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, e.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -222,7 +222,7 @@ public class  TransfersApiResource {
             resp.setMessage("Transfer created.");
             return Response.ok(resp).build();
         } catch (Exception ex) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }

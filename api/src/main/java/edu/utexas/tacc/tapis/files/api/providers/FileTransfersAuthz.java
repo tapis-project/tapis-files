@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -48,7 +48,7 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
             }
 
         } catch (ServiceException ex) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, "authorization", ex.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_TXFR_ERROR", user, "authorization", ex.getMessage());
             log.error(msg, ex);
             throw new IOException(msg, ex);
         }

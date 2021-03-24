@@ -1,8 +1,10 @@
-package edu.utexas.tacc.tapis.files.api.utils;
+package edu.utexas.tacc.tapis.files.lib.utils;
 
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -11,19 +13,19 @@ import java.util.ResourceBundle;
    Utility class containing general use static methods.
    This class is non-instantiable
  */
-public class ApiUtils
+public class Utils
 {
   // Private constructor to make it non-instantiable
-  private ApiUtils() { throw new AssertionError(); }
+  private Utils() { throw new AssertionError(); }
 
   /* ********************************************************************** */
   /*                               Constants                                */
   /* ********************************************************************** */
   // Local logger.
-  private static final Logger _log = LoggerFactory.getLogger(ApiUtils.class);
+  private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
   // Location of message bundle files
-  private static final String MESSAGE_BUNDLE = "edu.utexas.tacc.tapis.files.api.FilesApiMessages";
+  private static final String MESSAGE_BUNDLE = "edu.utexas.tacc.tapis.files.lib.FilesMessages";
 
   /* **************************************************************************** */
   /*                                Public Methods                                */
@@ -31,11 +33,23 @@ public class ApiUtils
 
   /**
    * Get a localized message using the specified key and parameters. Locale is null.
+   * If there is a problem an error is logged and a special message is constructed with as much info as can be provided.
+   * @param key message key
+   * @param parms message parameters
+   * @return localized message
+   */
+  public static String getMsg(String key, Object... parms)
+  {
+    return getMsg(key, null, parms);
+  }
+
+  /**
+   * Get a localized message using the specified key and parameters. Locale is null.
    * Fill in first 4 parameters with user and tenant info from AuthenticatedUser
    * If there is a problem an error is logged and a special message is constructed with as much info as can be provided.
-   * @param key - Key used to lookup message in properties file.
-   * @param parms - Parameters for template variables in message
-   * @return Resulting message
+   * @param key message key
+   * @param parms message parameters
+   * @return localized message
    */
   public static String getMsgAuth(String key, AuthenticatedUser authUser, Object... parms)
   {
@@ -50,24 +64,12 @@ public class ApiUtils
   }
 
   /**
-   * Get a localized message using the specified key and parameters. Locale is null.
-   * If there is a problem an error is logged and a special message is constructed with as much info as can be provided.
-   * @param key - Key used to lookup message in properties file.
-   * @param parms - Parameters for template variables in message
-   * @return Resulting message
-   */
-  public static String getMsg(String key, Object... parms)
-  {
-    return getMsg(key, null, parms);
-  }
-
-  /**
    * Get a localized message using the specified locale, key and parameters.
    * If there is a problem an error is logged and a special message is constructed with as much info as can be provided.
-   * @param locale - Locale to use when building message. If null use default locale
-   * @param key - Key used to lookup message in properties file.
-   * @param parms - Parameters for template variables in message
-   * @return Resulting message
+   * @param locale Locale for message
+   * @param key message key
+   * @param parms message parameters
+   * @return localized message
    */
   public static String getMsg(String key, Locale locale, Object... parms)
   {
@@ -79,12 +81,12 @@ public class ApiUtils
     try { bundle = ResourceBundle.getBundle(MESSAGE_BUNDLE, locale); }
     catch (Exception e)
     {
-      _log.error("Unable to find resource message bundle: " + MESSAGE_BUNDLE, e);
+      log.error("Unable to find resource message bundle: " + MESSAGE_BUNDLE, e);
     }
     if (bundle != null) try { msgValue = bundle.getString(key); }
     catch (Exception e)
     {
-      _log.error("Unable to find key: " + key + " in resource message bundle: " + MESSAGE_BUNDLE, e);
+      log.error("Unable to find key: " + key + " in resource message bundle: " + MESSAGE_BUNDLE, e);
     }
 
     if (msgValue != null)

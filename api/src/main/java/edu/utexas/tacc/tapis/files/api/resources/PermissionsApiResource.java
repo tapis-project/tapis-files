@@ -3,7 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
@@ -71,7 +71,7 @@ public class PermissionsApiResource  {
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions revoked.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
@@ -100,12 +100,12 @@ public class PermissionsApiResource  {
         try {
             system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
         } catch (ServiceException ex) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_SYSOPS_ERROR", user, systemId, "getSystem", ex.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_SYSOPS_ERROR", user, systemId, "getSystem", ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
         if (system == null) {
-            throw new NotFoundException(ApiUtils.getMsgAuth("FILESAPI_SYS_NOTFOUND", user, systemId));
+            throw new NotFoundException(Utils.getMsgAuth("FILESAPI_SYS_NOTFOUND", user, systemId));
         }
 
         if (queryUsername == null) {
@@ -130,7 +130,7 @@ public class PermissionsApiResource  {
             TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(permission);
             return Response.ok(response).build();
         } catch (ServiceException ex) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
@@ -161,7 +161,7 @@ public class PermissionsApiResource  {
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions granted.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }

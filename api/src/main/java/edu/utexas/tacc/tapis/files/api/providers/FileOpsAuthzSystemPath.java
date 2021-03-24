@@ -1,12 +1,12 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
@@ -63,7 +63,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
             }
         } catch (ServiceException e) {
             // This should only happen when there is a network issue.
-            String msg = ApiUtils.getMsgAuth("FILESAPI_OPS_ERROR", user, "authorization", systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, "authorization", systemId, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }

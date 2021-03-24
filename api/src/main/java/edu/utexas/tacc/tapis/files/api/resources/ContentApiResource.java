@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
@@ -94,7 +94,7 @@ public class ContentApiResource extends BaseFilesResource {
 
             // Ensure that the path is not a dir, if not zip, then this will error out
             if (path.endsWith("/")) {
-                throw new BadRequestException(ApiUtils.getMsgAuth("FILESAPI_CONT_BAD", user, systemId));
+                throw new BadRequestException(Utils.getMsgAuth("FILESAPI_CONT_BAD", user, systemId));
             }
 
 
@@ -116,7 +116,7 @@ public class ContentApiResource extends BaseFilesResource {
                     .build();
             asyncResponse.resume(response);
         } catch (ServiceException | IOException ex) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_CONT_ERROR", user, systemId, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_CONT_ERROR", user, systemId, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }

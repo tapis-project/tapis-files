@@ -5,12 +5,12 @@ import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -117,16 +117,16 @@ public class OperationsApiResource extends BaseFilesResource {
                 String uri = String.format("tapis://%s/%s/%s", user.getOboTenantId(), systemId, path);
                 f.setUri(uri);
             });
-          String msg = ApiUtils.getMsgAuth("FILESAPI_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+          String msg = Utils.getMsgAuth("FILESAPI_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
           log.debug(msg);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
             return Response.status(Status.OK).entity(resp).build();
         }
         catch (NotFoundException e) {
-          throw new NotFoundException(ApiUtils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage()));
+          throw new NotFoundException(Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage()));
         }
         catch (ServiceException | IOException e) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -173,7 +173,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -218,7 +218,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -279,7 +279,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -327,7 +327,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            String msg = ApiUtils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }

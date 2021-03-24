@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,7 +47,7 @@ public class ShareApiResource  {
           // Use if (log != null) so it will compile
           if (log != null) throw new ServiceException("Operation not yet supported.");
         } catch (ServiceException ex) {
-          String msg = ApiUtils.getMsgAuth("FILESAPI_SHARE_ERROR", user, systemId, opName, ex.getMessage());
+          String msg = Utils.getMsgAuth("FILESAPI_SHARE_ERROR", user, systemId, opName, ex.getMessage());
           log.error(msg, ex);
           throw new WebApplicationException(msg, ex);
         }
@@ -76,7 +76,7 @@ public class ShareApiResource  {
           // Use if (log != null) so it will compile
           if (log != null) throw new ServiceException("Operation not yet supported.");
         } catch (ServiceException ex) {
-          String msg = ApiUtils.getMsgAuth("FILESAPI_SHARE_ERROR", user, systemId, opName, ex.getMessage());
+          String msg = Utils.getMsgAuth("FILESAPI_SHARE_ERROR", user, systemId, opName, ex.getMessage());
           log.error(msg, ex);
           throw new WebApplicationException(msg, ex);
         }
@@ -109,7 +109,7 @@ public class ShareApiResource  {
           // Use if (log != null) so it will compile
           if (log != null) throw new ServiceException("Operation not yet supported.");
         } catch (ServiceException ex) {
-          String msg = ApiUtils.getMsgAuth("FILESAPI_SHARE_ERROR", user, systemId, opName, ex.getMessage());
+          String msg = Utils.getMsgAuth("FILESAPI_SHARE_ERROR", user, systemId, opName, ex.getMessage());
           log.error(msg, ex);
           throw new WebApplicationException(msg, ex);
         }
