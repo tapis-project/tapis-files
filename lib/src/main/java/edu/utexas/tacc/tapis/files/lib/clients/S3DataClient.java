@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
+import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.io.FileUtils;
@@ -223,19 +224,18 @@ public class S3DataClient implements IRemoteDataClient {
 
     /**
      * @param currentPath
-     * @param newName
+     * @param newPath
      */
     @Override
     public void move(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
-        String oldRemotePath;
-        oldRemotePath = FilenameUtils.normalizeNoEndSeparator(DataClientUtils.getRemotePath(rootDir, currentPath));
-        Path tmp = Paths.get(oldRemotePath);
-        String newRoot = FilenameUtils.normalizeNoEndSeparator(FilenameUtils.concat(tmp.getParent().toString(), newPath));
-        Stream<S3Object> response = listWithIterator(oldRemotePath);
+        String remotePath = DataClientUtils.getRemotePathForS3(rootDir, currentPath);
+
+        Stream<S3Object> response = listWithIterator(remotePath);
         response.forEach(object -> {
             try {
                 String key = object.key();
-                String newKey = key.replaceFirst(oldRemotePath, newRoot);
+                Path renamedPath = PathUtils.relativizePaths(remotePath, key, newPath);
+                String newKey = renamedPath.normalize().toString();
                 renameObject(object, newKey, true);
             } catch (IOException ex) {
                 log.error("S3DataClient::move " + object.key(), ex);
@@ -263,15 +263,13 @@ public class S3DataClient implements IRemoteDataClient {
 
     @Override
     public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
-        String oldRemotePath;
-        oldRemotePath = FilenameUtils.normalizeNoEndSeparator(DataClientUtils.getRemotePath(rootDir, currentPath));
-        Path tmp = Paths.get(oldRemotePath);
-        String newRoot = FilenameUtils.normalizeNoEndSeparator(FilenameUtils.concat(tmp.getParent().toString(), newPath));
-        Stream<S3Object> response = listWithIterator(oldRemotePath);
+        String remotePath = DataClientUtils.getRemotePathForS3(rootDir, currentPath);
+        Stream<S3Object> response = listWithIterator(remotePath);
         response.forEach(object -> {
             try {
                 String key = object.key();
-                String newKey = key.replaceFirst(oldRemotePath, newRoot);
+                Path renamedPath = PathUtils.relativizePaths(currentPath, key, newPath);
+                String newKey = renamedPath.normalize().toString();
                 renameObject(object, newKey, false);
             } catch (IOException ex) {
                 log.error("S3DataClient::move " + object.key(), ex);

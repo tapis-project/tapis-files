@@ -166,6 +166,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         FileInfo file = response.getResult().get(0);
         Assert.assertEquals(file.getName(), "testfile1.txt");
         Assert.assertEquals(file.getSize(), 10 * 1024);
+        Assert.assertNotNull(file.getUri());
     }
 
     @Test
@@ -301,7 +302,6 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         request.setNewPath("renamed");
 
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/")
-            .queryParam("newName", "renamed/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
@@ -334,7 +334,6 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
         request.setNewPath("renamed");
 
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/dir2/")
-            .queryParam("newName", "renamed")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", getJwtForUser("dev", "testuser1"))

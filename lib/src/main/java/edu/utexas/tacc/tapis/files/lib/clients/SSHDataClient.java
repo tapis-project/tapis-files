@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
@@ -123,7 +124,16 @@ public class SSHDataClient implements IRemoteDataClient {
             ZonedDateTime lastModified = ZonedDateTime.parse(attrs.getMtimeString(), dateTimeformatter);
             fileInfo.setLastModified(lastModified.toInstant());
             fileInfo.setSize(attrs.getSize());
-
+            Path tmpPath = Paths.get(entry.getFilename());
+            fileInfo.setMimeType(Files.probeContentType(tmpPath));
+            if (attrs.isDir()) {
+                fileInfo.setType("dir");
+            } else {
+                fileInfo.setType("file");
+            }
+            fileInfo.setOwner(String.valueOf(attrs.getUId()));
+            fileInfo.setGroup(String.valueOf(attrs.getGId()));
+            fileInfo.setPermissions(attrs.getPermissionsString());
             //TODO: This path munging is tricky, but it seems to work as far as listings are concerned
             Path fullPath;
             if (absolutePath.getFileName().equals(Paths.get(entry.getFilename()))) {
