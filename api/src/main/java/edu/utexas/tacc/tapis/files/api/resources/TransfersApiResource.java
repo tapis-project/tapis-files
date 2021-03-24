@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
@@ -65,14 +66,16 @@ public class  TransfersApiResource {
         @Parameter(description = "pagination limit", example = "100") @DefaultValue("1000") @QueryParam("limit") @Max(1000) int limit,
         @Parameter(description = "pagination offset", example = "1000") @DefaultValue("0") @QueryParam("offset") @Min(0) int offset,
         @Context SecurityContext securityContext) {
+        String opName = "getRecentTransferTasks";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             List<TransferTask> tasks = transfersService.getRecentTransfers(user.getTenantId(), user.getName(), limit, offset);
             TapisResponse<List<TransferTask>> resp = TapisResponse.createSuccessResponse(tasks);
             return Response.ok(resp).build();
         } catch (ServiceException e) {
-            log.error("getTransferTaskStatus", e);
-            throw new WebApplicationException("server error");
+            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, e.getMessage());
+            log.error(msg, e);
+            throw new WebApplicationException(msg, e);
         }
     }
 
@@ -95,6 +98,7 @@ public class  TransfersApiResource {
             @Context SecurityContext securityContext) {
 
 
+        String opName = "getTransferTask";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
@@ -107,8 +111,9 @@ public class  TransfersApiResource {
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (ServiceException e) {
-            log.error("getTransferTaskStatus", e);
-            throw new WebApplicationException("server error");
+            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, e.getMessage());
+            log.error(msg, e);
+            throw new WebApplicationException(msg, e);
         }
     }
 
@@ -130,6 +135,7 @@ public class  TransfersApiResource {
             @Context SecurityContext securityContext) {
 
 
+        String opName = "getTransferTaskHistory";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             UUID transferTaskUUID = UUID.fromString(transferTaskId);
@@ -141,7 +147,9 @@ public class  TransfersApiResource {
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (ServiceException ex) {
-            throw new WebApplicationException(ex.getMessage());
+            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, ex.getMessage());
+            log.error(msg, ex);
+            throw new WebApplicationException(msg, ex);
         }
     }
 
@@ -161,6 +169,7 @@ public class  TransfersApiResource {
             @ValidUUID @Parameter(description = "Transfer task ID",required=true, example = EXAMPLE_TASK_ID) @PathParam("transferTaskId") String transferTaskId,
             @Context SecurityContext securityContext) {
 
+        String opName = "cancelTransferTask";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
@@ -175,8 +184,9 @@ public class  TransfersApiResource {
             resp.setMessage("Transfer deleted.");
             return Response.ok(resp).build();
         } catch (ServiceException e) {
-            log.error("ERROR: cancelTransferTask", e);
-            throw new WebApplicationException("server error");
+            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, e.getMessage());
+            log.error(msg, e);
+            throw new WebApplicationException(msg, e);
         }
     }
 
@@ -199,6 +209,7 @@ public class  TransfersApiResource {
     public Response createTransferTask(
             @Valid @Parameter(required = true) TransferTaskRequest transferTaskRequest,
             @Context SecurityContext securityContext) {
+        String opName = "createTransferTask";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             TransferTask task = transfersService.createTransfer(
@@ -211,8 +222,9 @@ public class  TransfersApiResource {
             resp.setMessage("Transfer created.");
             return Response.ok(resp).build();
         } catch (Exception ex) {
-            log.error("createTransferTask", ex);
-            throw new WebApplicationException("server error");
+            String msg = ApiUtils.getMsgAuth("FILESAPI_TXFR_ERROR", user, opName, ex.getMessage());
+            log.error(msg, ex);
+            throw new WebApplicationException(msg, ex);
         }
     }
 }

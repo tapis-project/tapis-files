@@ -11,9 +11,13 @@ import javax.annotation.security.PermitAll;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Path("/v3/files/healthcheck")
 public class HealthApiResource {
+
+  // Count the number of health check requests received.
+  private static final AtomicLong healthCheckCount = new AtomicLong();
 
     private static class HealthCheckResponse extends TapisResponse<String>{}
 
@@ -29,8 +33,10 @@ public class HealthApiResource {
             )
     })
     public Response healthCheck() throws NotFoundException {
-        TapisResponse resp = TapisResponse.createSuccessResponse("ok");
-        return Response.ok(resp).build();
+      // Get the current check count.
+      long checkNum = healthCheckCount.incrementAndGet();
+      TapisResponse resp = TapisResponse.createSuccessResponse("Health check received. Count: " + checkNum);
+      return Response.ok(resp).build();
     }
 
 }

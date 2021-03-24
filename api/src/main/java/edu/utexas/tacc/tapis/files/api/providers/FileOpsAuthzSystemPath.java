@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
@@ -62,8 +63,9 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
             }
         } catch (ServiceException e) {
             // This should only happen when there is a network issue.
-            log.error("ERROR: Files authorization failed", e);
-            throw new WebApplicationException(e.getMessage());
+            String msg = ApiUtils.getMsgAuth("FILESAPI_OPS_ERROR", user, "authorization", systemId, e.getMessage());
+            log.error(msg, e);
+            throw new WebApplicationException(msg, e);
         }
     }
 

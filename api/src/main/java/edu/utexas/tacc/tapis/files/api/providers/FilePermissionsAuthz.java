@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
+import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.ws.rs.NotAuthorizedException;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ResourceInfo;
@@ -52,7 +54,9 @@ public class FilePermissionsAuthz implements ContainerRequestFilter {
                 throw new NotAuthorizedException("User is not authorized to grant permissions on this system");
             }
         } catch (ServiceException ex) {
-            throw new IOException("Could not verify permissions.");
+            String msg = ApiUtils.getMsgAuth("FILESAPI_PERM_ERROR", user, "authorization", systemId, ex.getMessage());
+            log.error(msg, ex);
+            throw new IOException(msg, ex);
         }
     }
 }
