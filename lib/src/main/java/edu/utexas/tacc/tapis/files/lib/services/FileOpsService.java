@@ -31,10 +31,16 @@ public class FileOpsService implements IFileOpsService {
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
     private final TenantManager tenantManager;
 
+    // 0 = tenantBaseUri, 1=systemId, 2=path
+    private String TAPIS_FILES_URI_FORMAT = "tapis://{0}/{1}/{2}";
+
     @Inject
     public FileOpsService(TenantManager tenantManager) {
         this.tenantManager = tenantManager;
     }
+
+
+
 
     @Override
     public List<FileInfo> ls(IRemoteDataClient client, @NotNull String path) throws ServiceException, NotFoundException {
@@ -49,6 +55,9 @@ public class FileOpsService implements IFileOpsService {
     public List<FileInfo> ls(IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException, NotFoundException {
         try {
             List<FileInfo> listing = client.ls(path, limit, offset);
+            listing.forEach(f-> {
+
+            });
             return listing;
         } catch (IOException ex) {
             String message = "Listing failed  : " + ex.getMessage();
@@ -162,7 +171,10 @@ public class FileOpsService implements IFileOpsService {
      * @return
      * @throws IOException
      */
+    @Override
     public void getZip(IRemoteDataClient client, @NotNull OutputStream outputStream, @NotNull String path) throws ServiceException {
+
+        //TODO: This should be made for recursive listings
 
         List<FileInfo> listing = this.ls(client, path);
         try (ZipOutputStream zipStream = new ZipOutputStream(outputStream)) {

@@ -11,6 +11,7 @@ import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
@@ -113,6 +114,12 @@ public class OperationsApiResource extends BaseFilesResource {
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
             List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
+
+            //TODO: This feels like it should be in the service layer
+            listing.forEach(f-> {
+                String uri = String.format("tapis://%s/%s/%s", user.getOboTenantId(), systemId, path);
+                f.setUri(uri);
+            });
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
             return Response.status(Status.OK).entity(resp).build();
         } catch (ServiceException | IOException e) {
@@ -256,7 +263,8 @@ public class OperationsApiResource extends BaseFilesResource {
             } else if (operation.equals(MoveCopyRenameOperation.COPY)) {
                 fileOpsService.copy(client, path, request.getNewPath());
             } else if (operation.equals(MoveCopyRenameOperation.RENAME)) {
-                fileOpsService.move(client, path, request.getNewPath());
+                java.nio.file.Path tmp = Paths.get(path).resolveSibling(request.getNewPath());
+                fileOpsService.move(client, path, tmp.toString());
             }
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();

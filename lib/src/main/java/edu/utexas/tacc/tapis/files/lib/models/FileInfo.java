@@ -1,6 +1,9 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Objects;
@@ -14,14 +17,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 
 public class FileInfo   {
 
-    public FileInfo(S3Object listing) {
-        this.name = Paths.get(listing.key()).getFileName().toString();
-        this.lastModified = listing.lastModified();
-        this.size = listing.size();
-        this.path = listing.key();
-    }
 
-    public FileInfo() {}
 
     @JsonProperty("lastModified")
     private Instant lastModified = null;
@@ -40,7 +36,34 @@ public class FileInfo   {
     private String owner;
     private String group;
     private String permissions;
+    private String uri;
 
+    public String getUri() {
+        return uri;
+    }
+
+    public void setUri(String uri) {
+        this.uri = uri;
+    }
+
+    public FileInfo(S3Object listing) {
+        Path tmpPath = Paths.get(listing.key());
+        this.name = tmpPath.getFileName().toString();
+        this.lastModified = listing.lastModified();
+        this.size = listing.size();
+        this.path = listing.key();
+        try {
+            this.mimeType = Files.probeContentType(tmpPath);
+        } catch (IOException ex) {
+            this.mimeType = null;
+        }
+        if (tmpPath.endsWith("/")) {
+            this.type = "dir";
+        } else {
+            this.type = "file";
+        }
+    }
+    public FileInfo() {}
     public void setSize(Long size) {
         this.size = size;
     }

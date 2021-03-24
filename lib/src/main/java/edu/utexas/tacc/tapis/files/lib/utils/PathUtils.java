@@ -11,7 +11,6 @@ public class PathUtils {
 
     public static final Logger log = LoggerFactory.getLogger(PathUtils.class);
 
-
     /**
      *
      * @param srcBase The BASE path of the source of the transfer
@@ -19,25 +18,20 @@ public class PathUtils {
      * @param destBase The BASE path of the destination of the transfer
      * @return Path
      */
-    public static Path relativizePathsForTransfer(String srcBase, String srcPath, String destBase) {
-        //Make the paths absolute if they are not already.
-        Path srcBasePath = Paths.get(StringUtils.prependIfMissing(srcBase, "/"));
-        Path destBasePath = Paths.get(StringUtils.prependIfMissing(destBase, "/"));
-        Path srcFilePath = Paths.get(StringUtils.prependIfMissing(srcPath, "/"));
+    public static Path relativizePaths(String srcBase, String srcPath, String destBase) {
+        srcPath = StringUtils.prependIfMissing(srcPath, "/");
+        srcBase = StringUtils.prependIfMissing(srcBase, "/");
+        destBase = StringUtils.prependIfMissing(destBase, "/");
 
-        // This catches when the listing for the file is in the root of the tree, for instance
-        // if srcPath = /jobs/input/file1.txt and destPath = /testFile.txt,
-        //
-        Path finalDestPath;
-        if ( srcFilePath.equals(srcBasePath) ) {
-            finalDestPath = destBasePath.normalize();
-        } else {
-            Path sourceRelativeToBase = srcBasePath.relativize(srcFilePath);
-            finalDestPath = destBasePath.resolve(sourceRelativeToBase).normalize();
-        }
+        Path sourcePath = Paths.get(srcPath);
+        Path destinationBasePath = Paths.get(destBase);
+        Path sourceBase = Paths.get(srcBase);
 
-        Path tmp = Paths.get(StringUtils.stripStart(finalDestPath.toString(), "/"));
+        Path tmp = destinationBasePath.resolve(sourceBase.relativize(sourcePath));
+
         return tmp;
+
+
     }
 
 }

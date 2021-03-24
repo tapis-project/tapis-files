@@ -39,7 +39,7 @@ public class TransferTaskChild extends TransferTaskParent {
         TransferURI sourceURL = transferTaskParent.getSourceURI();
         TransferURI destURL =transferTaskParent.getDestinationURI();
 
-        Path destPath = PathUtils.relativizePathsForTransfer(
+        Path destPath = PathUtils.relativizePaths(
             sourceURL.getPath(),
             fileInfo.getPath(),
             destURL.getPath()
