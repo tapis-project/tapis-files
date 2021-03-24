@@ -73,9 +73,6 @@ public abstract class BaseDatabaseIntegrationTest extends JerseyTestNg.Container
     }
 
 
-
-
-
     @BeforeTest
     public void createTestBucket() {
         Region region = Region.US_WEST_2;

@@ -49,22 +49,19 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         sourceSystem = testSystemS3;
         destSystem = testSystemSSH;
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
-        fileOpsService.delete("/");
+        fileOpsService.delete(client, "/");
         InputStream in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert("file1.txt", in);
+        fileOpsService.insert(client,"file1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert("file2.txt", in);
+        fileOpsService.insert(client,"file2.txt", in);
     }
 
     @AfterMethod
     public void tearDown() throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
-        fileOpsService.delete("/");
+        fileOpsService.delete(client,"/");
         client = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
-        fileOpsService = new FileOpsService(client);
-        fileOpsService.delete("/");
+        fileOpsService.delete(client,"/");
     }
 
     @Test
@@ -142,19 +139,19 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
-            "dev1",
+            "dev",
             "tag",
             elements
         );
         TransferTask t2 = transfersService.createTransfer(
             "testuser",
-            "dev2",
+            "dev",
             "tag",
             elements
         );
         TransferTask t3 = transfersService.createTransfer(
             "testuser",
-            "dev3",
+            "dev",
             "tag",
             elements
         );
@@ -193,7 +190,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
-            "dev1",
+            "dev",
             "tag",
             elements
         );
@@ -228,11 +225,10 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(sourceClient);
         InputStream in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert("a/1.txt", in);
+        fileOpsService.insert(sourceClient,"a/1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert("a/2.txt", in);
+        fileOpsService.insert(sourceClient,"a/2.txt", in);
         String childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(childQ);
         String parentQ = UUID.randomUUID().toString();
@@ -245,7 +241,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
-            "dev1",
+            "dev",
             "tag",
             elements
         );
@@ -287,20 +283,17 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
-        IFileOpsService fileOpsServiceSource = new FileOpsService(sourceClient);
         // Double check that the files really are in the destination
-        IFileOpsService fileOpsServiceDest = new FileOpsService(destClient);
         //wipe out the dest folder just in case
-        fileOpsServiceDest = new FileOpsService(destClient);
-        fileOpsServiceDest.delete("/");
+        fileOpsService.delete(destClient, "/");
 
 
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
         InputStream in = Utils.makeFakeFile(FILESIZE);
-        fileOpsServiceSource.insert("a/1.txt", in);
+        fileOpsService.insert(sourceClient, "a/1.txt", in);
         in = Utils.makeFakeFile(FILESIZE);
-        fileOpsServiceSource.insert("a/2.txt", in);
+        fileOpsService.insert(sourceClient, "a/2.txt", in);
 
         //Fix the queues to something random to avoid any lingering messages
         String childQ = UUID.randomUUID().toString();
@@ -315,7 +308,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
-            "dev1",
+            "dev",
             "tag",
             elements
         );
@@ -354,7 +347,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(parent.getStartTime());
         Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-        List<FileInfo> listing = fileOpsServiceDest.ls("/b");
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         Assert.assertEquals(listing.size(), 2);
         transfersService.deleteQueue(childQ).subscribe();
         transfersService.deleteQueue(parentQ).subscribe();
@@ -373,12 +366,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
-        IFileOpsService fileOpsServiceSource = new FileOpsService(sourceClient);
         // Double check that the files really are in the destination
-        IFileOpsService fileOpsServiceDest = new FileOpsService(destClient);
         //wipe out the dest folder just in case
-        fileOpsServiceDest = new FileOpsService(destClient);
-        fileOpsServiceDest.delete("/");
+        fileOpsService.delete(destClient, "/");
 
 
         //Fix the queues to something random to avoid any lingering messages
@@ -394,7 +384,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
-            "dev1",
+            "dev",
             "tag",
             elements
         );
@@ -427,7 +417,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(parent.getStartTime());
         Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-        List<FileInfo> listing = fileOpsServiceDest.ls("/b");
+        List<FileInfo> listing = fileOpsService.ls(destClient,"/b");
         Assert.assertEquals(listing.size(), 1);
 
         transfersService.deleteQueue(childQ).subscribe();
@@ -444,12 +434,11 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(sourceClient);
         //Add some files to transfer
         InputStream in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert("a/1.txt", in);
+        fileOpsService.insert(sourceClient,"a/1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert("a/2.txt", in);
+        fileOpsService.insert(sourceClient, "a/2.txt", in);
         String childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(childQ);
         String parentQ = UUID.randomUUID().toString();
@@ -462,7 +451,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
-            "dev1",
+            "dev",
             "tag",
             elements
         );
@@ -485,10 +474,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                 Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
             })
             .thenCancel()
-            .verify();
+            .verify(Duration.ofSeconds(10));
 
-        IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
-        List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         //NOT-THERE/1.txt should NOT BE THERE
         Assert.assertEquals(listing.size(), 1);
         transfersService.deleteQueue(childQ).subscribe();
@@ -502,10 +490,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(sourceClient);
         //Add some files to transfer
-        fileOpsService.insert("/a/1.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert("/a/2.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.insert(sourceClient,"/a/1.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.insert(sourceClient,"/a/2.txt", Utils.makeFakeFile(10 * 1024));
         String childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(childQ);
         String parentQ = UUID.randomUUID().toString();
@@ -518,7 +505,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
             "testuser",
-            "dev1",
+            "dev",
             "tag",
             elements
         );
@@ -541,10 +528,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                 .verify(Duration.ofSeconds(5));
 
         stream.subscribe(taskChild -> log.info(taskChild.toString()));
-        IFileOpsService fileOpsServiceDestination = new FileOpsService(destClient);
         // MUST sleep here for a bit for a bit for things to resolve. Alternatively could
         // use a StepVerifier or put some of this in the subscribe callback
-        List<FileInfo> listing = fileOpsServiceDestination.ls("/b");
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         Assert.assertEquals(listing.size(), 2);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
@@ -552,144 +538,4 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.deleteQueue(childQ).subscribe();
     }
 
-
-    @Test(groups = {"performance"}, enabled = false)
-    public void testPerformance() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
-        IFileOpsService fileOpsServiceSource = new FileOpsService(sourceClient);
-        // 10 tenants with 100 transfers of 10 files
-        Map<String, Tenant> tenantMap = new HashMap<>();
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-
-        String childQ = UUID.randomUUID().toString();
-        transfersService.setChildQueue(childQ);
-        String parentQ = UUID.randomUUID().toString();
-        transfersService.setParentQueue(parentQ);
-
-        int NUM_TENANTS = 10;
-        int NUM_FILES = 100;
-        int NUM_TRANSFERS = 1;
-
-        //Add some files to transfer
-        fileOpsServiceSource.delete("/");
-        for (var i=0;i<NUM_FILES;i++) {
-            //Add some files to the source bucket
-            String fname = String.format("/a/%s.txt", i);
-            fileOpsServiceSource.insert(fname, Utils.makeFakeFile(10000 * 1024));
-        }
-        for (var i=0;i<NUM_TENANTS;i++) {
-            var tenant = new Tenant();
-            tenant.setTenantId("testTenant"+i);
-            tenant.setBaseUrl("https://test.tapis.io");
-            tenantMap.put(tenant.getTenantId(), tenant);
-
-            for (var j=0;j<NUM_TRANSFERS;j++) {
-                TransferTaskRequestElement element = new TransferTaskRequestElement();
-                element.setSourceURI("tapis://sourceSystem/a/");
-                element.setDestinationURI("tapis://destSystem/b/");
-                List<TransferTaskRequestElement> elements = new ArrayList<>();
-                elements.add(element);
-                TransferTask t1 = transfersService.createTransfer(
-                    "testuser",
-                    "dev1",
-                    "tag",
-                    elements
-                );
-            }
-        }
-
-        Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
-        Flux<TransferTaskParent> parentStream = transfersService.processParentTasks(parentMessageStream);
-        parentStream.subscribe();
-
-        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
-        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
-        stream
-            .take(Duration.ofSeconds(2))
-            .map(taskChild -> {
-                log.warn("CURRENT THREAD COUNT: {}", ManagementFactory.getThreadMXBean().getThreadCount() );
-                log.info(taskChild.toString());
-                return taskChild;
-            })
-            .blockLast();
-
-        transfersService.deleteQueue(parentQ).subscribe();
-        transfersService.deleteQueue(childQ).subscribe();
-    }
-
-    @Test(enabled = true)
-    public void testS3toSSH() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(testSystemSSH);
-        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
-        IFileOpsService fileOpsServiceSource = new FileOpsService(sourceClient);
-        // 10 tenants with 100 transfers of 10 files
-        Map<String, Tenant> tenantMap = new HashMap<>();
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-
-        String childQ = UUID.randomUUID().toString();
-        transfersService.setChildQueue(childQ);
-        String parentQ = UUID.randomUUID().toString();
-        transfersService.setParentQueue(parentQ);
-
-        int NUMFILES = 20;
-        int NUMTENANTS = 4;
-        int NUMTRANSFERS = 1;
-
-        //Add some files to transfer
-        fileOpsServiceSource.delete("/");
-        for (var i=0;i<NUMFILES;i++) {
-            //Add some files to the source bucket
-            String fname = String.format("/a/%s.txt", i);
-            fileOpsServiceSource.insert(fname, Utils.makeFakeFile(10 * 1024));
-        }
-        for (var i=0;i<NUMTENANTS;i++) {
-            var tenant = new Tenant();
-            tenant.setTenantId("testTenant"+i);
-            tenant.setBaseUrl("https://test.tapis.io");
-            tenantMap.put(tenant.getTenantId(), tenant);
-
-            for (var j=0;j<NUMTRANSFERS;j++) {
-                TransferTaskRequestElement element = new TransferTaskRequestElement();
-                element.setSourceURI("tapis://sourceSystem/a/");
-                element.setDestinationURI("tapis://destSystem/b/");
-                List<TransferTaskRequestElement> elements = new ArrayList<>();
-                elements.add(element);
-                TransferTask t1 = transfersService.createTransfer(
-                    "testuser",
-                    "dev1",
-                    "tag",
-                    elements
-                );
-            }
-        }
-
-
-
-        Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
-        Flux<TransferTaskParent> parentStream = transfersService.processParentTasks(parentMessageStream);
-        parentStream
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe();
-
-        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
-        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
-
-        stream
-            .take(Duration.ofSeconds(2))
-            .map(k->{
-                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
-                return k;
-            })
-            .blockLast();
-
-
-
-        transfersService.deleteQueue(parentQ).subscribe();
-        transfersService.deleteQueue(childQ).subscribe();
-    }
 }

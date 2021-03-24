@@ -127,11 +127,6 @@ paths:
           format: int64
           default: 0
         example: 1000
-      - name: meta
-        in: query
-        description: Return metadata also? This will slow down the request.
-        schema:
-          type: boolean
       responses:
         200:
           description: A list of files
@@ -553,6 +548,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
+  /v3/files/transfers:
+    get:
+      tags:
+      - transfers
+      summary: Get a list of recent transfer tasks starting with the most recent
+      description: Get a list of recent transfer tasks starting with the most recent
+      operationId: getRecentTransferTasks
+      parameters:
+      - name: limit
+        in: query
+        description: pagination limit
+        schema:
+          type: integer
+          format: int32
+          default: 1000
+        example: 100
+      - name: offset
+        in: query
+        description: pagination offset
+        schema:
+          type: integer
+          format: int32
+          default: 0
+        example: 1000
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskListResponse'
+    post:
+      tags:
+      - transfers
+      summary: Transfer data
+      description: This creates a background task which will transfer files into the
+        storage system
+      operationId: createTransferTask
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferTaskRequest'
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
   /v3/files/transfers/{transferTaskId}:
     get:
       tags:
@@ -615,57 +661,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferTaskResponse'
-  /v3/files/transfers:
-    get:
-      tags:
-      - transfers
-      summary: Get a list of recent transfer tasks starting with the most recent
-      description: Get a list of recent transfer tasks starting with the most recent
-      operationId: getRecentTransferTasks
-      parameters:
-      - name: limit
-        in: query
-        description: pagination limit
-        schema:
-          type: integer
-          format: int32
-          default: 1000
-        example: 100
-      - name: offset
-        in: query
-        description: pagination offset
-        schema:
-          type: integer
-          format: int32
-          default: 0
-        example: 1000
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskListResponse'
-    post:
-      tags:
-      - transfers
-      summary: Transfer data
-      description: This creates a background task which will transfer files into the
-        storage system
-      operationId: createTransferTask
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TransferTaskRequest'
-        required: true
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskResponse'
 components:
   schemas:
     HeaderByteRange:
@@ -710,6 +705,16 @@ components:
     FileInfo:
       type: object
       properties:
+        mimeType:
+          type: string
+        type:
+          type: string
+        owner:
+          type: string
+        group:
+          type: string
+        permissions:
+          type: string
         lastModified:
           type: string
           format: date-time
@@ -948,6 +953,19 @@ components:
         endTime:
           type: string
           format: date-time
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
     TransferTaskParent:
       type: object
       properties:
@@ -1051,16 +1069,3 @@ components:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string

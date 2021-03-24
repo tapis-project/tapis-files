@@ -2,6 +2,9 @@ package edu.utexas.tacc.tapis.files.lib;
 
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -59,11 +62,11 @@ public abstract class BaseDatabaseIntegrationTest  {
     protected IRemoteDataClientFactory remoteDataClientFactory;
     protected ServiceLocator locator;
 
-    protected TenantManager tenantManager = Mockito.mock(TenantManager.class);
     protected SKClient skClient = Mockito.mock(SKClient.class);
     protected SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
     protected ServiceJWT serviceJWT;
     protected TransfersService transfersService;
+    protected IFileOpsService fileOpsService;
 
     @BeforeClass
     public void initTestFixtures() throws Exception {
@@ -122,40 +125,30 @@ public abstract class BaseDatabaseIntegrationTest  {
         transferMechs.add(TransferMethodEnum.SFTP);
         testSystemPKI.setTransferMethods(transferMechs);
 
-        Tenant tenant = new Tenant();
-        tenant.setTenantId("testTenant");
-        tenant.setBaseUrl("https://test.tapis.io");
-        Map<String, Tenant> tenantMap = new HashMap<>();
-        tenantMap.put(tenant.getTenantId(), tenant);
-        when(tenantManager.getTenants()).thenReturn(tenantMap);
-        when(tenantManager.getTenant(any())).thenReturn(tenant);
         serviceJWT = Mockito.mock(ServiceJWT.class);
         ServiceJWTCacheFactory serviceJWTFactory = Mockito.mock(ServiceJWTCacheFactory.class);
         when(serviceJWTFactory.provide()).thenReturn(serviceJWT);
 
-//        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
-
         locator = ServiceLocatorUtilities.bind(new AbstractBinder() {
             @Override
             protected void configure() {
-
-                bind(systemsClient).to(SystemsClient.class);
-                bind(tenantManager).to(TenantManager.class);
-                bind(skClient).to(SKClient.class);
-                bind(serviceJWT).to(ServiceJWT.class);
-                bind(tenantManager).to(TenantManager.class);
-                bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-                bind(serviceJWTFactory).to(ServiceJWTCacheFactory.class);
-                bindAsContract(SystemsCache.class).in(Singleton.class);
-                bindAsContract(FilePermsCache.class).in(Singleton.class);
-                bindAsContract(TransfersService.class).in(Singleton.class);
-                bindAsContract(FileTransfersDAO.class);
-                bindAsContract(RemoteDataClientFactory.class);
+            bind(systemsClient).to(SystemsClient.class);
+            bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
+            bind(skClient).to(SKClient.class);
+            bind(serviceJWT).to(ServiceJWT.class);
+            bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+            bind(serviceJWTFactory).to(ServiceJWTCacheFactory.class);
+            bindAsContract(SystemsCache.class).in(Singleton.class);
+            bindAsContract(FilePermsCache.class).in(Singleton.class);
+            bindAsContract(TransfersService.class).in(Singleton.class);
+            bindAsContract(FileTransfersDAO.class);
+            bindAsContract(RemoteDataClientFactory.class);
+            bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
             }
         });
         remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
         transfersService = locator.getService(TransfersService.class);
-
+        fileOpsService = locator.getService(IFileOpsService.class);
     }
 
     @BeforeMethod

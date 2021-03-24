@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
@@ -18,6 +19,7 @@ import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import javax.validation.constraints.Min;
 import javax.ws.rs.*;
 import javax.ws.rs.container.AsyncResponse;
@@ -37,6 +39,9 @@ public class ContentApiResource extends BaseFilesResource {
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
     private static final Logger log = LoggerFactory.getLogger(ContentApiResource.class);
+
+    @Inject
+    IFileOpsService fileOpsService;
 
     @GET
     @ManagedAsync
@@ -64,8 +69,7 @@ public class ContentApiResource extends BaseFilesResource {
         try {
             TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
-
+            IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
             String mtype = MediaType.APPLICATION_OCTET_STREAM;
             String contentDisposition;
             java.nio.file.Path filepath = Paths.get(path);
@@ -75,7 +79,7 @@ public class ContentApiResource extends BaseFilesResource {
             if (zip) {
                 StreamingOutput outStream = output -> {
                     try {
-                        fileOpsService.getZip(output, path);
+                        fileOpsService.getZip(client, output, path);
                     } catch (Exception e) {
                         throw new WebApplicationException(e);
                     }
@@ -94,14 +98,14 @@ public class ContentApiResource extends BaseFilesResource {
 
 
             if (range != null) {
-                stream = fileOpsService.getBytes(path, range.getMin(), range.getMax());
+                stream = fileOpsService.getBytes(client, path, range.getMin(), range.getMax());
             } else if (!Objects.isNull(moreStartPage)) {
                 mtype = MediaType.TEXT_PLAIN;
-                stream = fileOpsService.more(path, moreStartPage);
+                stream = fileOpsService.more(client, path, moreStartPage);
                 contentDisposition = "inline";
             }
             else {
-                stream = fileOpsService.getStream(path);
+                stream = fileOpsService.getStream(client, path);
             }
 
             Response response =  Response
@@ -110,8 +114,6 @@ public class ContentApiResource extends BaseFilesResource {
                     .header("cache-control", "max-age=3600")
                     .build();
             asyncResponse.resume(response);
-        } catch (TapisClientException ex) {
-            throw new BadRequestException("Only files can be served");
         } catch (ServiceException | IOException ex) {
             throw new WebApplicationException(ex);
         }

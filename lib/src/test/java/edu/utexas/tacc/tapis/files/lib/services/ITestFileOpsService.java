@@ -49,6 +49,7 @@ public class ITestFileOpsService {
     TSystem testSystemS3;
     TSystem testSystemPKI;
     private RemoteDataClientFactory remoteDataClientFactory;
+    private IFileOpsService fileOpsService;
     private static final Logger log  = LoggerFactory.getLogger(ITestFileOpsService.class);
 
     private ITestFileOpsService() throws IOException {
@@ -123,9 +124,11 @@ public class ITestFileOpsService {
             protected void configure() {
                 bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
+                bind(IFileOpsService.class).to(FileOpsService.class).in(Singleton.class);
             }
         });
         remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
+        fileOpsService = locator.getService(FileOpsService.class);
     }
 
     @BeforeTest()
@@ -136,50 +139,43 @@ public class ITestFileOpsService {
     @AfterTest()
     public void tearDown() throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(testSystemSSH, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
-        fileOpsService.delete("/");
+        fileOpsService.delete(client,"/");
         client = remoteDataClientFactory.getRemoteDataClient(testSystemS3, "testuser");
-        fileOpsService = new FileOpsService(client);
-        fileOpsService.delete("/");
+        fileOpsService.delete(client, "/");
     }
 
     @Test(dataProvider = "testSystems")
     public void testInsertAndDelete(TSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(testSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(10*1024);
-        fileOpsService.insert("test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls("test.txt");
+        fileOpsService.insert(client,"test.txt", in);
+        List<FileInfo> listing = fileOpsService.ls(client,"test.txt");
         Assert.assertEquals(listing.size(), 1);
-        fileOpsService.delete("/test.txt");
+        fileOpsService.delete(client,"/test.txt");
         Assert.assertThrows(NotFoundException.class, ()-> {
-            FileOpsService fos = new FileOpsService(client);
-            fos.ls("/test.txt");
+            fileOpsService.ls(client, "/test.txt");
         });
     }
 
     @Test(dataProvider = "testSystems")
     public void testInsertAndDeleteNested(TSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(testSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(10*1024);
-        fileOpsService.insert("a/b/c/test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls("/a/b/c/test.txt");
+        fileOpsService.insert(client,"a/b/c/test.txt", in);
+        List<FileInfo> listing = fileOpsService.ls(client,"/a/b/c/test.txt");
         Assert.assertEquals(listing.size(), 1);
-        fileOpsService.delete("/a/b/");
+        fileOpsService.delete(client,"/a/b/");
         Assert.assertThrows(NotFoundException.class, ()-> {
-            FileOpsService fos = new FileOpsService(client);
-            fos.ls("/a/b/c/test.txt");
+            fileOpsService.ls(client,"/a/b/c/test.txt");
         });
     }
 
     @Test(dataProvider = "testSystems")
     public void testInsertAndGet(TSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(testSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(10*1024);
-        fileOpsService.insert("test.txt", in);
-        InputStream out = fileOpsService.getStream("test.txt");
+        fileOpsService.insert(client,"test.txt", in);
+        InputStream out = fileOpsService.getStream(client,"test.txt");
         Assert.assertEquals(out.readAllBytes().length,10* 1024);
         out.close();
     }
@@ -188,10 +184,9 @@ public class ITestFileOpsService {
     @Test(dataProvider = "testSystems")
     public void testListing(TSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(testSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(10*1024);
-        fileOpsService.insert("test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls("test.txt");
+        fileOpsService.insert(client,"test.txt", in);
+        List<FileInfo> listing = fileOpsService.ls(client,"test.txt");
         Assert.assertEquals(listing.size(), 1);
         Assert.assertEquals(listing.get(0).getName(), "test.txt");
 
@@ -200,10 +195,9 @@ public class ITestFileOpsService {
     @Test(dataProvider = "testSystems")
     public void testInsertLargeFile(TSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(testSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
-        fileOpsService.insert("test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls("test.txt");
+        fileOpsService.insert(client,"test.txt", in);
+        List<FileInfo> listing = fileOpsService.ls(client,"test.txt");
         Assert.assertEquals(listing.size(), 1);
         Assert.assertEquals(listing.get(0).getName(), "test.txt");
         Assert.assertEquals(listing.get(0).getSize(), 100 * 1000 * 1024L);
@@ -212,22 +206,20 @@ public class ITestFileOpsService {
     @Test(dataProvider = "testSystems")
     public void testGetBytesByRange(TSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(testSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
-        fileOpsService.insert("test.txt", in);
-        InputStream result = fileOpsService.getBytes("test.txt", 0, 1000);
+        fileOpsService.insert(client,"test.txt", in);
+        InputStream result = fileOpsService.getBytes(client,"test.txt", 0, 1000);
         Assert.assertEquals(result.readAllBytes().length, 1000);
     }
 
     @Test(dataProvider = "testSystems")
     public void testZipFolder(TSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(testSystem, "testuser");
-        IFileOpsService fileOpsService = new FileOpsService(client);
-        fileOpsService.insert("a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
-        fileOpsService.insert("a/test2.txt", Utils.makeFakeFile(1000 * 1024));
+        fileOpsService.insert(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
+        fileOpsService.insert(client,"a/test2.txt", Utils.makeFakeFile(1000 * 1024));
         File file = File.createTempFile("test", ".zip");
         OutputStream outputStream = new FileOutputStream(file);
-        fileOpsService.getZip(outputStream, "a/");
+        fileOpsService.getZip(client, outputStream, "a/");
 
         try (FileInputStream fis = new FileInputStream(file);
              ZipInputStream zis = new ZipInputStream(fis);

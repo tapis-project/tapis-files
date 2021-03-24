@@ -6,7 +6,9 @@ import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -53,7 +55,6 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     private final Logger log = LoggerFactory.getLogger(ITestContentsRoutes.class);
     private final TSystem testSystem;
     private final TSystem testSystemSSH;
-    private final Tenant tenant;
     private final Credential creds;
     private final Map<String, Tenant> tenantMap = new HashMap<>();
     Site site;
@@ -97,13 +98,6 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         tMechs.add(TransferMethodEnum.SFTP);
         testSystemSSH.setTransferMethods(tMechs);
 
-        tenant = new Tenant();
-        tenant.setTenantId("testTenant");
-        tenant.setBaseUrl("https://test.tapis.io");
-        tenantMap.put(tenant.getTenantId(), tenant);
-        site = new Site();
-        site.setSiteId("tacc");
-
     }
 
     @Override
@@ -127,6 +121,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
                     bindAsContract(SystemsCache.class);
                     bindAsContract(FilePermsService.class);
                     bindAsContract(FilePermsCache.class);
+                    bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
                     bindAsContract(RemoteDataClientFactory.class);
                     bind(sshConnectionCache).to(SSHConnectionCache.class);
                 }

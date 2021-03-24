@@ -34,9 +34,8 @@ public abstract class BaseFilesResource {
     private static final Logger log = LoggerFactory.getLogger(BaseFilesResource.class);
     private IRuntimeConfig settings = RuntimeSettings.get();
 
-    public IFileOpsService makeFileOpsService(TSystem system, String username) throws TapisClientException, IOException, ServiceException {
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, username);
-        FileOpsService fileOpsService = new FileOpsService(client);
-        return fileOpsService;
+    protected IRemoteDataClient getClientForUserAndSystem(TSystem system, String effectiveUserId) throws IOException {
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, effectiveUserId);
+        return client;
     }
 }

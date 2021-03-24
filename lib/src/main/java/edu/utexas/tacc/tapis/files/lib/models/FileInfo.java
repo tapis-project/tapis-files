@@ -21,9 +21,8 @@ public class FileInfo   {
         this.path = listing.key();
     }
 
-    public FileInfo() {
+    public FileInfo() {}
 
-    }
     @JsonProperty("lastModified")
     private Instant lastModified = null;
 
@@ -33,9 +32,58 @@ public class FileInfo   {
     @JsonProperty("path")
     private String path = null;
 
-
     @JsonProperty("size")
     private Long size = null;
+
+    private String mimeType;
+    private String type;
+    private String owner;
+    private String group;
+    private String permissions;
+
+    public void setSize(Long size) {
+        this.size = size;
+    }
+
+    public String getMimeType() {
+        return mimeType;
+    }
+
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
+    }
+
+    public String getGroup() {
+        return group;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
+    }
+
+    public String getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(String permissions) {
+        this.permissions = permissions;
+    }
 
     @JsonIgnore
     public boolean isDir() {

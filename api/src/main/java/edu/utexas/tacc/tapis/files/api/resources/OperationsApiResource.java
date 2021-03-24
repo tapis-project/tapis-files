@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -25,6 +26,7 @@ import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -33,6 +35,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -67,6 +70,10 @@ public class OperationsApiResource extends BaseFilesResource {
     private static class FileStringResponse extends TapisResponse<String> {
     }
 
+    @Inject
+    IFileOpsService fileOpsService;
+
+
     @GET
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
     @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
@@ -99,19 +106,16 @@ public class OperationsApiResource extends BaseFilesResource {
         @Parameter(description = "path relative to root of bucket/folder", required = false, example = EXAMPLE_PATH) @PathParam("path") String path,
         @Parameter(description = "pagination limit", example = "100") @DefaultValue("1000") @QueryParam("limit") @Max(1000) int limit,
         @Parameter(description = "pagination offset", example = "1000") @DefaultValue("0") @QueryParam("offset") @Min(0) long offset,
-        @Parameter(description = "Return metadata also? This will slow down the request.") @QueryParam("meta") Boolean meta,
         @Context SecurityContext securityContext) {
         try {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-            Instant now = Instant.now();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
-            List<FileInfo> listing = fileOpsService.ls(path, limit, offset);
-            log.debug("Listing operation took {}", Duration.between(Instant.now(), now).toMillis());
+            IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
+            List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
             return Response.status(Status.OK).entity(resp).build();
-        } catch (ServiceException | IOException | TapisClientException e) {
+        } catch (ServiceException | IOException e) {
             throw new WebApplicationException("Something went wrong!", e);
         }
     }
@@ -151,11 +155,11 @@ public class OperationsApiResource extends BaseFilesResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
-            fileOpsService.insert(path, fileInputStream);
+            IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
+            fileOpsService.insert(client, path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | IOException | TapisClientException e) {
+        } catch (ServiceException | IOException e) {
             throw new WebApplicationException("Something went wrong!", e);
         }
     }
@@ -193,11 +197,11 @@ public class OperationsApiResource extends BaseFilesResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
-            fileOpsService.mkdir(mkdirRequest.getPath());
+            IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
+            fileOpsService.mkdir(client, mkdirRequest.getPath());
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | IOException | TapisClientException e) {
+        } catch (ServiceException | IOException e) {
             throw new WebApplicationException("Something went wrong!", e);
         }
     }
@@ -242,18 +246,21 @@ public class OperationsApiResource extends BaseFilesResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
+            IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
+            if (client == null) {
+                throw new NotFoundException("System not found");
+            }
             MoveCopyRenameOperation operation = request.getOperation();
             if (operation.equals(MoveCopyRenameOperation.MOVE)) {
-                fileOpsService.move(path, request.getNewPath());
+                fileOpsService.move(client, path, request.getNewPath());
             } else if (operation.equals(MoveCopyRenameOperation.COPY)) {
-                fileOpsService.copy(path, request.getNewPath());
+                fileOpsService.copy(client, path, request.getNewPath());
             } else if (operation.equals(MoveCopyRenameOperation.RENAME)) {
-                fileOpsService.move(path, request.getNewPath());
+                fileOpsService.move(client, path, request.getNewPath());
             }
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | IOException | TapisClientException e) {
+        } catch (ServiceException | IOException e) {
             throw new WebApplicationException("Something went wrong!", e);
         }
 
@@ -296,11 +303,11 @@ public class OperationsApiResource extends BaseFilesResource {
             AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IFileOpsService fileOpsService = makeFileOpsService(system, effectiveUserId);
-            fileOpsService.delete(path);
+            IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
+            fileOpsService.delete(client, path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | IOException | TapisClientException ex) {
+        } catch (ServiceException | IOException ex) {
             throw new WebApplicationException(ex.getMessage(), ex);
         }
     }

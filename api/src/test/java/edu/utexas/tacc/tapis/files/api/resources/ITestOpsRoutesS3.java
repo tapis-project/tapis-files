@@ -8,7 +8,9 @@ import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -68,10 +70,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     }
 
     private TSystem testSystem;
-    private Tenant tenant;
     private Credential creds;
-    private Map<String, Tenant> tenantMap = new HashMap<>();
-    private Site testSite;
 
     // mocking out the services
     private SystemsClient systemsClient;
@@ -120,6 +119,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
                     bindAsContract(FilePermsService.class).in(Singleton.class);
                     bindAsContract(FilePermsCache.class).in(Singleton.class);
                     bindAsContract(SystemsCache.class).in(Singleton.class);
+                    bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
                     bindAsContract(RemoteDataClientFactory.class);
                     bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 }

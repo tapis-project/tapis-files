@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
@@ -122,6 +123,7 @@ public class FilesApplication extends BaseResourceConfig {
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
                 bindFactory(ServiceJWTCacheFactory.class).to(ServiceJWT.class).in(Singleton.class);
                 bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
+                bind(IFileOpsService.class).to(FilePermsService.class).in(Singleton.class);
             }
         });
 		setApplicationName("files");
