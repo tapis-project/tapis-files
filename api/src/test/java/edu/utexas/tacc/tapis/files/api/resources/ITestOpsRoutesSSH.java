@@ -280,7 +280,6 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
         addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10 * 1024);
 
-
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/testfile3.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
