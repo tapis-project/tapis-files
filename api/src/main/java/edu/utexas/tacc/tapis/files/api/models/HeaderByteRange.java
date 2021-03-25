@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+
 import javax.validation.ValidationException;
 
 public class HeaderByteRange {
@@ -12,10 +14,10 @@ public class HeaderByteRange {
             min = Long.parseLong(params[0]);
             max = Long.parseLong(params[1]);
             if (min > max) {
-                throw new ValidationException("Invalid range, min > max");
+                throw new ValidationException(Utils.getMsg("FILESAPI_RANGE1", hparms));
             }
         } catch (Exception ex) {
-            throw new ValidationException("Invalid range, must be in the format of range=min,max");
+            throw new ValidationException(Utils.getMsg("FILESAPI_RANGE2", hparms));
         }
 
     }
