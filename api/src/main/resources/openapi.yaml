@@ -477,7 +477,7 @@ paths:
           type: string
       - name: path
         in: path
-        description: System ID
+        description: path
         required: true
         schema:
           type: string
@@ -537,7 +537,7 @@ paths:
           type: string
       - name: path
         in: path
-        description: System ID
+        description: path
         required: true
         schema:
           type: string
@@ -955,6 +955,19 @@ components:
         endTime:
           type: string
           format: date-time
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
     TransferTaskParent:
       type: object
       properties:
@@ -1022,6 +1035,17 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string
     TransferTaskRequest:
       required:
       - elements
@@ -1047,27 +1071,3 @@ components:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
