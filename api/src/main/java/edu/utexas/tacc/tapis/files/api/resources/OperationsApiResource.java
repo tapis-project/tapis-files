@@ -114,7 +114,7 @@ public class OperationsApiResource extends BaseFilesResource {
             List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
             //TODO: This feels like it should be in the service layer
             listing.forEach(f-> {
-                String uri = String.format("tapis://%s/%s/%s", user.getOboTenantId(), systemId, path);
+                String uri = String.format("tapis://%s/%s/%s", user.getOboTenantId(), systemId, f.getPath());
                 f.setUri(uri);
             });
           String msg = Utils.getMsgAuth("FILESAPI_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
@@ -287,7 +287,7 @@ public class OperationsApiResource extends BaseFilesResource {
 
     @DELETE
     @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
-    @Path("/{systemId}/{path:.+}")
+    @Path("/{systemId}/{path:(.*+)}")
     @Operation(summary = "Delete a file or folder", description = "Delete a file in {systemID} at path {path}.", tags = {"file operations"})
     @Produces(MediaType.APPLICATION_JSON)
     @ApiResponses(value = {

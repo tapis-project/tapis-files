@@ -57,7 +57,7 @@ public class FileInfo   {
         } catch (IOException ex) {
             this.mimeType = null;
         }
-        if (tmpPath.endsWith("/")) {
+        if (listing.key().endsWith("/")) {
             this.type = "dir";
         } else {
             this.type = "file";

@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
@@ -24,6 +25,8 @@ import com.jcraft.jsch.ChannelSftp.LsEntry;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+
+import static java.util.Comparator.comparing;
 
 public class SSHDataClient implements IRemoteDataClient {
 
@@ -85,8 +88,9 @@ public class SSHDataClient implements IRemoteDataClient {
      */
     @Override
     public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
+        long count = Math.min(limit, Constants.MAX_LISTING_SIZE);
+        long startIdx = Math.max(offset, 0);
 
-        remotePath = remotePath.equals("") ? "" : remotePath;
         List<FileInfo> filesList = new ArrayList<>();
         List<?> filelist;
         Path absolutePath = Paths.get(rootDir, remotePath);
@@ -145,7 +149,10 @@ public class SSHDataClient implements IRemoteDataClient {
             fileInfo.setPath(fullPath.toString());
             filesList.add(fileInfo);
         }
-        return filesList;
+        filesList.sort((a, b)->{
+            return a.getName().compareTo(b.getName());
+        });
+        return filesList.stream().skip(startIdx).limit(count).collect(Collectors.toList());
     }
 
 
@@ -225,7 +232,7 @@ public class SSHDataClient implements IRemoteDataClient {
     public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException {
 
         Path absoluteOldPath = Paths.get(rootDir, oldPath);
-        Path absoluteNewPath = Paths.get(absoluteOldPath.getParent().toString(), newPath);
+        Path absoluteNewPath = Paths.get(rootDir, newPath);
 
         ChannelSftp channelSftp = openAndConnectSFTPChannel();
 

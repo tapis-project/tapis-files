@@ -12,6 +12,12 @@ import static org.testng.Assert.*;
 public class PathUtilsTest {
 
     @Test
+    public void testRootOfDir() {
+        Path p = PathUtils.relativizePaths("/", "/test.txt", "/");
+        Assert.assertEquals(p, Paths.get("/test.txt"));
+    }
+
+    @Test
     public void testSimple() {
         //Transfer everything from folder /a on source to / on dest
         Path p = PathUtils.relativizePaths("/a", "/a/1.txt", "/");

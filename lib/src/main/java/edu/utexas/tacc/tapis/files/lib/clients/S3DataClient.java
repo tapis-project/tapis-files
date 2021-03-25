@@ -133,6 +133,10 @@ public class S3DataClient implements IRemoteDataClient {
 
     private void doesExist(String path) throws NotFoundException {
         String remoteAbsolutePath = DataClientUtils.getRemotePathForS3(rootDir, path);
+        // Can't do a head on the root of the listing
+        if (StringUtils.isBlank(remoteAbsolutePath)) {
+            return;
+        }
         try {
             HeadObjectRequest req = HeadObjectRequest.builder()
                 .bucket(bucket)
@@ -168,6 +172,9 @@ public class S3DataClient implements IRemoteDataClient {
         response.skip(offset).limit(limit).forEach((S3Object x) -> {
             files.add(new FileInfo(x));
         });
+
+        // For s3 at least, if the listing is empty it could just be not found, which should really throw
+        // a NotFoundException
         if (files.isEmpty()) {
             doesExist(remoteAbsolutePath);
         }
