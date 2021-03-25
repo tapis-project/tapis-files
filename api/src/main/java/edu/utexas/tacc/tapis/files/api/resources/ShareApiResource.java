@@ -1,5 +1,8 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -17,9 +20,13 @@ import javax.ws.rs.*;
 
 import edu.utexas.tacc.tapis.files.lib.models.SharedFileObject;
 import edu.utexas.tacc.tapis.files.api.models.ShareFileRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Path("/v3/files/share")
 public class ShareApiResource  {
+
+    private static final Logger log = LoggerFactory.getLogger(ShareApiResource.class);
 
     @DELETE
     @Path("/{systemId}/{path}")
@@ -32,8 +39,18 @@ public class ShareApiResource  {
     })
     public Response shareDelete(
         @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
-        @Parameter(description = "System ID",required=true) @PathParam("path") String path,
+        @Parameter(description = "path",required=true) @PathParam("path") String path,
         @Context SecurityContext securityContext) throws NotFoundException {
+        String opName = "unshare";
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+        try {
+          // Use if (log != null) so it will compile
+          if (log != null) throw new ServiceException("Operation not yet supported.");
+        } catch (ServiceException ex) {
+          String msg = Utils.getMsgAuth("FILESAPI_SHARE_ERROR", user, systemId, opName, ex.getMessage());
+          log.error(msg, ex);
+          throw new WebApplicationException(msg, ex);
+        }
         return Response.ok().build();
     }
 
@@ -51,8 +68,18 @@ public class ShareApiResource  {
     })
     public Response shareList (
         @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
-        @Parameter(description = "System ID",required=true) @PathParam("path") String path,
+        @Parameter(description = "path",required=true) @PathParam("path") String path,
         @Context SecurityContext securityContext) throws NotFoundException {
+        String opName = "listShares";
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+        try {
+          // Use if (log != null) so it will compile
+          if (log != null) throw new ServiceException("Operation not yet supported.");
+        } catch (ServiceException ex) {
+          String msg = Utils.getMsgAuth("FILESAPI_SHARE_ERROR", user, systemId, opName, ex.getMessage());
+          log.error(msg, ex);
+          throw new WebApplicationException(msg, ex);
+        }
         return Response.ok().build();
     }
 
@@ -76,6 +103,17 @@ public class ShareApiResource  {
         @Parameter(description = "path",required=true) @PathParam("path") String path,
         @Parameter(description = "" ) ShareFileRequest body,
         @Context SecurityContext securityContext) throws NotFoundException {
+        String opName = "share";
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+        try {
+          // Use if (log != null) so it will compile
+          if (log != null) throw new ServiceException("Operation not yet supported.");
+        } catch (ServiceException ex) {
+          String msg = Utils.getMsgAuth("FILESAPI_SHARE_ERROR", user, systemId, opName, ex.getMessage());
+          log.error(msg, ex);
+          throw new WebApplicationException(msg, ex);
+        }
+
         // Add row to security kernel?
         return Response.ok().build();
     }

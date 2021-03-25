@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -47,7 +48,9 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
             }
 
         } catch (ServiceException ex) {
-            throw new IOException("Could not verify ownership of transfer task.");
+            String msg = Utils.getMsgAuth("FILESAPI_TXFR_ERROR", user, "authorization", ex.getMessage());
+            log.error(msg, ex);
+            throw new IOException(msg, ex);
         }
 
 

@@ -1,16 +1,16 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 
-import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.media.multipart.FormDataParam;
-import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +30,6 @@ import javax.inject.Inject;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.validation.constraints.Pattern;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -44,8 +42,6 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.container.AsyncResponse;
-import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -108,22 +104,31 @@ public class OperationsApiResource extends BaseFilesResource {
         @Parameter(description = "pagination limit", example = "100") @DefaultValue("1000") @QueryParam("limit") @Max(1000) int limit,
         @Parameter(description = "pagination offset", example = "1000") @DefaultValue("0") @QueryParam("offset") @Min(0) long offset,
         @Context SecurityContext securityContext) {
+        String opName = "listFiles";
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+            Instant start = Instant.now();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
             List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
-
             //TODO: This feels like it should be in the service layer
             listing.forEach(f-> {
                 String uri = String.format("tapis://%s/%s/%s", user.getOboTenantId(), systemId, path);
                 f.setUri(uri);
             });
+          String msg = Utils.getMsgAuth("FILESAPI_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+          log.debug(msg);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
             return Response.status(Status.OK).entity(resp).build();
-        } catch (ServiceException | IOException e) {
-            throw new WebApplicationException("Something went wrong!", e);
+        }
+        catch (NotFoundException e) {
+          throw new NotFoundException(Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage()));
+        }
+        catch (ServiceException | IOException e) {
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            log.error(msg, e);
+            throw new WebApplicationException(msg, e);
         }
     }
 
@@ -158,8 +163,9 @@ public class OperationsApiResource extends BaseFilesResource {
         @Parameter(description = "Path", required = true) @PathParam("path") String path,
         @Parameter(required = true, schema = @Schema(type = "string", format = "binary")) @FormDataParam(value = "file") InputStream fileInputStream,
         @Context SecurityContext securityContext) {
+        String opName = "insert";
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
@@ -167,7 +173,9 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            throw new WebApplicationException("Something went wrong!", e);
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            log.error(msg, e);
+            throw new WebApplicationException(msg, e);
         }
     }
 
@@ -200,8 +208,9 @@ public class OperationsApiResource extends BaseFilesResource {
         @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
         @Valid @Parameter MkdirRequest mkdirRequest,
         @Context SecurityContext securityContext) {
+        String opName = "mkdir";
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
@@ -209,10 +218,11 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            throw new WebApplicationException("Something went wrong!", e);
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            log.error(msg, e);
+            throw new WebApplicationException(msg, e);
         }
     }
-
 
 
     @PUT
@@ -248,9 +258,9 @@ public class OperationsApiResource extends BaseFilesResource {
         @Parameter(description = "File path", required = true) @PathParam("path") String path,
         @Valid MoveCopyRenameRequest request,
         @Context SecurityContext securityContext) {
-
+        String opName = "moveCopyRename";
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
@@ -269,10 +279,10 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            throw new WebApplicationException("Something went wrong!", e);
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            log.error(msg, e);
+            throw new WebApplicationException(msg, e);
         }
-
-
     }
 
     @DELETE
@@ -307,19 +317,21 @@ public class OperationsApiResource extends BaseFilesResource {
         @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
         @Parameter(description = "File path", required = false) @PathParam("path") String path,
         @Context SecurityContext securityContext) {
+        String opName = "delete";
+        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
             TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
             fileOpsService.delete(client, path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | IOException ex) {
-            throw new WebApplicationException(ex.getMessage(), ex);
+        } catch (ServiceException | IOException e) {
+            String msg = Utils.getMsgAuth("FILESAPI_OPS_ERROR", user, opName, systemId, e.getMessage());
+            log.error(msg, e);
+            throw new WebApplicationException(msg, e);
         }
     }
-
 }
 
 

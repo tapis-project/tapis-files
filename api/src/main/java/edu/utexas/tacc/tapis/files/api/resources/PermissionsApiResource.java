@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
@@ -63,14 +64,16 @@ public class PermissionsApiResource  {
             @Parameter(description = "path",required=true) @PathParam("path") String path,
             @NotEmpty @Parameter(description = "Username to remove",required=true) @QueryParam("username") String username,
             @Context SecurityContext securityContext) throws NotFoundException {
+        String opName = "revokePermissions";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             permsService.revokePermission(user.getOboTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions revoked.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {
-            log.error("Could not revoke permissions!", ex);
-            throw new WebApplicationException("Could not revoke permissions!", ex);
+            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
+            log.error(msg, ex);
+            throw new WebApplicationException(msg, ex);
         }
     }
 
@@ -90,16 +93,19 @@ public class PermissionsApiResource  {
             @Parameter(description = "Username to list") @QueryParam("username") String queryUsername,
             @Context SecurityContext securityContext) throws NotFoundException {
 
+        String opName = "getPermissions";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         TSystem system;
         String username;
         try {
             system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
         } catch (ServiceException ex) {
-            throw new WebApplicationException("Could not retrieve system", ex);
+            String msg = Utils.getMsgAuth("FILESAPI_SYSOPS_ERROR", user, systemId, "getSystem", ex.getMessage());
+            log.error(msg, ex);
+            throw new WebApplicationException(msg, ex);
         }
         if (system == null) {
-            throw new NotFoundException("System not found");
+            throw new NotFoundException(Utils.getMsgAuth("FILESAPI_SYS_NOTFOUND", user, systemId));
         }
 
         if (queryUsername == null) {
@@ -124,8 +130,9 @@ public class PermissionsApiResource  {
             TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(permission);
             return Response.ok(response).build();
         } catch (ServiceException ex) {
-            log.error("Could not get permissions!", ex);
-            throw new WebApplicationException("Could not get permissions!", ex);
+            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
+            log.error(msg, ex);
+            throw new WebApplicationException(msg, ex);
         }
     }
 
@@ -147,14 +154,16 @@ public class PermissionsApiResource  {
             @Valid @Parameter(required = true) CreatePermissionRequest createPermissionRequest,
             @Context SecurityContext securityContext) throws NotFoundException {
 
+        String opName = "grantPermissions";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             permsService.grantPermission(user.getOboTenantId(), createPermissionRequest.getUsername(), systemId, path, createPermissionRequest.getPermission());
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions granted.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {
-            log.error("Could not create permissions!", ex);
-            throw new WebApplicationException("Could not grant permissions!", ex);
+            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
+            log.error(msg, ex);
+            throw new WebApplicationException(msg, ex);
         }
 
     }
