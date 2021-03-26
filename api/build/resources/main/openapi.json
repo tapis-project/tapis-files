@@ -1,0 +1,1464 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "Tapis Files API",
+    "description" : "My API",
+    "contact" : {
+      "name" : "CicSupport",
+      "url" : "http://tacc.utexas.edu",
+      "email" : "cicsupport@tacc.utexas.edu"
+    },
+    "license" : {
+      "name" : "Apache 2.0",
+      "url" : "http://foo.bar"
+    },
+    "version" : "0.0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost:8080/",
+    "description" : "localhost",
+    "variables" : { }
+  }, {
+    "url" : "https://dev.develop.tapis.io",
+    "description" : "development",
+    "variables" : { }
+  } ],
+  "security" : [ {
+    "Bearer" : [ ]
+  } ],
+  "tags" : [ {
+    "name" : "file operations"
+  }, {
+    "name" : "share"
+  }, {
+    "name" : "permissions"
+  }, {
+    "name" : "transfers"
+  } ],
+  "paths" : {
+    "/v3/files/content/{systemId}/{path}" : {
+      "get" : {
+        "tags" : [ "content" ],
+        "summary" : "Retrieve a file from the files service",
+        "description" : "Get file contents/serve file",
+        "operationId" : "filesGetContents",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "system123"
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "File path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "/folderA/folderB/"
+        }, {
+          "name" : "range",
+          "in" : "header",
+          "description" : "Range of bytes to send",
+          "schema" : {
+            "$ref" : "#/components/schemas/HeaderByteRange"
+          },
+          "example" : "range=0,999"
+        }, {
+          "name" : "zip",
+          "in" : "query",
+          "description" : "Zip the contents of folder?",
+          "schema" : {
+            "type" : "boolean"
+          },
+          "example" : false
+        }, {
+          "name" : "more",
+          "in" : "header",
+          "description" : "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authenticated"
+          },
+          "404" : {
+            "description" : "Not Found"
+          },
+          "403" : {
+            "description" : "Not Authorized"
+          }
+        }
+      }
+    },
+    "/v3/files/healthcheck" : {
+      "get" : {
+        "tags" : [ "health" ],
+        "summary" : "Health check",
+        "description" : "Health check",
+        "operationId" : "healthCheck",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HealthCheckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/ops/{systemId}/{path}" : {
+      "get" : {
+        "tags" : [ "file operations" ],
+        "summary" : "List files/objects in a storage system.",
+        "description" : "List files in a bucket",
+        "operationId" : "listFiles",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "system123"
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "path relative to root of bucket/folder",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "/folderA/folderB/"
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "pagination limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1000
+          },
+          "example" : 100
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "pagination offset",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64",
+            "default" : 0
+          },
+          "example" : 1000
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "A list of files",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileListingResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not Found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "file operations" ],
+        "summary" : "Move/copy/rename a file or folder",
+        "description" : "Move/Rename a file in {systemID} at path {path}.",
+        "operationId" : "moveCopyRename",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "File path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MoveCopyRenameRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not Found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "file operations" ],
+        "summary" : "Upload a file",
+        "description" : "The file will be added at the {path} independent of the original file name",
+        "operationId" : "insert",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "Path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "required" : [ "file" ],
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "type" : "string",
+                    "format" : "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "file operations" ],
+        "summary" : "Delete a file or folder",
+        "description" : "Delete a file in {systemID} at path {path}.",
+        "operationId" : "delete",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "File path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description" : "Not Found",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/ops/{systemId}" : {
+      "post" : {
+        "tags" : [ "file operations" ],
+        "summary" : "Create a directory",
+        "description" : "Create a directory in the system at path the given path",
+        "operationId" : "mkdir",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MkdirRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description" : "Not Authenticated",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "403" : {
+            "description" : "Not Authorized",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "500" : {
+            "description" : "Internal Error",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/permissions/{systemId}/{path}" : {
+      "get" : {
+        "tags" : [ "permissions" ],
+        "summary" : "Get the API user's permissions on a file or folder.",
+        "description" : "Get the permissions for the API user for the system and path.",
+        "operationId" : "permissionsSystemIdPathGet",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "username",
+          "in" : "query",
+          "description" : "Username to list",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "FilePermission",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/FilePermissionResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "permissions" ],
+        "summary" : "Add permissions on an object. ",
+        "description" : "Add a user to a file/folder.",
+        "operationId" : "permissionsSystemIdPathPost",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreatePermissionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "FilePermission",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FilePermissionResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "permissions" ],
+        "summary" : "Remove permissions on an object for a user. ",
+        "description" : "Remove user permissions to a file/folder.",
+        "operationId" : "permissionsSystemIdPathDelete",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "username",
+          "in" : "query",
+          "description" : "Username to remove",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "FilePermission",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FilePermissionStringResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/share/{systemId}/{path}" : {
+      "get" : {
+        "tags" : [ "share" ],
+        "summary" : "List the shares on a file resource. ",
+        "description" : "List all shares on a given file resource. ",
+        "operationId" : "shareList",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "List of shares",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/SharedFileObject"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "share" ],
+        "summary" : "Grant temporary access to a file resource. ",
+        "description" : "Creates a link that is valid for the requested validity time for the given user for the resource in {systemId} at path {path} ",
+        "operationId" : "shareFile",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ShareFileRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Shared file object",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SharedFileObject"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "share" ],
+        "summary" : "Revoke a shared file resource ",
+        "description" : "Removes any outstanding shares on a file resource. ",
+        "operationId" : "shareDelete",
+        "parameters" : [ {
+          "name" : "systemId",
+          "in" : "path",
+          "description" : "System ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "path",
+          "in" : "path",
+          "description" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Shared file object",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SharedFileObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/transfers" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get a list of recent transfer tasks starting with the most recent",
+        "description" : "Get a list of recent transfer tasks starting with the most recent",
+        "operationId" : "getRecentTransferTasks",
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "pagination limit",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 1000
+          },
+          "example" : 100
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "pagination offset",
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32",
+            "default" : 0
+          },
+          "example" : 1000
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Transfer data",
+        "description" : "This creates a background task which will transfer files into the storage system",
+        "operationId" : "createTransferTask",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransferTaskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/transfers/{transferTaskId}/details" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get details of a transfer task",
+        "operationId" : "getTransferTaskHistory",
+        "parameters" : [ {
+          "name" : "transferTaskId",
+          "in" : "path",
+          "description" : "Transfer task ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/transfers/{transferTaskId}" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get a transfer task",
+        "operationId" : "getTransferTask",
+        "parameters" : [ {
+          "name" : "transferTaskId",
+          "in" : "path",
+          "description" : "Transfer task ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Stop/Cancel a transfer task",
+        "operationId" : "cancelTransferTask",
+        "parameters" : [ {
+          "name" : "transferTaskId",
+          "in" : "path",
+          "description" : "Transfer task ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TapisResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "HeaderByteRange" : {
+        "type" : "object",
+        "properties" : {
+          "min" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "max" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "HealthCheckResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "FileStringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MkdirRequest" : {
+        "required" : [ "path" ],
+        "type" : "object",
+        "properties" : {
+          "path" : {
+            "pattern" : "^(?!.*\\.).+",
+            "type" : "string"
+          }
+        }
+      },
+      "FileInfo" : {
+        "type" : "object",
+        "properties" : {
+          "mimeType" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "owner" : {
+            "type" : "string"
+          },
+          "group" : {
+            "type" : "string"
+          },
+          "permissions" : {
+            "type" : "string"
+          },
+          "uri" : {
+            "type" : "string"
+          },
+          "lastModified" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "size" : {
+            "type" : "integer",
+            "description" : "size in kB",
+            "format" : "int64"
+          }
+        }
+      },
+      "FileListingResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FileInfo"
+            }
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MoveCopyRenameRequest" : {
+        "required" : [ "newPath", "operation" ],
+        "type" : "object",
+        "properties" : {
+          "operation" : {
+            "type" : "string",
+            "enum" : [ "MOVE", "COPY", "RENAME" ]
+          },
+          "newPath" : {
+            "type" : "string",
+            "description" : "Paths must be absolute, ../.. is not allowed"
+          }
+        }
+      },
+      "FilePermissionStringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "FilePermission" : {
+        "type" : "object",
+        "properties" : {
+          "tenantId" : {
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "systemId" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : "string"
+          },
+          "permissions" : {
+            "type" : "string",
+            "enum" : [ "READ", "READWRITE", "ALL" ]
+          }
+        }
+      },
+      "FilePermissionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "$ref" : "#/components/schemas/FilePermission"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CreatePermissionRequest" : {
+        "required" : [ "permission", "username" ],
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "permission" : {
+            "type" : "string",
+            "enum" : [ "READ", "READWRITE", "ALL" ]
+          }
+        }
+      },
+      "SharedFileObject" : {
+        "type" : "object",
+        "properties" : {
+          "creator" : {
+            "type" : "string",
+            "description" : "Username who shared the file/folder"
+          },
+          "sharedWith" : {
+            "type" : "string",
+            "description" : "Username who was granted access"
+          },
+          "created" : {
+            "type" : "string",
+            "description" : "Creation timestamp in UTC"
+          },
+          "expiresIn" : {
+            "type" : "integer",
+            "description" : "Number of seconds in which the share was set to expire.",
+            "format" : "int32"
+          },
+          "url" : {
+            "type" : "string",
+            "description" : "Link to the shared file."
+          }
+        }
+      },
+      "ShareFileRequest" : {
+        "required" : [ "expiresIn", "username" ],
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string",
+            "description" : "The user with which to share"
+          },
+          "expiresIn" : {
+            "maximum" : 604800,
+            "minimum" : 1,
+            "type" : "integer",
+            "description" : "Time in seconds of expiration. minimum=1, maximum=604800 (1 week)",
+            "format" : "int32"
+          }
+        }
+      },
+      "TransferTask" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "tenantId" : {
+            "type" : "string"
+          },
+          "tag" : {
+            "type" : "string"
+          },
+          "uuid" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
+          },
+          "parentTasks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTaskParent"
+            }
+          },
+          "estimatedTotalBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalBytesTransferred" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "totalTransfers" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "completeTransfers" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "errorMessage" : {
+            "type" : "string"
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "startTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "endTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "TransferTaskChild" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "tenantId" : {
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "sourceURI" : {
+            "type" : "string"
+          },
+          "destinationURI" : {
+            "type" : "string"
+          },
+          "totalBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bytesTransferred" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "taskId" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "errorMessage" : {
+            "type" : "string"
+          },
+          "parentTaskId" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "retries" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "uuid" : {
+            "type" : "string",
+            "description" : "Unique ID of the task.",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
+            "example" : "PENDING",
+            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "startTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "endTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "TransferTaskListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTask"
+            }
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TransferTaskParent" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "tenantId" : {
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "sourceURI" : {
+            "type" : "string"
+          },
+          "destinationURI" : {
+            "type" : "string"
+          },
+          "totalBytes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "bytesTransferred" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "taskId" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "children" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTaskChild"
+            }
+          },
+          "errorMessage" : {
+            "type" : "string"
+          },
+          "uuid" : {
+            "type" : "string",
+            "description" : "Unique ID of the task.",
+            "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
+            "example" : "PENDING",
+            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
+          },
+          "created" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "startTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "endTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "TransferTaskResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "$ref" : "#/components/schemas/TransferTask"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TransferTaskRequest" : {
+        "required" : [ "elements" ],
+        "type" : "object",
+        "properties" : {
+          "tag" : {
+            "type" : "string"
+          },
+          "elements" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTaskRequestElement"
+            }
+          }
+        }
+      },
+      "TransferTaskRequestElement" : {
+        "required" : [ "destinationURI", "sourceURI" ],
+        "type" : "object",
+        "properties" : {
+          "sourceURI" : {
+            "type" : "string"
+          },
+          "destinationURI" : {
+            "type" : "string"
+          },
+          "optional" : {
+            "type" : "boolean",
+            "description" : "Allow the full transfer to succeed even if this portion fails? Default is false"
+          }
+        }
+      }
+    }
+  }
+}

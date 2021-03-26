@@ -6,7 +6,7 @@
     <parent>
         <groupId>edu.utexas.tacc.tapis</groupId>
         <artifactId>tapis-bom</artifactId>
-        <version>[1.11,2.0)</version>
+        <version>1.11.37</version>
     </parent>
 
     <artifactId>tapis-files</artifactId>
@@ -14,8 +14,8 @@
     <version>1.1</version>
 
     <properties>
-        <tapis-client-java.version>[1.11.50, 2.0]</tapis-client-java.version>
-        <tapis-shared.version>[1.11, 2.0]</tapis-shared.version>
+        <tapis-client-java.version>1.11.61</tapis-client-java.version>
+        <tapis-shared.version>1.11.71</tapis-shared.version>
         <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
         <hk2.inhabitant.version>3.0.1</hk2.inhabitant.version>
         <jetbrains.annotations.version>20.1.0</jetbrains.annotations.version>

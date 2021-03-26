@@ -1,0 +1,58 @@
+edu/utexas/tacc/tapis/files/api/models/ShareFileRequest.java
+ edu.utexas.tacc.tapis.files.api.models.ShareFileRequest
+edu/utexas/tacc/tapis/files/api/resources/HealthApiResource.java
+ edu.utexas.tacc.tapis.files.api.resources.HealthApiResource
+ edu.utexas.tacc.tapis.files.api.resources.HealthApiResource$HealthCheckResponse
+edu/utexas/tacc/tapis/files/api/providers/FileTransfersAuthz.java
+ edu.utexas.tacc.tapis.files.api.providers.FileTransfersAuthz
+edu/utexas/tacc/tapis/files/api/providers/FileTransfersAuthorization.java
+ edu.utexas.tacc.tapis.files.api.providers.FileTransfersAuthorization
+edu/utexas/tacc/tapis/files/api/providers/FilePermissionsAuthorization.java
+ edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization
+edu/utexas/tacc/tapis/files/api/resources/TransfersApiResource.java
+ edu.utexas.tacc.tapis.files.api.resources.TransfersApiResource
+ edu.utexas.tacc.tapis.files.api.resources.TransfersApiResource$TransferTaskListResponse
+ edu.utexas.tacc.tapis.files.api.resources.TransfersApiResource$TransferTaskResponse
+edu/utexas/tacc/tapis/files/api/models/TransferTaskRequest.java
+ edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest
+edu/utexas/tacc/tapis/files/api/providers/FilePermissionsAuthz.java
+ edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz
+edu/utexas/tacc/tapis/files/api/models/MkdirRequest.java
+ edu.utexas.tacc.tapis.files.api.models.MkdirRequest
+edu/utexas/tacc/tapis/files/api/models/InsertFileRequest.java
+ edu.utexas.tacc.tapis.files.api.models.InsertFileRequest
+edu/utexas/tacc/tapis/files/api/resources/OperationsApiResource.java
+ edu.utexas.tacc.tapis.files.api.resources.OperationsApiResource
+ edu.utexas.tacc.tapis.files.api.resources.OperationsApiResource$FileListingResponse
+ edu.utexas.tacc.tapis.files.api.resources.OperationsApiResource$FileStringResponse
+edu/utexas/tacc/tapis/files/api/resources/PermissionsApiResource.java
+ edu.utexas.tacc.tapis.files.api.resources.PermissionsApiResource
+ edu.utexas.tacc.tapis.files.api.resources.PermissionsApiResource$FilePermissionResponse
+ edu.utexas.tacc.tapis.files.api.resources.PermissionsApiResource$FilePermissionStringResponse
+edu/utexas/tacc/tapis/files/api/resources/ShareApiResource.java
+ edu.utexas.tacc.tapis.files.api.resources.ShareApiResource
+edu/utexas/tacc/tapis/files/api/BaseResourceConfig.java
+ edu.utexas.tacc.tapis.files.api.BaseResourceConfig
+edu/utexas/tacc/tapis/files/api/models/MoveCopyRenameRequest.java
+ edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest
+edu/utexas/tacc/tapis/files/api/resources/BaseFilesResource.java
+ edu.utexas.tacc.tapis.files.api.resources.BaseFilesResource
+edu/utexas/tacc/tapis/files/api/FilesApplication.java
+ edu.utexas.tacc.tapis.files.api.FilesApplication
+ edu.utexas.tacc.tapis.files.api.FilesApplication$1
+edu/utexas/tacc/tapis/files/api/models/CreatePermissionRequest.java
+ edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest
+edu/utexas/tacc/tapis/files/api/providers/FileOpsAuthzSystemPath.java
+ edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthzSystemPath
+edu/utexas/tacc/tapis/files/api/models/CreateDirectoryRequest.java
+ edu.utexas.tacc.tapis.files.api.models.CreateDirectoryRequest
+edu/utexas/tacc/tapis/files/api/models/MoveCopyRenameOperation.java
+ edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation
+edu/utexas/tacc/tapis/files/api/providers/FileOpsAuthorization.java
+ edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization
+edu/utexas/tacc/tapis/files/api/providers/ObjectMapperContextResolver.java
+ edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver
+edu/utexas/tacc/tapis/files/api/models/HeaderByteRange.java
+ edu.utexas.tacc.tapis.files.api.models.HeaderByteRange
+edu/utexas/tacc/tapis/files/api/resources/ContentApiResource.java
+ edu.utexas.tacc.tapis.files.api.resources.ContentApiResource
