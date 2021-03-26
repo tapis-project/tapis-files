@@ -10,8 +10,9 @@ public class ITestHTTPClient {
 
     @Test
     public void testGetFile() throws Exception {
-        HTTPClient client = new HTTPClient();
-        InputStream stream = client.getStream("https://google.com");
+        String sourceUri = "https://google.com";
+        HTTPClient client = new HTTPClient("testTenant", "testUser", sourceUri);
+        InputStream stream = client.getStream(sourceUri);
         Assert.assertNotNull(stream);
     }
 }

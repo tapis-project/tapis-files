@@ -48,7 +48,7 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
             }
 
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILESAPI_TXFR_ERROR", user, "authorization", ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_TXFR_ERROR", user, "authorization", ex.getMessage());
             log.error(msg, ex);
             throw new IOException(msg, ex);
         }

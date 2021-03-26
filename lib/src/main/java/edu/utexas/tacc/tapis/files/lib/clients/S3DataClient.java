@@ -50,6 +50,12 @@ public class S3DataClient implements IRemoteDataClient {
 
     private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
 
+    public String getOboTenant() { return oboTenant; }
+    public String getOboUser() { return oboUser; }
+    public String getSystemId() { return system.getId(); }
+    private final String oboTenant;
+    private final String oboUser;
+
     public S3Client getClient() {
         return client;
     }
@@ -60,7 +66,9 @@ public class S3DataClient implements IRemoteDataClient {
     private final String rootDir;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
-    public S3DataClient(@NotNull TSystem remoteSystem) throws IOException {
+    public S3DataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TSystem remoteSystem) throws IOException {
+        oboTenant = oboTenant1;
+        oboUser = oboUser1;
         system = remoteSystem;
         bucket = system.getBucketName();
         rootDir = system.getRootDir();

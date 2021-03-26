@@ -96,6 +96,7 @@ public class TransfersService {
             TransferTask task = dao.getTransferTaskByUUID(transferTaskId);
             return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage());
         }
     }
@@ -112,6 +113,7 @@ public class TransfersService {
             }
             return task;
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage(), ex);
         }
 
@@ -122,6 +124,7 @@ public class TransfersService {
         try {
             return dao.getAllChildren(task);
         } catch (DAOException e) {
+          //TODO LOG
             throw new ServiceException(e.getMessage(), e);
         }
     }
@@ -132,6 +135,8 @@ public class TransfersService {
         try {
             return dao.getRecentTransfersForUser(tenantId, username, limit, offset);
         } catch (DAOException ex) {
+          //TODO LOG
+          //TODO
             throw new ServiceException(ex.getMessage(), ex);
         }
     }
@@ -140,6 +145,7 @@ public class TransfersService {
         try {
             TransferTask task = dao.getTransferTaskByUUID(taskUUID);
             if (task == null) {
+              //TODO LOG
                 throw new NotFoundException("No transfer task with this ID found.");
             }
             List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
@@ -155,6 +161,7 @@ public class TransfersService {
         try {
             TransferTask task = dao.getTransferTaskByID(id);
             if (task == null) {
+              //TODO LOG
                 throw new NotFoundException("No transfer task with this ID found.");
             }
             List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
@@ -162,6 +169,7 @@ public class TransfersService {
 
             return task;
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage(), ex);
         }
     }
@@ -170,10 +178,12 @@ public class TransfersService {
         try {
             TransferTaskParent task = dao.getTransferTaskParentByUUID(taskUUID);
             if (task == null) {
+              //TODO LOG
                 throw new NotFoundException("No transfer task with this UUID found.");
             }
             return task;
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage(), ex);
         }
     }
@@ -194,6 +204,7 @@ public class TransfersService {
             }
             return newTask;
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage(), ex);
         }
     }
@@ -202,6 +213,7 @@ public class TransfersService {
         try {
             return dao.insertChildTask(task);
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage(), ex);
         }
     }
@@ -212,6 +224,7 @@ public class TransfersService {
             dao.updateTransferTask(task);
             // todo: publish cancel message on the control queue
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage(), ex);
         }
     }
@@ -229,6 +242,7 @@ public class TransfersService {
                 .thenMany(confirms)
                 .subscribe();
         } catch (Exception e) {
+          //TODO LOG
             log.info(e.getMessage());
             throw new ServiceException(e.getMessage());
         }
@@ -250,6 +264,7 @@ public class TransfersService {
             return mapper.readValue(message.getBody(), TransferTaskParent.class).getTenantId();
         } catch (IOException ex) {
             message.nack(false);
+          //TODO LOG
             log.error("invalid message", ex);
             throw new ServiceException("Something is terribly wrong, could not get a tenant???", ex);
         }
@@ -297,6 +312,7 @@ public class TransfersService {
     }
 
     private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent) {
+      //TODO LOG
         log.error("Parent task failed! {}", parent);
         log.error("Exception: ", e);
         m.nack(false);
@@ -309,6 +325,7 @@ public class TransfersService {
             task.setErrorMessage(e.getMessage());
             task = dao.updateTransferTask(task);
         } catch (DAOException ex) {
+          //TODO LOG
             log.error("CRITICAL ERROR: ", ex);
         }
 
@@ -358,6 +375,7 @@ public class TransfersService {
             parentTask.setStartTime(Instant.now());
 
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException("Could not update task!", ex);
         }
 
@@ -366,7 +384,8 @@ public class TransfersService {
 
             if (sourceURI.toString().startsWith("tapis://")) {
                 sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURI.getSystemId(), parentTask.getUsername());
-                sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
+                sourceClient = remoteDataClientFactory.getRemoteDataClient(parentTask.getTenantId(), parentTask.getUsername(),
+                                                                           sourceSystem, parentTask.getUsername());
 
                 //TODO: Retries will break this, should delete anything in the DB if it is a retry?
                 List<FileInfo> fileListing;
@@ -400,6 +419,7 @@ public class TransfersService {
             }
             return parentTask;
         } catch (DAOException | TapisException | IOException e) {
+          //TODO LOG
             throw new ServiceException(e.getMessage(), e);
         }
     }
@@ -436,6 +456,7 @@ public class TransfersService {
             sender.send(Mono.just(message))
                 .subscribe();
         } catch (JsonProcessingException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage(), ex);
         }
     }
@@ -455,6 +476,7 @@ public class TransfersService {
         try {
             return mapper.readValue(message.getBody(), TransferTaskChild.class).getParentTaskId();
         } catch (IOException ex) {
+          //TODO LOG
             log.error("invalid message", ex);
             throw new ServiceException("Could not decipher this message, something is off!", ex);
         }
@@ -545,6 +567,7 @@ public class TransfersService {
      */
     private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable cause, TransferTaskChild child) {
         message.nack(false);
+      //TODO LOG
         log.error("ERROR Transferring: {}", child);
         log.error("Transfer failed!", cause);
 
@@ -569,6 +592,7 @@ public class TransfersService {
             dao.updateTransferTask(topTask);
 
         } catch (DAOException ignored) {
+          //TODO LOG
             log.error("Could not update tasks!", ignored);
         }
         return Mono.empty();
@@ -599,6 +623,7 @@ public class TransfersService {
             }
             return taskChild;
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage(), ex);
         }
 
@@ -625,6 +650,7 @@ public class TransfersService {
             taskChild.setRetries(taskChild.getRetries() + 1);
             taskChild = dao.updateTransferTaskChild(taskChild);
         } catch (DAOException ex) {
+          //TODO LOG
             throw new ServiceException(ex.getMessage(), ex);
         }
 
@@ -635,21 +661,24 @@ public class TransfersService {
         destURL = taskChild.getDestinationURI();
 
         if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://")) {
-            sourceClient = new HTTPClient();
+            sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), taskChild.getSourceURI().toString());
             //This should be the full string URL such as http://google.com
             sourcePath = sourceURL.toString();
         } else  {
             sourcePath = sourceURL.getPath();
             sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
-            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
+            sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
+                                                                       sourceSystem, taskChild.getUsername());
 
         }
 
         //Step 2: Get clients for source / dest
         try {
             destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
-            destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
+            destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
+                                                                     destSystem, taskChild.getUsername());
         } catch (IOException | ServiceException ex) {
+          //TODO LOG
             log.error(ex.getMessage(), ex);
             throw new ServiceException(ex.getMessage(), ex);
         }
@@ -680,6 +709,7 @@ public class TransfersService {
             dao.updateTransferTaskChild(taskChild);
             return Mono.just(aLong);
         } catch (DAOException ex) {
+          //TODO LOG
             String message = "Error updating progress for TransferTaskChild {}";
             log.error(message, taskChild);
             return Mono.empty();
@@ -700,6 +730,7 @@ public class TransfersService {
             taskChild = dao.updateTransferTaskChild(taskChild);
             return taskChild;
         } catch (DAOException ex) {
+          //TODO LOG
             String msg = String.format("Error updating child task %s", taskChild.toString());
             throw new ServiceException(msg, ex);
         }
@@ -734,6 +765,7 @@ public class TransfersService {
 
             return taskChild;
         } catch (DAOException ex) {
+          //TODO LOG
             String msg = String.format("Error updating child task %s", taskChild.toString());
             throw new ServiceException(msg, ex);
         }
@@ -751,6 +783,7 @@ public class TransfersService {
             }
             return taskChild;
         } catch (DAOException ex) {
+          //TODO LOG
             String msg = String.format("Error updating child task %s", taskChild.toString());
             throw new ServiceException(msg, ex);
         }

@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
@@ -31,6 +32,13 @@ import static java.util.Comparator.comparing;
 public class SSHDataClient implements IRemoteDataClient {
 
     private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
+
+    public String getOboTenant() { return oboTenant; }
+    public String getOboUser() { return oboUser; }
+    public String getSystemId() { return systemId; }
+    private final String oboTenant;
+    private final String oboUser;
+
     private final String host;
     private final String username;
     private final SSHConnection sshConnection;
@@ -41,7 +49,9 @@ public class SSHDataClient implements IRemoteDataClient {
     private static final String NOT_FOUND_MESSAGE =  "File not found for user: %s on host %s at path %s";
     private static final String GENERIC_ERROR_MESSAGE =  "Error: Something went wrong for user: %s on host %s at path %s";
 
-    public SSHDataClient(@NotNull TSystem sys, SSHConnection sshCon) {
+    public SSHDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TSystem sys, SSHConnection sshCon) {
+        oboTenant = oboTenant1;
+        oboUser = oboUser1;
         String rdir = sys.getRootDir();
         rdir = StringUtils.isBlank(rdir) ? "/" : rdir;
         rootDir = Paths.get(rdir).normalize().toString();

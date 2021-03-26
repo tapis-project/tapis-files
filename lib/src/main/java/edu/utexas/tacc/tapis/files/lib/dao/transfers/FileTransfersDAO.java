@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskSummary;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
@@ -190,14 +191,13 @@ public class FileTransfersDAO {
                 List<TransferTaskParent> parents = getAllParentsForTaskByID(newTask.getId());
                 newTask.setParentTasks(parents);
                 return newTask;
-            } catch (SQLException ex) {
-                throw new SQLException("Could not insert tasks?", ex);
             } finally {
                 connection.rollback();
                 connection.setAutoCommit(true);
             }
         } catch (SQLException ex) {
-            throw new DAOException("Could not insert transfer tasks", ex);
+            throw new DAOException(Utils.getMsg("FILES_TXFR_TASK_ERROR", task.getTenantId(), task.getUsername(),
+                                                task.getTag(), ex.getMessage()), ex);
         }
     }
 

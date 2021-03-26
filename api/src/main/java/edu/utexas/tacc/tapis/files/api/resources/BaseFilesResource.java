@@ -34,8 +34,9 @@ public abstract class BaseFilesResource {
     private static final Logger log = LoggerFactory.getLogger(BaseFilesResource.class);
     private IRuntimeConfig settings = RuntimeSettings.get();
 
-    protected IRemoteDataClient getClientForUserAndSystem(TSystem system, String effectiveUserId) throws IOException {
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, effectiveUserId);
+    protected IRemoteDataClient getClientForUserAndSystem(AuthenticatedUser authUser, TSystem system, String effectiveUserId) throws IOException {
+        IRemoteDataClient client =
+                remoteDataClientFactory.getRemoteDataClient(authUser.getOboTenantId(), authUser.getOboUser(), system, effectiveUserId);
         return client;
     }
 }

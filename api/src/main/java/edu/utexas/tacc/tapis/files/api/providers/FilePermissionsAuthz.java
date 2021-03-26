@@ -3,8 +3,6 @@ package edu.utexas.tacc.tapis.files.api.providers;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
-import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.slf4j.Logger;
@@ -12,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.ws.rs.NotAuthorizedException;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ResourceInfo;
@@ -20,7 +17,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import java.io.IOException;
 import java.util.Objects;
-import java.util.UUID;
 
 
 /**
@@ -54,7 +50,7 @@ public class FilePermissionsAuthz implements ContainerRequestFilter {
                 throw new NotAuthorizedException("User is not authorized to grant permissions on this system");
             }
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, "authorization", systemId, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_PERM_ERROR", user, "authorization", systemId, ex.getMessage());
             log.error(msg, ex);
             throw new IOException(msg, ex);
         }

@@ -19,6 +19,20 @@ public class HTTPClient implements IRemoteDataClient {
 
     private static final Logger log = LoggerFactory.getLogger(HTTPClient.class);
 
+    public String getOboTenant() { return oboTenant; }
+    public String getOboUser() { return oboUser; }
+    // TODO/TBD: Since no system use sourceUri instead
+    public String getSystemId() { return sourceUri; }
+    private final String oboTenant;
+    private final String oboUser;
+    private final String sourceUri;
+
+    public HTTPClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull String sourceUri1) {
+      oboTenant = oboTenant1;
+      oboUser = oboUser1;
+      sourceUri = sourceUri1;
+    }
+
     @Override
     public void makeBucket(String name) throws IOException {
         throw new NotImplementedException("Not implemented for http client");
