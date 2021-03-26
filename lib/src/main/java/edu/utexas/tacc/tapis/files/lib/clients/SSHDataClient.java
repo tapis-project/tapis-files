@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +41,12 @@ import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 
+
+/**
+ * This class is the entry point to sile operations over SSH with Tapis.
+ * All path parameters as inputs to methods are assumed to be relative to the rootDir
+ * of the system unless otherwise specified.
+ */
 public class SSHDataClient implements IRemoteDataClient {
 
     private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
@@ -265,8 +272,8 @@ public class SSHDataClient implements IRemoteDataClient {
 
 
     /**
-     * @param currentPath
-     * @param newPath
+     * @param currentPath Relative to roodDir
+     * @param newPath Relative to rootDir
      * @return
      * @throws IOException
      * @throws NotFoundException
@@ -277,16 +284,23 @@ public class SSHDataClient implements IRemoteDataClient {
         newPath = FilenameUtils.normalize(newPath);
         Path absoluteCurrentPath = Paths.get(rootDir, currentPath);
         Path absoluteNewPath = Paths.get(rootDir, newPath);
+        Path targetParentPath = absoluteNewPath.getParent();
         ChannelExec channel = openCommandChannel();
         try {
             Map<String, String> args = new HashMap<>();
+            args.put("targetParentPath", targetParentPath.toString());
             args.put("source", absoluteCurrentPath.toString());
             args.put("target", absoluteNewPath.toString());
-            CommandLine cmdLine = new CommandLine("cp");
-            cmdLine.addArgument("${source}");
-            cmdLine.addArgument("${target}");
-            cmdLine.setSubstitutionMap(args);
-            String toExecute = cmdLine.getExecutable();
+
+            CommandLine cmd = new CommandLine("mkdir");
+            cmd.addArgument("-p");
+            cmd.addArgument("${targetParentPath}");
+            cmd.addArgument(";");
+            cmd.addArgument("cp");
+            cmd.addArgument("${source}");
+            cmd.addArgument("${target}");
+            cmd.setSubstitutionMap(args);
+            String toExecute = String.join(" ", cmd.toStrings());
             channel.setCommand(toExecute);
             channel.connect();
         } catch (JSchException e) {

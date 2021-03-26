@@ -292,6 +292,25 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
     }
 
     @Test
+    public void testCopyFile() throws Exception {
+        addTestFilesToBucket(testSystem, "sample1.txt", 10 * 1024);
+
+        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
+        request.setOperation(MoveCopyRenameOperation.COPY);
+        request.setNewPath("/filestest/sample1.txt");
+
+        FileStringResponse response = target("/v3/files/ops/testSystem/sample1.txt")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .put(Entity.json(request), FileStringResponse.class);
+
+        List<FileInfo> listing = doListing(testSystem.getId(), "filestest/sample1.txt", getJwtForUser("dev", "testuser1"));
+        Assert.assertEquals(listing.size(), 1);
+        Assert.assertEquals(listing.get(0).getPath(), "filestest/sample1.txt");
+    }
+
+    @Test
     public void testRenameFile() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
