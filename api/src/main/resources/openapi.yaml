@@ -756,6 +756,17 @@ components:
         newPath:
           type: string
           description: Paths must be absolute, ../.. is not allowed
+    FilePermissionStringResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: string
+        version:
+          type: string
     FilePermission:
       type: object
       properties:
@@ -782,17 +793,6 @@ components:
           type: string
         result:
           $ref: '#/components/schemas/FilePermission'
-        version:
-          type: string
-    FilePermissionStringResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: string
         version:
           type: string
     CreatePermissionRequest:
@@ -955,6 +955,19 @@ components:
         endTime:
           type: string
           format: date-time
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
     TransferTaskParent:
       type: object
       properties:
@@ -1022,6 +1035,17 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string
     TransferTaskRequest:
       required:
       - elements
@@ -1047,27 +1071,3 @@ components:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
