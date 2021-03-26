@@ -599,27 +599,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferTaskResponse'
-  /v3/files/transfers/{transferTaskId}/details:
-    get:
-      tags:
-      - transfers
-      summary: Get details of a transfer task
-      operationId: getTransferTaskHistory
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
-        schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskResponse'
   /v3/files/transfers/{transferTaskId}:
     get:
       tags:
@@ -661,6 +640,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TapisResponse'
+  /v3/files/transfers/{transferTaskId}/details:
+    get:
+      tags:
+      - transfers
+      summary: Get details of a transfer task
+      operationId: getTransferTaskHistory
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
 components:
   schemas:
     HeaderByteRange:
@@ -756,17 +756,6 @@ components:
         newPath:
           type: string
           description: Paths must be absolute, ../.. is not allowed
-    FilePermissionStringResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: string
-        version:
-          type: string
     FilePermission:
       type: object
       properties:
@@ -793,6 +782,17 @@ components:
           type: string
         result:
           $ref: '#/components/schemas/FilePermission'
+        version:
+          type: string
+    FilePermissionStringResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: string
         version:
           type: string
     CreatePermissionRequest:
@@ -955,19 +955,6 @@ components:
         endTime:
           type: string
           format: date-time
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
     TransferTaskParent:
       type: object
       properties:
@@ -1035,17 +1022,6 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
     TransferTaskRequest:
       required:
       - elements
@@ -1071,3 +1047,27 @@ components:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string

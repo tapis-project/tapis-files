@@ -9,6 +9,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
@@ -261,14 +264,23 @@ public class SSHDataClient implements IRemoteDataClient {
      */
     @Override
     public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
-
+        currentPath = FilenameUtils.normalize(currentPath);
+        newPath = FilenameUtils.normalize(newPath);
         Path absoluteCurrentPath = Paths.get(rootDir, currentPath);
         Path absoluteNewPath = Paths.get(rootDir, newPath);
-        ChannelSftp channelSftp = openAndConnectSFTPChannel();
-
+        ChannelExec channel = openCommandChannel();
         try {
-            channelSftp.put(absoluteCurrentPath.toString(), absoluteNewPath.toString());
-        } catch (SftpException e) {
+            Map<String, String> args = new HashMap<>();
+            args.put("source", absoluteCurrentPath.toString());
+            args.put("target", absoluteNewPath.toString());
+            CommandLine cmdLine = new CommandLine("cp");
+            cmdLine.addArgument("${source}");
+            cmdLine.addArgument("${target}");
+            cmdLine.setSubstitutionMap(args);
+            String toExecute = cmdLine.getExecutable();
+            channel.setCommand(toExecute);
+            channel.connect();
+        } catch (JSchException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = String.format(NOT_FOUND_MESSAGE, username, host, currentPath);
                 throw new NotFoundException(msg);
@@ -277,7 +289,7 @@ public class SSHDataClient implements IRemoteDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            sshConnection.returnChannel(channelSftp);
+            sshConnection.returnChannel(channel);
         }
 
     }
