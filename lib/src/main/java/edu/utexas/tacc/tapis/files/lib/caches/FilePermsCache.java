@@ -8,17 +8,15 @@ import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
-import edu.utexas.tacc.tapis.systems.client.SystemsClient;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.jvnet.hk2.annotations.Service;
 
 import javax.inject.Inject;
 import java.time.Duration;
-import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -50,7 +48,8 @@ public class FilePermsCache {
             FilePermsCacheKey key = new FilePermsCacheKey(tenantId, systemId, path, username, perms);
             return cache.get(key);
         } catch (ExecutionException ex) {
-            throw new ServiceException("Could not retrieve system", ex);
+            String msg = Utils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, systemId, username, ex.getMessage());
+            throw new ServiceException(msg, ex);
         }
     }
 

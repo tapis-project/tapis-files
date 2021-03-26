@@ -11,7 +11,8 @@ public class ITestHTTPClient {
     @Test
     public void testGetFile() throws Exception {
         String sourceUri = "https://google.com";
-        HTTPClient client = new HTTPClient("testTenant", "testUser", sourceUri);
+        String destUri = sourceUri;
+        HTTPClient client = new HTTPClient("testTenant", "testUser", sourceUri, destUri);
         InputStream stream = client.getStream(sourceUri);
         Assert.assertNotNull(stream);
     }

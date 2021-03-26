@@ -4,9 +4,9 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -40,7 +40,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -103,7 +102,9 @@ public class S3DataClient implements IRemoteDataClient {
             client = builder.build();
 
         } catch (URISyntaxException e) {
-            throw new IOException("Could not create s3 client for system");
+            String msg = Utils.getMsg("FILES_CLIENT_S3_ERR", oboTenant, oboUser, system.getId(), bucket, e.getMessage());
+            log.error(msg);
+            throw new IOException(msg, e);
         }
     }
 
@@ -152,7 +153,8 @@ public class S3DataClient implements IRemoteDataClient {
                 .build();
             client.headObject(req);
         } catch (NoSuchKeyException ex) {
-            String msg = String.format("No such file at %s", path);
+            String msg = Utils.getMsg("FILES_CLIENT_S3_NOFILE", oboTenant, oboUser, system.getId(), bucket, path);
+            log.error(msg);
             throw new NotFoundException(msg);
         }
     }
@@ -201,8 +203,10 @@ public class S3DataClient implements IRemoteDataClient {
                 .build();
             client.putObject(req, RequestBody.fromString(""));
         } catch (S3Exception ex) {
-            log.error("S3DataClient.mkdir", ex);
-            throw new IOException("Could not create directory.");
+            String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "mkdir", system.getId(), bucket,
+                                      path, ex.getMessage());
+            log.error(msg);
+            throw new IOException(msg, ex);
         }
     }
 
@@ -219,8 +223,10 @@ public class S3DataClient implements IRemoteDataClient {
                 .build();
             client.putObject(req, RequestBody.fromFile(scratchFile));
         } catch (S3Exception ex) {
-            log.error("S3DataClient::insert", ex);
-            throw new IOException("Could not upload file.");
+            String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "insert", system.getId(), bucket,
+                                      path, ex.getMessage());
+            log.error(msg);
+            throw new IOException(msg, ex);
         } finally {
             scratchFile.delete();
         }
@@ -247,13 +253,17 @@ public class S3DataClient implements IRemoteDataClient {
 
         Stream<S3Object> response = listWithIterator(remotePath);
         response.forEach(object -> {
+            String key = null, newKey = null;
             try {
-                String key = object.key();
+                key = object.key();
                 Path renamedPath = PathUtils.relativizePaths(remotePath, key, newPath);
-                String newKey = renamedPath.normalize().toString();
+                newKey = renamedPath.normalize().toString();
                 renameObject(object, newKey, true);
             } catch (IOException ex) {
-                log.error("S3DataClient::move " + object.key(), ex);
+              // TODO Ask JoeM
+                String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR2", oboTenant, oboUser, "move", system.getId(), bucket,
+                                          currentPath, newPath, key, newKey, ex);
+                log.error(msg);
             }
         });
     }
@@ -271,8 +281,11 @@ public class S3DataClient implements IRemoteDataClient {
         } catch (NoSuchKeyException ex) {
             throw new NotFoundException();
         } catch (S3Exception ex) {
-            log.error("S3DataClient::copy " + encodedSourcePath, ex);
-            throw new IOException("Copy object failed at path " + encodedSourcePath);
+          // TODO Ask JoeM
+            String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR3", oboTenant, oboUser, "doCopy", system.getId(), bucket,
+                                      currentPath, newPath, encodedSourcePath, remoteDestinationPath, ex.getMessage());
+            log.error(msg);
+            throw new IOException(msg, ex);
         }
     }
 
@@ -281,13 +294,17 @@ public class S3DataClient implements IRemoteDataClient {
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, currentPath);
         Stream<S3Object> response = listWithIterator(remotePath);
         response.forEach(object -> {
+            String key = null, newKey = null;
             try {
-                String key = object.key();
+                key = object.key();
                 Path renamedPath = PathUtils.relativizePaths(currentPath, key, newPath);
-                String newKey = renamedPath.normalize().toString();
+                newKey = renamedPath.normalize().toString();
                 renameObject(object, newKey, false);
             } catch (IOException ex) {
-                log.error("S3DataClient::move " + object.key(), ex);
+              // TODO Ask JoeM
+                String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR2", oboTenant, oboUser, "copy", system.getId(), bucket,
+                                          currentPath, newPath, key, newKey, ex);
+                log.error(msg);
             }
         });
     }
@@ -314,7 +331,10 @@ public class S3DataClient implements IRemoteDataClient {
         } catch (NoSuchKeyException ex) {
             throw new NotFoundException();
         } catch (S3Exception ex) {
-            throw new IOException("Could not delete object");
+            String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "delete", system.getId(), bucket,
+                                      path, ex.getMessage());
+            log.error(msg);
+            throw new IOException(msg, ex);
         }
     }
 
@@ -339,8 +359,10 @@ public class S3DataClient implements IRemoteDataClient {
         } catch (NoSuchKeyException ex) {
             throw new NotFoundException();
         } catch (S3Exception ex) {
-            log.error(ex.getMessage());
-            throw new IOException();
+            String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "getStream", system.getId(), bucket,
+                                      path, ex.getMessage());
+            log.error(msg);
+            throw new IOException(msg, ex);
         }
     }
 
@@ -374,23 +396,22 @@ public class S3DataClient implements IRemoteDataClient {
         } catch (NoSuchKeyException ex) {
             throw new NotFoundException();
         } catch (S3Exception ex) {
-            log.error(ex.getMessage());
-            throw new IOException();
+            String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "getBytesByRange", system.getId(), bucket,
+                                      path, ex.getMessage());
+            log.error(msg);
+            throw new IOException(msg, ex);
         }
     }
 
-
-
-
-
     @Override
     public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
-        throw new NotImplementedException("S3 does not support put by range operations");
+          String msg = Utils.getMsg("FILES_CLIENT_S3_NO_SUPPORT", oboTenant, oboUser, "putBytesByRange", system.getId(), bucket, path);
+          throw new NotImplementedException(msg);
     }
 
     @Override
     public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
-        throw new NotImplementedException("S3 does not support append operations");
+          String msg = Utils.getMsg("FILES_CLIENT_S3_NO_SUPPORT", oboTenant, oboUser, "append", system.getId(), bucket, path);
+          throw new NotImplementedException(msg);
     }
-
 }

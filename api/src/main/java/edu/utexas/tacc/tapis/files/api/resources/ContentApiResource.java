@@ -78,7 +78,7 @@ public class ContentApiResource extends BaseFilesResource {
                     try {
                         fileOpsService.getZip(client, output, path);
                     } catch (Exception e) {
-                        throw new WebApplicationException(e);
+                        throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
                     }
                 };
 
@@ -90,7 +90,7 @@ public class ContentApiResource extends BaseFilesResource {
 
             // Ensure that the path is not a dir, if not zip, then this will error out
             if (path.endsWith("/")) {
-                throw new BadRequestException(Utils.getMsgAuth("FILES_CONT_BAD", user, systemId));
+                throw new BadRequestException(Utils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
             }
 
 
@@ -112,7 +112,7 @@ public class ContentApiResource extends BaseFilesResource {
                     .build();
             asyncResponse.resume(response);
         } catch (ServiceException | IOException ex) {
-            String msg = Utils.getMsgAuth("FILES_CONT_ERROR", user, systemId, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }

@@ -196,7 +196,7 @@ public class FileTransfersDAO {
                 connection.setAutoCommit(true);
             }
         } catch (SQLException ex) {
-            throw new DAOException(Utils.getMsg("FILES_TXFR_TASK_ERROR", task.getTenantId(), task.getUsername(),
+            throw new DAOException(Utils.getMsg("FILES_TXFR_TASK_ERR", task.getTenantId(), task.getUsername(),
                                                 task.getTag(), ex.getMessage()), ex);
         }
     }
@@ -224,6 +224,7 @@ public class FileTransfersDAO {
 
             return task;
         } catch (SQLException ex) {
+          // TODO Ask JoeM
             throw new DAOException(ex.getMessage(), ex);
         }
     }
@@ -251,6 +252,7 @@ public class FileTransfersDAO {
 
             return task;
         } catch (SQLException ex) {
+          // TODO Ask JoeM
             throw new DAOException(ex.getMessage(), ex);
         }
     }
@@ -263,6 +265,7 @@ public class FileTransfersDAO {
             QueryRunner runner = new QueryRunner();
             return runner.query(connection, query, handler, taskUUID);
         } catch (SQLException ex) {
+          // TODO Ask JoeM
             throw new DAOException(ex.getMessage(), ex);
         }
     }
@@ -488,6 +491,7 @@ public class FileTransfersDAO {
             QueryRunner runner = new QueryRunner();
             runner.batch(connection, stmt, t);
         } catch (SQLException ex) {
+          // TODO SCB
             throw new DAOException("Bulk insert failed!", ex);
         }
     }
@@ -513,6 +517,7 @@ public class FileTransfersDAO {
 
             return child;
         } catch (SQLException ex) {
+          // TODO SCB
             log.error("ERROR", ex);
             throw new DAOException(ex.getMessage(), ex);
         }
@@ -550,6 +555,7 @@ public class FileTransfersDAO {
             );
             return tasks;
         } catch (SQLException ex) {
+          // TODO SCB
             log.error("ERROR", ex);
             throw new DAOException(ex.getMessage(), ex);
         }
@@ -596,6 +602,7 @@ public class FileTransfersDAO {
 
             return children;
         } catch (SQLException ex) {
+          // TODO SCB
             log.error("ERROR", ex);
             throw new DAOException(ex.getMessage(), ex);
         }
@@ -618,6 +625,7 @@ public class FileTransfersDAO {
 
             return children;
         } catch (SQLException ex) {
+          // TODO SCB
             log.error("ERROR", ex);
             throw new DAOException(ex.getMessage(), ex);
         }

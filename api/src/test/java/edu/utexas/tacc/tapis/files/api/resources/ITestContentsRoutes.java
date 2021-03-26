@@ -53,6 +53,8 @@ import static org.mockito.Mockito.when;
 public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
     private final Logger log = LoggerFactory.getLogger(ITestContentsRoutes.class);
+    private final String oboTenant = "oboTenant";
+    private final String oboUser = "oboUser";
     private final TSystem testSystem;
     private final TSystem testSystemSSH;
     private final Credential creds;
@@ -165,17 +167,17 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     }
 
     private void addTestFilesToBucket(TSystem system, String fileName, long fileSize) throws Exception {
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(system, "testuser");
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, system, "testuser");
         InputStream f1 = makeFakeFile(fileSize);
         client.insert(fileName, f1);
     }
 
 
     public void tearDownTest() throws Exception {
-        S3DataClient client = new S3DataClient(testSystem);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystem);
         client.delete("/");
 
-        IRemoteDataClient client2 = remoteDataClientFactory.getRemoteDataClient(testSystemSSH, "testuser");
+        IRemoteDataClient client2 = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemSSH, "testuser");
         client2.delete("/");
     }
 

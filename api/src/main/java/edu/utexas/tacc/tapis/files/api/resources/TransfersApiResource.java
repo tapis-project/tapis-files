@@ -70,7 +70,7 @@ public class  TransfersApiResource {
             TapisResponse<List<TransferTask>> resp = TapisResponse.createSuccessResponse(tasks);
             return Response.ok(resp).build();
         } catch (ServiceException e) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERROR", user, opName, e.getMessage());
+            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -102,13 +102,13 @@ public class  TransfersApiResource {
             UUID transferTaskUUID = UUID.fromString(transferTaskId);
             TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
             if (task == null) {
-                throw new NotFoundException("Transfer task not found");
+                throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
             }
             isPermitted(task, user);
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (ServiceException e) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERROR", user, opName, e.getMessage());
+            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -138,13 +138,13 @@ public class  TransfersApiResource {
             UUID transferTaskUUID = UUID.fromString(transferTaskId);
             TransferTask task = transfersService.getTransferTaskDetails(transferTaskUUID);
             if (task == null) {
-                throw new NotFoundException("Transfer task not found");
+                throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
             }
             isPermitted(task, user);
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             return Response.ok(resp).build();
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERROR", user, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
@@ -173,7 +173,7 @@ public class  TransfersApiResource {
             UUID transferTaskUUID = UUID.fromString(transferTaskId);
             TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
             if (task == null) {
-                throw new NotFoundException("Transfer task not found");
+                throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
             }
             isPermitted(task, user);
             transfersService.cancelTransfer(task);
@@ -181,7 +181,7 @@ public class  TransfersApiResource {
             resp.setMessage("Transfer deleted.");
             return Response.ok(resp).build();
         } catch (ServiceException e) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERROR", user, opName, e.getMessage());
+            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -219,7 +219,7 @@ public class  TransfersApiResource {
             resp.setMessage("Transfer created.");
             return Response.ok(resp).build();
         } catch (Exception ex) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERROR", user, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }

@@ -52,11 +52,11 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
         try {
             boolean isPermitted = filePermsService.isPermitted(tenantId, username, systemId, path, requiredPerms.permsRequired());
             if (!isPermitted) {
-               throw new NotAuthorizedException("Authorization failed.");
+               throw new NotAuthorizedException(Utils.getMsgAuth("FILES_OPS_NOT_AUTH", user, systemId, path));
             }
         } catch (ServiceException e) {
             // This should only happen when there is a network issue.
-            String msg = Utils.getMsgAuth("FILES_OPS_ERROR", user, "authorization", systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, "authorization", systemId, path, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }

@@ -661,7 +661,7 @@ public class TransfersService {
         destURL = taskChild.getDestinationURI();
 
         if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://")) {
-            sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), taskChild.getSourceURI().toString());
+            sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
             //This should be the full string URL such as http://google.com
             sourcePath = sourceURL.toString();
         } else  {

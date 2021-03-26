@@ -46,7 +46,7 @@ public class FilePermsService {
         } catch (TapisException ex) {
             throw new ServiceException("Invalid tenant!", ex);
         } catch (TapisClientException ex) {
-            String msg = Utils.getMsg("FILES_PERMC_ERROR", tenantId, username, "grant", systemId, path, ex.getMessage());
+            String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, path, ex.getMessage());
             throw new ServiceException(msg, ex);
         }
     }
@@ -65,7 +65,7 @@ public class FilePermsService {
         } catch (TapisException ex) {
             throw new ServiceException("Invalid tenant!", ex);
         } catch (TapisClientException ex) {
-            String msg = Utils.getMsg("FILES_PERMC_ERROR", tenantId, username, "revoke", systemId, path, ex.getMessage());
+            String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
             throw new ServiceException(msg, ex);
         }
     }

@@ -44,11 +44,11 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
         try {
             boolean isPermitted = transfersService.isPermitted(username, tenantId, taskUUID);
             if (!isPermitted) {
-                throw new NotAuthorizedException("Not authorized to access this transfer");
+                throw new NotAuthorizedException(Utils.getMsgAuth("FILES_TXFR_NOT_AUTH", user, taskUUID));
             }
 
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERROR", user, "authorization", ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, "authorization", ex.getMessage());
             log.error(msg, ex);
             throw new IOException(msg, ex);
         }

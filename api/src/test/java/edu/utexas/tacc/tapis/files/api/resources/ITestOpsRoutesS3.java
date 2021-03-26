@@ -63,6 +63,9 @@ import static org.mockito.Mockito.when;
 public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     private Logger log = LoggerFactory.getLogger(ITestOpsRoutesS3.class);
+    private final String oboTenant = "oboTenant";
+    private final String oboUser = "oboUser";
+
     private static class FileListResponse extends TapisResponse<List<FileInfo>> {
     }
 
@@ -150,7 +153,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @AfterMethod
     public void cleanup() throws Exception {
-        S3DataClient client = new S3DataClient(testSystem);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystem);
         client.delete("/");
 
     }
@@ -193,7 +196,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
     }
 
     private void addTestFilesToBucket(TSystem system, String fileName, int fileSize) throws Exception {
-        S3DataClient client = new S3DataClient(system);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, system);
         InputStream f1 = makeFakeFile(fileSize);
         client.insert(fileName, f1);
     }
@@ -241,7 +244,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testDelete() throws Exception {
-        S3DataClient client = new S3DataClient(testSystem);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystem);
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10 * 1024);
@@ -263,7 +266,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testRenameFile() throws Exception {
-        S3DataClient client = new S3DataClient(testSystem);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystem);
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10 * 1024);
@@ -289,7 +292,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testRenameManyObjects1() throws Exception {
-        S3DataClient client = new S3DataClient(testSystem);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystem);
         addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
@@ -321,7 +324,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
      */
     @Test
     public void testRenameManyObjects2() throws Exception {
-        S3DataClient client = new S3DataClient(testSystem);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystem);
         addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
@@ -351,7 +354,7 @@ public class ITestOpsRoutesS3 extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testDeleteManyObjects() throws Exception {
-        S3DataClient client = new S3DataClient(testSystem);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystem);
         addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);

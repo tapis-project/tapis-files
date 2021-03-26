@@ -122,10 +122,10 @@ public class OperationsApiResource extends BaseFilesResource {
             return Response.status(Status.OK).entity(resp).build();
         }
         catch (NotFoundException e) {
-          throw new NotFoundException(Utils.getMsgAuth("FILES_OPS_ERROR", user, opName, systemId, e.getMessage()));
+          throw new NotFoundException(Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage()));
         }
         catch (ServiceException | IOException e) {
-            String msg = Utils.getMsgAuth("FILES_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -172,7 +172,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            String msg = Utils.getMsgAuth("FILES_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -217,7 +217,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            String msg = Utils.getMsgAuth("FILES_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, mkdirRequest.getPath(), e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -264,7 +264,7 @@ public class OperationsApiResource extends BaseFilesResource {
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             if (client == null) {
-                throw new NotFoundException("System not found");
+                throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
             }
             MoveCopyRenameOperation operation = request.getOperation();
             if (operation.equals(MoveCopyRenameOperation.MOVE)) {
@@ -278,7 +278,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            String msg = Utils.getMsgAuth("FILES_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -326,7 +326,7 @@ public class OperationsApiResource extends BaseFilesResource {
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {
-            String msg = Utils.getMsgAuth("FILES_OPS_ERROR", user, opName, systemId, e.getMessage());
+            String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
