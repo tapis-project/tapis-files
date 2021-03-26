@@ -1,32 +1,38 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
-import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
-import com.jcraft.jsch.*;
-import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
-import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.ChannelSftp.LsEntry;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.SftpATTRS;
+import com.jcraft.jsch.SftpException;
 
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.utils.Constants;
+import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
+import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
-
-import static java.util.Comparator.comparing;
 
 public class SSHDataClient implements IRemoteDataClient {
 
