@@ -1,34 +1,54 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
-import com.jcraft.jsch.*;
-import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
-import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.ChannelSftp.LsEntry;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.SftpATTRS;
+import com.jcraft.jsch.SftpException;
 
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
+
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.utils.Constants;
+import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
+import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 
-import static java.util.Comparator.comparing;
 
+/**
+ * This class is the entry point to sile operations over SSH with Tapis.
+ * All path parameters as inputs to methods are assumed to be relative to the rootDir
+ * of the system unless otherwise specified.
+ */
 public class SSHDataClient implements IRemoteDataClient {
 
     private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
@@ -261,22 +281,38 @@ public class SSHDataClient implements IRemoteDataClient {
 
 
     /**
-     * @param currentPath
-     * @param newPath
+     * @param currentPath Relative to roodDir
+     * @param newPath Relative to rootDir
      * @return
      * @throws IOException
      * @throws NotFoundException
      */
     @Override
     public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
-
+        currentPath = FilenameUtils.normalize(currentPath);
+        newPath = FilenameUtils.normalize(newPath);
         Path absoluteCurrentPath = Paths.get(rootDir, currentPath);
         Path absoluteNewPath = Paths.get(rootDir, newPath);
-        ChannelSftp channelSftp = openAndConnectSFTPChannel();
-
+        Path targetParentPath = absoluteNewPath.getParent();
+        ChannelExec channel = openCommandChannel();
         try {
-            channelSftp.put(absoluteCurrentPath.toString(), absoluteNewPath.toString());
-        } catch (SftpException e) {
+            Map<String, String> args = new HashMap<>();
+            args.put("targetParentPath", targetParentPath.toString());
+            args.put("source", absoluteCurrentPath.toString());
+            args.put("target", absoluteNewPath.toString());
+
+            CommandLine cmd = new CommandLine("mkdir");
+            cmd.addArgument("-p");
+            cmd.addArgument("${targetParentPath}");
+            cmd.addArgument(";");
+            cmd.addArgument("cp");
+            cmd.addArgument("${source}");
+            cmd.addArgument("${target}");
+            cmd.setSubstitutionMap(args);
+            String toExecute = String.join(" ", cmd.toStrings());
+            channel.setCommand(toExecute);
+            channel.connect();
+        } catch (JSchException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, currentPath);
                 throw new NotFoundException(msg);
@@ -285,7 +321,7 @@ public class SSHDataClient implements IRemoteDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            sshConnection.returnChannel(channelSftp);
+            sshConnection.returnChannel(channel);
         }
 
     }
