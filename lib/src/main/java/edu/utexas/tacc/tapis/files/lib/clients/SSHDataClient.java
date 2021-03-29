@@ -285,6 +285,9 @@ public class SSHDataClient implements IRemoteDataClient {
         Path absoluteCurrentPath = Paths.get(rootDir, currentPath);
         Path absoluteNewPath = Paths.get(rootDir, newPath);
         Path targetParentPath = absoluteNewPath.getParent();
+
+        //This will throw a NotFoundException if source is not there
+        this.ls(currentPath);
         ChannelExec channel = openCommandChannel();
         try {
             Map<String, String> args = new HashMap<>();

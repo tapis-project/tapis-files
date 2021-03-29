@@ -311,6 +311,24 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
     }
 
     @Test
+    public void testCopyFileShould404() throws Exception {
+        addTestFilesToBucket(testSystem, "sample1.txt", 10 * 1024);
+
+        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
+        request.setOperation(MoveCopyRenameOperation.COPY);
+        request.setNewPath("/filestest/sample1.txt");
+
+
+
+        Assert.assertThrows(NotFoundException.class, ()->target("/v3/files/ops/testSystem/NOT-THERE.txt")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .put(Entity.json(request), FileStringResponse.class) );
+
+    }
+
+    @Test
     public void testRenameFile() throws Exception {
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
@@ -539,8 +557,5 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
 
         Assert.assertEquals(response.getStatus(), 400);
     }
-
-    //TODO: Add tests for strange chars in filename or path.
-
 
 }

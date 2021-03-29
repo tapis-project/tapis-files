@@ -369,7 +369,7 @@ paths:
       - permissions
       summary: Get the API user's permissions on a file or folder.
       description: Get the permissions for the API user for the system and path.
-      operationId: permissionsSystemIdPathGet
+      operationId: getPermissions
       parameters:
       - name: systemId
         in: path
@@ -460,7 +460,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FilePermissionStringResponse'
+                $ref: '#/components/schemas/StringResponse'
   /v3/files/share/{systemId}/{path}:
     get:
       tags:
@@ -756,17 +756,6 @@ components:
         newPath:
           type: string
           description: Paths must be absolute, ../.. is not allowed
-    FilePermissionStringResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: string
-        version:
-          type: string
     FilePermission:
       type: object
       properties:
@@ -793,6 +782,28 @@ components:
           type: string
         result:
           $ref: '#/components/schemas/FilePermission'
+        version:
+          type: string
+    TapisResponseFilePermission:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          $ref: '#/components/schemas/FilePermission'
+        version:
+          type: string
+    StringResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: string
         version:
           type: string
     CreatePermissionRequest:

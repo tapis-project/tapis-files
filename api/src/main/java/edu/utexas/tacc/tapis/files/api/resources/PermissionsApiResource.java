@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
-import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -26,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.validation.Valid;
 import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -38,7 +36,7 @@ import javax.ws.rs.*;
 public class PermissionsApiResource  {
 
     private static class FilePermissionResponse extends TapisResponse<FilePermission> {}
-    private static class FilePermissionStringResponse extends TapisResponse<String> {}
+    private static class StringResponse extends TapisResponse<String> {}
     private static final Logger log = LoggerFactory.getLogger(PermissionsApiResource.class);
     private final FilePermsService permsService;
     private final SystemsCache systemsCache;
@@ -57,7 +55,7 @@ public class PermissionsApiResource  {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
                     description = "FilePermission",
-                    content = @Content(schema = @Schema(implementation = FilePermissionStringResponse.class))) }
+                    content = @Content(schema = @Schema(implementation = StringResponse.class))) }
     )
     public Response permissionsSystemIdPathDelete(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
@@ -87,7 +85,7 @@ public class PermissionsApiResource  {
                     responseCode = "200",
                     description = "FilePermission",
                     content = @Content(array = @ArraySchema(schema = @Schema(implementation = FilePermissionResponse.class)))) })
-    public Response permissionsSystemIdPathGet(
+    public TapisResponse<FilePermission> getPermissions(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "path",required=true) @PathParam("path") String path,
             @Parameter(description = "Username to list") @QueryParam("username") String queryUsername,
@@ -128,7 +126,7 @@ public class PermissionsApiResource  {
                 permission.setPermissions(FilePermissionsEnum.ALL);
 
             TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(permission);
-            return Response.ok(response).build();
+            return response;
         } catch (ServiceException ex) {
             String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
