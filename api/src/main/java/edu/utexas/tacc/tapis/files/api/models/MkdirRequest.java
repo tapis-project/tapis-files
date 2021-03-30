@@ -8,7 +8,6 @@ public class MkdirRequest {
     private String path;
 
     @NotBlank
-    @Pattern(regexp = "^(?!.*\\.).+", message = ". not allowed in path")
     public String getPath() {
         return path;
     }
