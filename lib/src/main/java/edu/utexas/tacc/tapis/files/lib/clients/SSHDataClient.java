@@ -8,7 +8,6 @@ import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -23,7 +22,6 @@ import javax.ws.rs.NotFoundException;
 
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +33,6 @@ import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
@@ -164,7 +161,7 @@ public class SSHDataClient implements IRemoteDataClient {
             }
             fileInfo.setOwner(String.valueOf(attrs.getUId()));
             fileInfo.setGroup(String.valueOf(attrs.getGId()));
-            fileInfo.setPermissions(attrs.getPermissionsString());
+            fileInfo.setPermission(attrs.getPermissionsString());
             //TODO: This path munging is tricky, but it seems to work as far as listings are concerned
             Path fullPath;
             if (absolutePath.getFileName().equals(Paths.get(entry.getFilename()))) {

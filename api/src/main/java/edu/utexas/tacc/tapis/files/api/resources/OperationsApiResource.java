@@ -6,9 +6,9 @@ import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
@@ -71,7 +71,7 @@ public class OperationsApiResource extends BaseFilesResource {
 
 
     @GET
-    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
+    @FileOpsAuthorization(permRequired = Permission.READ)
     @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "List files/objects in a storage system.", description = "List files in a bucket", tags = {"file operations"})
@@ -132,7 +132,7 @@ public class OperationsApiResource extends BaseFilesResource {
     }
 
     @POST
-    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
+    @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:.+}")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
@@ -180,7 +180,7 @@ public class OperationsApiResource extends BaseFilesResource {
 
 
     @POST
-    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
+    @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -225,7 +225,7 @@ public class OperationsApiResource extends BaseFilesResource {
 
 
     @PUT
-    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
+    @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Move/copy/rename a file or folder", description = "Move/Rename a file in {systemID} at path {path}.", tags = {"file operations"})
     @Produces(MediaType.APPLICATION_JSON)
@@ -285,7 +285,7 @@ public class OperationsApiResource extends BaseFilesResource {
     }
 
     @DELETE
-    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.ALL)
+    @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:(.*+)}")
     @Operation(summary = "Delete a file or folder", description = "Delete a file in {systemID} at path {path}.", tags = {"file operations"})
     @Produces(MediaType.APPLICATION_JSON)
@@ -332,5 +332,3 @@ public class OperationsApiResource extends BaseFilesResource {
         }
     }
 }
-
-

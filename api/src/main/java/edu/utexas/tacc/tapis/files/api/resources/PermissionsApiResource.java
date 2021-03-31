@@ -2,10 +2,10 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
@@ -51,7 +51,9 @@ public class PermissionsApiResource  {
     @FilePermissionsAuthorization
     @Path("/{systemId}/{path}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Remove permissions on an object for a user. ", description = "Remove user permissions to a file/folder.", tags={ "permissions" })
+    @Operation(summary = "Revoke user permission on a file or folder. ",
+            description = "Revoke access to a file or folder for a user.",
+            tags={ "permissions" })
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200",
                     description = "FilePermission",
@@ -65,8 +67,8 @@ public class PermissionsApiResource  {
         String opName = "revokePermissions";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            permsService.revokePermission(user.getOboTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
-            TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions revoked.");
+            permsService.revokePermission(user.getOboTenantId(), username, systemId, path);
+            TapisResponse<String> response = TapisResponse.createSuccessResponse("Permission revoked.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {
             String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
@@ -79,7 +81,9 @@ public class PermissionsApiResource  {
     @GET
     @Path("/{systemId}/{path}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Get the API user's permissions on a file or folder.", description = "Get the permissions for the API user for the system and path.", tags={ "permissions" })
+    @Operation(summary = "Get the API user's permission on a file or folder.",
+            description = "Get the permission for the API user for the system and path.",
+            tags={ "permissions" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -113,19 +117,14 @@ public class PermissionsApiResource  {
         }
 
         try {
-            boolean allPermitted = permsService.isPermitted(user.getOboTenantId(), username, systemId, path, FilePermissionsEnum.ALL);
-            boolean readPermitted = permsService.isPermitted(user.getOboTenantId(), username, systemId, path, FilePermissionsEnum.READ);
-            FilePermission permission = new FilePermission();
-            permission.setPath(path);
-            permission.setSystemId(systemId);
-            permission.setUsername(username);
-            permission.setTenantId(user.getOboTenantId());
-            if (readPermitted)
-                permission.setPermissions(FilePermissionsEnum.READ);
-            if (allPermitted)
-                permission.setPermissions(FilePermissionsEnum.ALL);
-
-            TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(permission);
+            Permission permission = permsService.getPermission(user.getOboTenantId(), username, systemId, path);
+            FilePermission filePermission = new FilePermission();
+            filePermission.setPath(path);
+            filePermission.setSystemId(systemId);
+            filePermission.setUsername(username);
+            filePermission.setTenantId(user.getOboTenantId());
+            filePermission.setPermission(permission);
+            TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(filePermission);
             return response;
         } catch (ServiceException ex) {
             String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
@@ -139,7 +138,9 @@ public class PermissionsApiResource  {
     @Path("/{systemId}/{path}")
     @Produces({ MediaType.APPLICATION_JSON })
     @Consumes({MediaType.APPLICATION_JSON})
-    @Operation(summary = "Add permissions on an object. ", description = "Add a user to a file/folder.", tags={ "permissions" })
+    @Operation(summary = "Grant user permission on a file or folder. ",
+            description = "Grant access to a file or folder for a user. Access may be READ or MODIFY. MODIFY implies READ.",
+            tags={ "permissions" })
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200",
@@ -163,6 +164,5 @@ public class PermissionsApiResource  {
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
-
     }
 }

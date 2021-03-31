@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
-import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
+
 import javax.annotation.Priority;
 import javax.ws.rs.NameBinding;
 import javax.ws.rs.Priorities;
@@ -22,6 +23,6 @@ import java.lang.annotation.*;
 @Priority(Priorities.AUTHORIZATION)
 public @interface FileOpsAuthorization {
 
-    FilePermissionsEnum permsRequired() default FilePermissionsEnum.READ;
+    Permission permRequired() default Permission.READ;
 
 }

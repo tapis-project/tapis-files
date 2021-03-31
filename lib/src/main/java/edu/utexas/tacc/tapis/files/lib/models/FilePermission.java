@@ -1,12 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
+
 public class FilePermission   {
 
     private String tenantId;
     private String username;
     private String systemId;
     private String path;
-    private FilePermissionsEnum permissions;
+    private Permission permission;
 
     public String getTenantId() {
         return tenantId;
@@ -39,12 +41,12 @@ public class FilePermission   {
         this.path = path;
     }
 
-    public FilePermissionsEnum getPermissions() {
-        return permissions;
+    public Permission getPermission() {
+        return permission;
     }
 
-    public void setPermissions(FilePermissionsEnum permissions) {
-        this.permissions = permissions;
+    public void setPermission(Permission permission) {
+        this.permission = permission;
     }
 
     @Override
@@ -52,7 +54,7 @@ public class FilePermission   {
         return "FilePermission{" +
             "systemId='" + systemId + '\'' +
             ", path='" + path + '\'' +
-            ", permissions=" + permissions +
+            ", permission=" + permission +
             '}';
     }
 }

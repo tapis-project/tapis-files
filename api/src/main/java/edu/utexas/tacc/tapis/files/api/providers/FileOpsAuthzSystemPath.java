@@ -35,7 +35,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
     public void filter(ContainerRequestContext requestContext) throws WebApplicationException {
 
         //This will be the annotation on the api method, which is one of the FilePermissionsEnum values
-        FileOpsAuthorization requiredPerms = resourceInfo.getResourceMethod().getAnnotation(FileOpsAuthorization.class);
+        FileOpsAuthorization requiredPerm = resourceInfo.getResourceMethod().getAnnotation(FileOpsAuthorization.class);
 
         final AuthenticatedUser user = (AuthenticatedUser) requestContext.getSecurityContext().getUserPrincipal();
         String username = user.getOboUser();
@@ -50,7 +50,7 @@ public class FileOpsAuthzSystemPath implements ContainerRequestFilter {
         }
 
         try {
-            boolean isPermitted = filePermsService.isPermitted(tenantId, username, systemId, path, requiredPerms.permsRequired());
+            boolean isPermitted = filePermsService.isPermitted(tenantId, username, systemId, path, requiredPerm.permRequired());
             if (!isPermitted) {
                throw new NotAuthorizedException(Utils.getMsgAuth("FILES_OPS_NOT_AUTH", user, systemId, path));
             }

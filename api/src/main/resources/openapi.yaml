@@ -367,8 +367,8 @@ paths:
     get:
       tags:
       - permissions
-      summary: Get the API user's permissions on a file or folder.
-      description: Get the permissions for the API user for the system and path.
+      summary: Get the API user's permission on a file or folder.
+      description: Get the permission for the API user for the system and path.
       operationId: getPermissions
       parameters:
       - name: systemId
@@ -400,8 +400,9 @@ paths:
     post:
       tags:
       - permissions
-      summary: 'Add permissions on an object. '
-      description: Add a user to a file/folder.
+      summary: 'Grant user permission on a file or folder. '
+      description: Grant access to a file or folder for a user. Access may be READ
+        or MODIFY. MODIFY implies READ.
       operationId: permissionsSystemIdPathPost
       parameters:
       - name: systemId
@@ -432,8 +433,8 @@ paths:
     delete:
       tags:
       - permissions
-      summary: 'Remove permissions on an object for a user. '
-      description: Remove user permissions to a file/folder.
+      summary: 'Revoke user permission on a file or folder. '
+      description: Revoke access to a file or folder for a user.
       operationId: permissionsSystemIdPathDelete
       parameters:
       - name: systemId
@@ -713,7 +714,7 @@ components:
           type: string
         group:
           type: string
-        permissions:
+        permission:
           type: string
         uri:
           type: string
@@ -767,12 +768,11 @@ components:
           type: string
         path:
           type: string
-        permissions:
+        permission:
           type: string
           enum:
           - READ
-          - READWRITE
-          - ALL
+          - MODIFY
     FilePermissionResponse:
       type: object
       properties:
@@ -818,8 +818,7 @@ components:
           type: string
           enum:
           - READ
-          - READWRITE
-          - ALL
+          - MODIFY
     SharedFileObject:
       type: object
       properties:
@@ -966,19 +965,6 @@ components:
         endTime:
           type: string
           format: date-time
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
     TransferTaskParent:
       type: object
       properties:
@@ -1046,17 +1032,6 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
     TransferTaskRequest:
       required:
       - elements
@@ -1082,3 +1057,27 @@ components:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string

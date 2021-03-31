@@ -1,10 +1,10 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -42,7 +42,7 @@ public class ContentApiResource extends BaseFilesResource {
 
     @GET
     @ManagedAsync
-    @FileOpsAuthorization(permsRequired = FilePermissionsEnum.READ)
+    @FileOpsAuthorization(permRequired = Permission.READ)
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "content" })
     @ApiResponses(value = {
@@ -117,8 +117,4 @@ public class ContentApiResource extends BaseFilesResource {
             throw new WebApplicationException(msg, ex);
         }
     }
-
-
-
-
 }

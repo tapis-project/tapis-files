@@ -6,8 +6,8 @@ import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
-import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
@@ -21,8 +21,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
-import org.apache.commons.codec.Charsets;
-import org.apache.commons.io.IOUtils;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.TestProperties;
@@ -73,7 +71,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         testSystem.setBucketName("test");
         testSystem.setId("testSystem");
         testSystem.setAuthnCredential(creds);
-        testSystem.setRootDir("/");;
+        testSystem.setRootDir("/");
         List<TransferMethodEnum> transferMechs = new ArrayList<>();
         transferMechs.add(TransferMethodEnum.S3);
         testSystem.setTransferMethods(transferMechs);
@@ -130,7 +128,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
                 .header("x-tapis-tenant", "dev")
                 .header("x-tapis-user", "testuser2")
                 .get(FilePermissionResponse.class);
-            Assert.assertEquals(response.getResult().getPermissions(), FilePermissionsEnum.ALL);
+            Assert.assertEquals(response.getResult().getPermission(), Permission.MODIFY);
         } catch (Exception e) {
             log.info(e.getMessage(), e);
         }
@@ -156,7 +154,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
             .header("x-tapis-tenant", "dev")
             .header("x-tapis-user", "testuser2")
             .get(FilePermissionResponse.class);
-        Assert.assertEquals(response.getResult().getPermissions(), FilePermissionsEnum.ALL);
+        Assert.assertEquals(response.getResult().getPermission(), Permission.MODIFY);
     }
 
     @Test
@@ -170,7 +168,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
 
         CreatePermissionRequest req = new CreatePermissionRequest();
-        req.setPermission(FilePermissionsEnum.ALL);
+        req.setPermission(Permission.MODIFY);
         req.setUsername("testuser3");
         Response response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
@@ -188,7 +186,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         testSystem.setOwner("testuser1");
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         CreatePermissionRequest req = new CreatePermissionRequest();
-        req.setPermission(FilePermissionsEnum.ALL);
+        req.setPermission(Permission.MODIFY);
         req.setUsername("testuser3");
         Response response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
@@ -203,7 +201,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         testSystem.setOwner("testuser1");
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         CreatePermissionRequest req = new CreatePermissionRequest();
-        req.setPermission(FilePermissionsEnum.ALL);
+        req.setPermission(Permission.MODIFY);
         req.setUsername("testuser3");
         Response response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
@@ -250,7 +248,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
 
         //Verify that the SK got called with the correct things
         Mockito.verify(skClient).isPermitted("dev", "testuser3", "files:dev:*:testSystem:a");
-        Assert.assertEquals(response.getResult().getPermissions(), FilePermissionsEnum.ALL);
+        Assert.assertEquals(response.getResult().getPermission(), Permission.MODIFY);
         Assert.assertEquals(response.getResult().getUsername(), "testuser3");
     }
 
@@ -275,7 +273,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
 
         //Verify that the SK got called with the correct things
         Mockito.verify(skClient).isPermitted("dev", "testuser3", "files:dev:*:testSystem:a");
-        Assert.assertEquals(response.getResult().getPermissions(), FilePermissionsEnum.ALL);
+        Assert.assertEquals(response.getResult().getPermission(), Permission.MODIFY);
         Assert.assertEquals(response.getResult().getUsername(), "testuser3");
     }
 

@@ -5,7 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
@@ -37,11 +37,11 @@ public class FilePermsService {
         this.permsCache = permsCache;
     }
 
-    public synchronized void grantPermission(String tenantId, String username, String systemId, String path, FilePermissionsEnum perm) throws ServiceException {
+    public synchronized void grantPermission(String tenantId, String username, String systemId, String path, Permission perm) throws ServiceException {
         try {
             Tenant tenant = tenantManager.getTenant(tenantId);
             configClient(tenant, username);
-            String permSpec = formatPermSpec(tenantId, systemId, path, perm);
+            String permSpec = String.format(PERMSPEC, tenantId, perm, systemId, path);
             skClient.grantUserPermission(tenantId, username, permSpec);
         } catch (TapisException ex) {
             throw new ServiceException("Invalid tenant!", ex);
@@ -51,16 +51,21 @@ public class FilePermsService {
         }
     }
 
-    public synchronized boolean isPermitted(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path, @NotNull FilePermissionsEnum perm) throws ServiceException {
-        boolean isPermitted = permsCache.checkPerms(tenantId, username, systemId, path, perm);
-        return isPermitted;
+    public synchronized boolean isPermitted(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path, @NotNull Permission perm) throws ServiceException {
+        return permsCache.checkPerm(tenantId, username, systemId, path, perm);
     }
 
-    public synchronized void revokePermission(String tenantId, String username, String systemId, String path, FilePermissionsEnum perm) throws ServiceException {
+    public synchronized Permission getPermission(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path) throws ServiceException {
+        return permsCache.fetchPerm(tenantId, username, systemId, path);
+  }
+
+    public synchronized void revokePermission(String tenantId, String username, String systemId, String path) throws ServiceException {
         try {
             Tenant tenant = tenantManager.getTenant(tenantId);
             configClient(tenant, username);
-            String permSpec = formatPermSpec(tenantId, systemId, path, perm);
+            String permSpec = String.format(PERMSPEC, tenantId, Permission.READ, systemId, path);
+            skClient.revokeUserPermission(tenantId, username, permSpec);
+            permSpec = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
             skClient.revokeUserPermission(tenantId, username, permSpec);
         } catch (TapisException ex) {
             throw new ServiceException("Invalid tenant!", ex);
@@ -68,10 +73,6 @@ public class FilePermsService {
             String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
             throw new ServiceException(msg, ex);
         }
-    }
-
-    private String formatPermSpec(String tenantId, String systemId, String path, FilePermissionsEnum permissionsEnum) {
-        return String.format(PERMSPEC, tenantId, permissionsEnum, systemId, path);
     }
 
     private synchronized void configClient(Tenant tenant, String username) {

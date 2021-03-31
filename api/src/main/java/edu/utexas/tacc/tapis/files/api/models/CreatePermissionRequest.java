@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
-import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 
 import javax.validation.constraints.NotNull;
 
@@ -10,7 +10,7 @@ public class CreatePermissionRequest {
     private String username;
 
     @NotNull
-    private FilePermissionsEnum permission;
+    private Permission permission;
 
     public String getUsername() {
         return username;
@@ -20,11 +20,11 @@ public class CreatePermissionRequest {
         this.username = username;
     }
 
-    public FilePermissionsEnum getPermission() {
+    public Permission getPermission() {
         return permission;
     }
 
-    public void setPermission(FilePermissionsEnum permission) {
+    public void setPermission(Permission permission) {
         this.permission = permission;
     }
 }

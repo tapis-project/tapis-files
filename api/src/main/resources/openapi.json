@@ -531,8 +531,8 @@
     "/v3/files/permissions/{systemId}/{path}" : {
       "get" : {
         "tags" : [ "permissions" ],
-        "summary" : "Get the API user's permissions on a file or folder.",
-        "description" : "Get the permissions for the API user for the system and path.",
+        "summary" : "Get the API user's permission on a file or folder.",
+        "description" : "Get the permission for the API user for the system and path.",
         "operationId" : "getPermissions",
         "parameters" : [ {
           "name" : "systemId",
@@ -576,8 +576,8 @@
       },
       "post" : {
         "tags" : [ "permissions" ],
-        "summary" : "Add permissions on an object. ",
-        "description" : "Add a user to a file/folder.",
+        "summary" : "Grant user permission on a file or folder. ",
+        "description" : "Grant access to a file or folder for a user. Access may be READ or MODIFY. MODIFY implies READ.",
         "operationId" : "permissionsSystemIdPathPost",
         "parameters" : [ {
           "name" : "systemId",
@@ -621,8 +621,8 @@
       },
       "delete" : {
         "tags" : [ "permissions" ],
-        "summary" : "Remove permissions on an object for a user. ",
-        "description" : "Remove user permissions to a file/folder.",
+        "summary" : "Revoke user permission on a file or folder. ",
+        "description" : "Revoke access to a file or folder for a user.",
         "operationId" : "permissionsSystemIdPathDelete",
         "parameters" : [ {
           "name" : "systemId",
@@ -1011,7 +1011,7 @@
           "group" : {
             "type" : "string"
           },
-          "permissions" : {
+          "permission" : {
             "type" : "string"
           },
           "uri" : {
@@ -1083,9 +1083,9 @@
           "path" : {
             "type" : "string"
           },
-          "permissions" : {
+          "permission" : {
             "type" : "string",
-            "enum" : [ "READ", "READWRITE", "ALL" ]
+            "enum" : [ "READ", "MODIFY" ]
           }
         }
       },
@@ -1149,7 +1149,7 @@
           },
           "permission" : {
             "type" : "string",
-            "enum" : [ "READ", "READWRITE", "ALL" ]
+            "enum" : [ "READ", "MODIFY" ]
           }
         }
       },
@@ -1326,26 +1326,6 @@
           }
         }
       },
-      "TransferTaskListResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/TransferTask"
-            }
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
       "TransferTaskParent" : {
         "type" : "object",
         "properties" : {
@@ -1428,23 +1408,6 @@
           }
         }
       },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
       "TransferTaskRequest" : {
         "required" : [ "elements" ],
         "type" : "object",
@@ -1473,6 +1436,43 @@
           "optional" : {
             "type" : "boolean",
             "description" : "Allow the full transfer to succeed even if this portion fails? Default is false"
+          }
+        }
+      },
+      "TransferTaskListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTask"
+            }
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
           }
         }
       }

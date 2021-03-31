@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -11,13 +10,12 @@ import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.apache.commons.lang3.StringUtils;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 
 public class FileInfo   {
 
-
+    public enum Permission {READ, MODIFY}
 
     @JsonProperty("lastModified")
     private Instant lastModified = null;
@@ -35,7 +33,7 @@ public class FileInfo   {
     private String type;
     private String owner;
     private String group;
-    private String permissions;
+    private String permission;
     private String uri;
 
     public String getUri() {
@@ -100,12 +98,12 @@ public class FileInfo   {
         this.group = group;
     }
 
-    public String getPermissions() {
-        return permissions;
+    public String getPermission() {
+        return permission;
     }
 
-    public void setPermissions(String permissions) {
-        this.permissions = permissions;
+    public void setPermission(String permission) {
+        this.permission = permission;
     }
 
     @JsonIgnore
