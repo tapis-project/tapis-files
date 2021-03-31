@@ -52,5 +52,18 @@ public class PathUtilsTest {
         Assert.assertEquals(p, Paths.get("/1.txt"));
     }
 
+    @Test
+    public void testFileAtRoot() {
+        Path p = PathUtils.relativizePaths("sample1.txt", "sample1.txt", "test/");
+        Assert.assertEquals(p, Paths.get("test/sample1.txt"));
+    }
+
+    @Test
+    public void testFileInFolder() {
+        Path p = PathUtils.relativizePaths("a/sample1.txt", "a/sample1.txt", "test/");
+        Assert.assertEquals(p, Paths.get("test/sample1.txt"));
+    }
+
+
 
 }

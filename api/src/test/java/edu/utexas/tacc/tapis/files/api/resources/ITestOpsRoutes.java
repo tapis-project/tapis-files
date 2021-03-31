@@ -8,7 +8,6 @@ import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
@@ -25,7 +24,7 @@ import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
-import org.glassfish.grizzly.streams.Input;
+import org.apache.commons.lang3.tuple.Pair;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
@@ -53,24 +52,30 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
+public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
-    private Logger log = LoggerFactory.getLogger(ITestOpsRoutesSSH.class);
+    private Logger log = LoggerFactory.getLogger(ITestOpsRoutes.class);
     private static class FileListResponse extends TapisResponse<List<FileInfo>> {
     }
 
     private static class FileStringResponse extends TapisResponse<String> {
     }
 
-    private TSystem testSystem;
+    private TSystem testSystemSSH;
+    private TSystem testSystemS3;
+    private List<TSystem> testSystems = new ArrayList<>();
+
     private Credential creds;
 
     // mocking out the services
@@ -80,21 +85,40 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
 
 
 
-    private ITestOpsRoutesSSH() throws Exception {
+    private ITestOpsRoutes() throws Exception {
         //SSH system with username/password
         Credential sshCreds = new Credential();
         sshCreds.setAccessKey("testuser");
         sshCreds.setPassword("password");
-        testSystem = new TSystem();
-        testSystem.setAuthnCredential(sshCreds);
-        testSystem.setHost("localhost");
-        testSystem.setPort(2222);
-        testSystem.setRootDir("/data/home/testuser/");
-        testSystem.setId("destSystem");
-        testSystem.setEffectiveUserId("testuser");
+        testSystemSSH = new TSystem();
+        testSystemSSH.setAuthnCredential(sshCreds);
+        testSystemSSH.setHost("localhost");
+        testSystemSSH.setPort(2222);
+        testSystemSSH.setRootDir("/data/home/testuser/");
+        testSystemSSH.setId("testSystem");
+        testSystemSSH.setEffectiveUserId("testuser");
         List<TransferMethodEnum> tMechs = new ArrayList<>();
         tMechs.add(TransferMethodEnum.SFTP);
-        testSystem.setTransferMethods(tMechs);
+        testSystemSSH.setTransferMethods(tMechs);
+
+        creds = new Credential();
+        creds.setAccessKey("user");
+        creds.setAccessSecret("password");
+        testSystemS3 = new TSystem();
+        testSystemS3.setOwner("testuser1");
+        testSystemS3.setHost("http://localhost");
+        testSystemS3.setPort(9000);
+        testSystemS3.setBucketName("test");
+        testSystemS3.setId("testSystem");
+        testSystemS3.setAuthnCredential(creds);
+        testSystemS3.setRootDir("/");
+        List<TransferMethodEnum> transferMechs = new ArrayList<>();
+        transferMechs.add(TransferMethodEnum.S3);
+        testSystemS3.setTransferMethods(transferMechs);
+
+        testSystems.add(testSystemSSH);
+        testSystems.add(testSystemS3);
+
     }
 
     @Override
@@ -137,6 +161,17 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
         super.setUp();
     }
 
+
+    /**
+     * This is silly, but TestNG requires this to be an Object[]
+     * @return
+     */
+    @DataProvider(name="testSystemsProvider")
+    public Object[] testSystemsProvider() {
+        return testSystems.toArray();
+    }
+
+
     private void assertThrowsNotFoundForTestUser1(String path) {
         Assert.assertThrows(NotFoundException.class, ()->{
             target("/v3/files/ops/testSystem/" + path)
@@ -166,21 +201,34 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
     @BeforeMethod
     public void initMocks() throws Exception {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
-        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
     }
 
 
+
+
+    @BeforeMethod
     @AfterMethod
     public void cleanup() throws Exception {
-        target("/v3/files/ops/testSystem/")
-            .request()
-            .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
-            .delete(FileStringResponse.class);
+        testSystems.forEach( (sys)-> {
+            try {
+                when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
+                when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(sys);
+                target("/v3/files/ops/testSystem/")
+                    .request()
+                    .accept(MediaType.APPLICATION_JSON)
+                    .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+                    .delete(FileStringResponse.class);
+            } catch (Exception ex) {
+                log.error(ex.getMessage(), ex);
+            }
+        });
+
     }
 
-    @Test
-    public void testGetS3List() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testGetList(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        ;
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
         FileListResponse response = target("/v3/files/ops/testSystem/")
             .request()
@@ -193,10 +241,10 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(file.getUri());
     }
 
-    @Test
-    public void testGetS3ListWithObo() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testGetListWithObo(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
-
         FileListResponse response = target("/v3/files/ops/testSystem/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
@@ -236,8 +284,10 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
 
 
 
-    @Test
-    public void testGetListWithLimitAndOffset() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testGetListWithLimitAndOffset(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "testfile3.txt", 10 * 1024);
@@ -262,8 +312,9 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
     }
 
 
-    @Test
-    public void testGetListNoAuthz() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testGetListNoAuthz(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(false);
         Response response = target("/v3/files/ops/testSystem/testfile1.txt")
@@ -274,8 +325,9 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(response.getStatus(), 403);
     }
 
-    @Test
-    public void testDelete() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testDelete(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10 * 1024);
@@ -291,10 +343,10 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test
-    public void testCopyFile() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testCopyFile(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "sample1.txt", 10 * 1024);
-
         MoveCopyRenameRequest request = new MoveCopyRenameRequest();
         request.setOperation(MoveCopyRenameOperation.COPY);
         request.setNewPath("/filestest/sample1.txt");
@@ -310,8 +362,27 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.get(0).getPath(), "filestest/sample1.txt");
     }
 
-    @Test
-    public void testRenameFile() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testCopyFileShould404(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        addTestFilesToBucket(testSystem, "sample1.txt", 10 * 1024);
+        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
+        request.setOperation(MoveCopyRenameOperation.COPY);
+        request.setNewPath("/filestest/sample1.txt");
+
+
+
+        Assert.assertThrows(NotFoundException.class, ()->target("/v3/files/ops/testSystem/NOT-THERE.txt")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .put(Entity.json(request), FileStringResponse.class) );
+
+    }
+
+    @Test(dataProvider = "testSystemsProvider")
+    public void testRenameFile(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10 * 1024);
@@ -331,8 +402,9 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.get(0).getPath(), "dir1/renamed");
     }
 
-    @Test
-    public void testRenameManyObjects1() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testRenameManyObjects1(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
@@ -361,8 +433,10 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
      *
      * @throws Exception
      */
-    @Test
-    public void testRenameManyObjects2() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testRenameManyObjects2(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+
         addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
@@ -390,8 +464,9 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
 
 
 
-    @Test
-    public void testDeleteManyObjects() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testDeleteManyObjects(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
@@ -413,9 +488,9 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test
-    public void testInsertFile() throws Exception {
-
+    @Test(dataProvider = "testSystemsProvider")
+    public void testInsertFile(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         InputStream inputStream = makeFakeFile(10 * 1024);
         File tempFile = File.createTempFile("tempfile", null);
         tempFile.deleteOnExit();
@@ -441,8 +516,9 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.getResult().get(0).getName(), "test-inserted.txt");
     }
 
-    @Test
-    public void testMkdir() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testMkdir(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
 
         MkdirRequest req = new MkdirRequest();
         req.setPath("newDirectory");
@@ -466,8 +542,9 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
 
 
 
-    @Test
-    public void testMkdirNoSlash() throws Exception {
+    @Test(dataProvider = "testSystemsProvider")
+    public void testMkdirNoSlash(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         MkdirRequest req = new MkdirRequest();
         req.setPath("newDirectory");
 
@@ -488,8 +565,7 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
     }
 
 
-    @DataProvider(name = "mkdirDataProvider")
-    public Object[] mkdirDataProvider() {
+    public String[] mkdirData() {
         return new String[]{
             "//newDirectory///test",
             "newDirectory///test/",
@@ -497,11 +573,22 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
         };
     }
 
+    @DataProvider(name="mkdirDataProvider")
+    public Object[] mkdirDataProvider() {
+        List<String> directories = Arrays.asList(mkdirData());
+        List<Pair<String, TSystem>> out = testSystems.stream().flatMap(sys -> directories.stream().map(j -> Pair.of(j, sys)))
+            .collect(Collectors.toList());
+        return out.toArray();
+
+    }
+
+
     @Test(dataProvider = "mkdirDataProvider")
-    public void testMkdirWithSlashes(String path) throws Exception {
+    public void testMkdirWithSlashes(Pair<String, TSystem> inputs) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(inputs.getRight());
 
         MkdirRequest req = new MkdirRequest();
-        req.setPath(path);
+        req.setPath(inputs.getLeft());
 
         FileStringResponse response = target("/v3/files/ops/testSystem/")
             .request()
@@ -519,18 +606,29 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
 
     @DataProvider(name = "mkdirBadDataProvider")
     public Object[] mkdirBadDataProvider() {
-        return new String[]{
+        String[] mkdirData =  new String[]{
             "/newDirectory//../test",
             "newDirectory/../../test/",
             "../newDirectory/test",
-            "newDirectory/.test"
+            "newDirectory/..test"
         };
+        List<String> directories = Arrays.asList(mkdirData);
+        List<Pair<String, TSystem>> out = testSystems.stream().flatMap(sys -> directories.stream().map(j -> Pair.of(j, sys)))
+            .collect(Collectors.toList());
+        return out.toArray();
     }
 
+
+    /**
+     * All the funky paths should get cleaned up
+     * @param inputs
+     * @throws Exception
+     */
     @Test(dataProvider = "mkdirBadDataProvider")
-    public void testMkdirWithBadData(String path) throws Exception {
+    public void testMkdirWithBadData(Pair<String, TSystem> inputs) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(inputs.getRight());
         MkdirRequest req = new MkdirRequest();
-        req.setPath(path);
+        req.setPath(inputs.getLeft());
         Response response = target("/v3/files/ops/testSystem/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
@@ -539,8 +637,5 @@ public class ITestOpsRoutesSSH extends BaseDatabaseIntegrationTest {
 
         Assert.assertEquals(response.getStatus(), 400);
     }
-
-    //TODO: Add tests for strange chars in filename or path.
-
 
 }

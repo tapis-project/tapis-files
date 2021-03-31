@@ -12,26 +12,28 @@ public class PathUtils {
     public static final Logger log = LoggerFactory.getLogger(PathUtils.class);
 
     /**
-     *
+     * All paths are assumed to be relative to rootDir
      * @param srcBase The BASE path of the source of the transfer
      * @param srcPath The path to the actual file being transferred
      * @param destBase The BASE path of the destination of the transfer
      * @return Path
      */
     public static Path relativizePaths(String srcBase, String srcPath, String destBase) {
+
+        // Make them look like absolute paths either way
         srcPath = StringUtils.prependIfMissing(srcPath, "/");
         srcBase = StringUtils.prependIfMissing(srcBase, "/");
         destBase = StringUtils.prependIfMissing(destBase, "/");
 
         Path sourcePath = Paths.get(srcPath);
-        Path destinationBasePath = Paths.get(destBase);
         Path sourceBase = Paths.get(srcBase);
 
-        Path tmp = destinationBasePath.resolve(sourceBase.relativize(sourcePath));
-
-        return tmp;
-
-
+        if (sourceBase.equals(sourcePath)) {
+            Path p = Paths.get(destBase, sourcePath.getFileName().toString());
+            return p;
+        }
+        Path p = Paths.get(destBase, sourceBase.relativize(sourcePath).toString());
+        return p;
     }
 
 }

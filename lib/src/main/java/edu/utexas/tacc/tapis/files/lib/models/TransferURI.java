@@ -4,6 +4,7 @@ package edu.utexas.tacc.tapis.files.lib.models;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.validation.ValidationException;
 import java.beans.JavaBean;
@@ -66,6 +67,7 @@ public class TransferURI {
 
     @JsonValue
     public String toString() {
-        return String.format("%s%s/%s", protocol, systemId, path);
+        String tmpPath = StringUtils.removeStart(path, "/");
+        return String.format("%s%s/%s", protocol, systemId, tmpPath);
     }
 }

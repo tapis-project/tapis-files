@@ -533,7 +533,7 @@
         "tags" : [ "permissions" ],
         "summary" : "Get the API user's permissions on a file or folder.",
         "description" : "Get the permissions for the API user for the system and path.",
-        "operationId" : "permissionsSystemIdPathGet",
+        "operationId" : "getPermissions",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -655,7 +655,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/FilePermissionStringResponse"
+                  "$ref" : "#/components/schemas/StringResponse"
                 }
               }
             }
@@ -991,7 +991,7 @@
         "type" : "object",
         "properties" : {
           "path" : {
-            "pattern" : "^(?!.*\\.).+",
+            "pattern" : "^(?!.*\\.\\.).*",
             "type" : "string"
           }
         }
@@ -1068,23 +1068,6 @@
           }
         }
       },
-      "FilePermissionStringResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "string"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
       "FilePermission" : {
         "type" : "object",
         "properties" : {
@@ -1117,6 +1100,40 @@
           },
           "result" : {
             "$ref" : "#/components/schemas/FilePermission"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TapisResponseFilePermission" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "$ref" : "#/components/schemas/FilePermission"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StringResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "string"
           },
           "version" : {
             "type" : "string"
