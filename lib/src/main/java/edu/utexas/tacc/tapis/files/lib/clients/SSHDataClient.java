@@ -161,7 +161,7 @@ public class SSHDataClient implements IRemoteDataClient {
             }
             fileInfo.setOwner(String.valueOf(attrs.getUId()));
             fileInfo.setGroup(String.valueOf(attrs.getGId()));
-            fileInfo.setPermission(attrs.getPermissionsString());
+            fileInfo.setPosixPermissions(attrs.getPermissionsString());
             //TODO: This path munging is tricky, but it seems to work as far as listings are concerned
             Path fullPath;
             if (absolutePath.getFileName().equals(Paths.get(entry.getFilename()))) {

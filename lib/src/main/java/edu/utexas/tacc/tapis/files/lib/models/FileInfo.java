@@ -33,7 +33,7 @@ public class FileInfo   {
     private String type;
     private String owner;
     private String group;
-    private String permission;
+    private String posixPermissions;
     private String uri;
 
     public String getUri() {
@@ -98,12 +98,12 @@ public class FileInfo   {
         this.group = group;
     }
 
-    public String getPermission() {
-        return permission;
+    public String getPosixPermissions() {
+        return posixPermissions;
     }
 
-    public void setPermission(String permission) {
-        this.permission = permission;
+    public void setPosixPermissions(String posixPermissions) {
+        this.posixPermissions = posixPermissions;
     }
 
     @JsonIgnore

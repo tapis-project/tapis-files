@@ -714,7 +714,7 @@ components:
           type: string
         group:
           type: string
-        permission:
+        posixPermissions:
           type: string
         uri:
           type: string
