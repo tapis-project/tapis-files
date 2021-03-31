@@ -225,7 +225,7 @@ public class SSHDataClient implements IRemoteDataClient {
             if (parentPath != null) channelSftp.cd(parentPath.toString());
             channelSftp.put(fileStream, absolutePath.getFileName().toString(), channelOptions);
         } catch (SftpException ex) {
-            throw new IOException("Error inserting file into " + systemId);
+            throw new IOException(ex.getMessage());
         } finally {
             sshConnection.returnChannel(channelSftp);
         }

@@ -610,7 +610,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
             "/newDirectory//../test",
             "newDirectory/../../test/",
             "../newDirectory/test",
-            "newDirectory/.test"
+            "newDirectory/..test"
         };
         List<String> directories = Arrays.asList(mkdirData);
         List<Pair<String, TSystem>> out = testSystems.stream().flatMap(sys -> directories.stream().map(j -> Pair.of(j, sys)))
@@ -624,7 +624,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
      * @param inputs
      * @throws Exception
      */
-    @Test(dataProvider = "mkdirDataProvider")
+    @Test(dataProvider = "mkdirBadDataProvider")
     public void testMkdirWithBadData(Pair<String, TSystem> inputs) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(inputs.getRight());
         MkdirRequest req = new MkdirRequest();
@@ -635,7 +635,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
             .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .post(Entity.json(req), Response.class);
 
-        Assert.assertEquals(response.getStatus(), 200);
+        Assert.assertEquals(response.getStatus(), 400);
     }
 
 }

@@ -8,6 +8,7 @@ public class MkdirRequest {
     private String path;
 
     @NotBlank
+    @Pattern(regexp = "^(?!.*\\.\\.).*")
     public String getPath() {
         return path;
     }
