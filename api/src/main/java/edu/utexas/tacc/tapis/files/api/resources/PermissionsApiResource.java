@@ -69,7 +69,7 @@ public class PermissionsApiResource  {
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions revoked.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
@@ -98,12 +98,12 @@ public class PermissionsApiResource  {
         try {
             system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILESAPI_SYSOPS_ERROR", user, systemId, "getSystem", ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_SYSOPS_ERR", user, systemId, "getSystem", ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
         if (system == null) {
-            throw new NotFoundException(Utils.getMsgAuth("FILESAPI_SYS_NOTFOUND", user, systemId));
+            throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
         }
 
         if (queryUsername == null) {
@@ -128,7 +128,7 @@ public class PermissionsApiResource  {
             TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(permission);
             return response;
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
@@ -159,7 +159,7 @@ public class PermissionsApiResource  {
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions granted.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILESAPI_PERM_ERROR", user, systemId, opName, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }

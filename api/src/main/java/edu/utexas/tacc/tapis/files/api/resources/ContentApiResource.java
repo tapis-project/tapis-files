@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
@@ -14,7 +13,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
@@ -28,10 +26,8 @@ import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.*;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Paths;
 import java.util.Objects;
-import java.util.zip.ZipOutputStream;
 
 
 @Path("/v3/files/content")
@@ -70,7 +66,7 @@ public class ContentApiResource extends BaseFilesResource {
         try {
             TSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(system, effectiveUserId);
+            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             String mtype = MediaType.APPLICATION_OCTET_STREAM;
             String contentDisposition;
             java.nio.file.Path filepath = Paths.get(path);
@@ -82,7 +78,7 @@ public class ContentApiResource extends BaseFilesResource {
                     try {
                         fileOpsService.getZip(client, output, path);
                     } catch (Exception e) {
-                        throw new WebApplicationException(e);
+                        throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
                     }
                 };
 
@@ -94,7 +90,7 @@ public class ContentApiResource extends BaseFilesResource {
 
             // Ensure that the path is not a dir, if not zip, then this will error out
             if (path.endsWith("/")) {
-                throw new BadRequestException(Utils.getMsgAuth("FILESAPI_CONT_BAD", user, systemId));
+                throw new BadRequestException(Utils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
             }
 
 
@@ -116,7 +112,7 @@ public class ContentApiResource extends BaseFilesResource {
                     .build();
             asyncResponse.resume(response);
         } catch (ServiceException | IOException ex) {
-            String msg = Utils.getMsgAuth("FILESAPI_CONT_ERROR", user, systemId, ex.getMessage());
+            String msg = Utils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }

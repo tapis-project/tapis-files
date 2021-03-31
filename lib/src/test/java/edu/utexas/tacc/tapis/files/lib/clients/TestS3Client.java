@@ -11,6 +11,8 @@ import java.net.URI;
 @Test
 public class TestS3Client {
 
+    private final String oboTenant = "oboTenant";
+    private final String oboUser = "oboUser";
 
     @Test
     public void testHostNoScheme() throws Exception {
@@ -23,7 +25,7 @@ public class TestS3Client {
         sys.setPort(9000);
         sys.setAuthnCredential(creds);
 
-        S3DataClient client = new S3DataClient(sys);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, sys);
         URI tmpURI = client.configEndpoint(sys.getHost());
         Assert.assertEquals(tmpURI.getScheme(), "https");
         Assert.assertEquals(tmpURI.toString(), "https://test.tacc.io:9000");
@@ -40,7 +42,7 @@ public class TestS3Client {
         sys.setPort(9000);
         sys.setAuthnCredential(creds);
 
-        S3DataClient client = new S3DataClient(sys);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, sys);
         URI tmpURI = client.configEndpoint(sys.getHost());
         Assert.assertEquals(tmpURI.getScheme(), "http");
         Assert.assertEquals(tmpURI.toString(), "http://test.tacc.io:9000");
@@ -57,7 +59,7 @@ public class TestS3Client {
         sys.setPort(9000);
         sys.setAuthnCredential(creds);
 
-        S3DataClient client = new S3DataClient(sys);
+        S3DataClient client = new S3DataClient(oboTenant, oboUser, sys);
         URI tmpURI = client.configEndpoint(sys.getHost());
         Assert.assertEquals(tmpURI.getScheme(), "https");
         Assert.assertEquals(tmpURI.toString(), "https://test.tacc.io:9000");

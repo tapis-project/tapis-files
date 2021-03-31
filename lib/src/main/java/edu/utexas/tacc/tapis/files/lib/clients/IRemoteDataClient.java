@@ -12,6 +12,11 @@ import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
 public interface IRemoteDataClient {
+
+    String getOboTenant();
+    String getOboUser();
+    String getSystemId();
+
     void makeBucket(String name) throws IOException;
     // without limit/offset, just a helper method for convenience
     List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException;

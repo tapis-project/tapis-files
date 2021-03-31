@@ -41,6 +41,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     private static final Logger log = LoggerFactory.getLogger(ITestTransfers.class);
 
+    private final String oboTenant = "oboTenant";
+    private final String oboUser = "oboUser";
     private TSystem sourceSystem;
     private TSystem destSystem;
 
@@ -48,7 +50,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     public void beforeTest() throws Exception {
         sourceSystem = testSystemS3;
         destSystem = testSystemSSH;
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         fileOpsService.delete(client, "/");
         InputStream in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert(client,"file1.txt", in);
@@ -58,9 +60,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     @AfterMethod
     public void tearDown() throws Exception {
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         fileOpsService.delete(client,"/");
-        client = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         fileOpsService.delete(client,"/");
     }
 
@@ -224,7 +226,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     public void testMultipleChildren() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert(sourceClient,"a/1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
@@ -281,8 +283,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     public void testDoesTransfer() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         // Double check that the files really are in the destination
         //wipe out the dest folder just in case
         fileOpsService.delete(destClient, "/");
@@ -364,8 +366,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     public void testHttpInputs() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         // Double check that the files really are in the destination
         //wipe out the dest folder just in case
         fileOpsService.delete(destClient, "/");
@@ -432,8 +434,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     public void testDoesTransfersWhenOneErrors() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         //Add some files to transfer
         InputStream in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert(sourceClient,"a/1.txt", in);
@@ -488,8 +490,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     public void testFullPipeline() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, "testuser");
-        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, "testuser");
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         //Add some files to transfer
         fileOpsService.insert(sourceClient,"/a/1.txt", Utils.makeFakeFile(10000 * 1024));
         fileOpsService.insert(sourceClient,"/a/2.txt", Utils.makeFakeFile(10 * 1024));

@@ -15,6 +15,7 @@ import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.*;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
 import org.jvnet.hk2.annotations.Service;
@@ -91,12 +92,13 @@ public class TransfersService {
         this.CONTROL_QUEUE = name;
     }
 
-    public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskId) throws ServiceException {
+    public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskUuid) throws ServiceException {
         try {
-            TransferTask task = dao.getTransferTaskByUUID(transferTaskId);
+            TransferTask task = dao.getTransferTaskByUUID(transferTaskUuid);
             return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage());
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR2", tenantId, username,
+                  "isPermitted", transferTaskUuid, ex.getMessage()), ex);
         }
     }
 
@@ -112,7 +114,8 @@ public class TransfersService {
             }
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR3",
+                    "getTransferTaskDetails", uuid, ex.getMessage()), ex);
         }
 
 
@@ -122,7 +125,8 @@ public class TransfersService {
         try {
             return dao.getAllChildren(task);
         } catch (DAOException e) {
-            throw new ServiceException(e.getMessage(), e);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+                  "getAllChildrenTasks", task.getId(), task.getUuid(), e.getMessage()), e);
         }
     }
 
@@ -132,7 +136,8 @@ public class TransfersService {
         try {
             return dao.getRecentTransfersForUser(tenantId, username, limit, offset);
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR5", tenantId, username,
+                  "getRecentTransfers", ex.getMessage()), ex);
         }
     }
 
@@ -140,14 +145,15 @@ public class TransfersService {
         try {
             TransferTask task = dao.getTransferTaskByUUID(taskUUID);
             if (task == null) {
-                throw new NotFoundException("No transfer task with this ID found.");
+              throw new NotFoundException(Utils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskByUUID", taskUUID));
             }
             List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
             task.setParentTasks(parents);
 
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR3",
+                  "getTransferTaskByUUID", taskUUID, ex.getMessage()), ex);
         }
     }
 
@@ -155,14 +161,15 @@ public class TransfersService {
         try {
             TransferTask task = dao.getTransferTaskByID(id);
             if (task == null) {
-                throw new NotFoundException("No transfer task with this ID found.");
+              throw new NotFoundException(Utils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskById", id));
             }
             List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
             task.setParentTasks(parents);
 
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR4",
+                  "getTransferTaskById", id, ex.getMessage()), ex);
         }
     }
 
@@ -170,11 +177,12 @@ public class TransfersService {
         try {
             TransferTaskParent task = dao.getTransferTaskParentByUUID(taskUUID);
             if (task == null) {
-                throw new NotFoundException("No transfer task with this UUID found.");
+              throw new NotFoundException(Utils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskParentByUUID", taskUUID));
             }
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskParentByUUID", taskUUID,
+                    ex.getMessage()), ex);
         }
     }
 
@@ -194,7 +202,8 @@ public class TransfersService {
             }
             return newTask;
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR6", tenantId, username, "createTransfer", tag,
+                  ex.getMessage()), ex);
         }
     }
 
@@ -202,7 +211,8 @@ public class TransfersService {
         try {
             return dao.insertChildTask(task);
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+                  "createTransferTaskChild", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -212,7 +222,8 @@ public class TransfersService {
             dao.updateTransferTask(task);
             // todo: publish cancel message on the control queue
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+                  "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -230,7 +241,8 @@ public class TransfersService {
                 .subscribe();
         } catch (Exception e) {
             log.info(e.getMessage());
-            throw new ServiceException(e.getMessage());
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+                    "publishParentTaskMessage", task.getId(), task.getUuid(), e.getMessage()), e);
         }
     }
 
@@ -250,8 +262,9 @@ public class TransfersService {
             return mapper.readValue(message.getBody(), TransferTaskParent.class).getTenantId();
         } catch (IOException ex) {
             message.nack(false);
-            log.error("invalid message", ex);
-            throw new ServiceException("Something is terribly wrong, could not get a tenant???", ex);
+            String msg = Utils.getMsg("FILES_TXFR_SVC_ERR11", ex.getMessage());
+            log.error(msg);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -297,8 +310,7 @@ public class TransfersService {
     }
 
     private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent) {
-        log.error("Parent task failed! {}", parent);
-        log.error("Exception: ", e);
+        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
         m.nack(false);
 
         //TODO: UPDATE this when the Optional stuff gets integrated
@@ -307,9 +319,9 @@ public class TransfersService {
             task.setStatus(TransferTaskStatus.FAILED);
             task.setEndTime(Instant.now());
             task.setErrorMessage(e.getMessage());
-            task = dao.updateTransferTask(task);
+            dao.updateTransferTask(task);
         } catch (DAOException ex) {
-            log.error("CRITICAL ERROR: ", ex);
+            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR8", parent.getTaskId(), parent.getUuid()));
         }
 
         parent.setStatus(TransferTaskStatus.FAILED);
@@ -324,7 +336,7 @@ public class TransfersService {
             }
             return Mono.just(parent);
         } catch (DAOException ex) {
-            log.error("Could not update task", ex);
+            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR9", parent.getTaskId(), parent.getUuid()));
         }
         return Mono.empty();
     }
@@ -358,7 +370,8 @@ public class TransfersService {
             parentTask.setStartTime(Instant.now());
 
         } catch (DAOException ex) {
-            throw new ServiceException("Could not update task!", ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+                  "doParentChevronOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage()), ex);
         }
 
         try {
@@ -366,7 +379,8 @@ public class TransfersService {
 
             if (sourceURI.toString().startsWith("tapis://")) {
                 sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURI.getSystemId(), parentTask.getUsername());
-                sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, parentTask.getUsername());
+                sourceClient = remoteDataClientFactory.getRemoteDataClient(parentTask.getTenantId(), parentTask.getUsername(),
+                                                                           sourceSystem, parentTask.getUsername());
 
                 //TODO: Retries will break this, should delete anything in the DB if it is a retry?
                 List<FileInfo> fileListing;
@@ -400,7 +414,8 @@ public class TransfersService {
             }
             return parentTask;
         } catch (DAOException | TapisException | IOException e) {
-            throw new ServiceException(e.getMessage(), e);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+                  "doParentChevronOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage()), e);
         }
     }
 
@@ -436,7 +451,8 @@ public class TransfersService {
             sender.send(Mono.just(message))
                 .subscribe();
         } catch (JsonProcessingException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", childTask.getTenantId(), childTask.getUsername(),
+                  "publishChildMessage", childTask.getId(), childTask.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -455,8 +471,9 @@ public class TransfersService {
         try {
             return mapper.readValue(message.getBody(), TransferTaskChild.class).getParentTaskId();
         } catch (IOException ex) {
-            log.error("invalid message", ex);
-            throw new ServiceException("Could not decipher this message, something is off!", ex);
+            String msg = Utils.getMsg("FILES_TXFR_SVC_ERR12", ex.getMessage());
+            log.error(msg);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -545,8 +562,7 @@ public class TransfersService {
      */
     private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable cause, TransferTaskChild child) {
         message.nack(false);
-        log.error("ERROR Transferring: {}", child);
-        log.error("Transfer failed!", cause);
+        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR10", child.toString()));
 
         //TODO: Fix this for the "optional" flag
         try {
@@ -569,7 +585,8 @@ public class TransfersService {
             dao.updateTransferTask(topTask);
 
         } catch (DAOException ignored) {
-            log.error("Could not update tasks!", ignored);
+            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
+                  "doErrorChevronOne", child.getId(), child.getUuid(), ignored.getMessage()), ignored);
         }
         return Mono.empty();
     }
@@ -599,7 +616,8 @@ public class TransfersService {
             }
             return taskChild;
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                  "chevronOne", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
 
     }
@@ -625,7 +643,8 @@ public class TransfersService {
             taskChild.setRetries(taskChild.getRetries() + 1);
             taskChild = dao.updateTransferTaskChild(taskChild);
         } catch (DAOException ex) {
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                  "chevronTwoA", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
 
         String sourcePath;
@@ -635,23 +654,25 @@ public class TransfersService {
         destURL = taskChild.getDestinationURI();
 
         if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://")) {
-            sourceClient = new HTTPClient();
+            sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
             //This should be the full string URL such as http://google.com
             sourcePath = sourceURL.toString();
         } else  {
             sourcePath = sourceURL.getPath();
             sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
-            sourceClient = remoteDataClientFactory.getRemoteDataClient(sourceSystem, taskChild.getUsername());
+            sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
+                                                                       sourceSystem, taskChild.getUsername());
 
         }
 
         //Step 2: Get clients for source / dest
         try {
             destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
-            destClient = remoteDataClientFactory.getRemoteDataClient(destSystem, taskChild.getUsername());
+            destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
+                                                                     destSystem, taskChild.getUsername());
         } catch (IOException | ServiceException ex) {
-            log.error(ex.getMessage(), ex);
-            throw new ServiceException(ex.getMessage(), ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                  "chevronTwoB", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
 
         //Step 3: Stream the file contents to dest
@@ -680,8 +701,8 @@ public class TransfersService {
             dao.updateTransferTaskChild(taskChild);
             return Mono.just(aLong);
         } catch (DAOException ex) {
-            String message = "Error updating progress for TransferTaskChild {}";
-            log.error(message, taskChild);
+            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                    "updateProgress", taskChild.getId(), taskChild.getUuid(), ex.getMessage()));
             return Mono.empty();
         }
     }
@@ -700,8 +721,8 @@ public class TransfersService {
             taskChild = dao.updateTransferTaskChild(taskChild);
             return taskChild;
         } catch (DAOException ex) {
-            String msg = String.format("Error updating child task %s", taskChild.toString());
-            throw new ServiceException(msg, ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                  "chevronThree", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -734,8 +755,8 @@ public class TransfersService {
 
             return taskChild;
         } catch (DAOException ex) {
-            String msg = String.format("Error updating child task %s", taskChild.toString());
-            throw new ServiceException(msg, ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                  "chevronFour", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -751,8 +772,8 @@ public class TransfersService {
             }
             return taskChild;
         } catch (DAOException ex) {
-            String msg = String.format("Error updating child task %s", taskChild.toString());
-            throw new ServiceException(msg, ex);
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                  "chevronFive", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
     }
 

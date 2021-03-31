@@ -14,10 +14,10 @@ public class HeaderByteRange {
             min = Long.parseLong(params[0]);
             max = Long.parseLong(params[1]);
             if (min > max) {
-                throw new ValidationException(Utils.getMsg("FILESAPI_RANGE1", hparms));
+                throw new ValidationException(Utils.getMsg("FILES_RANGE1", hparms));
             }
         } catch (Exception ex) {
-            throw new ValidationException(Utils.getMsg("FILESAPI_RANGE2", hparms));
+            throw new ValidationException(Utils.getMsg("FILES_RANGE2", hparms));
         }
 
     }

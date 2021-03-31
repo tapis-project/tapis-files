@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermissionsEnum;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
@@ -45,7 +46,8 @@ public class FilePermsService {
         } catch (TapisException ex) {
             throw new ServiceException("Invalid tenant!", ex);
         } catch (TapisClientException ex) {
-            throw new ServiceException("Could not get permissions", ex);
+            String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, path, ex.getMessage());
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -63,7 +65,8 @@ public class FilePermsService {
         } catch (TapisException ex) {
             throw new ServiceException("Invalid tenant!", ex);
         } catch (TapisClientException ex) {
-            throw new ServiceException("Could not get permissions", ex);
+            String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
+            throw new ServiceException(msg, ex);
         }
     }
 

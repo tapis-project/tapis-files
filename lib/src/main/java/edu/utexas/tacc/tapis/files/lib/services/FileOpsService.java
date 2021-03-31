@@ -1,13 +1,12 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import edu.utexas.tacc.tapis.files.lib.clients.DataClientUtils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.IOUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,15 +39,9 @@ public class FileOpsService implements IFileOpsService {
     }
 
 
-
-
     @Override
     public List<FileInfo> ls(IRemoteDataClient client, @NotNull String path) throws ServiceException, NotFoundException {
-        try {
-            return client.ls(path, MAX_LISTING_SIZE, 0);
-        } catch (IOException ex) {
-            throw new ServiceException("Could not list", ex);
-        }
+        return ls(client, path, MAX_LISTING_SIZE, 0);
     }
 
     @Override
@@ -60,9 +53,10 @@ public class FileOpsService implements IFileOpsService {
             });
             return listing;
         } catch (IOException ex) {
-            String message = "Listing failed  : " + ex.getMessage();
-            log.error("ERROR", ex);
-            throw new ServiceException(message);
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "listing",
+                                      client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -72,8 +66,10 @@ public class FileOpsService implements IFileOpsService {
             String cleanedPath = FilenameUtils.normalize(path);
             client.mkdir(cleanedPath);
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("mkdir failed : " + ex.getMessage());
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdir",
+                                      client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -82,8 +78,10 @@ public class FileOpsService implements IFileOpsService {
         try {
             client.insert(path, inputStream);
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("insert failed", ex);
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "insert",
+                                      client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -92,8 +90,10 @@ public class FileOpsService implements IFileOpsService {
         try {
             client.move(path, newPath);
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("move/rename failed", ex);
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "move",
+                                      client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -102,8 +102,10 @@ public class FileOpsService implements IFileOpsService {
         try {
             client.copy(path, newPath);
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("move/rename failed", ex);
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "copy",
+                                      client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -113,8 +115,10 @@ public class FileOpsService implements IFileOpsService {
         try {
             client.delete(path);
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("delete failed", ex);
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "delete",
+                                      client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -136,8 +140,10 @@ public class FileOpsService implements IFileOpsService {
             InputStream fileStream = client.getStream(path);
             return fileStream;
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("get contents failed");
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "getContents",
+                                      client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -147,8 +153,10 @@ public class FileOpsService implements IFileOpsService {
             InputStream fileStream = client.getBytesByRange(path, startByte, count);
             return fileStream;
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("get contents failed");
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "getBytes",
+                                      client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -159,8 +167,10 @@ public class FileOpsService implements IFileOpsService {
             InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023);
             return fileStream;
         } catch (IOException ex) {
-            log.error("ERROR", ex);
-            throw new ServiceException("get contents failed");
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "more",
+                                      client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
         }
     }
 
@@ -188,7 +198,9 @@ public class FileOpsService implements IFileOpsService {
                 }
             }
         } catch (IOException ex) {
-            String msg = String.format("Could not zip path: %s", path);
+            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "getZip",
+                                       client.getSystemId(), path, ex.getMessage());
+            log.error(msg, ex);
             throw new ServiceException(msg, ex);
         }
     }
