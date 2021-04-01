@@ -64,10 +64,10 @@ public class FilePermsCache {
    */
     public Permission fetchPerm(String tenantId, String username, String systemId, String path) throws ServiceException {
         try {
-          FilePermCacheKey key = new FilePermCacheKey(tenantId, systemId, path, username, Permission.READ);
-          if (cache.get(key)) return Permission.READ;
-          key = new FilePermCacheKey(tenantId, systemId, path, username, Permission.MODIFY);
+          FilePermCacheKey key = new FilePermCacheKey(tenantId, systemId, path, username, Permission.MODIFY);
           if (cache.get(key)) return Permission.MODIFY;
+          key = new FilePermCacheKey(tenantId, systemId, path, username, Permission.READ);
+          if (cache.get(key)) return Permission.READ;
           return null;
         } catch (ExecutionException ex) {
           String msg = Utils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, systemId, username, ex.getMessage());
