@@ -88,7 +88,7 @@ public class PermissionsApiResource  {
             @ApiResponse(
                     responseCode = "200",
                     description = "FilePermission",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = FilePermissionResponse.class)))) })
+                    content = @Content(schema = @Schema(implementation=FilePermissionResponse.class))) })
     public TapisResponse<FilePermission> getPermissions(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "path",required=true) @PathParam("path") String path,
