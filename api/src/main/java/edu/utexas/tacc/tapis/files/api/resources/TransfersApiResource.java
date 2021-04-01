@@ -125,7 +125,7 @@ public class  TransfersApiResource {
                     content = @Content(schema = @Schema(implementation = TransferTaskResponse.class))
             )
     })
-    public Response getTransferTaskHistory(
+    public Response getTransferTaskDetails(
             @ValidUUID
             @Parameter(description = "Transfer task ID", required=true, example = EXAMPLE_TASK_ID)
             @PathParam("transferTaskId") String transferTaskId,
