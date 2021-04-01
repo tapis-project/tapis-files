@@ -547,47 +547,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
-  /v3/files/transfers/{transferTaskId}:
-    get:
-      tags:
-      - transfers
-      summary: Get a transfer task
-      operationId: getTransferTask
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
-        schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskResponse'
-    delete:
-      tags:
-      - transfers
-      summary: Stop/Cancel a transfer task
-      operationId: cancelTransferTask
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
-        schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TapisResponse'
   /v3/files/transfers:
     get:
       tags:
@@ -639,6 +598,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferTaskResponse'
+  /v3/files/transfers/{transferTaskId}:
+    get:
+      tags:
+      - transfers
+      summary: Get a transfer task
+      operationId: getTransferTask
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
+    delete:
+      tags:
+      - transfers
+      summary: Stop/Cancel a transfer task
+      operationId: cancelTransferTask
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TapisResponse'
   /v3/files/transfers/{transferTaskId}/details:
     get:
       tags:
@@ -852,17 +852,6 @@ components:
           description: Time in seconds of expiration. minimum=1, maximum=604800 (1
             week)
           format: int32
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string
     TransferTask:
       type: object
       properties:
@@ -974,6 +963,19 @@ components:
         endTime:
           type: string
           format: date-time
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
     TransferTaskParent:
       type: object
       properties:
@@ -1041,6 +1043,17 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+        version:
+          type: string
     TransferTaskRequest:
       required:
       - elements
@@ -1066,16 +1079,3 @@ components:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
