@@ -908,7 +908,7 @@
       "get" : {
         "tags" : [ "transfers" ],
         "summary" : "Get details of a transfer task",
-        "operationId" : "getTransferTaskHistory",
+        "operationId" : "getTransferTaskDetails",
         "parameters" : [ {
           "name" : "transferTaskId",
           "in" : "path",
@@ -1120,6 +1120,19 @@
           }
         }
       },
+      "CreatePermissionRequest" : {
+        "required" : [ "permission", "username" ],
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "permission" : {
+            "type" : "string",
+            "enum" : [ "READ", "MODIFY" ]
+          }
+        }
+      },
       "StringResponse" : {
         "type" : "object",
         "properties" : {
@@ -1134,19 +1147,6 @@
           },
           "version" : {
             "type" : "string"
-          }
-        }
-      },
-      "CreatePermissionRequest" : {
-        "required" : [ "permission", "username" ],
-        "type" : "object",
-        "properties" : {
-          "username" : {
-            "type" : "string"
-          },
-          "permission" : {
-            "type" : "string",
-            "enum" : [ "READ", "MODIFY" ]
           }
         }
       },

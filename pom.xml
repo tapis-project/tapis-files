@@ -14,8 +14,8 @@
     <version>1.1</version>
 
     <properties>
-        <tapis-client-java.version>[1.11.50, 2.0]</tapis-client-java.version>
-        <tapis-shared.version>[1.11, 2.0]</tapis-shared.version>
+        <tapis-client-java.version>[1.11.60, 2.0]</tapis-client-java.version>
+        <tapis-shared.version>[1.11.60, 2.0]</tapis-shared.version>
         <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
         <hk2.inhabitant.version>3.0.1</hk2.inhabitant.version>
         <jetbrains.annotations.version>20.1.0</jetbrains.annotations.version>
@@ -24,14 +24,6 @@
     </properties>
 
     <repositories>
-
-        <repository>
-            <id>tapis-local-snapshots</id>
-            <name>Local repo for snapshots</name>
-            <url>http://c002.rodeo.tacc.utexas.edu:30044/repository/maven-snapshots</url>
-            <releases>  <enabled>false</enabled> </releases>
-            <snapshots> <enabled>false</enabled>  </snapshots>
-        </repository>
         <repository>
             <id>tapis-local-releases</id>
             <name>Local repo for releases</name>

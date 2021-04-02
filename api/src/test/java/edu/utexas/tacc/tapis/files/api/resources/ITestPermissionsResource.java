@@ -279,15 +279,12 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
 
     @Test
     public void testDeletePermsNoUsername() throws Exception {
-
         testSystem.setOwner("testuser1");
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
-
         Response response = target("/v3/files/permissions/testSystem/a/")
             .request()
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .delete();
         Assert.assertEquals(response.getStatus(), 400);
-
     }
 }
