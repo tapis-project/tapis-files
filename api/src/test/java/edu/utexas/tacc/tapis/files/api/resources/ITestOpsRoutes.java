@@ -403,6 +403,26 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     }
 
     @Test(dataProvider = "testSystemsProvider")
+    public void testRenameFile2(TSystem testSystem) throws Exception {
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
+
+        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
+        request.setOperation(MoveCopyRenameOperation.RENAME);
+        request.setNewPath("renamed");
+
+        FileStringResponse response = target("/v3/files/ops/testSystem/testfile1.txt")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .put(Entity.json(request), FileStringResponse.class);
+
+        List<FileInfo> listing = doListing(testSystem.getId(), "renamed", getJwtForUser("dev", "testuser1"));
+        Assert.assertEquals(listing.size(), 1);
+        Assert.assertEquals(listing.get(0).getPath(), "renamed");
+    }
+
+    @Test(dataProvider = "testSystemsProvider")
     public void testRenameManyObjects1(TSystem testSystem) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
@@ -600,7 +620,6 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
             .request()
             .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .get(FileListResponse.class);
-
         Assert.assertEquals(listing.getResult().size(), 1);
     }
 

@@ -209,7 +209,6 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .post(Entity.json(req));
         Assert.assertEquals(response.getStatus(), 200);
-        Mockito.verify(skClient).grantUserPermission("dev", "testuser3", "files:dev:MODIFY:testSystem:a");
     }
 
     @Test
@@ -226,7 +225,6 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .get();
         Assert.assertEquals(response.getStatus(), 200);
-        Mockito.verify(skClient).isPermitted("dev", "testuser3", "files:dev:MODIFY:testSystem:a");
     }
 
     @Test
@@ -247,7 +245,6 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(response.getStatus(), "success");
 
         //Verify that the SK got called with the correct things
-        Mockito.verify(skClient).isPermitted("dev", "testuser3", "files:dev:MODIFY:testSystem:a");
         Assert.assertEquals(response.getResult().getPermission(), Permission.MODIFY);
         Assert.assertEquals(response.getResult().getUsername(), "testuser3");
     }
@@ -272,7 +269,6 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
             .get(FilePermissionResponse.class);
 
         //Verify that the SK got called with the correct things
-        Mockito.verify(skClient).isPermitted("dev", "testuser3", "files:dev:MODIFY:testSystem:a");
         Assert.assertEquals(response.getResult().getPermission(), Permission.MODIFY);
         Assert.assertEquals(response.getResult().getUsername(), "testuser3");
     }

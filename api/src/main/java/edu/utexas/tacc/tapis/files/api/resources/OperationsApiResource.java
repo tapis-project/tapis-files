@@ -223,7 +223,6 @@ public class OperationsApiResource extends BaseFilesResource {
         }
     }
 
-
     @PUT
     @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:.+}")

@@ -18,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.*;
+import java.util.Optional;
 
 
 @Path("/v3/files/permissions")
@@ -49,7 +51,7 @@ public class PermissionsApiResource  {
 
     @DELETE
     @FilePermissionsAuthorization
-    @Path("/{systemId}/{path}")
+    @Path("/{systemId}/{path:(.*+)}")
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Revoke user permission on a file or folder. ",
             description = "Revoke access to a file or folder for a user.",
@@ -65,6 +67,7 @@ public class PermissionsApiResource  {
             @NotEmpty @Parameter(description = "Username to remove",required=true) @QueryParam("username") String username,
             @Context SecurityContext securityContext) throws NotFoundException {
         String opName = "revokePermissions";
+        path = StringUtils.isBlank(path) ? "/" : path;
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             permsService.revokePermission(user.getOboTenantId(), username, systemId, path);
@@ -79,7 +82,7 @@ public class PermissionsApiResource  {
 
 
     @GET
-    @Path("/{systemId}/{path}")
+    @Path("/{systemId}/{path:(.*+)}")
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Get the API user's permission on a file or folder.",
             description = "Get the permission for the API user for the system and path.",
@@ -95,6 +98,7 @@ public class PermissionsApiResource  {
             @Parameter(description = "Username to list") @QueryParam("username") String queryUsername,
             @Context SecurityContext securityContext) throws NotFoundException {
 
+        path = StringUtils.isBlank(path) ? "/" : path;
         String opName = "getPermissions";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         TSystem system;
@@ -135,7 +139,7 @@ public class PermissionsApiResource  {
 
     @POST
     @FilePermissionsAuthorization
-    @Path("/{systemId}/{path}")
+    @Path("/{systemId}/{path:(.*+)}")
     @Produces({ MediaType.APPLICATION_JSON })
     @Consumes({MediaType.APPLICATION_JSON})
     @Operation(summary = "Grant user permission on a file or folder. ",
@@ -152,7 +156,7 @@ public class PermissionsApiResource  {
             @Parameter(description = "path",required=true) @PathParam("path") String path,
             @Valid @Parameter(required = true) CreatePermissionRequest createPermissionRequest,
             @Context SecurityContext securityContext) throws NotFoundException {
-
+        path = StringUtils.isBlank(path) ? "/" : path;
         String opName = "grantPermissions";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
