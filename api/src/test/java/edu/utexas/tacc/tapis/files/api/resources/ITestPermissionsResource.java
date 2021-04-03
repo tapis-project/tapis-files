@@ -250,6 +250,28 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
     }
 
     @Test
+    public void testGetUserPermissionsAsUserNoPermissions() throws Exception {
+
+        // Owners of the system can check permissions for other users. Normal API users only can only
+        // see get their own permissions. testuser2, the owner of the system is making this request, but checking
+        // to see what permissions the API user, testuser1 has.
+        testSystem.setOwner("testuser2");
+        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+
+        when(skClient.isPermitted(any(), any(), any())).thenReturn(false);
+        FilePermissionResponse response = target("/v3/files/permissions/testSystem/a/")
+            .queryParam("username", "testuser3")
+            .request()
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get(FilePermissionResponse.class);
+        Assert.assertEquals(response.getStatus(), "success");
+
+        //Verify that the SK got called with the correct things
+        Assert.assertEquals(response.getResult().getPermission(), null);
+        Assert.assertEquals(response.getResult().getUsername(), "testuser3");
+    }
+
+    @Test
     public void testGetUserPermissionsAsDifferentUser() throws Exception {
 
         // Owners of the system can check permissions for other users. Normal API users only can only

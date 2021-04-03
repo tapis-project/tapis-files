@@ -12,6 +12,34 @@ import static org.testng.Assert.*;
 public class PathUtilsTest {
 
     @Test
+    public void testSingleFileAbsolute() {
+        Path p = PathUtils.relativizePaths("jobs/input/file1.txt",
+            "jobs/input/file1.txt", "workdir/jobs/07416ca6-4b05-441f-b541-d9156355f1bd-007/file1.txt");
+        Assert.assertEquals(p, Paths.get("/workdir/jobs/07416ca6-4b05-441f-b541-d9156355f1bd-007/file1.txt"));
+    }
+
+    @Test
+    public void testSingleFileAbsoluteToRoot() {
+        Path p = PathUtils.relativizePaths("jobs/input/",
+            "jobs/input/file1.txt", "workdir/jobs/07416ca6-4b05-441f-b541-d9156355f1bd-007/");
+        Assert.assertEquals(p, Paths.get("/workdir/jobs/07416ca6-4b05-441f-b541-d9156355f1bd-007/file1.txt"));
+    }
+
+    @Test
+    public void testSingleFile1() {
+        Path p = PathUtils.relativizePaths("jobs/input/file1.txt",
+            "jobs/input/file1.txt", "workdir/jobs/07416ca6-4b05-441f-b541-d9156355f1bd-007/");
+        Assert.assertEquals(p, Paths.get("/workdir/jobs/07416ca6-4b05-441f-b541-d9156355f1bd-007/file1.txt"));
+    }
+
+    @Test
+    public void testSingleFile2() {
+        Path p = PathUtils.relativizePaths("jobs/input/file1.txt",
+            "jobs/input/file1.txt", "workdir/jobs/07416ca6-4b05-441f-b541-d9156355f1bd-007");
+        Assert.assertEquals(p, Paths.get("/workdir/jobs/07416ca6-4b05-441f-b541-d9156355f1bd-007"));
+    }
+
+    @Test
     public void testRootOfDir() {
         Path p = PathUtils.relativizePaths("/", "/test.txt", "/");
         Assert.assertEquals(p, Paths.get("/test.txt"));

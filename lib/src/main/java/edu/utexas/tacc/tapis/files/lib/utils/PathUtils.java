@@ -28,12 +28,17 @@ public class PathUtils {
         Path sourcePath = Paths.get(srcPath);
         Path sourceBase = Paths.get(srcBase);
 
-        if (sourceBase.equals(sourcePath)) {
+
+        // This happens if the source path is absolute, i.e. the transfer is for
+        // a single file like a/b/c/file.txt
+        if (sourceBase.equals(sourcePath) && destBase.endsWith("/")) {
             Path p = Paths.get(destBase, sourcePath.getFileName().toString());
             return p;
+        } else {
+            Path p = Paths.get(destBase, sourceBase.relativize(sourcePath).toString());
+            return p;
         }
-        Path p = Paths.get(destBase, sourceBase.relativize(sourcePath).toString());
-        return p;
+
     }
 
 }

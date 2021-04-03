@@ -9,6 +9,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -173,9 +174,7 @@ public class SSHDataClient implements IRemoteDataClient {
             fileInfo.setPath(fullPath.toString());
             filesList.add(fileInfo);
         }
-        filesList.sort((a, b)->{
-            return a.getName().compareTo(b.getName());
-        });
+        filesList.sort(Comparator.comparing(FileInfo::getName));
         return filesList.stream().skip(startIdx).limit(count).collect(Collectors.toList());
     }
 
