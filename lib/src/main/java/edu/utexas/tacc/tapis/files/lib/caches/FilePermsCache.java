@@ -4,15 +4,16 @@ package edu.utexas.tacc.tapis.files.lib.caches;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.security.client.SKClient;
-import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
-import edu.utexas.tacc.tapis.shared.security.TenantManager;
-import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import org.jvnet.hk2.annotations.Service;
 
 import javax.inject.Inject;
@@ -22,20 +23,16 @@ import java.util.concurrent.ExecutionException;
 @Service
 public class FilePermsCache {
 
-
-    private final SKClient skClient;
-    private final ServiceJWT serviceJWT;
-    private final TenantManager tenantCache;
     private final IRuntimeConfig config;
     private final LoadingCache<FilePermCacheKey, Boolean> cache;
     // PERMSPEC is "files:tenant:r,rw,*:systemId:path
     private static final String PERMSPEC = "files:%s:%s:%s:%s";
 
     @Inject
-    public FilePermsCache(SKClient skClient, ServiceJWT serviceJWT, TenantManager tenantCache) {
-        this.skClient = skClient;
-        this.serviceJWT = serviceJWT;
-        this.tenantCache = tenantCache;
+    private ServiceClients serviceClients;
+
+    @Inject
+    public FilePermsCache() {
         this.config = RuntimeSettings.get();
         cache = CacheBuilder.newBuilder()
             .expireAfterWrite(Duration.ofMinutes(5))
@@ -79,12 +76,7 @@ public class FilePermsCache {
 
         @Override
         public Boolean load(FilePermCacheKey key) throws Exception {
-            Tenant tenant = tenantCache.getTenant(key.getTenantId());
-            skClient.setUserAgent("filesServiceClient");
-            skClient.setBasePath(tenant.getBaseUrl() + "/v3");
-            skClient.addDefaultHeader("x-tapis-token", serviceJWT.getAccessJWT(config.getSiteId()));
-            skClient.addDefaultHeader("x-tapis-user", key.getUsername());
-            skClient.addDefaultHeader("x-tapis-tenant", key.getTenantId());
+            SKClient skClient = getSKClient(key.getTenantId(), key.getUsername());
             String permSpec = String.format(PERMSPEC, key.getTenantId(), key.getPerm(), key.getSystemId(), key.getPath());
             return skClient.isPermitted(key.getTenantId(), key.getUsername(), permSpec);
         }
@@ -149,5 +141,21 @@ public class FilePermsCache {
         }
     }
 
-
+  /**
+   * Get Security Kernel client
+   * @param tenantName -
+   * @param username -
+   * @return SK client
+   * @throws TapisClientException - for Tapis related exceptions
+   */
+  private SKClient getSKClient(String tenantName, String username) throws TapisClientException {
+    SKClient skClient;
+    try { skClient = serviceClients.getClient(username, tenantName, SKClient.class); }
+    catch (Exception e)
+    {
+      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_FILES, tenantName, username);
+      throw new TapisClientException(msg, e);
+    }
+    return skClient;
+  }
 }

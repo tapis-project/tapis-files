@@ -13,8 +13,10 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
@@ -59,6 +61,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
@@ -79,6 +82,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     private Credential creds;
 
     // mocking out the services
+    private ServiceClients serviceClients;
     private SystemsClient systemsClient;
     private SKClient skClient;
     private ServiceJWT serviceJWT;
@@ -127,6 +131,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         enable(TestProperties.DUMP_ENTITY);
         forceSet(TestProperties.CONTAINER_PORT, "0");
         skClient = Mockito.mock(SKClient.class);
+        serviceClients = Mockito.mock(ServiceClients.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
         JWTValidateRequestFilter.setSiteId("tacc");
@@ -139,7 +144,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
                 @Override
                 protected void configure() {
                     bind(systemsClient).to(SystemsClient.class);
-                    bind(skClient).to(SKClient.class);
+                    bind(serviceClients).to(ServiceClients.class);
                     bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
                     bind(serviceJWT).to(ServiceJWT.class);
                     bindAsContract(FilePermsService.class).in(Singleton.class);
@@ -200,6 +205,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
     @BeforeMethod
     public void initMocks() throws Exception {
+        when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
     }
 
