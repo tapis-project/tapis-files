@@ -5,7 +5,7 @@ import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
-import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jvnet.hk2.annotations.Service;
 
 import javax.inject.Inject;
@@ -27,7 +27,7 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
 
     @Override
     public IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
-                                                 @NotNull ResultSystem system, @NotNull String username) throws IOException {
+                                                 @NotNull TapisSystem system, @NotNull String username) throws IOException {
 
         List<TransferMethodEnum> protocols = system.getTransferMethods();
         if (protocols == null || protocols.isEmpty())

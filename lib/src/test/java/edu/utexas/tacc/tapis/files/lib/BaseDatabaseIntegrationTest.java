@@ -17,7 +17,7 @@ import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
-import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.io.IOUtils;
@@ -55,9 +55,9 @@ import static org.mockito.Mockito.when;
 public abstract class BaseDatabaseIntegrationTest  {
 
     private static final Logger log = LoggerFactory.getLogger(BaseDatabaseIntegrationTest.class);
-    protected ResultSystem testSystemS3;
-    protected ResultSystem testSystemPKI;
-    protected ResultSystem testSystemSSH;
+    protected TapisSystem testSystemS3;
+    protected TapisSystem testSystemPKI;
+    protected TapisSystem testSystemSSH;
 
     protected IRemoteDataClientFactory remoteDataClientFactory;
     protected ServiceLocator locator;
@@ -83,7 +83,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         Credential creds = new Credential();
         creds.setAccessKey("testuser");
         creds.setPassword("password");
-        testSystemSSH = new ResultSystem();
+        testSystemSSH = new TapisSystem();
         testSystemSSH.setAuthnCredential(creds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
@@ -98,7 +98,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
-        testSystemS3 = new ResultSystem();
+        testSystemS3 = new TapisSystem();
         testSystemS3.setTenant("dev");
         testSystemS3.setHost("http://localhost");
         testSystemS3.setBucketName("test");
@@ -114,7 +114,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         creds = new Credential();
         creds.setPublicKey(publicKey);
         creds.setPrivateKey(privateKey);
-        testSystemPKI = new ResultSystem();
+        testSystemPKI = new TapisSystem();
         testSystemPKI.setAuthnCredential(creds);
         testSystemPKI.setHost("localhost");
         testSystemPKI.setPort(2222);

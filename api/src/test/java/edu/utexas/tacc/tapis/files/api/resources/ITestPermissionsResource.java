@@ -18,7 +18,7 @@ import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
-import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
@@ -50,7 +50,7 @@ import static org.mockito.Mockito.when;
 public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
 
     private static final Logger log = LoggerFactory.getLogger(ITestPermissionsResource.class);
-    private ResultSystem testSystem;
+    private TapisSystem testSystem;
     private Tenant tenant;
     private Credential creds;
     private Map<String, Tenant> tenantMap = new HashMap<>();
@@ -68,7 +68,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
-        testSystem = new ResultSystem();
+        testSystem = new TapisSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");

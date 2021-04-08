@@ -16,7 +16,7 @@ import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
-import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +34,7 @@ public abstract class BaseFilesResource {
     private static final Logger log = LoggerFactory.getLogger(BaseFilesResource.class);
     private IRuntimeConfig settings = RuntimeSettings.get();
 
-    protected IRemoteDataClient getClientForUserAndSystem(AuthenticatedUser authUser, ResultSystem system, String effectiveUserId) throws IOException {
+    protected IRemoteDataClient getClientForUserAndSystem(AuthenticatedUser authUser, TapisSystem system, String effectiveUserId) throws IOException {
         IRemoteDataClient client =
                 remoteDataClientFactory.getRemoteDataClient(authUser.getOboTenantId(), authUser.getOboUser(), system, effectiveUserId);
         return client;

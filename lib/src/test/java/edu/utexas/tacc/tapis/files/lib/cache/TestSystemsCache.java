@@ -5,7 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
-import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.mockito.Mockito;
 import org.testng.Assert;
@@ -27,7 +27,7 @@ public class TestSystemsCache {
         String testJWT = "1234565asd";
         when(serviceJWT.getAccessJWT(any())).thenReturn(testJWT);
 
-        ResultSystem testSystem = new ResultSystem();
+        TapisSystem testSystem = new TapisSystem();
         testSystem.setId("12345");
         testSystem.setHost("test.edu");
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
@@ -40,7 +40,7 @@ public class TestSystemsCache {
     @Test
     public void testCacheLoader() throws Exception {
         SystemsCache cache = new SystemsCache(systemsClient, serviceJWT, tenantManager);
-        ResultSystem check = cache.getSystem("testTenant", "testSystem", "testUser");
+        TapisSystem check = cache.getSystem("testTenant", "testSystem", "testUser");
         Assert.assertEquals(check.getId(), "12345");
 
     }

@@ -17,7 +17,7 @@ import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -353,7 +353,7 @@ public class TransfersService {
     private TransferTaskParent doParentChevronOne(TransferTaskParent parentTask) throws ServiceException {
         log.debug("***** DOING doParentChevronOne ****");
         log.debug(parentTask.toString());
-        ResultSystem sourceSystem;
+        TapisSystem sourceSystem;
         IRemoteDataClient sourceClient;
 
         // Update the top level task first, if it is not already updated with the startTime
@@ -632,8 +632,8 @@ public class TransfersService {
     private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException, TapisException {
         log.debug("***** DOING chevronTwo ****");
         log.debug(taskChild.toString());
-        ResultSystem sourceSystem;
-        ResultSystem destSystem;
+        TapisSystem sourceSystem;
+        TapisSystem destSystem;
         IRemoteDataClient sourceClient;
         IRemoteDataClient destClient;
 
