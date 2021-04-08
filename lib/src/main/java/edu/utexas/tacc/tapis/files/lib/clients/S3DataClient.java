@@ -5,7 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
@@ -61,11 +61,11 @@ public class S3DataClient implements IRemoteDataClient {
 
     private final S3Client client;
     private final String bucket;
-    private final TSystem system;
+    private final ResultSystem system;
     private final String rootDir;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
-    public S3DataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TSystem remoteSystem) throws IOException {
+    public S3DataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull ResultSystem remoteSystem) throws IOException {
         oboTenant = oboTenant1;
         oboUser = oboUser1;
         system = remoteSystem;

@@ -10,7 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -101,7 +101,7 @@ public class PermissionsApiResource  {
         path = StringUtils.isBlank(path) ? "/" : path;
         String opName = "getPermissions";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        TSystem system;
+        ResultSystem system;
         String username;
         try {
             system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());

@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -16,7 +16,7 @@ public class TestS3Client {
 
     @Test
     public void testHostNoScheme() throws Exception {
-        TSystem sys = new TSystem();
+        ResultSystem sys = new ResultSystem();
         Credential creds = new Credential();
         creds.setAccessKey("testKey");
         creds.setAccessSecret("testSecret");
@@ -33,7 +33,7 @@ public class TestS3Client {
 
     @Test
     public void testHostContainsHTTPScheme() throws Exception {
-        TSystem sys = new TSystem();
+        ResultSystem sys = new ResultSystem();
         Credential creds = new Credential();
         creds.setAccessKey("testKey");
         creds.setAccessSecret("testSecret");
@@ -50,7 +50,7 @@ public class TestS3Client {
 
     @Test
     public void testHostContainsHTTPSScheme() throws Exception {
-        TSystem sys = new TSystem();
+        ResultSystem sys = new ResultSystem();
         Credential creds = new Credential();
         creds.setAccessKey("testKey");
         creds.setAccessSecret("testSecret");

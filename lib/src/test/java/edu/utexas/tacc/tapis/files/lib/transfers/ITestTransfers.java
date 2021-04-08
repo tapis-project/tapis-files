@@ -11,7 +11,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
@@ -43,8 +43,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     private final String oboTenant = "oboTenant";
     private final String oboUser = "oboUser";
-    private TSystem sourceSystem;
-    private TSystem destSystem;
+    private ResultSystem sourceSystem;
+    private ResultSystem destSystem;
 
     @BeforeMethod
     public void beforeTest() throws Exception {

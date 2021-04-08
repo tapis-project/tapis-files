@@ -39,7 +39,7 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
 
 
 /**
@@ -64,7 +64,7 @@ public class SSHDataClient implements IRemoteDataClient {
     private final String systemId;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
-    public SSHDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TSystem sys, SSHConnection sshCon) {
+    public SSHDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull ResultSystem sys, SSHConnection sshCon) {
         oboTenant = oboTenant1;
         oboUser = oboUser1;
         String rdir = sys.getRootDir();

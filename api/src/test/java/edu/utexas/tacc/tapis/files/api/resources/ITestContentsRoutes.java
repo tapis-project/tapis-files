@@ -21,7 +21,7 @@ import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
@@ -58,8 +58,8 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     private final Logger log = LoggerFactory.getLogger(ITestContentsRoutes.class);
     private final String oboTenant = "oboTenant";
     private final String oboUser = "oboUser";
-    private final TSystem testSystem;
-    private final TSystem testSystemSSH;
+    private final ResultSystem testSystem;
+    private final ResultSystem testSystemSSH;
     private final Credential creds;
     private final Map<String, Tenant> tenantMap = new HashMap<>();
     Site site;
@@ -77,7 +77,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
-        testSystem = new TSystem();
+        testSystem = new ResultSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
@@ -93,7 +93,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         Credential sshCreds = new Credential();
         sshCreds.setAccessKey("testuser");
         sshCreds.setPassword("password");
-        testSystemSSH = new TSystem();
+        testSystemSSH = new ResultSystem();
         testSystemSSH.setAuthnCredential(sshCreds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
@@ -171,7 +171,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         return is;
     }
 
-    private void addTestFilesToBucket(TSystem system, String fileName, long fileSize) throws Exception {
+    private void addTestFilesToBucket(ResultSystem system, String fileName, long fileSize) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, system, "testuser");
         InputStream f1 = makeFakeFile(fileSize);
         client.insert(fileName, f1);
@@ -196,12 +196,12 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
     @DataProvider(name = "testSystemsDataProvider")
     public Object[] mkdirDataProvider() {
-        return new TSystem[]{testSystem, testSystemSSH};
+        return new ResultSystem[]{testSystem, testSystemSSH};
     }
 
 
     @Test(dataProvider = "testSystemsDataProvider")
-    public void testZipOutput(TSystem system) throws Exception {
+    public void testZipOutput(ResultSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         addTestFilesToBucket(system, "a/test1.txt", 10 * 1000);
         addTestFilesToBucket(system, "a/test2.txt", 10 * 1000);
@@ -223,7 +223,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
 
     @Test(dataProvider = "testSystemsDataProvider")
-    public void testStreamLargeFile(TSystem system) throws Exception {
+    public void testStreamLargeFile(ResultSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         long filesize = 100 * 1000 * 1000;
         addTestFilesToBucket(system, "testfile1.txt", filesize);
@@ -247,7 +247,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
 
     @Test(dataProvider = "testSystemsDataProvider")
-    public void testSimpleGetContents(TSystem system) throws Exception {
+    public void testSimpleGetContents(ResultSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         addTestFilesToBucket(system, "testfile1.txt", 10 * 1000);
         Response response = target("/v3/files/content/testSystem/testfile1.txt")
@@ -259,7 +259,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     }
 
     @Test(dataProvider = "testSystemsDataProvider")
-    public void testNotFound(TSystem system) throws Exception {
+    public void testNotFound(ResultSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         Response response = target("/v3/files/content/testSystem/NOT-THERE.txt")
             .request()
@@ -269,7 +269,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     }
 
     @Test(dataProvider = "testSystemsDataProvider")
-    public void testGetWithRange(TSystem system) throws Exception {
+    public void testGetWithRange(ResultSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         addTestFilesToBucket(system, "words.txt", 10 * 1024);
         Response response = target("/v3/files/content/testSystem/words.txt")
@@ -283,7 +283,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     }
 
     @Test(dataProvider = "testSystemsDataProvider")
-    public void testGetWithMore(TSystem system) throws Exception {
+    public void testGetWithMore(ResultSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         addTestFilesToBucket(system, "words.txt", 10 * 1024);
         Response response = target("/v3/files/content/testSystem/words.txt")
@@ -299,7 +299,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     }
 
     @Test(dataProvider = "testSystemsDataProvider")
-    public void testGetContentsHeaders(TSystem system) throws Exception {
+    public void testGetContentsHeaders(ResultSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         // make sure content-type is application/octet-stream and filename is correct
         addTestFilesToBucket(system, "testfile1.txt", 10 * 1024);
@@ -316,7 +316,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
     // Tries to serve a folder, which is not allowed resulting in 400
     @Test(dataProvider = "testSystemsDataProvider")
-    public void testBadRequest(TSystem system) throws Exception {
+    public void testBadRequest(ResultSystem system) throws Exception {
 
         Response response = target("/v3/files/content/testSystem/BAD-PATH/")
             .request()

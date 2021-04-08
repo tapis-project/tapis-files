@@ -21,7 +21,7 @@ import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.ResultSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
@@ -54,7 +54,7 @@ import static org.mockito.Mockito.when;
 public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
 
     private final Logger log = LoggerFactory.getLogger(ITestTransfersRoutesS3toS3.class);
-    private final TSystem testSystem;
+    private final ResultSystem testSystem;
     private final Credential creds;
 
     private static class TransferTaskResponse extends TapisResponse<TransferTask> {
@@ -76,7 +76,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
-        testSystem = new TSystem();
+        testSystem = new ResultSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
