@@ -254,7 +254,8 @@ public class SSHDataClient implements IRemoteDataClient {
      */
     @Override
     public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException {
-
+        oldPath = FilenameUtils.normalize(oldPath);
+        newPath = FilenameUtils.normalize(newPath);
         Path absoluteOldPath = Paths.get(rootDir, oldPath);
         Path absoluteNewPath = Paths.get(rootDir, newPath);
 
