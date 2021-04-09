@@ -6,7 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import jdk.jshell.execution.Util;
 import org.glassfish.hk2.api.ServiceLocator;
@@ -47,9 +47,9 @@ public class ITestFileOpsService {
 
     private final String oboTenant = "oboTenant";
     private final String oboUser = "oboUser";
-    TSystem testSystemSSH;
-    TSystem testSystemS3;
-    TSystem testSystemPKI;
+    TapisSystem testSystemSSH;
+    TapisSystem testSystemS3;
+    TapisSystem testSystemPKI;
     private RemoteDataClientFactory remoteDataClientFactory;
     private IFileOpsService fileOpsService;
     private static final Logger log  = LoggerFactory.getLogger(ITestFileOpsService.class);
@@ -67,7 +67,7 @@ public class ITestFileOpsService {
         Credential creds = new Credential();
         creds.setAccessKey("testuser");
         creds.setPassword("password");
-        testSystemSSH = new TSystem();
+        testSystemSSH = new TapisSystem();
         testSystemSSH.setAuthnCredential(creds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
@@ -82,7 +82,7 @@ public class ITestFileOpsService {
         creds = new Credential();
         creds.setPublicKey(publicKey);
         creds.setPrivateKey(privateKey);
-        testSystemPKI = new TSystem();
+        testSystemPKI = new TapisSystem();
         testSystemPKI.setAuthnCredential(creds);
         testSystemPKI.setHost("localhost");
         testSystemPKI.setPort(2222);
@@ -97,7 +97,7 @@ public class ITestFileOpsService {
         creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
-        testSystemS3 = new TSystem();
+        testSystemS3 = new TapisSystem();
         testSystemS3.setHost("http://localhost");
         testSystemS3.setBucketName("test");
         testSystemS3.setId("testSystem");
@@ -111,7 +111,7 @@ public class ITestFileOpsService {
 
     @DataProvider(name="testSystems")
     public Object[] testSystemsDataProvider () {
-        return new TSystem[]{
+        return new TapisSystem[]{
                 testSystemSSH,
                 testSystemPKI,
                 testSystemS3
@@ -147,7 +147,7 @@ public class ITestFileOpsService {
     }
 
     @Test(dataProvider = "testSystems")
-    public void testInsertAndDelete(TSystem testSystem) throws Exception {
+    public void testInsertAndDelete(TapisSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -160,7 +160,7 @@ public class ITestFileOpsService {
     }
 
     @Test(dataProvider = "testSystems")
-    public void testInsertAndDeleteNested(TSystem testSystem) throws Exception {
+    public void testInsertAndDeleteNested(TapisSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert(client,"a/b/c/test.txt", in);
@@ -173,7 +173,7 @@ public class ITestFileOpsService {
     }
 
     @Test(dataProvider = "testSystems")
-    public void testInsertAndGet(TSystem testSystem) throws Exception {
+    public void testInsertAndGet(TapisSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -184,7 +184,7 @@ public class ITestFileOpsService {
 
 
     @Test(dataProvider = "testSystems")
-    public void testListing(TSystem testSystem) throws Exception {
+    public void testListing(TapisSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -195,7 +195,7 @@ public class ITestFileOpsService {
     }
 
     @Test(dataProvider = "testSystems")
-    public void testInsertLargeFile(TSystem testSystem) throws Exception {
+    public void testInsertLargeFile(TapisSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -206,7 +206,7 @@ public class ITestFileOpsService {
     }
 
     @Test(dataProvider = "testSystems")
-    public void testGetBytesByRange(TSystem testSystem) throws Exception {
+    public void testGetBytesByRange(TapisSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -215,7 +215,7 @@ public class ITestFileOpsService {
     }
 
     @Test(dataProvider = "testSystems")
-    public void testZipFolder(TSystem testSystem) throws Exception {
+    public void testZipFolder(TapisSystem testSystem) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         fileOpsService.insert(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
         fileOpsService.insert(client,"a/test2.txt", Utils.makeFakeFile(1000 * 1024));

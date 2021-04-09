@@ -6,6 +6,8 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.ServiceClientsFactory;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
@@ -19,7 +21,7 @@ import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
@@ -45,19 +47,21 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
 public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
 
     private final Logger log = LoggerFactory.getLogger(ITestTransfersRoutesS3toS3.class);
-    private final TSystem testSystem;
+    private final TapisSystem testSystem;
     private final Credential creds;
 
     private static class TransferTaskResponse extends TapisResponse<TransferTask> {
     }
 
     // mocking out the services
+    private ServiceClients serviceClients;
     private SystemsClient systemsClient;
     private SKClient skClient;
     private TenantManager tenantManager;
@@ -72,7 +76,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
-        testSystem = new TSystem();
+        testSystem = new TapisSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
@@ -99,6 +103,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         forceSet(TestProperties.CONTAINER_PORT, "0");
         tenantManager = Mockito.mock(TenantManager.class);
         skClient = Mockito.mock(SKClient.class);
+      serviceClients = Mockito.mock(ServiceClients.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
         JWTValidateRequestFilter.setSiteId("tacc");
@@ -108,8 +113,8 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
             .register(new AbstractBinder() {
                 @Override
                 protected void configure() {
+                    bind(serviceClients).to(ServiceClients.class);
                     bind(systemsClient).to(SystemsClient.class);
-                    bind(skClient).to(SKClient.class);
                     bind(serviceJWT).to(ServiceJWT.class);
                     bind(tenantManager).to(TenantManager.class);
                     bindAsContract(SystemsCache.class).in(Singleton.class);
@@ -137,6 +142,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     public void initMocks() throws Exception {
         when(tenantManager.getTenants()).thenReturn(tenantMap);
         when(tenantManager.getTenant(any())).thenReturn(tenant);
+        when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);

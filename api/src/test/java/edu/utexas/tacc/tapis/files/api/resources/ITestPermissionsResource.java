@@ -11,13 +11,14 @@ import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
@@ -41,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -48,13 +50,14 @@ import static org.mockito.Mockito.when;
 public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
 
     private static final Logger log = LoggerFactory.getLogger(ITestPermissionsResource.class);
-    private TSystem testSystem;
+    private TapisSystem testSystem;
     private Tenant tenant;
     private Credential creds;
     private Map<String, Tenant> tenantMap = new HashMap<>();
     private Site testSite;
 
     // mocking out the services
+    private ServiceClients serviceClients;
     private SystemsClient systemsClient;
     private SKClient skClient;
     private ServiceJWT serviceJWT;
@@ -65,7 +68,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
-        testSystem = new TSystem();
+        testSystem = new TapisSystem();
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
@@ -82,6 +85,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
     }
 
     @Override
@@ -90,6 +94,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
         skClient = Mockito.mock(SKClient.class);
+        serviceClients = Mockito.mock(ServiceClients.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
         JWTValidateRequestFilter.setSiteId("tacc");
@@ -101,7 +106,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
                 @Override
                 protected void configure() {
                     bind(systemsClient).to(SystemsClient.class);
-                    bind(skClient).to(SKClient.class);
+                    bind(serviceClients).to(ServiceClients.class);
                     bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
                     bind(serviceJWT).to(ServiceJWT.class);
                     bindAsContract(FilePermsService.class).in(Singleton.class);

@@ -13,7 +13,7 @@ import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -107,7 +107,7 @@ public class OperationsApiResource extends BaseFilesResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             Instant start = Instant.now();
-            TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
@@ -165,7 +165,7 @@ public class OperationsApiResource extends BaseFilesResource {
         String opName = "insert";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             fileOpsService.insert(client, path, fileInputStream);
@@ -210,7 +210,7 @@ public class OperationsApiResource extends BaseFilesResource {
         String opName = "mkdir";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             fileOpsService.mkdir(client, mkdirRequest.getPath());
@@ -259,7 +259,7 @@ public class OperationsApiResource extends BaseFilesResource {
         String opName = "moveCopyRename";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             if (client == null) {
@@ -318,7 +318,7 @@ public class OperationsApiResource extends BaseFilesResource {
         String opName = "delete";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            TSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             fileOpsService.delete(client, path);
