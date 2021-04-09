@@ -11,6 +11,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -30,6 +31,9 @@ public abstract class BaseFilesResource {
 
     @Inject
     RemoteDataClientFactory remoteDataClientFactory;
+
+    @Inject
+    ServiceContext serviceContext;
 
     private static final Logger log = LoggerFactory.getLogger(BaseFilesResource.class);
     private IRuntimeConfig settings = RuntimeSettings.get();
