@@ -61,7 +61,7 @@ public class PermissionsApiResource  {
                     description = "FilePermission",
                     content = @Content(schema = @Schema(implementation = StringResponse.class))) }
     )
-    public Response permissionsSystemIdPathDelete(
+    public Response deletePermissions(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "path",required=true) @PathParam("path") String path,
             @NotEmpty @Parameter(description = "Username to remove",required=true) @QueryParam("username") String username,
@@ -151,7 +151,7 @@ public class PermissionsApiResource  {
                     description = "FilePermission",
                     content = @Content(schema = @Schema(implementation = FilePermissionResponse.class)))
     })
-    public Response permissionsSystemIdPathPost(
+    public Response grantPermissions(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "path",required=true) @PathParam("path") String path,
             @Valid @Parameter(required = true) CreatePermissionRequest createPermissionRequest,

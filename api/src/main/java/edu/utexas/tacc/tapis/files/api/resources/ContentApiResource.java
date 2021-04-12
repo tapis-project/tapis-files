@@ -51,7 +51,7 @@ public class ContentApiResource extends BaseFilesResource {
         @ApiResponse(responseCode = "404", description = "Not Found"),
         @ApiResponse(responseCode = "403", description = "Not Authorized")
     })
-    public void filesGetContents(
+    public void getContents(
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
             @Parameter(description = "File path",required=true, example = EXAMPLE_PATH) @PathParam("path") String path,
             @Parameter(description = "Range of bytes to send", example = "range=0,999") @HeaderParam("range") HeaderByteRange range,

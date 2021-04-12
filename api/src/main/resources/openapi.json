@@ -41,7 +41,7 @@
         "tags" : [ "content" ],
         "summary" : "Retrieve a file from the files service",
         "description" : "Get file contents/serve file",
-        "operationId" : "filesGetContents",
+        "operationId" : "getContents",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -575,7 +575,7 @@
         "tags" : [ "permissions" ],
         "summary" : "Grant user permission on a file or folder. ",
         "description" : "Grant access to a file or folder for a user. Access may be READ or MODIFY. MODIFY implies READ.",
-        "operationId" : "permissionsSystemIdPathPost",
+        "operationId" : "grantPermissions",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -620,7 +620,7 @@
         "tags" : [ "permissions" ],
         "summary" : "Revoke user permission on a file or folder. ",
         "description" : "Revoke access to a file or folder for a user.",
-        "operationId" : "permissionsSystemIdPathDelete",
+        "operationId" : "deletePermissions",
         "parameters" : [ {
           "name" : "systemId",
           "in" : "path",
@@ -1120,6 +1120,19 @@
           }
         }
       },
+      "CreatePermissionRequest" : {
+        "required" : [ "permission", "username" ],
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "permission" : {
+            "type" : "string",
+            "enum" : [ "READ", "MODIFY" ]
+          }
+        }
+      },
       "StringResponse" : {
         "type" : "object",
         "properties" : {
@@ -1134,19 +1147,6 @@
           },
           "version" : {
             "type" : "string"
-          }
-        }
-      },
-      "CreatePermissionRequest" : {
-        "required" : [ "permission", "username" ],
-        "type" : "object",
-        "properties" : {
-          "username" : {
-            "type" : "string"
-          },
-          "permission" : {
-            "type" : "string",
-            "enum" : [ "READ", "MODIFY" ]
           }
         }
       },
@@ -1323,26 +1323,6 @@
           }
         }
       },
-      "TransferTaskListResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/TransferTask"
-            }
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
       "TransferTaskParent" : {
         "type" : "object",
         "properties" : {
@@ -1425,23 +1405,6 @@
           }
         }
       },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
       "TransferTaskRequest" : {
         "required" : [ "elements" ],
         "type" : "object",
@@ -1470,6 +1433,43 @@
           "optional" : {
             "type" : "boolean",
             "description" : "Allow the full transfer to succeed even if this portion fails? Default is false"
+          }
+        }
+      },
+      "TransferTaskListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTask"
+            }
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
           }
         }
       }
