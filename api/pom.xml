@@ -10,6 +10,10 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tapis-files-api</artifactId>
 
+    <properties>
+        <maven-exec-plugin.version>3.0.0</maven-exec-plugin.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
@@ -88,6 +92,8 @@
                 </configuration>
             </plugin>
 
+
+
             <!-- Generate the openapi documentation from the code -->
             <plugin>
                 <groupId>io.swagger.core.v3</groupId>
@@ -107,6 +113,25 @@
                     <prettyPrint>true</prettyPrint>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>${maven-exec-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>some-execution</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <executable>${project.basedir}/src/main/resources/specCleaner.sh</executable>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>

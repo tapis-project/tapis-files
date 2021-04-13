@@ -67,7 +67,7 @@ paths:
           type: integer
           format: int64
       responses:
-        "200"
+        "200":
           description: OK
         "401":
           description: Not Authenticated
@@ -83,7 +83,7 @@ paths:
       description: Health check
       operationId: healthCheck
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
@@ -128,7 +128,7 @@ paths:
           default: 0
         example: 1000
       responses:
-        "200"
+        "200":
           description: A list of files
           content:
             application/json:
@@ -183,7 +183,7 @@ paths:
             schema:
               $ref: '#/components/schemas/MoveCopyRenameRequest'
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
@@ -245,7 +245,7 @@ paths:
                   type: string
                   format: binary
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
@@ -289,7 +289,7 @@ paths:
         schema:
           type: string
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
@@ -339,7 +339,7 @@ paths:
             schema:
               $ref: '#/components/schemas/MkdirRequest'
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
@@ -389,7 +389,7 @@ paths:
         schema:
           type: string
       responses:
-        "200"
+        "200":
           description: FilePermission
           content:
             application/json:
@@ -422,7 +422,7 @@ paths:
               $ref: '#/components/schemas/CreatePermissionRequest'
         required: true
       responses:
-        "200"
+        "200":
           description: FilePermission
           content:
             application/json:
@@ -454,7 +454,7 @@ paths:
         schema:
           type: string
       responses:
-        "200"
+        "200":
           description: FilePermission
           content:
             application/json:
@@ -481,7 +481,7 @@ paths:
         schema:
           type: string
       responses:
-        "200"
+        "200":
           description: List of shares
           content:
             application/json:
@@ -515,7 +515,7 @@ paths:
             schema:
               $ref: '#/components/schemas/ShareFileRequest'
       responses:
-        "200"
+        "200":
           description: Shared file object
           content:
             application/json:
@@ -541,7 +541,7 @@ paths:
         schema:
           type: string
       responses:
-        "200"
+        "200":
           description: Shared file object
           content:
             application/json:
@@ -572,7 +572,7 @@ paths:
           default: 0
         example: 1000
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
@@ -592,7 +592,7 @@ paths:
               $ref: '#/components/schemas/TransferTaskRequest'
         required: true
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
@@ -613,7 +613,7 @@ paths:
           type: string
         example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
@@ -633,7 +633,7 @@ paths:
           type: string
         example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
@@ -654,7 +654,7 @@ paths:
           type: string
         example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
       responses:
-        "200"
+        "200":
           description: OK
           content:
             application/json:
