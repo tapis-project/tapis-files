@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.lib.services;
+package edu.utexas.tacc.tapis.files.lib.providers;
 
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import org.glassfish.hk2.api.Factory;

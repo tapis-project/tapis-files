@@ -31,7 +31,7 @@ import java.util.Objects;
 
 
 @Path("/v3/files/content")
-public class ContentApiResource extends BaseFilesResource {
+public class ContentApiResource extends BaseFileOpsResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";

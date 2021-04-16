@@ -54,7 +54,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Path("/v3/files/ops")
-public class OperationsApiResource extends BaseFilesResource {
+public class OperationsApiResource extends BaseFileOpsResource {
 
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";

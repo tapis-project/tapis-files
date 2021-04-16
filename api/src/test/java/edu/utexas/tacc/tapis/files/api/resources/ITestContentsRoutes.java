@@ -5,13 +5,12 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.files.lib.services.ServiceClientsFactory;
-import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
+import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -25,8 +24,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
-import org.apache.commons.codec.Charsets;
-import org.apache.commons.io.IOUtils;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.TestProperties;
@@ -110,24 +107,26 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     protected ResourceConfig configure() {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
+        forceSet(TestProperties.CONTAINER_PORT, "0");
+
         skClient = Mockito.mock(SKClient.class);
         serviceClients = Mockito.mock(ServiceClients.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
         JWTValidateRequestFilter.setService("files");
         JWTValidateRequestFilter.setSiteId("tacc");
+        ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
         ResourceConfig app = new BaseResourceConfig()
             .register(JWTValidateRequestFilter.class)
             .register(new AbstractBinder() {
                 @Override
                 protected void configure() {
                     bind(serviceClients).to(ServiceClients.class);
-                    bind(systemsClient).to(SystemsClient.class);
                     bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-                    bind(serviceJWT).to(ServiceJWT.class);
                     bindAsContract(SystemsCache.class);
                     bindAsContract(FilePermsService.class);
                     bindAsContract(FilePermsCache.class);
+                    bind(serviceContext).to(ServiceContext.class);
                     bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
                     bindAsContract(RemoteDataClientFactory.class);
                     bind(sshConnectionCache).to(SSHConnectionCache.class);
@@ -190,6 +189,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     public void beforeTest() throws Exception {
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
+        when(serviceClients.getClient(any(String.class), any(String.class), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
     }
 

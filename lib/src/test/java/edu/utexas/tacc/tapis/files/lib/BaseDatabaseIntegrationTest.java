@@ -2,16 +2,19 @@ package edu.utexas.tacc.tapis.files.lib;
 
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
+import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
+import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
-import edu.utexas.tacc.tapis.files.lib.transfers.ParentTaskFSM;
-import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
+import edu.utexas.tacc.tapis.files.lib.providers.ServiceJWTCacheFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -19,7 +22,6 @@ import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
-import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.io.IOUtils;
 import org.flywaydb.core.Flyway;
 import org.glassfish.hk2.api.ServiceLocator;
@@ -42,9 +44,7 @@ import javax.inject.Singleton;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -64,7 +64,7 @@ public abstract class BaseDatabaseIntegrationTest  {
 
     protected SKClient skClient = Mockito.mock(SKClient.class);
     protected SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-    protected ServiceJWT serviceJWT;
+    protected ServiceClients serviceClients = Mockito.mock(ServiceClients.class);
     protected TransfersService transfersService;
     protected IFileOpsService fileOpsService;
 
@@ -124,24 +124,20 @@ public abstract class BaseDatabaseIntegrationTest  {
         transferMechs = new ArrayList<>();
         transferMechs.add(TransferMethodEnum.SFTP);
         testSystemPKI.setTransferMethods(transferMechs);
+        ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
 
-        serviceJWT = Mockito.mock(ServiceJWT.class);
-        ServiceJWTCacheFactory serviceJWTFactory = Mockito.mock(ServiceJWTCacheFactory.class);
-        when(serviceJWTFactory.provide()).thenReturn(serviceJWT);
 
         locator = ServiceLocatorUtilities.bind(new AbstractBinder() {
             @Override
             protected void configure() {
-            bind(systemsClient).to(SystemsClient.class);
             bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-            bind(skClient).to(SKClient.class);
-            bind(serviceJWT).to(ServiceJWT.class);
             bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-            bind(serviceJWTFactory).to(ServiceJWTCacheFactory.class);
             bindAsContract(SystemsCache.class).in(Singleton.class);
             bindAsContract(FilePermsCache.class).in(Singleton.class);
             bindAsContract(TransfersService.class).in(Singleton.class);
             bindAsContract(FileTransfersDAO.class);
+            bind(serviceClients).to(ServiceClients.class);
+            bind(serviceContext).to(ServiceContext.class);
             bindAsContract(RemoteDataClientFactory.class);
             bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
             }

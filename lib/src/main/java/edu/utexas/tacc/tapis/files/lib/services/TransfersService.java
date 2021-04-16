@@ -311,6 +311,7 @@ public class TransfersService {
 
     private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent) {
         log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
+        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", e));
         m.nack(false);
 
         //TODO: UPDATE this when the Optional stuff gets integrated

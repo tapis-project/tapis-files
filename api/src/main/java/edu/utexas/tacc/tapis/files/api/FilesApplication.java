@@ -6,9 +6,9 @@ import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.files.lib.services.ServiceClientsFactory;
-import edu.utexas.tacc.tapis.files.lib.utils.ServiceJWTCacheFactory;
-import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
+import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
+import edu.utexas.tacc.tapis.files.lib.providers.ServiceJWTCacheFactory;
+import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -18,13 +18,9 @@ import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
-import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
-import edu.utexas.tacc.tapis.systems.client.SystemsClient;
-import edu.utexas.tacc.tapis.tenants.client.TenantsClient;
-import edu.utexas.tacc.tapis.tokens.client.TokensClient;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
@@ -36,7 +32,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
-import org.glassfish.grizzly.nio.transport.TCPNIOTransportBuilder;
 import org.glassfish.grizzly.threadpool.ThreadPoolConfig;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
@@ -117,17 +112,12 @@ public class FilesApplication extends BaseResourceConfig {
             protected void configure() {
                 bindAsContract(FileTransfersDAO.class);
                 bindAsContract(TransfersService.class);
-                bindAsContract(SKClient.class);
-                bindAsContract(SystemsClient.class);
-                bindAsContract(TokensClient.class);
-                bindAsContract(TenantsClient.class);
                 bindAsContract(SystemsCache.class).in(Singleton.class);
                 bindAsContract(FilePermsService.class).in(Singleton.class);
                 bindAsContract(FilePermsCache.class).in(Singleton.class);
+                bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
                 bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
-                bindFactory(ServiceJWTCacheFactory.class).to(ServiceJWT.class).in(Singleton.class);
-                bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
                 bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
                 bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
                 bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
@@ -152,17 +142,6 @@ public class FilesApplication extends BaseResourceConfig {
         }
 
         server.start();
-
-//        final Channel server = NettyHttpContainerProvider.createHttp2Server(BASE_URI, config, null);
-//
-//        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                server.close();
-//            }
-//        }));
-//        Thread.currentThread().join();
-
 
     }
 }

@@ -4,10 +4,15 @@ package edu.utexas.tacc.tapis.files.lib.caches;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
@@ -26,18 +31,13 @@ import java.util.concurrent.ExecutionException;
 public class SystemsCache {
 
     private static final Logger log = LoggerFactory.getLogger(SystemsCache.class);
-    private final SystemsClient systemsClient;
-    private final ServiceJWT serviceJWT;
     private final IRuntimeConfig config;
     private final LoadingCache<SystemCacheKey, TapisSystem> cache;
-    private final TenantManager tenantCache;
+    private final ServiceClients serviceClients;
 
     @Inject
-    public SystemsCache(SystemsClient systemsClient, ServiceJWT serviceJWT, TenantManager tenantCache) {
-        log.info("Instantiating new SystemsCache");
-        this.systemsClient = systemsClient;
-        this.serviceJWT = serviceJWT;
-        this.tenantCache = tenantCache;
+    public SystemsCache(ServiceClients serviceClients) {
+        this.serviceClients = serviceClients;
         this.config = RuntimeSettings.get();
         cache = CacheBuilder.newBuilder()
             .expireAfterWrite(Duration.ofMinutes(5))
@@ -60,12 +60,8 @@ public class SystemsCache {
 
         @Override
         public TapisSystem load(SystemCacheKey key) throws Exception {
-            Tenant tenant = tenantCache.getTenant(key.getTenantId());
-            systemsClient.setBasePath(tenant.getBaseUrl());
-            systemsClient.addDefaultHeader("x-tapis-user", key.getUsername());
-            systemsClient.addDefaultHeader("x-tapis-token", serviceJWT.getAccessJWT(config.getSiteId()));
-            systemsClient.addDefaultHeader("x-tapis-tenant", key.getTenantId());
-            TapisSystem system = systemsClient.getSystemWithCredentials(key.getSystemId(), null);
+            SystemsClient client = serviceClients.getClient(key.getUsername(), key.getTenantId(), SystemsClient.class);
+            TapisSystem system = client.getSystemWithCredentials(key.getSystemId(), null);
             return system;
         }
     }
@@ -112,6 +108,5 @@ public class SystemsCache {
 
         }
     }
-
 
 }

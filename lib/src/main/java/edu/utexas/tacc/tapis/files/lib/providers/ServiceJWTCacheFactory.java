@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.lib.utils;
+package edu.utexas.tacc.tapis.files.lib.providers;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;

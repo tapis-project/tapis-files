@@ -50,29 +50,30 @@ public class FilePermsCache {
         }
     }
 
-  /**
-   * Return Permission or null if no permission granted
-   * @param tenantId
-   * @param username
-   * @param systemId
-   * @param path
-   * @return Permission - null if no permission granted
-   * @throws ServiceException
-   */
+    /**
+     * Return Permission or null if no permission granted
+     *
+     * @param tenantId
+     * @param username
+     * @param systemId
+     * @param path
+     * @return Permission - null if no permission granted
+     * @throws ServiceException
+     */
     public Permission fetchPerm(String tenantId, String username, String systemId, String path) throws ServiceException {
         try {
-          FilePermCacheKey key = new FilePermCacheKey(tenantId, systemId, path, username, Permission.MODIFY);
-          if (cache.get(key)) return Permission.MODIFY;
-          key = new FilePermCacheKey(tenantId, systemId, path, username, Permission.READ);
-          if (cache.get(key)) return Permission.READ;
-          return null;
+            FilePermCacheKey key = new FilePermCacheKey(tenantId, systemId, path, username, Permission.MODIFY);
+            if (cache.get(key)) return Permission.MODIFY;
+            key = new FilePermCacheKey(tenantId, systemId, path, username, Permission.READ);
+            if (cache.get(key)) return Permission.READ;
+            return null;
         } catch (ExecutionException ex) {
-          String msg = Utils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, systemId, username, ex.getMessage());
-          throw new ServiceException(msg, ex);
+            String msg = Utils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, systemId, username, ex.getMessage());
+            throw new ServiceException(msg, ex);
         }
-  }
+    }
 
-  private class PermsLoader extends CacheLoader<FilePermCacheKey, Boolean> {
+    private class PermsLoader extends CacheLoader<FilePermCacheKey, Boolean> {
 
         @Override
         public Boolean load(FilePermCacheKey key) throws Exception {
@@ -82,8 +83,7 @@ public class FilePermsCache {
         }
     }
 
-    private static class FilePermCacheKey
-    {
+    private static class FilePermCacheKey {
         private final String tenantId;
         private final String username;
         private final String systemId;
@@ -114,7 +114,9 @@ public class FilePermsCache {
             return username;
         }
 
-        public Permission getPerm() { return perm; }
+        public Permission getPerm() {
+            return perm;
+        }
 
         @Override
         public boolean equals(Object o) {
@@ -141,21 +143,22 @@ public class FilePermsCache {
         }
     }
 
-  /**
-   * Get Security Kernel client
-   * @param tenantName -
-   * @param username -
-   * @return SK client
-   * @throws TapisClientException - for Tapis related exceptions
-   */
-  private SKClient getSKClient(String tenantName, String username) throws TapisClientException {
-    SKClient skClient;
-    try { skClient = serviceClients.getClient(username, tenantName, SKClient.class); }
-    catch (Exception e)
-    {
-      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_FILES, tenantName, username);
-      throw new TapisClientException(msg, e);
+    /**
+     * Get Security Kernel client
+     *
+     * @param tenantName -
+     * @param username   -
+     * @return SK client
+     * @throws TapisClientException - for Tapis related exceptions
+     */
+    private SKClient getSKClient(String tenantName, String username) throws TapisClientException {
+        SKClient skClient;
+        try {
+            skClient = serviceClients.getClient(username, tenantName, SKClient.class);
+        } catch (Exception e) {
+            String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_FILES, tenantName, username);
+            throw new TapisClientException(msg, e);
+        }
+        return skClient;
     }
-    return skClient;
-  }
 }

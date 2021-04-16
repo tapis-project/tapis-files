@@ -6,12 +6,14 @@ import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
-import edu.utexas.tacc.tapis.files.lib.utils.TenantCacheFactory;
+import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
@@ -42,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -86,32 +89,34 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
     public void setUp() throws Exception {
         super.setUp();
         when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
+        when(serviceClients.getClient(any(String.class), any(String.class), eq(SystemsClient.class))).thenReturn(systemsClient);
     }
 
     @Override
     protected ResourceConfig configure() {
-        forceSet(TestProperties.CONTAINER_PORT, "0");
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
+        forceSet(TestProperties.CONTAINER_PORT, "0");
+
         skClient = Mockito.mock(SKClient.class);
         serviceClients = Mockito.mock(ServiceClients.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
         JWTValidateRequestFilter.setSiteId("tacc");
         JWTValidateRequestFilter.setService("files");
+        ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
         ResourceConfig app = new BaseResourceConfig()
             .register(JWTValidateRequestFilter.class)
             .register(FilePermissionsAuthz.class)
             .register(new AbstractBinder() {
                 @Override
                 protected void configure() {
-                    bind(systemsClient).to(SystemsClient.class);
                     bind(serviceClients).to(ServiceClients.class);
-                    bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-                    bind(serviceJWT).to(ServiceJWT.class);
-                    bindAsContract(FilePermsService.class).in(Singleton.class);
-                    bindAsContract(FilePermsCache.class).in(Singleton.class);
-                    bindAsContract(SystemsCache.class).in(Singleton.class);
+                    bind(new TenantCacheFactory().provide()).to(TenantManager.class);
+                    bindAsContract(SystemsCache.class);
+                    bindAsContract(FilePermsService.class);
+                    bindAsContract(FilePermsCache.class);
+                    bind(serviceContext).to(ServiceContext.class);
                 }
             });
 
@@ -123,6 +128,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
     public void testPermissionsWithServiceJwt() throws Exception {
         testSystem.setOwner("testuser2");
         log.info(getServiceJwt());
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
         try {
@@ -149,6 +155,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
     @Test
     public void testPermissionsWithServiceJwtShould403() throws Exception {
         testSystem.setOwner("testuser1");
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
@@ -168,6 +175,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         Test the authz filter for permissions operations. The system is owned by testuser2,
         but testuser1 is making the request. Should return 403
          */
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         testSystem.setOwner("testuser2");
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
@@ -188,6 +196,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         /*
         Test the authz filter for permissions operations. Should return 200
          */
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         testSystem.setOwner("testuser1");
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         CreatePermissionRequest req = new CreatePermissionRequest();
@@ -204,6 +213,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
     @Test
     public void testAddPermissions() throws Exception {
         testSystem.setOwner("testuser1");
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         CreatePermissionRequest req = new CreatePermissionRequest();
         req.setPermission(Permission.MODIFY);
@@ -223,6 +233,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         // see get their own permissions. testuser1, the owner of the system is making this request, but checking
         // to see what permissions testuser3 has.
         testSystem.setOwner("testuser1");
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         Response response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
@@ -239,6 +250,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         // see get their own permissions. testuser2, the owner of the system is making this request, but checking
         // to see what permissions the API user, testuser1 has.
         testSystem.setOwner("testuser2");
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
 
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
@@ -261,6 +273,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         // see get their own permissions. testuser2, the owner of the system is making this request, but checking
         // to see what permissions the API user, testuser1 has.
         testSystem.setOwner("testuser2");
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
 
         when(skClient.isPermitted(any(), any(), any())).thenReturn(false);
@@ -287,6 +300,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         // testuser3 is who testuser1 is asking about
         testSystem.setOwner("testuser2");
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
 
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
         FilePermissionResponse response = target("/v3/files/permissions/testSystem/a/")
@@ -303,6 +317,7 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
     @Test
     public void testDeletePermsNoUsername() throws Exception {
         testSystem.setOwner("testuser1");
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         Response response = target("/v3/files/permissions/testSystem/a/")
             .request()
