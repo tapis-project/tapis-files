@@ -317,6 +317,9 @@ public class TransfersService {
         //TODO: UPDATE this when the Optional stuff gets integrated
         try {
             TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
+            if (task == null) {
+                return Mono.empty();
+            }
             task.setStatus(TransferTaskStatus.FAILED);
             task.setEndTime(Instant.now());
             task.setErrorMessage(e.getMessage());
