@@ -682,6 +682,8 @@ components:
           type: string
         version:
           type: string
+        metadata:
+          type: object
     FileStringResponse:
       type: object
       properties:
@@ -693,6 +695,8 @@ components:
           type: string
         version:
           type: string
+        metadata:
+          type: object
     MkdirRequest:
       required:
       - path
@@ -740,6 +744,8 @@ components:
             $ref: '#/components/schemas/FileInfo'
         version:
           type: string
+        metadata:
+          type: object
     MoveCopyRenameRequest:
       required:
       - newPath
@@ -782,6 +788,8 @@ components:
           $ref: '#/components/schemas/FilePermission'
         version:
           type: string
+        metadata:
+          type: object
     TapisResponseFilePermission:
       type: object
       properties:
@@ -793,6 +801,8 @@ components:
           $ref: '#/components/schemas/FilePermission'
         version:
           type: string
+        metadata:
+          type: object
     CreatePermissionRequest:
       required:
       - permission
@@ -817,6 +827,8 @@ components:
           type: string
         version:
           type: string
+        metadata:
+          type: object
     SharedFileObject:
       type: object
       properties:
@@ -963,6 +975,21 @@ components:
         endTime:
           type: string
           format: date-time
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
+        metadata:
+          type: object
     TransferTaskParent:
       type: object
       properties:
@@ -1030,6 +1057,19 @@ components:
           $ref: '#/components/schemas/TransferTask'
         version:
           type: string
+        metadata:
+          type: object
+    TapisResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        metadata:
+          type: object
+        version:
+          type: string
     TransferTaskRequest:
       required:
       - elements
@@ -1055,27 +1095,3 @@ components:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: object
-        version:
-          type: string

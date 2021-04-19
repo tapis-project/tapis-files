@@ -963,6 +963,9 @@
           },
           "version" : {
             "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
           }
         }
       },
@@ -980,6 +983,9 @@
           },
           "version" : {
             "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
           }
         }
       },
@@ -1048,6 +1054,9 @@
           },
           "version" : {
             "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
           }
         }
       },
@@ -1100,6 +1109,9 @@
           },
           "version" : {
             "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
           }
         }
       },
@@ -1117,6 +1129,9 @@
           },
           "version" : {
             "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
           }
         }
       },
@@ -1147,6 +1162,9 @@
           },
           "version" : {
             "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
           }
         }
       },
@@ -1323,6 +1341,29 @@
           }
         }
       },
+      "TransferTaskListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTask"
+            }
+          },
+          "version" : {
+            "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
+          }
+        }
+      },
       "TransferTaskParent" : {
         "type" : "object",
         "properties" : {
@@ -1402,6 +1443,26 @@
           },
           "version" : {
             "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
+          }
+        }
+      },
+      "TapisResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
+          },
+          "version" : {
+            "type" : "string"
           }
         }
       },
@@ -1433,43 +1494,6 @@
           "optional" : {
             "type" : "boolean",
             "description" : "Allow the full transfer to succeed even if this portion fails? Default is false"
-          }
-        }
-      },
-      "TransferTaskListResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/TransferTask"
-            }
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
-      "TapisResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "object"
-          },
-          "version" : {
-            "type" : "string"
           }
         }
       }
