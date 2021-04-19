@@ -803,19 +803,6 @@ components:
           type: string
         metadata:
           type: object
-    StringResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: string
-        version:
-          type: string
-        metadata:
-          type: object
     CreatePermissionRequest:
       required:
       - permission
@@ -829,6 +816,19 @@ components:
           enum:
           - READ
           - MODIFY
+    StringResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: string
+        version:
+          type: string
+        metadata:
+          type: object
     SharedFileObject:
       type: object
       properties:
