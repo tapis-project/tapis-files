@@ -638,7 +638,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TapisResponse'
+                $ref: '#/components/schemas/StringResponse'
   /v3/files/transfers/{transferTaskId}/details:
     get:
       tags:
@@ -803,19 +803,6 @@ components:
           type: string
         metadata:
           type: object
-    CreatePermissionRequest:
-      required:
-      - permission
-      - username
-      type: object
-      properties:
-        username:
-          type: string
-        permission:
-          type: string
-          enum:
-          - READ
-          - MODIFY
     StringResponse:
       type: object
       properties:
@@ -829,6 +816,19 @@ components:
           type: string
         metadata:
           type: object
+    CreatePermissionRequest:
+      required:
+      - permission
+      - username
+      type: object
+      properties:
+        username:
+          type: string
+        permission:
+          type: string
+          enum:
+          - READ
+          - MODIFY
     SharedFileObject:
       type: object
       properties:
@@ -1059,17 +1059,6 @@ components:
           type: string
         metadata:
           type: object
-    TapisResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        metadata:
-          type: object
-        version:
-          type: string
     TransferTaskRequest:
       required:
       - elements

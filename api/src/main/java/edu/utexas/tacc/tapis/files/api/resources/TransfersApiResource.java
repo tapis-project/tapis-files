@@ -39,6 +39,7 @@ public class  TransfersApiResource {
     @Inject
     TransfersService transfersService;
 
+    private static class StringResponse extends TapisResponse<String>{}
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
     private static class TransferTaskListResponse extends TapisResponse<List<TransferTask>>{}
 
@@ -159,7 +160,7 @@ public class  TransfersApiResource {
             @ApiResponse(
                     responseCode = "200",
                     description = "OK",
-                    content = @Content(schema = @Schema(implementation = TapisResponse.class))
+                    content = @Content(schema = @Schema(implementation = StringResponse.class))
             )
     })
     public Response cancelTransferTask(
