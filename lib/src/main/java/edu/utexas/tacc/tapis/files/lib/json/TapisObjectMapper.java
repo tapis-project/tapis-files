@@ -23,6 +23,7 @@ public class TapisObjectMapper {
             mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule());
             mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+            mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
             return mapper;
         }
         return mapper;
