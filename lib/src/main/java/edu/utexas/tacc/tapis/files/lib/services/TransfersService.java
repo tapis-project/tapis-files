@@ -17,6 +17,7 @@ import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
