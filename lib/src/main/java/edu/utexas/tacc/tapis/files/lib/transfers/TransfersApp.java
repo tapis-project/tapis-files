@@ -47,7 +47,7 @@ public class TransfersApp {
                 bindAsContract(FileTransfersDAO.class);
                 bindAsContract(TransfersService.class);
                 bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-                bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                bind(new SSHConnectionCache(60, TimeUnit.SECONDS)).to(SSHConnectionCache.class);
                 bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
                 bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
                 bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);

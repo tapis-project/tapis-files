@@ -89,7 +89,8 @@ public class FilesApplication extends BaseResourceConfig {
         super();
 
         runtimeConfig = RuntimeSettings.get();
-
+        TenantManager tenantManager = TenantManager.getInstance(runtimeConfig.getTenantsServiceURL());
+        tenantManager.getTenants();
         JWTValidateRequestFilter.setSiteId(runtimeConfig.getSiteId());
         JWTValidateRequestFilter.setService("files");
         //JWT validation
@@ -115,7 +116,7 @@ public class FilesApplication extends BaseResourceConfig {
                 bindAsContract(SystemsCache.class).in(Singleton.class);
                 bindAsContract(FilePermsService.class).in(Singleton.class);
                 bindAsContract(FilePermsCache.class).in(Singleton.class);
-                bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
+                bind(tenantManager).to(TenantManager.class);
                 bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
                 bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);

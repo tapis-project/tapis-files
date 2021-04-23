@@ -6,7 +6,7 @@
     <parent>
         <groupId>edu.utexas.tacc.tapis</groupId>
         <artifactId>tapis-bom</artifactId>
-        <version>[1.11,2.0)</version>
+        <version>[1.11.30, 2.0)</version>
     </parent>
 
     <artifactId>tapis-files</artifactId>
@@ -14,9 +14,9 @@
     <version>1.1</version>
 
     <properties>
-        <java.version>15</java.version>
+        <java.version>16</java.version>
         <tapis-client-java.version>[1.11.60, 2.0]</tapis-client-java.version>
-        <tapis-shared.version>[1.11.60, 2.0]</tapis-shared.version>
+        <tapis-shared.version>[1.11.80, 2.0]</tapis-shared.version>
         <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
         <hk2.inhabitant.version>3.0.1</hk2.inhabitant.version>
         <jetbrains.annotations.version>20.1.0</jetbrains.annotations.version>
@@ -155,6 +155,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven-failsafe-plugin.version}</version>
                 <configuration>
                     <reuseForks>false</reuseForks>
                     <forkCount>1</forkCount>
