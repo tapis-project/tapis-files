@@ -30,18 +30,6 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
                                                  @NotNull TapisSystem system, @NotNull String username) throws IOException
     {
 
-//        List<TransferMethodEnum> protocols = system.getTransferMethods();
-//        if (protocols == null || protocols.isEmpty())
-//          throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_NULL", oboTenant, oboUser, system.getId()));
-//        if (protocols.contains(TransferMethodEnum.valueOf("SFTP"))) {
-//            SSHConnection sshConnection = sshConnectionCache.getConnection(system, username);
-//            return new SSHDataClient(oboTenant, oboUser, system, sshConnection);
-//        } else if (protocols.contains(TransferMethodEnum.valueOf("S3"))) {
-//            return new S3DataClient(oboTenant, oboUser, system);
-//        } else {
-//            throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_INVALID", oboTenant, oboUser, system.getId(),
-//                                                   Utils.getTransferMethodsAsString(protocols)));
-//        }
       if (SystemTypeEnum.LINUX.equals(system.getSystemType()))
       {
         SSHConnection sshConnection = sshConnectionCache.getConnection(system, username);
