@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.lib.utils;
 
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 
-import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,18 +108,5 @@ public class Utils
       msgValue = sb.toString();
     }
     return msgValue;
-  }
-
-  /**
-   * Return List of transfer methods as a comma delimited list of strings surrounded by curly braces.
-   */
-  public static String getTransferMethodsAsString(List<TransferMethodEnum> txfrMethods)
-  {
-    if (txfrMethods == null || txfrMethods.isEmpty()) return "{}";
-    StringBuilder sb = new StringBuilder("{");
-    for (int i = 0; i < txfrMethods.size()-1; i++) { sb.append(txfrMethods.get(i).name()).append(","); }
-    sb.append(txfrMethods.get(txfrMethods.size()-1).name());
-    sb.append("}");
-    return sb.toString();
   }
 }

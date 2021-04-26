@@ -21,7 +21,6 @@ import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
@@ -78,9 +77,6 @@ public class ITestPermissionsResource extends BaseDatabaseIntegrationTest {
         testSystem.setId("testSystem");
         testSystem.setAuthnCredential(creds);
         testSystem.setRootDir("/");
-        List<TransferMethodEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TransferMethodEnum.S3);
-        testSystem.setTransferMethods(transferMechs);
 
     }
 

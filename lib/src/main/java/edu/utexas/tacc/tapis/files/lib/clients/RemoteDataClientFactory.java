@@ -4,7 +4,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jvnet.hk2.annotations.Service;
 
@@ -27,20 +27,32 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
 
     @Override
     public IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
-                                                 @NotNull TapisSystem system, @NotNull String username) throws IOException {
+                                                 @NotNull TapisSystem system, @NotNull String username) throws IOException
+    {
 
-        List<TransferMethodEnum> protocols = system.getTransferMethods();
-        if (protocols == null || protocols.isEmpty())
-          throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_NULL", oboTenant, oboUser, system.getId()));
-        if (protocols.contains(TransferMethodEnum.valueOf("SFTP"))) {
-            SSHConnection sshConnection = sshConnectionCache.getConnection(system, username);
-            return new SSHDataClient(oboTenant, oboUser, system, sshConnection);
-        } else if (protocols.contains(TransferMethodEnum.valueOf("S3"))) {
-            return new S3DataClient(oboTenant, oboUser, system);
-        } else {
-            throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_INVALID", oboTenant, oboUser, system.getId(),
-                                                   Utils.getTransferMethodsAsString(protocols)));
-        }
-
+//        List<TransferMethodEnum> protocols = system.getTransferMethods();
+//        if (protocols == null || protocols.isEmpty())
+//          throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_NULL", oboTenant, oboUser, system.getId()));
+//        if (protocols.contains(TransferMethodEnum.valueOf("SFTP"))) {
+//            SSHConnection sshConnection = sshConnectionCache.getConnection(system, username);
+//            return new SSHDataClient(oboTenant, oboUser, system, sshConnection);
+//        } else if (protocols.contains(TransferMethodEnum.valueOf("S3"))) {
+//            return new S3DataClient(oboTenant, oboUser, system);
+//        } else {
+//            throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_INVALID", oboTenant, oboUser, system.getId(),
+//                                                   Utils.getTransferMethodsAsString(protocols)));
+//        }
+      if (SystemTypeEnum.LINUX.equals(system.getSystemType()))
+      {
+        SSHConnection sshConnection = sshConnectionCache.getConnection(system, username);
+        return new SSHDataClient(oboTenant, oboUser, system, sshConnection);
+      } else if (SystemTypeEnum.S3.equals(system.getSystemType()))
+      {
+        return new S3DataClient(oboTenant, oboUser, system);
+      } else
+      {
+        throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_INVALID", oboTenant, oboUser, system.getId(),
+                system.getSystemType()));
+      }
     }
 }

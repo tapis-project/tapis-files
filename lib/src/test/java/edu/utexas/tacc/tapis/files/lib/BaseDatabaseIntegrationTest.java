@@ -20,8 +20,8 @@ import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import org.apache.commons.io.IOUtils;
 import org.flywaydb.core.Flyway;
 import org.glassfish.hk2.api.ServiceLocator;
@@ -84,21 +84,20 @@ public abstract class BaseDatabaseIntegrationTest  {
         creds.setAccessKey("testuser");
         creds.setPassword("password");
         testSystemSSH = new TapisSystem();
+        testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
         testSystemSSH.setAuthnCredential(creds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
         testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setId("destSystem");
         testSystemSSH.setEffectiveUserId("testuser");
-        List<TransferMethodEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TransferMethodEnum.SFTP);
-        testSystemSSH.setTransferMethods(transferMechs);
 
         //S3 system
         creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
         testSystemS3 = new TapisSystem();
+        testSystemS3.setSystemType(SystemTypeEnum.S3);
         testSystemS3.setTenant("dev");
         testSystemS3.setHost("http://localhost");
         testSystemS3.setBucketName("test");
@@ -106,24 +105,19 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemS3.setPort(9000);
         testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
-        transferMechs = new ArrayList<>();
-        transferMechs.add(TransferMethodEnum.S3);
-        testSystemS3.setTransferMethods(transferMechs);
 
         // PKI Keys system
         creds = new Credential();
         creds.setPublicKey(publicKey);
         creds.setPrivateKey(privateKey);
         testSystemPKI = new TapisSystem();
+        testSystemPKI.setSystemType(SystemTypeEnum.LINUX);
         testSystemPKI.setAuthnCredential(creds);
         testSystemPKI.setHost("localhost");
         testSystemPKI.setPort(2222);
         testSystemPKI.setRootDir("/data/home/testuser/");
         testSystemPKI.setId("testSystem");
         testSystemPKI.setEffectiveUserId("testuser");
-        transferMechs = new ArrayList<>();
-        transferMechs.add(TransferMethodEnum.SFTP);
-        testSystemPKI.setTransferMethods(transferMechs);
         ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
 
 

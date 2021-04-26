@@ -27,7 +27,6 @@ import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TransferMethodEnum;
 import org.apache.commons.lang3.tuple.Pair;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.client.ClientConfig;
@@ -102,9 +101,6 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setId("testSystem");
         testSystemSSH.setEffectiveUserId("testuser");
-        List<TransferMethodEnum> tMechs = new ArrayList<>();
-        tMechs.add(TransferMethodEnum.SFTP);
-        testSystemSSH.setTransferMethods(tMechs);
 
         creds = new Credential();
         creds.setAccessKey("user");
@@ -117,9 +113,6 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         testSystemS3.setId("testSystem");
         testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
-        List<TransferMethodEnum> transferMechs = new ArrayList<>();
-        transferMechs.add(TransferMethodEnum.S3);
-        testSystemS3.setTransferMethods(transferMechs);
 
         testSystems.add(testSystemSSH);
         testSystems.add(testSystemS3);
