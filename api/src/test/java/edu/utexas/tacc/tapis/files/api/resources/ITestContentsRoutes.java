@@ -5,6 +5,8 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
@@ -20,6 +22,7 @@ import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
@@ -67,6 +70,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     private ServiceJWT serviceJWT;
     private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(1, TimeUnit.SECONDS);
     private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
+    private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
     private ITestContentsRoutes() throws Exception {
         //List<String> creds = new ArrayList<>();
@@ -74,6 +78,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
         testSystem = new TapisSystem();
+        testSystem.setSystemType(SystemTypeEnum.S3);
         testSystem.setHost("http://localhost");
         testSystem.setPort(9000);
         testSystem.setBucketName("test");
@@ -86,6 +91,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         sshCreds.setAccessKey("testuser");
         sshCreds.setPassword("password");
         testSystemSSH = new TapisSystem();
+        testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
         testSystemSSH.setAuthnCredential(sshCreds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
@@ -107,16 +113,21 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         JWTValidateRequestFilter.setService("files");
         JWTValidateRequestFilter.setSiteId("tacc");
         ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
+
+        IRuntimeConfig runtimeConfig = RuntimeSettings.get();
+        TenantManager tenantManager = TenantManager.getInstance(runtimeConfig.getTenantsServiceURL());
+        tenantManager.getTenants();
+
         ResourceConfig app = new BaseResourceConfig()
             .register(JWTValidateRequestFilter.class)
             .register(new AbstractBinder() {
                 @Override
                 protected void configure() {
+                    bind(permsService).to(FilePermsService.class);
                     bind(serviceClients).to(ServiceClients.class);
-                    bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
+                    bind(tenantManager).to(TenantManager.class);
                     bindAsContract(SystemsCache.class);
                     bindAsContract(FilePermsService.class);
-                    bindAsContract(FilePermsCache.class);
                     bind(serviceContext).to(ServiceContext.class);
                     bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
                     bindAsContract(RemoteDataClientFactory.class);
@@ -182,6 +193,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
         when(serviceClients.getClient(any(String.class), any(String.class), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     }
 
 

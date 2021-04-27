@@ -1,23 +1,28 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.Utils;
+import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import jdk.jshell.execution.Util;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.apache.commons.io.IOUtils;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
 import javax.inject.Singleton;
+import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -36,6 +41,7 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 /*
  These tests are designed to run against the ssh-machine image in the service's docker-compose file.
@@ -52,6 +58,7 @@ public class ITestFileOpsService {
     private RemoteDataClientFactory remoteDataClientFactory;
     private IFileOpsService fileOpsService;
     private static final Logger log  = LoggerFactory.getLogger(ITestFileOpsService.class);
+    private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
     private ITestFileOpsService() throws IOException {
         String privateKey = IOUtils.toString(
@@ -67,6 +74,7 @@ public class ITestFileOpsService {
         creds.setAccessKey("testuser");
         creds.setPassword("password");
         testSystemSSH = new TapisSystem();
+        testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
         testSystemSSH.setAuthnCredential(creds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
@@ -79,6 +87,7 @@ public class ITestFileOpsService {
         creds.setPublicKey(publicKey);
         creds.setPrivateKey(privateKey);
         testSystemPKI = new TapisSystem();
+        testSystemPKI.setSystemType(SystemTypeEnum.LINUX);
         testSystemPKI.setAuthnCredential(creds);
         testSystemPKI.setHost("localhost");
         testSystemPKI.setPort(2222);
@@ -91,6 +100,7 @@ public class ITestFileOpsService {
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
         testSystemS3 = new TapisSystem();
+        testSystemS3.setSystemType(SystemTypeEnum.S3);
         testSystemS3.setHost("http://localhost");
         testSystemS3.setBucketName("test");
         testSystemS3.setId("testSystem");
@@ -116,7 +126,7 @@ public class ITestFileOpsService {
             protected void configure() {
                 bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
-                bind(IFileOpsService.class).to(FileOpsService.class).in(Singleton.class);
+                bind(permsService).to(FilePermsService.class).ranked(1);
             }
         });
         remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
@@ -130,6 +140,7 @@ public class ITestFileOpsService {
 
     @AfterTest()
     public void tearDown() throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemSSH, "testuser");
         fileOpsService.delete(client,"/");
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemS3, "testuser");
@@ -138,6 +149,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testInsertAndDelete(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -151,6 +163,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testInsertAndDeleteNested(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert(client,"a/b/c/test.txt", in);
@@ -164,6 +177,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testInsertAndGet(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -175,6 +189,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testListing(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -186,6 +201,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testInsertLargeFile(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -197,6 +213,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testGetBytesByRange(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.insert(client,"test.txt", in);
@@ -206,6 +223,7 @@ public class ITestFileOpsService {
 
     @Test(dataProvider = "testSystems")
     public void testZipFolder(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         fileOpsService.insert(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
         fileOpsService.insert(client,"a/test2.txt", Utils.makeFakeFile(1000 * 1024));
@@ -227,5 +245,28 @@ public class ITestFileOpsService {
         file.deleteOnExit();
 
     }
+
+
+    @Test(dataProvider = "testSystems")
+    public void testInsertNoAuthz(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+        InputStream in = Utils.makeFakeFile(10*1024);
+
+        Assert.assertThrows(NotAuthorizedException.class, ()-> {
+            fileOpsService.insert(client,"test.txt", in);
+        });
+    }
+
+    @Test(dataProvider = "testSystems")
+    public void testListingNoAuthz(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+        Assert.assertThrows(NotAuthorizedException.class, ()-> {
+            fileOpsService.ls(client,"test.txt");
+        });
+
+    }
+
 
 }

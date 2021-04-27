@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -56,6 +57,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Mockito.reset(systemsClient);
         sourceSystem = testSystemS3;
         destSystem = testSystemSSH;
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         fileOpsService.delete(client, "/");
         InputStream in = Utils.makeFakeFile(10 * 1024);
@@ -79,7 +81,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-
         String childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(childQ);
         String parentQ = UUID.randomUUID().toString();

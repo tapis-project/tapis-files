@@ -112,19 +112,17 @@ public class OperationsApiResource extends BaseFileOpsResource {
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
             //TODO: This feels like it should be in the service layer
-            listing.forEach(f-> {
+            listing.forEach(f -> {
                 String uri = String.format("tapis://%s/%s/%s", user.getOboTenantId(), systemId, f.getPath());
                 f.setUri(uri);
             });
-          String msg = Utils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
-          log.debug(msg);
+            String msg = Utils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+            log.debug(msg);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
             return Response.status(Status.OK).entity(resp).build();
-        }
-        catch (NotFoundException e) {
-          throw new NotFoundException(Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage()));
-        }
-        catch (ServiceException | IOException e) {
+        } catch (NotFoundException e) {
+            throw new NotFoundException(Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage()));
+        } catch (ServiceException | IOException e) {
             String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);

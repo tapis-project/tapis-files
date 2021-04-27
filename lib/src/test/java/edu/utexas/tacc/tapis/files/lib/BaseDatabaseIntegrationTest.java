@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
@@ -65,6 +66,8 @@ public abstract class BaseDatabaseIntegrationTest  {
     protected SKClient skClient = Mockito.mock(SKClient.class);
     protected SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
     protected ServiceClients serviceClients = Mockito.mock(ServiceClients.class);
+    protected FilePermsService permsService = Mockito.mock(FilePermsService.class);
+
     protected TransfersService transfersService;
     protected IFileOpsService fileOpsService;
 
@@ -127,9 +130,9 @@ public abstract class BaseDatabaseIntegrationTest  {
             bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
             bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
             bindAsContract(SystemsCache.class).in(Singleton.class);
-            bindAsContract(FilePermsCache.class).in(Singleton.class);
             bindAsContract(TransfersService.class).in(Singleton.class);
             bindAsContract(FileTransfersDAO.class);
+            bind(permsService).to(FilePermsService.class);
             bind(serviceClients).to(ServiceClients.class);
             bind(serviceContext).to(ServiceContext.class);
             bindAsContract(RemoteDataClientFactory.class);

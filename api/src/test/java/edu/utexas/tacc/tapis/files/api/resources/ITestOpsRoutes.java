@@ -9,6 +9,8 @@ import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
@@ -26,6 +28,7 @@ import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.tuple.Pair;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
@@ -69,11 +72,9 @@ import static org.mockito.Mockito.when;
 public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
     private Logger log = LoggerFactory.getLogger(ITestOpsRoutes.class);
-    private static class FileListResponse extends TapisResponse<List<FileInfo>> {
-    }
+    private static class FileListResponse extends TapisResponse<List<FileInfo>> {}
 
-    private static class FileStringResponse extends TapisResponse<String> {
-    }
+    private static class FileStringResponse extends TapisResponse<String> {}
 
     private TapisSystem testSystemSSH;
     private TapisSystem testSystemS3;
@@ -86,6 +87,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     private SystemsClient systemsClient;
     private SKClient skClient;
     private ServiceJWT serviceJWT;
+    private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
 
 
@@ -95,6 +97,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         sshCreds.setAccessKey("testuser");
         sshCreds.setPassword("password");
         testSystemSSH = new TapisSystem();
+        testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
         testSystemSSH.setAuthnCredential(sshCreds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
@@ -106,6 +109,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
         testSystemS3 = new TapisSystem();
+        testSystemS3.setSystemType(SystemTypeEnum.S3);
         testSystemS3.setOwner("testuser1");
         testSystemS3.setHost("http://localhost");
         testSystemS3.setPort(9000);
@@ -130,7 +134,9 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         JWTValidateRequestFilter.setSiteId("tacc");
         JWTValidateRequestFilter.setService("files");
         ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
-
+        IRuntimeConfig runtimeConfig = RuntimeSettings.get();
+        TenantManager tenantManager = TenantManager.getInstance(runtimeConfig.getTenantsServiceURL());
+        tenantManager.getTenants();
         //JWT validation
         ResourceConfig app = new BaseResourceConfig()
             .register(JWTValidateRequestFilter.class)
@@ -139,9 +145,8 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
                 @Override
                 protected void configure() {
                     bind(serviceClients).to(ServiceClients.class);
-                    bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-                    bindAsContract(FilePermsService.class).in(Singleton.class);
-                    bindAsContract(FilePermsCache.class).in(Singleton.class);
+                    bind(tenantManager).to(TenantManager.class);
+                    bind(permsService).to(FilePermsService.class);
                     bindAsContract(SystemsCache.class).in(Singleton.class);
                     bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
                     bindAsContract(RemoteDataClientFactory.class);
@@ -158,6 +163,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     }
 
 
@@ -277,6 +283,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         FileDataBodyPart filePart = new FileDataBodyPart("file", tempFile);
         FormDataMultiPart form = new FormDataMultiPart();
         FormDataMultiPart multiPart = (FormDataMultiPart) form.bodyPart(filePart);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         FileStringResponse response = target("/v3/files/ops/" + system.getId() + "/" + fileName)
             .request()
             .accept(MediaType.APPLICATION_JSON)
@@ -319,7 +326,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     public void testGetListNoAuthz(TapisSystem testSystem) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
-        when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(false);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
         Response response = target("/v3/files/ops/testSystem/testfile1.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
