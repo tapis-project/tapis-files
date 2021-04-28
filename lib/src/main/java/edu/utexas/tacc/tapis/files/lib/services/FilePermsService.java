@@ -14,6 +14,7 @@ import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
+
 import javax.inject.Inject;
 
 
@@ -26,10 +27,10 @@ public class FilePermsService {
     // PERMSPEC is "files:tenant:r,rw,*:systemId:path
     private static final String PERMSPEC = "files:%s:%s:%s:%s";
 
-  @Inject
-  private ServiceClients serviceClients;
+    @Inject
+    private ServiceClients serviceClients;
 
-  @Inject
+    @Inject
     public FilePermsService(FilePermsCache permsCache) {
         this.permsCache = permsCache;
     }
@@ -45,13 +46,24 @@ public class FilePermsService {
         }
     }
 
+    public void replacePrefix(String tenantId, String username, String systemId, String oldPath, String newPath) throws ServiceException {
+        try {
+            SKClient skClient = getSKClient(tenantId, username);
+//            skClient.replacePathPrefix(tenantId, )
+
+        } catch (TapisClientException ex) {
+            String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, oldPath, ex.getMessage());
+            throw new ServiceException(msg, ex);
+        }
+    }
+
     public boolean isPermitted(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path, @NotNull Permission perm) throws ServiceException {
         return permsCache.checkPerm(tenantId, username, systemId, path, perm);
     }
 
     public Permission getPermission(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path) throws ServiceException {
         return permsCache.fetchPerm(tenantId, username, systemId, path);
-  }
+    }
 
     public void revokePermission(String tenantId, String username, String systemId, String path) throws ServiceException {
         try {
@@ -66,21 +78,22 @@ public class FilePermsService {
         }
     }
 
-  /**
-   * Get Security Kernel client
-   * @param tenantName
-   * @param username
-   * @return SK client
-   * @throws TapisClientException - for Tapis related exceptions
-   */
+    /**
+     * Get Security Kernel client
+     *
+     * @param tenantName
+     * @param username
+     * @return SK client
+     * @throws TapisClientException - for Tapis related exceptions
+     */
     private SKClient getSKClient(String tenantName, String username) throws TapisClientException {
-      SKClient skClient;
-      try { skClient = serviceClients.getClient(username, tenantName, SKClient.class); }
-      catch (Exception e)
-      {
-        String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_FILES, tenantName, username);
-        throw new TapisClientException(msg, e);
-      }
-      return skClient;
+        SKClient skClient;
+        try {
+            skClient = serviceClients.getClient(username, tenantName, SKClient.class);
+        } catch (Exception e) {
+            String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_FILES, tenantName, username);
+            throw new TapisClientException(msg, e);
+        }
+        return skClient;
     }
 }

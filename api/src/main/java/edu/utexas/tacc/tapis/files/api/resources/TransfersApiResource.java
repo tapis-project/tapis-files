@@ -1,6 +1,9 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -38,6 +41,9 @@ public class  TransfersApiResource {
 
     @Inject
     TransfersService transfersService;
+
+    @Inject
+    FilePermsService permsService;
 
     private static class StringResponse extends TapisResponse<String>{}
     private static class TransferTaskResponse extends TapisResponse<TransferTask>{}
@@ -219,7 +225,7 @@ public class  TransfersApiResource {
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             resp.setMessage("Transfer created.");
             return Response.ok(resp).build();
-        } catch (Exception ex) {
+        } catch (ServiceException ex) {
             String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);

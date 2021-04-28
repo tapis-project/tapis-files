@@ -31,6 +31,9 @@ import reactor.util.retry.Retry;
 
 import javax.inject.Inject;
 import org.jetbrains.annotations.NotNull;
+
+import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,6 +59,7 @@ public class TransfersService {
     private final FileTransfersDAO dao;
     private final RemoteDataClientFactory remoteDataClientFactory;
     private final SystemsCache systemsCache;
+    private final FilePermsService permsService;
 
     private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]{
         TransferTaskStatus.FAILED,
@@ -65,6 +69,7 @@ public class TransfersService {
 
     @Inject
     public TransfersService(FileTransfersDAO dao,
+                            FilePermsService permsService,
                             RemoteDataClientFactory remoteDataClientFactory,
                             SystemsCache systemsCache) {
         ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
@@ -79,6 +84,7 @@ public class TransfersService {
         this.dao = dao;
         this.remoteDataClientFactory = remoteDataClientFactory;
         this.systemsCache = systemsCache;
+        this.permsService = permsService;
     }
 
     public void setParentQueue(String name) {
@@ -187,7 +193,33 @@ public class TransfersService {
         }
     }
 
-    public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId, String tag, List<TransferTaskRequestElement> elements) throws ServiceException {
+    public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId, String tag, List<TransferTaskRequestElement> elements) throws ServiceException, ForbiddenException {
+
+        // Check ofr authorization on both source and dest systems/paths
+
+        for (TransferTaskRequestElement elem: elements) {
+            // For http inputs no need to do any permission checking on the source
+            boolean isHttpSource = elem.getSourceURI().getProtocol().equalsIgnoreCase("http");
+
+            String srcSystemId = elem.getSourceURI().getSystemId();
+            String srcPath = elem.getSourceURI().getPath();
+            String destSystemId = elem.getDestinationURI().getSystemId();
+            String destPath = elem.getDestinationURI().getPath();
+
+            // If we have a tapis:// link, have to do the source perms check
+            if (!isHttpSource) {
+                boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
+                if (!sourcePerms) {
+                    String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", tenantId, username, srcSystemId, srcPath);
+                    throw new NotAuthorizedException(msg);
+                }
+            }
+            boolean destPerms = permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.READ);
+            if (!destPerms) {
+                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", tenantId, username, destSystemId, destPath);
+                throw new NotAuthorizedException(msg);
+            }
+        }
 
         TransferTask task = new TransferTask();
         task.setTenantId(tenantId);
@@ -195,8 +227,6 @@ public class TransfersService {
         task.setStatus(TransferTaskStatus.ACCEPTED);
         task.setTag(tag);
         try {
-            // TODO: check if requesting user has access to both the source and dest systems, throw an error back if not
-            // TODO: Do this in a single transaction
             TransferTask newTask = dao.createTransferTask(task, elements);
             for (TransferTaskParent parent: newTask.getParentTasks()) {
                 this.publishParentTaskMessage(parent);
