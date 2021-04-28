@@ -4,19 +4,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import javax.validation.constraints.NotNull;
 
-public class MoveCopyRenameRequest {
+public class MoveCopyRequest {
 
-    private MoveCopyRenameOperation operation;
+    private MoveCopyOperation operation;
     private String newPath;
 
 
     @Schema(required = true)
     @NotNull
-    public MoveCopyRenameOperation getOperation() {
+    public MoveCopyOperation getOperation() {
         return operation;
     }
 
-    public void setOperation(MoveCopyRenameOperation operation) {
+    public void setOperation(MoveCopyOperation operation) {
         this.operation = operation;
     }
 

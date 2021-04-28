@@ -3,21 +3,17 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
-import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
-import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
+import edu.utexas.tacc.tapis.files.api.models.MoveCopyOperation;
+import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
-import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
-import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
-import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -357,8 +353,8 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     public void testCopyFile(TapisSystem testSystem) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "sample1.txt", 10 * 1024);
-        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
-        request.setOperation(MoveCopyRenameOperation.COPY);
+        MoveCopyRequest request = new MoveCopyRequest();
+        request.setOperation(MoveCopyOperation.COPY);
         request.setNewPath("/filestest/sample1.txt");
 
         FileStringResponse response = target("/v3/files/ops/testSystem/sample1.txt")
@@ -376,8 +372,8 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     public void testCopyFileShould404(TapisSystem testSystem) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "sample1.txt", 10 * 1024);
-        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
-        request.setOperation(MoveCopyRenameOperation.COPY);
+        MoveCopyRequest request = new MoveCopyRequest();
+        request.setOperation(MoveCopyOperation.COPY);
         request.setNewPath("/filestest/sample1.txt");
 
 
@@ -390,35 +386,14 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test(dataProvider = "testSystemsProvider")
-    public void testRenameFile(TapisSystem testSystem) throws Exception {
-        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10 * 1024);
-
-        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
-        request.setOperation(MoveCopyRenameOperation.RENAME);
-        request.setNewPath("renamed");
-
-        FileStringResponse response = target("/v3/files/ops/testSystem/dir1/testfile3.txt")
-            .request()
-            .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
-            .put(Entity.json(request), FileStringResponse.class);
-
-        List<FileInfo> listing = doListing(testSystem.getId(), "dir1/renamed", getJwtForUser("dev", "testuser1"));
-        Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "dir1/renamed");
-    }
 
     @Test(dataProvider = "testSystemsProvider")
     public void testRenameFile2(TapisSystem testSystem) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
         addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
 
-        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
-        request.setOperation(MoveCopyRenameOperation.RENAME);
+        MoveCopyRequest request = new MoveCopyRequest();
+        request.setOperation(MoveCopyOperation.MOVE);
         request.setNewPath("renamed");
 
         FileStringResponse response = target("/v3/files/ops/testSystem/testfile1.txt")
@@ -442,8 +417,8 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
 
-        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
-        request.setOperation(MoveCopyRenameOperation.RENAME);
+        MoveCopyRequest request = new MoveCopyRequest();
+        request.setOperation(MoveCopyOperation.MOVE);
         request.setNewPath("renamed");
 
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/")
@@ -474,8 +449,8 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
 
-        MoveCopyRenameRequest request = new MoveCopyRenameRequest();
-        request.setOperation(MoveCopyRenameOperation.RENAME);
+        MoveCopyRequest request = new MoveCopyRequest();
+        request.setOperation(MoveCopyOperation.MOVE);
         request.setNewPath("renamed");
 
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/dir2/")

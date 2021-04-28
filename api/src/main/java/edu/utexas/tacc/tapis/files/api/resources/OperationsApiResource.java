@@ -2,8 +2,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
-import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameOperation;
-import edu.utexas.tacc.tapis.files.api.models.MoveCopyRenameRequest;
+import edu.utexas.tacc.tapis.files.api.models.MoveCopyOperation;
+import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
@@ -48,7 +48,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -224,7 +223,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
     @PUT
     @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:.+}")
-    @Operation(summary = "Move/copy/rename a file or folder", description = "Move/Rename a file in {systemID} at path {path}.", tags = {"file operations"})
+    @Operation(summary = "Move/copy a file or folder", description = "Move/copy a file in {systemID} at path {path}.", tags = {"file operations"})
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiResponses(value = {
@@ -249,12 +248,12 @@ public class OperationsApiResource extends BaseFileOpsResource {
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "Internal Error")
     })
-    public Response moveCopyRename(
+    public Response moveCopy(
         @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
         @Parameter(description = "File path", required = true) @PathParam("path") String path,
-        @Valid MoveCopyRenameRequest request,
+        @Valid MoveCopyRequest request,
         @Context SecurityContext securityContext) {
-        String opName = "moveCopyRename";
+        String opName = "moveCopy";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
@@ -263,14 +262,11 @@ public class OperationsApiResource extends BaseFileOpsResource {
             if (client == null) {
                 throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
             }
-            MoveCopyRenameOperation operation = request.getOperation();
-            if (operation.equals(MoveCopyRenameOperation.MOVE)) {
+            MoveCopyOperation operation = request.getOperation();
+            if (operation.equals(MoveCopyOperation.MOVE)) {
                 fileOpsService.move(client, path, request.getNewPath());
-            } else if (operation.equals(MoveCopyRenameOperation.COPY)) {
+            } else if (operation.equals(MoveCopyOperation.COPY)) {
                 fileOpsService.copy(client, path, request.getNewPath());
-            } else if (operation.equals(MoveCopyRenameOperation.RENAME)) {
-                java.nio.file.Path tmp = Paths.get(path).resolveSibling(request.getNewPath());
-                fileOpsService.move(client, path, tmp.toString());
             }
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();

@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
-public enum MoveCopyRenameOperation {
+public enum MoveCopyOperation {
     MOVE,
-    COPY,
-    RENAME
+    COPY
 }

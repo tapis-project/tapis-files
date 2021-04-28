@@ -161,8 +161,8 @@ paths:
     put:
       tags:
       - file operations
-      summary: Move/copy/rename a file or folder
-      description: Move/Rename a file in {systemID} at path {path}.
+      summary: Move/copy a file or folder
+      description: Move/copy a file in {systemID} at path {path}.
       operationId: moveCopyRename
       parameters:
       - name: systemId
@@ -181,7 +181,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MoveCopyRenameRequest'
+              $ref: '#/components/schemas/MoveCopyRequest'
       responses:
         "200":
           description: OK
@@ -746,7 +746,7 @@ components:
           type: string
         metadata:
           type: object
-    MoveCopyRenameRequest:
+    MoveCopyRequest:
       required:
       - newPath
       - operation
@@ -757,7 +757,6 @@ components:
           enum:
           - MOVE
           - COPY
-          - RENAME
         newPath:
           type: string
           description: Paths must be absolute, ../.. is not allowed
