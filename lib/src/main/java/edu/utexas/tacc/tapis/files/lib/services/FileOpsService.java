@@ -109,6 +109,7 @@ public class FileOpsService implements IFileOpsService {
                 throw new NotAuthorizedException(msg);
             }
             client.move(path, newPath);
+            permsService.replacePathPrefix(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, newPath);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "move",
                                       client.getSystemId(), path, ex.getMessage());

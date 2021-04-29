@@ -163,7 +163,7 @@ paths:
       - file operations
       summary: Move/copy a file or folder
       description: Move/copy a file in {systemID} at path {path}.
-      operationId: moveCopyRename
+      operationId: moveCopy
       parameters:
       - name: systemId
         in: path
