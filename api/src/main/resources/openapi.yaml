@@ -163,7 +163,7 @@ paths:
       - file operations
       summary: Move/copy a file or folder
       description: Move/copy a file in {systemID} at path {path}.
-      operationId: moveCopyRename
+      operationId: moveCopy
       parameters:
       - name: systemId
         in: path
@@ -660,6 +660,114 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferTaskResponse'
+  /v3/files/utils/linux/{systemId}/{path}:
+    get:
+      tags:
+      - file operations
+      summary: Get stat information for a file or directory.
+      description: Get stat information for a file or directory.
+      operationId: getStatInfo
+      parameters:
+      - name: systemId
+        in: path
+        description: System ID
+        required: true
+        schema:
+          type: string
+        example: system123
+      - name: path
+        in: path
+        description: Path to a file or directory
+        required: true
+        schema:
+          type: string
+        example: /folderA/file1
+      responses:
+        "200":
+          description: Stat information for the file or directory.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStatInfoResponse'
+        "401":
+          description: Not Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "403":
+          description: Not Authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "500":
+          description: Internal Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+    post:
+      tags:
+      - file operations
+      summary: Run a native operation
+      description: Run a native operation such as chmod, chown.
+      operationId: runLinuxNativeOp
+      parameters:
+      - name: systemId
+        in: path
+        description: System ID
+        required: true
+        schema:
+          type: string
+      - name: path
+        in: path
+        description: Path to a file or directory
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NativeLinuxOpRequest'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "401":
+          description: Not Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "403":
+          description: Not Authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "500":
+          description: Internal Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
 components:
   schemas:
     HeaderByteRange:
@@ -1083,3 +1191,59 @@ components:
           type: string
         metadata:
           type: object
+    FileStatInfo:
+      type: object
+      properties:
+        mimeType:
+          type: string
+        type:
+          type: string
+        owner:
+          type: string
+        group:
+          type: string
+        nativePermissions:
+          type: string
+        uri:
+          type: string
+        lastModified:
+          type: string
+          format: date-time
+        name:
+          type: string
+        path:
+          type: string
+        size:
+          type: integer
+          description: size in kB
+          format: int64
+    FileStatInfoResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileStatInfo'
+        version:
+          type: string
+        metadata:
+          type: object
+    NativeLinuxOpRequest:
+      required:
+      - newPath
+      - operation
+      type: object
+      properties:
+        operation:
+          type: string
+          enum:
+          - CHMOD
+          - CHOWN
+          - CHGRP
+        newPath:
+          type: string
+          description: Paths must be absolute, ../.. is not allowed
