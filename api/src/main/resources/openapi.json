@@ -125,7 +125,7 @@
       "get" : {
         "tags" : [ "file operations" ],
         "summary" : "List files/objects in a storage system.",
-        "description" : "List files in a bucket",
+        "description" : "List files in a storage system",
         "operationId" : "listFiles",
         "parameters" : [ {
           "name" : "systemId",
@@ -1341,6 +1341,29 @@
           }
         }
       },
+      "TransferTaskListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTask"
+            }
+          },
+          "version" : {
+            "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
+          }
+        }
+      },
       "TransferTaskParent" : {
         "type" : "object",
         "properties" : {
@@ -1454,29 +1477,6 @@
           "optional" : {
             "type" : "boolean",
             "description" : "Allow the full transfer to succeed even if this portion fails? Default is false"
-          }
-        }
-      },
-      "TransferTaskListResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/TransferTask"
-            }
-          },
-          "version" : {
-            "type" : "string"
-          },
-          "metadata" : {
-            "type" : "object"
           }
         }
       }
