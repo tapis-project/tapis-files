@@ -2,22 +2,14 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
-import org.jetbrains.annotations.NotNull;
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService.NativeLinuxOperation;
 
-import javax.ws.rs.NotFoundException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.List;
+import org.jetbrains.annotations.NotNull;
 
 public interface IFileUtilsService
 {
-  FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException;
+  FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String path, boolean followLinks) throws ServiceException;
 
-  void linuxChmod(@NotNull IRemoteDataClient client, String path) throws ServiceException;
-
-  void linuxChown(@NotNull IRemoteDataClient client, String path) throws ServiceException;
-
-  void linuxChgrp(@NotNull IRemoteDataClient client, String path) throws ServiceException;
+  void linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op) throws ServiceException;
 }

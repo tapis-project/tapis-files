@@ -25,12 +25,14 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
@@ -43,7 +45,7 @@ import java.time.Instant;
 import java.util.List;
 
 /*
- * JAX-RS REST api for utility methods.
+ * JAX-RS REST api for linux utility methods.
  * TODO/TBD: Have systemType in top level path or make it a path parameter
  *           (and rename this class to UtilsApiResource)?
  */
@@ -71,7 +73,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
         @ApiResponse(
             responseCode = "200",
             content = @Content(schema = @Schema(implementation = FileStatInfoResponse.class)),
-            description = "Stat information for the file or directory."),
+            description = "Linux stat information for the file or directory."),
         @ApiResponse(
             responseCode = "401",
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
@@ -91,7 +93,9 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
     })
     public Response getStatInfo(
         @Parameter(description = "System ID", required = true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
-        @Parameter(description = "Path to a file or directory", required = false, example = EXAMPLE_PATH) @PathParam("path") String path,
+        @Parameter(description = "Path to a file or directory", example = EXAMPLE_PATH) @PathParam("path") String path,
+        @Parameter(description = "When path is a symbolic link whether to get information about the link (false) or the link target (true)",
+                   example = "true") @DefaultValue("false") @QueryParam("followLinks") boolean followLinks,
         @Context SecurityContext securityContext) {
         String opName = "getStatInfo";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
@@ -100,7 +104,9 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
-            FileStatInfo fileStatInfo = fileUtilsService.getStatInfo(client, path);
+
+            FileStatInfo fileStatInfo = fileUtilsService.getStatInfo(client, path, followLinks);
+
             String msg = Utils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
             log.debug(msg);
             TapisResponse<FileStatInfo> resp = TapisResponse.createSuccessResponse("ok", fileStatInfo);
@@ -118,7 +124,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
     @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Run a native operation",
-               description = "Run a native operation such as chmod, chown.",
+               description = "Run a native operation: chmod, chown or chgrp.",
                tags = {"file operations"})
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
@@ -155,14 +161,10 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
-            if (client == null) {
-                throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
-            }
-            switch (request.getOperation()) {
-              case CHMOD -> fileUtilsService.linuxChmod(client, path);
-              case CHOWN -> fileUtilsService.linuxChown(client, path);
-              case CHGRP -> fileUtilsService.linuxChgrp(client, path);
-            }
+            if (client == null) throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
+
+            fileUtilsService.linuxOp(client, path, request.getOperation());
+
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {

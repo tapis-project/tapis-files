@@ -682,9 +682,17 @@ paths:
         schema:
           type: string
         example: /folderA/file1
+      - name: followLinks
+        in: query
+        description: When path is a symbolic link whether to get information about
+          the link (false) or the link target (true)
+        schema:
+          type: boolean
+          default: false
+        example: true
       responses:
         "200":
-          description: Stat information for the file or directory.
+          description: Linux stat information for the file or directory.
           content:
             application/json:
               schema:
@@ -717,7 +725,7 @@ paths:
       tags:
       - file operations
       summary: Run a native operation
-      description: Run a native operation such as chmod, chown.
+      description: 'Run a native operation: chmod, chown or chgrp.'
       operationId: runLinuxNativeOp
       parameters:
       - name: systemId

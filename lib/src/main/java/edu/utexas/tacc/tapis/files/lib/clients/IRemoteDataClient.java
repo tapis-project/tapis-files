@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 
+import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
@@ -17,7 +18,6 @@ public interface IRemoteDataClient {
     String getOboUser();
     String getSystemId();
 
-    void makeBucket(String name) throws IOException;
     // without limit/offset, just a helper method for convenience
     List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException;
     List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException;

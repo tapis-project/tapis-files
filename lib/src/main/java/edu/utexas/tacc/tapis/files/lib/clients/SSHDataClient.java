@@ -33,10 +33,10 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -47,7 +47,7 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
  * All path parameters as inputs to methods are assumed to be relative to the rootDir
  * of the system unless otherwise specified.
  */
-public class SSHDataClient implements IRemoteDataClient {
+public class SSHDataClient implements ISSHDataClient {
 
     private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
 
@@ -76,11 +76,63 @@ public class SSHDataClient implements IRemoteDataClient {
         sshConnection = sshCon;
     }
 
-    @Override
-    public void makeBucket(String name) throws IOException {
-        String msg = Utils.getMsg("FILES_CLIENT_SSH_NO_SUPPORT", oboTenant, oboUser, "makeBucket", systemId, name);
-        throw new NotImplementedException(msg);
+  // ------------------------------
+  // Native Linux Utility Methods
+  // ------------------------------
+  /**
+   * Returns the statInfo result for a remotePath
+   *
+   * TODO pass in followLinks
+   * @param remotePath - path to check
+   * @return statInfo result
+   * @throws IOException Generally a network error
+   * @throws NotFoundException No file at target
+   */
+  @Override
+  public FileStatInfo getStatInfo(@NotNull String remotePath) throws IOException, NotFoundException {
+    FileStatInfo statInfo;
+    // TODO
+    boolean followLinks = false;
+    String opName = followLinks ? "lstat" : "stat";
+    // TODO what path to use? normalized? how to prevent escaping via ../..?
+    Path absolutePath = Paths.get(rootDir, remotePath);
+    String absolutePathStr = absolutePath.normalize().toString();
+    ChannelSftp channelSftp = openAndConnectSFTPChannel();
+    SftpATTRS sftpAttrs;
+    try {
+      sftpAttrs = followLinks ? channelSftp.lstat(absolutePathStr) : channelSftp.stat(absolutePathStr);
+    } catch (SftpException e) {
+      if (e.getMessage().toLowerCase().contains("no such file")) {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
+        throw new NotFoundException(msg);
+      } else {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opName, systemId, username, host,
+                                  remotePath, e.getMessage());
+        throw new IOException(msg, e);
+      }
+    } finally {
+      sshConnection.returnChannel(channelSftp);
     }
+
+    // Populate the FileStatInfo object
+    statInfo = new FileStatInfo(absolutePathStr, sftpAttrs.getUId(), sftpAttrs.getGId(),
+                                sftpAttrs.getSize(), sftpAttrs.getPermissions(),
+                                sftpAttrs.getATime(), sftpAttrs.getMTime(), sftpAttrs.isDir(), sftpAttrs.isLink());
+    return statInfo;
+  }
+
+  @Override
+  public   void linuxChmod(@NotNull  String remotePath) throws IOException, NotFoundException {
+    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChmod"));
+  }
+  @Override
+  public   void linuxChown(@NotNull  String remotePath) throws IOException, NotFoundException {
+    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChown"));
+  }
+  @Override
+  public   void linuxChgrp(@NotNull  String remotePath) throws IOException, NotFoundException {
+    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChgrp"));
+  }
 
     public List<FileInfo> lsRecursive(String basePath) throws IOException, NotFoundException {
         List<FileInfo> filesList = new ArrayList<>();

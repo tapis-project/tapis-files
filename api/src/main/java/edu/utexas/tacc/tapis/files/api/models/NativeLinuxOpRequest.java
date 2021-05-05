@@ -1,7 +1,8 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService.NativeLinuxOperation;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import javax.validation.constraints.NotNull;
 
 public class NativeLinuxOpRequest
@@ -9,12 +10,9 @@ public class NativeLinuxOpRequest
     private NativeLinuxOperation operation;
     private String newPath;
 
-
     @Schema(required = true)
     @NotNull
-    public NativeLinuxOperation getOperation() {
-        return operation;
-    }
+    public NativeLinuxOperation getOperation() { return operation; }
 
     public void setOperation(NativeLinuxOperation operation) {
         this.operation = operation;

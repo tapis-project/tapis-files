@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
@@ -45,7 +46,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-public class S3DataClient implements IRemoteDataClient {
+public class S3DataClient implements IS3DataClient {
 
     private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
 
@@ -109,6 +110,30 @@ public class S3DataClient implements IRemoteDataClient {
     }
 
 
+//  // TODO
+//// TODO/TBD Create class IBaseRemoteDataClient for common operations and move
+////          Native ops to a sub-class
+//// TODO
+//  // ------------------------------
+//  // Native Linux Utility Methods
+//  // ------------------------------
+//  @Override
+//  public FileStatInfo getStatInfo(@NotNull String remotePath) throws IOException, NotFoundException {
+//    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "getStatInfo"));
+//  }
+//  @Override
+//  public   void linuxChmod(@NotNull  String remotePath) throws IOException, NotFoundException {
+//    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChmod"));
+//  }
+//  @Override
+//  public   void linuxChown(@NotNull  String remotePath) throws IOException, NotFoundException {
+//    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChown"));
+//  }
+//  @Override
+//  public   void linuxChgrp(@NotNull  String remotePath) throws IOException, NotFoundException {
+//    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChgrp"));
+//  }
+//
     public URI configEndpoint(String host) throws URISyntaxException {
         URI endpoint;
         URI tmpURI = new URI(host);
