@@ -49,7 +49,7 @@ public class FileOpsService implements IFileOpsService {
     public List<FileInfo> ls(IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException, NotFoundException {
         try {
             String cleanedPath = FilenameUtils.normalize(path);
-            boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, FileInfo.Permission.MODIFY);
+            boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, FileInfo.Permission.READ);
             if (!permitted) {
                 String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
                 throw new NotAuthorizedException(msg);
