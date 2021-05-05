@@ -14,6 +14,7 @@ import javax.ws.rs.NotFoundException;
 
 public interface IRemoteDataClient {
 
+    // A remote data client always has at a minimum an associated oboUser, oboTenant and systemId
     String getOboTenant();
     String getOboUser();
     String getSystemId();

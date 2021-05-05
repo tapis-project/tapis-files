@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -54,6 +56,8 @@ public class SSHDataClient implements ISSHDataClient {
     public String getOboTenant() { return oboTenant; }
     public String getOboUser() { return oboUser; }
     public String getSystemId() { return systemId; }
+    public String getUsername() { return username; }
+    public String getHost() { return host; }
     private final String oboTenant;
     private final String oboUser;
 
@@ -82,25 +86,32 @@ public class SSHDataClient implements ISSHDataClient {
   /**
    * Returns the statInfo result for a remotePath
    *
-   * TODO pass in followLinks
    * @param remotePath - path to check
    * @return statInfo result
    * @throws IOException Generally a network error
    * @throws NotFoundException No file at target
    */
   @Override
-  public FileStatInfo getStatInfo(@NotNull String remotePath) throws IOException, NotFoundException {
+  public FileStatInfo getStatInfo(@NotNull String remotePath, boolean followLinks)
+          throws IOException, NotFoundException
+  {
     FileStatInfo statInfo;
-    // TODO
-    boolean followLinks = false;
     String opName = followLinks ? "lstat" : "stat";
-    // TODO what path to use? normalized? how to prevent escaping via ../..?
-    Path absolutePath = Paths.get(rootDir, remotePath);
+    // Path should have already been normalized and checked but for safety and security do it
+    //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
+    String safePath = FilenameUtils.normalize(remotePath);
+    if (safePath == null)
+    {
+      String msg = Utils.getMsg("FILES_CLIENT_SSH_NULL_PATH", oboTenant, oboUser, systemId, username, host, remotePath);
+      throw new IllegalArgumentException(msg);
+    }
+    Path absolutePath = Paths.get(rootDir, safePath);
     String absolutePathStr = absolutePath.normalize().toString();
     ChannelSftp channelSftp = openAndConnectSFTPChannel();
     SftpATTRS sftpAttrs;
     try {
-      sftpAttrs = followLinks ? channelSftp.lstat(absolutePathStr) : channelSftp.stat(absolutePathStr);
+      // If path is a symbolic link then lstat gives info for the link, stat gives info for the link target
+      sftpAttrs = followLinks ? channelSftp.stat(absolutePathStr) : channelSftp.lstat(absolutePathStr);
     } catch (SftpException e) {
       if (e.getMessage().toLowerCase().contains("no such file")) {
         String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
@@ -116,7 +127,7 @@ public class SSHDataClient implements ISSHDataClient {
 
     // Populate the FileStatInfo object
     statInfo = new FileStatInfo(absolutePathStr, sftpAttrs.getUId(), sftpAttrs.getGId(),
-                                sftpAttrs.getSize(), sftpAttrs.getPermissions(),
+                                sftpAttrs.getSize(), sftpAttrs.getPermissionsString(),
                                 sftpAttrs.getATime(), sftpAttrs.getMTime(), sftpAttrs.isDir(), sftpAttrs.isLink());
     return statInfo;
   }

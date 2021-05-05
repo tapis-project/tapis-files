@@ -53,6 +53,8 @@ public class S3DataClient implements IS3DataClient {
     public String getOboTenant() { return oboTenant; }
     public String getOboUser() { return oboUser; }
     public String getSystemId() { return system.getId(); }
+    public String getBucket() { return bucket; }
+
     private final String oboTenant;
     private final String oboUser;
 
@@ -109,31 +111,6 @@ public class S3DataClient implements IS3DataClient {
         }
     }
 
-
-//  // TODO
-//// TODO/TBD Create class IBaseRemoteDataClient for common operations and move
-////          Native ops to a sub-class
-//// TODO
-//  // ------------------------------
-//  // Native Linux Utility Methods
-//  // ------------------------------
-//  @Override
-//  public FileStatInfo getStatInfo(@NotNull String remotePath) throws IOException, NotFoundException {
-//    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "getStatInfo"));
-//  }
-//  @Override
-//  public   void linuxChmod(@NotNull  String remotePath) throws IOException, NotFoundException {
-//    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChmod"));
-//  }
-//  @Override
-//  public   void linuxChown(@NotNull  String remotePath) throws IOException, NotFoundException {
-//    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChown"));
-//  }
-//  @Override
-//  public   void linuxChgrp(@NotNull  String remotePath) throws IOException, NotFoundException {
-//    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChgrp"));
-//  }
-//
     public URI configEndpoint(String host) throws URISyntaxException {
         URI endpoint;
         URI tmpURI = new URI(host);

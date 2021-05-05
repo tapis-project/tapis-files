@@ -42,6 +42,12 @@ public class FileUtilsService implements IFileUtilsService {
     ISSHDataClient sshClient = (ISSHDataClient) client;
     try {
       String cleanedPath = FilenameUtils.normalize(path);
+      if (cleanedPath == null)
+      {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_NULL_PATH", sshClient.getOboTenant(), sshClient.getOboUser(),
+                                  sshClient.getSystemId(), sshClient.getUsername(), sshClient.getHost(), cleanedPath);
+        throw new IllegalArgumentException(msg);
+      }
       boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                                    cleanedPath, FileInfo.Permission.READ);
       if (!permitted) {
@@ -50,7 +56,7 @@ public class FileUtilsService implements IFileUtilsService {
       }
 
       // Make the remoteDataClient call
-      return sshClient.getStatInfo(cleanedPath);
+      return sshClient.getStatInfo(cleanedPath, followLinks);
 
     } catch (IOException ex) {
       String msg = Utils.getMsg("FILES_UTILSC_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
