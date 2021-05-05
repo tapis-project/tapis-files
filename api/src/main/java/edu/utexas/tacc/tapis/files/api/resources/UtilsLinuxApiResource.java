@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxOpRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -154,6 +153,8 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
         @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
         @Parameter(description = "Path to a file or directory", required = true) @PathParam("path") String path,
         @Valid NativeLinuxOpRequest request,
+        @Parameter(description = "If path is directory this indicates whether or not to apply the changes recursively",
+                   example = "true") @DefaultValue("false") @QueryParam("recursive") boolean recursive,
         @Context SecurityContext securityContext) {
         String opName = "runLinuxNativeOp";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
@@ -163,7 +164,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             if (client == null) throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
 
-            fileUtilsService.linuxOp(client, path, request.getOperation());
+            fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(), recursive);
 
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();

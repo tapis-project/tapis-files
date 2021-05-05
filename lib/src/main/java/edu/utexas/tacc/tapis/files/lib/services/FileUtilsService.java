@@ -45,7 +45,7 @@ public class FileUtilsService implements IFileUtilsService {
       if (cleanedPath == null)
       {
         String msg = Utils.getMsg("FILES_CLIENT_SSH_NULL_PATH", sshClient.getOboTenant(), sshClient.getOboUser(),
-                                  sshClient.getSystemId(), sshClient.getUsername(), sshClient.getHost(), cleanedPath);
+                                  sshClient.getSystemId(), sshClient.getUsername(), sshClient.getHost(), path);
         throw new IllegalArgumentException(msg);
       }
 
@@ -63,8 +63,20 @@ public class FileUtilsService implements IFileUtilsService {
     }
   }
 
+  /**
+   * Run a native linux operation: chown, chmod, chgrp
+   * TODO: Support recursive operations
+   * @param client - remote data client
+   * @param path - target path for operation
+   * @param op - operation to perform
+   * @param arg - argument for operation
+   * @param recursive - flag indicating if operation should be applied recursively for directories
+   * @throws ServiceException - General problem
+   * @throws NotAuthorizedException - user not authorized to operate on path
+   */
   @Override
-  public void linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op)
+  public void linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
+                      @NotNull String arg, boolean recursive)
           throws ServiceException, NotAuthorizedException
   {
     if (!(client instanceof ISSHDataClient)) {
@@ -80,13 +92,13 @@ public class FileUtilsService implements IFileUtilsService {
 
       // Make the remoteDataClient call
       switch (op) {
-        case CHMOD -> sshClient.linuxChmod(cleanedPath);
-        case CHOWN -> sshClient.linuxChown(cleanedPath);
-        case CHGRP -> sshClient.linuxChgrp(cleanedPath);
+        case CHMOD -> sshClient.linuxChmod(cleanedPath, arg);
+        case CHOWN -> sshClient.linuxChown(cleanedPath, arg);
+        case CHGRP -> sshClient.linuxChgrp(cleanedPath, arg);
       }
 
     } catch (IOException ex) {
-      String msg = Utils.getMsg("FILES_UTILSC_ERR", client.getOboTenant(), client.getOboUser(), "linuxChmod",
+      String msg = Utils.getMsg("FILES_UTILSC_ERR", client.getOboTenant(), client.getOboUser(), op.name(),
                                 client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);

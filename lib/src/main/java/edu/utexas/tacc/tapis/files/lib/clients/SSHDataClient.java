@@ -5,8 +5,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -35,6 +33,7 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
@@ -99,12 +98,7 @@ public class SSHDataClient implements ISSHDataClient {
     String opName = followLinks ? "lstat" : "stat";
     // Path should have already been normalized and checked but for safety and security do it
     //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
-    String safePath = FilenameUtils.normalize(remotePath);
-    if (safePath == null)
-    {
-      String msg = Utils.getMsg("FILES_CLIENT_SSH_NULL_PATH", oboTenant, oboUser, systemId, username, host, remotePath);
-      throw new IllegalArgumentException(msg);
-    }
+    String safePath = getNormalizedPath(remotePath);
     Path absolutePath = Paths.get(rootDir, safePath);
     String absolutePathStr = absolutePath.normalize().toString();
     ChannelSftp channelSftp = openAndConnectSFTPChannel();
@@ -133,16 +127,50 @@ public class SSHDataClient implements ISSHDataClient {
   }
 
   @Override
-  public   void linuxChmod(@NotNull  String remotePath) throws IOException, NotFoundException {
-    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChmod"));
+  public void linuxChmod(@NotNull String remotePath, @NotNull String permsStr)
+          throws ServiceException, IOException, NotFoundException {
+    String opName = "chmod";
+    int permsInt;
+    // Path should have already been normalized and checked but for safety and security do it
+    //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
+    String safePath = getNormalizedPath(remotePath);
+    Path absolutePath = Paths.get(rootDir, safePath);
+    String absolutePathStr = absolutePath.normalize().toString();
+    ChannelSftp channelSftp = openAndConnectSFTPChannel();
+
+    try {
+      permsInt = Integer.parseInt(permsStr, 8);
+
+      channelSftp.chmod(permsInt, absolutePathStr);
+
+    } catch (SftpException e) {
+      if (e.getMessage().toLowerCase().contains("no such file")) {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
+        throw new NotFoundException(msg);
+      } else {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opName, systemId, username, host,
+                remotePath, e.getMessage());
+        throw new IOException(msg, e);
+      }
+    } catch (NumberFormatException e) {
+      String msg = Utils.getMsg("FILES_CLIENT_SSH_CHMOD_ERR", oboTenant, oboUser, opName, systemId, username, host,
+                                remotePath, permsStr, e.getMessage());
+      throw new ServiceException(msg, e);
+    } finally {
+      sshConnection.returnChannel(channelSftp);
+    }
   }
+
   @Override
-  public   void linuxChown(@NotNull  String remotePath) throws IOException, NotFoundException {
-    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChown"));
+  public void linuxChown(@NotNull String remotePath, @NotNull String newPerms) throws IOException, NotFoundException {
+    String opName = "chown";
+    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_SSH_NOT_IMPL", oboTenant, oboUser, opName));
   }
+
   @Override
-  public   void linuxChgrp(@NotNull  String remotePath) throws IOException, NotFoundException {
-    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "linuxChgrp"));
+  public void linuxChgrp(@NotNull  String remotePath, @NotNull String newGroup) throws IOException, NotFoundException {
+    String opName = "chgrp";
+    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_SSH_NOT_IMPL", oboTenant, oboUser, opName));
   }
 
     public List<FileInfo> lsRecursive(String basePath) throws IOException, NotFoundException {
@@ -543,5 +571,23 @@ public class SSHDataClient implements ISSHDataClient {
     private ChannelExec openCommandChannel() throws IOException {
         String CHANNEL_TYPE = "exec";
         return (ChannelExec) sshConnection.createChannel(CHANNEL_TYPE);
+    }
+
+  /**
+   * Use Apache's FileNameUtils to get a normalized path
+   * @param remotePath - path to normalize
+   * @return normalized path
+   * @throws IllegalArgumentException - if path normalizes to null
+   */
+    private String getNormalizedPath(String remotePath) throws IllegalArgumentException
+    {
+      // FilenameUtils.normalize() is expected to protect against escaping via ../..
+      String safePath = FilenameUtils.normalize(remotePath);
+      if (safePath == null)
+      {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_NULL_PATH", oboTenant, oboUser, systemId, username, host, safePath);
+        throw new IllegalArgumentException(msg);
+      }
+      return safePath;
     }
 }

@@ -11,5 +11,6 @@ public interface IFileUtilsService
 {
   FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String path, boolean followLinks) throws ServiceException;
 
-  void linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op) throws ServiceException;
+  void linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
+               @NotNull String arg, boolean recursive) throws ServiceException;
 }

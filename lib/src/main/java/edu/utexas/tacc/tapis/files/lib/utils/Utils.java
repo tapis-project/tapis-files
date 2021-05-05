@@ -126,7 +126,7 @@ public class Utils
    * @param oboUser - obo user
    * @param systemId - system
    * @param pathToCheck - path to use during check
-   * @param pathToCheck - path to use for log message
+   * @param pathToLog - path to use for log message
    * @param perm - perm to check for
    * @throws NotAuthorizedException - perm check failed
    * @throws ServiceException - other exceptions

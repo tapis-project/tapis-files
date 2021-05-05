@@ -5,10 +5,13 @@ import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService.NativeLinuxOper
 import io.swagger.v3.oas.annotations.media.Schema;
 import javax.validation.constraints.NotNull;
 
+/*
+ * Class representing attributes for incoming native linux operation
+ */
 public class NativeLinuxOpRequest
 {
-    private NativeLinuxOperation operation;
-    private String newPath;
+    private NativeLinuxOperation operation; // operation to perform
+    private String argument; // argument for the operation
 
     @Schema(required = true)
     @NotNull
@@ -18,13 +21,13 @@ public class NativeLinuxOpRequest
         this.operation = operation;
     }
 
-    @Schema(required = true, description = "Paths must be absolute, ../.. is not allowed")
+    @Schema(required = true, description = "Argument for native linux operation")
     @NotNull
-    public String getNewPath() {
-        return newPath;
+    public String getArgument() {
+        return argument;
     }
 
-    public void setNewPath(String newPath) {
-        this.newPath = newPath;
+    public void setArgument(String a) {
+        argument = a;
     }
 }

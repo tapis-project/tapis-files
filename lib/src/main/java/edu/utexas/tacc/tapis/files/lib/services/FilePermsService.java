@@ -14,6 +14,8 @@ import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
@@ -23,6 +25,7 @@ public class FilePermsService {
 
     private final FilePermsCache permsCache;
     private static final IRuntimeConfig settings = RuntimeSettings.get();
+    private static final Logger log = LoggerFactory.getLogger(FilePermsService.class);
 
     // PERMSPEC is "files:tenant:r,rw,*:systemId:path
     private static final String PERMSPEC = "files:%s:%s:%s:%s";
@@ -46,11 +49,11 @@ public class FilePermsService {
         }
     }
 
-    public void replacePrefix(String tenantId, String username, String systemId, String oldPath, String newPath) throws ServiceException {
+    public void replacePathPrefix(String tenantId, String username, String systemId, String oldPath, String newPath) throws ServiceException {
         try {
             SKClient skClient = getSKClient(tenantId, username);
-//            skClient.replacePathPrefix(tenantId, )
-
+            int modified = skClient.replacePathPrefix(tenantId, "files", null, systemId, systemId, oldPath, newPath);
+            log.debug(String.valueOf(modified));
         } catch (TapisClientException ex) {
             String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, oldPath, ex.getMessage());
             throw new ServiceException(msg, ex);

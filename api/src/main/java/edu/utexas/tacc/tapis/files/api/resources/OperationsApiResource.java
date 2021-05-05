@@ -73,7 +73,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
     @FileOpsAuthorization(permRequired = Permission.READ)
     @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "List files/objects in a storage system.", description = "List files in a bucket", tags = {"file operations"})
+    @Operation(summary = "List files/objects in a storage system.", description = "List files in a storage system", tags = {"file operations"})
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",

@@ -50,7 +50,7 @@ public class FileOpsService implements IFileOpsService {
     public List<FileInfo> ls(IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException, NotFoundException {
         try {
             String cleanedPath = FilenameUtils.normalize(path);
-            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, path, Permission.MODIFY);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, path, Permission.READ);
             List<FileInfo> listing = client.ls(path, limit, offset);
             return listing;
         } catch (IOException ex) {
@@ -95,6 +95,7 @@ public class FileOpsService implements IFileOpsService {
             Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.MODIFY);
             Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), newPath, path, Permission.MODIFY);
             client.move(path, newPath);
+            permsService.replacePathPrefix(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, newPath);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "move",
                                       client.getSystemId(), path, ex.getMessage());
