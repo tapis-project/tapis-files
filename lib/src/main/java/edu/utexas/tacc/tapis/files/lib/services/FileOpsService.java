@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -49,11 +50,7 @@ public class FileOpsService implements IFileOpsService {
     public List<FileInfo> ls(IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException, NotFoundException {
         try {
             String cleanedPath = FilenameUtils.normalize(path);
-            boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, FileInfo.Permission.MODIFY);
-            if (!permitted) {
-                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-                throw new NotAuthorizedException(msg);
-            }
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, path, Permission.MODIFY);
             List<FileInfo> listing = client.ls(path, limit, offset);
             return listing;
         } catch (IOException ex) {
@@ -68,11 +65,7 @@ public class FileOpsService implements IFileOpsService {
     public void mkdir(IRemoteDataClient client, String path) throws ServiceException, NotAuthorizedException {
         try {
             String cleanedPath = FilenameUtils.normalize(path);
-            boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, FileInfo.Permission.MODIFY);
-            if (!permitted) {
-                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-                throw new NotAuthorizedException(msg);
-            }
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, path, Permission.MODIFY);
             client.mkdir(cleanedPath);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdir",
@@ -85,11 +78,7 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void insert(IRemoteDataClient client, String path, @NotNull InputStream inputStream) throws ServiceException, NotFoundException, NotAuthorizedException {
         try {
-            boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.MODIFY);
-            if (!permitted) {
-                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-                throw new NotAuthorizedException(msg);
-            }
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.MODIFY);
             client.insert(path, inputStream);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "insert",
@@ -102,12 +91,9 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void move(IRemoteDataClient client, String path, String newPath) throws ServiceException, NotFoundException, NotAuthorizedException {
         try {
-            boolean srcPermitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.MODIFY);
-            boolean destPermitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), newPath, FileInfo.Permission.MODIFY);
-            if (!srcPermitted || !destPermitted) {
-                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-                throw new NotAuthorizedException(msg);
-            }
+            // Check the source and destination both have MODIFY perm
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.MODIFY);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), newPath, path, Permission.MODIFY);
             client.move(path, newPath);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "move",
@@ -120,12 +106,9 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void copy(IRemoteDataClient client, String path, String newPath) throws ServiceException, NotFoundException, NotAuthorizedException {
         try {
-            boolean srcPermitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
-            boolean destPermitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), newPath, FileInfo.Permission.MODIFY);
-            if (!srcPermitted || !destPermitted) {
-                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-                throw new NotAuthorizedException(msg);
-            }
+            // Check the source has READ and destination has MODIFY perm
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), newPath, path, Permission.MODIFY);
             client.copy(path, newPath);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "copy",
@@ -139,11 +122,7 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void delete(IRemoteDataClient client, @NotNull String path) throws ServiceException, NotFoundException, NotAuthorizedException {
         try {
-            boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.MODIFY);
-            if (!permitted) {
-                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-                throw new NotAuthorizedException(msg);
-            }
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.MODIFY);
             client.delete(path);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "delete",
@@ -166,11 +145,7 @@ public class FileOpsService implements IFileOpsService {
     public InputStream getStream(IRemoteDataClient client, String path) throws ServiceException, NotFoundException, NotAuthorizedException{
 
         try {
-            boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
-            if (!permitted) {
-                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-                throw new NotAuthorizedException(msg);
-            }
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
             InputStream fileStream = client.getStream(path);
             return fileStream;
         } catch (IOException ex) {
@@ -184,11 +159,7 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public InputStream getBytes(IRemoteDataClient client, @NotNull String path, long startByte, long count) throws ServiceException, NotFoundException, NotAuthorizedException {
         try  {
-            boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
-            if (!permitted) {
-                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-                throw new NotAuthorizedException(msg);
-            }
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
             InputStream fileStream = client.getBytesByRange(path, startByte, count);
             return fileStream;
         } catch (IOException ex) {
@@ -203,11 +174,7 @@ public class FileOpsService implements IFileOpsService {
     public InputStream more(IRemoteDataClient client, @NotNull String path, long startPage) throws ServiceException, NotFoundException, NotAuthorizedException{
         long startByte = (startPage - 1) * 1024;
         try  {
-            boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
-            if (!permitted) {
-                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-                throw new NotAuthorizedException(msg);
-            }
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
             InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023);
             return fileStream;
         } catch (IOException ex) {
@@ -228,11 +195,7 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void getZip(IRemoteDataClient client, @NotNull OutputStream outputStream, @NotNull String path) throws ServiceException, NotAuthorizedException {
 
-        boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
-        if (!permitted) {
-            String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-            throw new NotAuthorizedException(msg);
-        }
+        Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
 
         //TODO: This should be made for recursive listings
         List<FileInfo> listing = this.ls(client, path);

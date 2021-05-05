@@ -1655,38 +1655,37 @@
       "FileStatInfo" : {
         "type" : "object",
         "properties" : {
-          "mimeType" : {
+          "absolutePath" : {
             "type" : "string"
           },
-          "type" : {
-            "type" : "string"
+          "uid" : {
+            "type" : "integer",
+            "format" : "int32"
           },
-          "owner" : {
-            "type" : "string"
-          },
-          "group" : {
-            "type" : "string"
-          },
-          "nativePermissions" : {
-            "type" : "string"
-          },
-          "uri" : {
-            "type" : "string"
-          },
-          "lastModified" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "path" : {
-            "type" : "string"
+          "gid" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "size" : {
             "type" : "integer",
-            "description" : "size in kB",
             "format" : "int64"
+          },
+          "perms" : {
+            "type" : "string"
+          },
+          "accessTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "modifyTime" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "dir" : {
+            "type" : "boolean"
+          },
+          "link" : {
+            "type" : "boolean"
           }
         }
       },

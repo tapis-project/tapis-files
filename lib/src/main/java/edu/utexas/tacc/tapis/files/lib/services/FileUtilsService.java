@@ -3,7 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.ISSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import org.apache.commons.io.FilenameUtils;
@@ -48,12 +48,9 @@ public class FileUtilsService implements IFileUtilsService {
                                   sshClient.getSystemId(), sshClient.getUsername(), sshClient.getHost(), cleanedPath);
         throw new IllegalArgumentException(msg);
       }
-      boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                                   cleanedPath, FileInfo.Permission.READ);
-      if (!permitted) {
-        String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-        throw new NotAuthorizedException(msg);
-      }
+
+      Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                           cleanedPath, path, Permission.READ);
 
       // Make the remoteDataClient call
       return sshClient.getStatInfo(cleanedPath, followLinks);
@@ -78,12 +75,8 @@ public class FileUtilsService implements IFileUtilsService {
     ISSHDataClient sshClient = (ISSHDataClient) client;
     try {
       String cleanedPath = FilenameUtils.normalize(path);
-      boolean permitted = permsService.isPermitted(client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                                   cleanedPath, FileInfo.Permission.MODIFY);
-      if (!permitted) {
-        String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
-        throw new NotAuthorizedException(msg);
-      }
+      Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                           cleanedPath, path, Permission.MODIFY);
 
       // Make the remoteDataClient call
       switch (op) {
