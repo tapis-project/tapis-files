@@ -92,9 +92,9 @@ public class FileUtilsService implements IFileUtilsService {
 
       // Make the remoteDataClient call
       switch (op) {
-        case CHMOD -> sshClient.linuxChmod(cleanedPath, arg);
-        case CHOWN -> sshClient.linuxChown(cleanedPath, arg);
-        case CHGRP -> sshClient.linuxChgrp(cleanedPath, arg);
+        case CHMOD -> sshClient.linuxChmod(cleanedPath, arg, recursive);
+        case CHOWN -> sshClient.linuxChown(cleanedPath, arg, recursive);
+        case CHGRP -> sshClient.linuxChgrp(cleanedPath, arg, recursive);
       }
 
     } catch (IOException ex) {

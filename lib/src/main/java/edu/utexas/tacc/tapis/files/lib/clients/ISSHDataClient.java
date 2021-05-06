@@ -18,7 +18,7 @@ public interface ISSHDataClient extends IRemoteDataClient
   // Native Linux Utility Methods
   // ------------------------------
   FileStatInfo getStatInfo(@NotNull String remotePath, boolean followLinks) throws IOException, NotFoundException;
-  void linuxChmod(@NotNull String remotePath, @NotNull String newPerms) throws ServiceException, IOException, NotFoundException;
-  void linuxChown(@NotNull String remotePath, @NotNull String newOwner) throws IOException, NotFoundException;
-  void linuxChgrp(@NotNull String remotePath, @NotNull String newGroup) throws IOException, NotFoundException;
+  void linuxChmod(@NotNull String remotePath, @NotNull String newPerms, boolean recursive) throws ServiceException, IOException, NotFoundException;
+  void linuxChown(@NotNull String remotePath, @NotNull String newOwner, boolean recursive) throws ServiceException, IOException, NotFoundException;
+  void linuxChgrp(@NotNull String remotePath, @NotNull String newGroup, boolean recursive) throws ServiceException, IOException, NotFoundException;
 }

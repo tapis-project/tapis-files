@@ -55,7 +55,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
     private static final String EXAMPLE_PATH = "/folderA/file1";
     private static final Logger log = LoggerFactory.getLogger(UtilsLinuxApiResource.class);
 
-    private static class FileStatInfoResponse extends TapisResponse<List<FileStatInfo>> { }
+    private static class FileStatInfoResponse extends TapisResponse<FileStatInfo> { }
     private static class FileStringResponse extends TapisResponse<String> { }
 
     @Inject
@@ -153,7 +153,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
         @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
         @Parameter(description = "Path to a file or directory", required = true) @PathParam("path") String path,
         @Valid NativeLinuxOpRequest request,
-        @Parameter(description = "If path is directory this indicates whether or not to apply the changes recursively",
+        @Parameter(description = "If path is a directory this indicates whether or not to apply the changes recursively",
                    example = "true") @DefaultValue("false") @QueryParam("recursive") boolean recursive,
         @Context SecurityContext securityContext) {
         String opName = "runLinuxNativeOp";

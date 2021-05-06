@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.exec.CommandLine;
@@ -33,14 +34,15 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 
+import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
+import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
-import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 
 /**
@@ -66,6 +68,11 @@ public class SSHDataClient implements ISSHDataClient {
     private final String rootDir;
     private final String systemId;
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
+    private static final int MAX_PERMS_INT = Integer.parseInt("777", 8);
+
+    // Username must start with letter/underscore, contain alphanumeric or _ or -, have at most 32 characters
+    //   and may end with $
+    private static final Pattern USER_REGEX = Pattern.compile("^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\\$)$");
 
     public SSHDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem sys, SSHConnection sshCon) {
         oboTenant = oboTenant1;
@@ -77,106 +84,6 @@ public class SSHDataClient implements ISSHDataClient {
         username = sys.getEffectiveUserId();
         systemId = sys.getId();
         sshConnection = sshCon;
-    }
-
-  // ------------------------------
-  // Native Linux Utility Methods
-  // ------------------------------
-  /**
-   * Returns the statInfo result for a remotePath
-   *
-   * @param remotePath - path to check
-   * @return statInfo result
-   * @throws IOException Generally a network error
-   * @throws NotFoundException No file at target
-   */
-  @Override
-  public FileStatInfo getStatInfo(@NotNull String remotePath, boolean followLinks)
-          throws IOException, NotFoundException
-  {
-    FileStatInfo statInfo;
-    String opName = followLinks ? "lstat" : "stat";
-    // Path should have already been normalized and checked but for safety and security do it
-    //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
-    String safePath = getNormalizedPath(remotePath);
-    Path absolutePath = Paths.get(rootDir, safePath);
-    String absolutePathStr = absolutePath.normalize().toString();
-    ChannelSftp channelSftp = openAndConnectSFTPChannel();
-    SftpATTRS sftpAttrs;
-    try {
-      // If path is a symbolic link then lstat gives info for the link, stat gives info for the link target
-      sftpAttrs = followLinks ? channelSftp.stat(absolutePathStr) : channelSftp.lstat(absolutePathStr);
-    } catch (SftpException e) {
-      if (e.getMessage().toLowerCase().contains("no such file")) {
-        String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
-        throw new NotFoundException(msg);
-      } else {
-        String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opName, systemId, username, host,
-                                  remotePath, e.getMessage());
-        throw new IOException(msg, e);
-      }
-    } finally {
-      sshConnection.returnChannel(channelSftp);
-    }
-
-    // Populate the FileStatInfo object
-    statInfo = new FileStatInfo(absolutePathStr, sftpAttrs.getUId(), sftpAttrs.getGId(),
-                                sftpAttrs.getSize(), sftpAttrs.getPermissionsString(),
-                                sftpAttrs.getATime(), sftpAttrs.getMTime(), sftpAttrs.isDir(), sftpAttrs.isLink());
-    return statInfo;
-  }
-
-  @Override
-  public void linuxChmod(@NotNull String remotePath, @NotNull String permsStr)
-          throws ServiceException, IOException, NotFoundException {
-    String opName = "chmod";
-    int permsInt;
-    // Path should have already been normalized and checked but for safety and security do it
-    //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
-    String safePath = getNormalizedPath(remotePath);
-    Path absolutePath = Paths.get(rootDir, safePath);
-    String absolutePathStr = absolutePath.normalize().toString();
-    ChannelSftp channelSftp = openAndConnectSFTPChannel();
-
-    try {
-      permsInt = Integer.parseInt(permsStr, 8);
-
-      channelSftp.chmod(permsInt, absolutePathStr);
-
-    } catch (SftpException e) {
-      if (e.getMessage().toLowerCase().contains("no such file")) {
-        String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
-        throw new NotFoundException(msg);
-      } else {
-        String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opName, systemId, username, host,
-                remotePath, e.getMessage());
-        throw new IOException(msg, e);
-      }
-    } catch (NumberFormatException e) {
-      String msg = Utils.getMsg("FILES_CLIENT_SSH_CHMOD_ERR", oboTenant, oboUser, opName, systemId, username, host,
-                                remotePath, permsStr, e.getMessage());
-      throw new ServiceException(msg, e);
-    } finally {
-      sshConnection.returnChannel(channelSftp);
-    }
-  }
-
-  @Override
-  public void linuxChown(@NotNull String remotePath, @NotNull String newPerms) throws IOException, NotFoundException {
-    String opName = "chown";
-    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_SSH_NOT_IMPL", oboTenant, oboUser, opName));
-  }
-
-  @Override
-  public void linuxChgrp(@NotNull  String remotePath, @NotNull String newGroup) throws IOException, NotFoundException {
-    String opName = "chgrp";
-    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_SSH_NOT_IMPL", oboTenant, oboUser, opName));
-  }
-
-    public List<FileInfo> lsRecursive(String basePath) throws IOException, NotFoundException {
-        List<FileInfo> filesList = new ArrayList<>();
-        listDirectoryRec(basePath, filesList);
-        return filesList;
     }
 
     private void listDirectoryRec(String basePath, List<FileInfo> listing) throws IOException, NotFoundException{
@@ -562,6 +469,132 @@ public class SSHDataClient implements ISSHDataClient {
         insertOrAppend(path, byteStream, true);
     }
 
+    public List<FileInfo> lsRecursive(String basePath) throws IOException, NotFoundException {
+      List<FileInfo> filesList = new ArrayList<>();
+      listDirectoryRec(basePath, filesList);
+      return filesList;
+    }
+
+  // ------------------------------
+  // Native Linux Utility Methods
+  // ------------------------------
+  /**
+   * Returns the statInfo result for a remotePath
+   *
+   * @param remotePath - path to check
+   * @return statInfo result
+   * @throws IOException Generally a network error
+   * @throws NotFoundException No file at target
+   */
+  @Override
+  public FileStatInfo getStatInfo(@NotNull String remotePath, boolean followLinks)
+          throws IOException, NotFoundException
+  {
+    FileStatInfo statInfo;
+    String opName = followLinks ? "lstat" : "stat";
+    // Path should have already been normalized and checked but for safety and security do it
+    //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
+    String safePath = getNormalizedPath(remotePath);
+    Path absolutePath = Paths.get(rootDir, safePath);
+    String absolutePathStr = absolutePath.normalize().toString();
+    ChannelSftp channelSftp = openAndConnectSFTPChannel();
+    SftpATTRS sftpAttrs;
+    try {
+      // If path is a symbolic link then lstat gives info for the link, stat gives info for the link target
+      sftpAttrs = followLinks ? channelSftp.stat(absolutePathStr) : channelSftp.lstat(absolutePathStr);
+    } catch (SftpException e) {
+      if (e.getMessage().toLowerCase().contains("no such file")) {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
+        throw new NotFoundException(msg);
+      } else {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opName, systemId, username, host,
+                remotePath, e.getMessage());
+        throw new IOException(msg, e);
+      }
+    } finally {
+      sshConnection.returnChannel(channelSftp);
+    }
+
+    // Populate the FileStatInfo object
+    statInfo = new FileStatInfo(absolutePathStr, sftpAttrs.getUId(), sftpAttrs.getGId(),
+                                sftpAttrs.getSize(), sftpAttrs.getPermissionsString(),
+                                sftpAttrs.getATime(), sftpAttrs.getMTime(), sftpAttrs.isDir(), sftpAttrs.isLink());
+    return statInfo;
+  }
+
+  /**
+   * Run the linux chmod operation
+   * Perms argument is validated to be an octal number between 000 and 777
+   *
+   * @param remotePath - target of operation
+   * @param permsStr - perms as octal (000 through 777)
+   * @param recursive - add -R for recursive
+   */
+  @Override
+  public void linuxChmod(@NotNull String remotePath, @NotNull String permsStr, boolean recursive)
+          throws ServiceException, IOException, NotFoundException {
+    String opName = "chmod";
+
+    // Parse and validate the chmod perms argument
+    try
+    {
+      int permsInt = Integer.parseInt(permsStr, 8);
+      // Check that value is in allowed range
+      if (permsInt > MAX_PERMS_INT || permsInt < 0)
+      {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_CHMOD_PERMS", oboTenant, oboUser, systemId, username, host,
+                                  remotePath, permsStr);
+        throw new ServiceException(msg);
+      }
+    } catch (NumberFormatException e) {
+      String msg = Utils.getMsg("FILES_CLIENT_SSH_CHMOD_ERR", oboTenant, oboUser, systemId, username, host,
+                                remotePath, permsStr, e.getMessage());
+      throw new ServiceException(msg, e);
+    }
+
+    // Run the command
+    runLinuxChangeOp(opName, permsStr, remotePath, recursive);
+  }
+
+  @Override
+  public void linuxChown(@NotNull String remotePath, @NotNull String newOwner, boolean recursive)
+          throws ServiceException, IOException, NotFoundException {
+    String opName = "chown";
+
+    // Validate that owner is valid linux user name
+    if (!USER_REGEX.matcher(newOwner).matches())
+    {
+      String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_USRGRP", oboTenant, oboUser, systemId, username, host,
+              remotePath, opName, newOwner);
+      throw new ServiceException(msg);
+    }
+
+    // Run the command
+    // TODO what if command returns an error?
+    runLinuxChangeOp(opName, newOwner, remotePath, recursive);
+  }
+
+  @Override
+  public void linuxChgrp(@NotNull String remotePath, @NotNull String newGroup, boolean recursive)
+          throws ServiceException, IOException, NotFoundException {
+    String opName = "chgrp";
+
+    // Validate that group is valid linux group name
+    if (!USER_REGEX.matcher(newGroup).matches())
+    {
+      String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_USRGRP", oboTenant, oboUser, systemId, username, host,
+              remotePath, opName, newGroup);
+      throw new ServiceException(msg);
+    }
+    // Run the command
+    // TODO what if command returns an error?
+    runLinuxChangeOp(opName, newGroup, remotePath, recursive);
+  }
+
+    // ------------------------------
+    // Private Methods
+    // ------------------------------
+
     private ChannelSftp openAndConnectSFTPChannel() throws IOException {
         String CHANNEL_TYPE = "sftp";
         ChannelSftp channel = (ChannelSftp) sshConnection.createChannel(CHANNEL_TYPE);
@@ -573,12 +606,12 @@ public class SSHDataClient implements ISSHDataClient {
         return (ChannelExec) sshConnection.createChannel(CHANNEL_TYPE);
     }
 
-  /**
-   * Use Apache's FileNameUtils to get a normalized path
-   * @param remotePath - path to normalize
-   * @return normalized path
-   * @throws IllegalArgumentException - if path normalizes to null
-   */
+    /**
+     * Use Apache's FileNameUtils to get a normalized path
+     * @param remotePath - path to normalize
+     * @return normalized path
+     * @throws IllegalArgumentException - if path normalizes to null
+     */
     private String getNormalizedPath(String remotePath) throws IllegalArgumentException
     {
       // FilenameUtils.normalize() is expected to protect against escaping via ../..
@@ -589,5 +622,61 @@ public class SSHDataClient implements ISSHDataClient {
         throw new IllegalArgumentException(msg);
       }
       return safePath;
+    }
+
+
+  /**
+   * Run one of the linux change operations: chmod, chown, chgrp
+   * @param opName - Operation to execute
+   * @param arg1 - argument for operation (perms as octal, new owner, new group)
+   * @param remotePath - target of operation
+   * @param recursive - add -R for recursive
+   */
+    private void runLinuxChangeOp(String opName, String arg1, String remotePath, boolean recursive)
+            throws ServiceException, IOException, NotFoundException
+    {
+      // Make sure we have a valid first argument
+      if (StringUtils.isBlank(arg1))
+      {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_NOARG", oboTenant, oboUser, systemId, username, host,
+                                  remotePath, opName);
+        throw new ServiceException(msg);
+      }
+
+      // Path should have already been normalized and checked but for safety and security do it
+      //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
+      String safePath = getNormalizedPath(remotePath);
+      Path absolutePath = Paths.get(rootDir, safePath);
+      String absolutePathStr = absolutePath.normalize().toString();
+
+      // Check that path exists. This will throw a NotFoundException if path is not there
+      this.ls(safePath);
+
+      // Open a command channel and build the command
+      ChannelExec channelExec = openCommandChannel();
+      try {
+        // Build and execute the linux command
+        // TODO what if command returns an error? can we capture the exit code and msg (and throw a ServiceException)?
+        CommandLine cmd = new CommandLine(opName);
+        if (recursive) cmd.addArgument("-R");
+        cmd.addArgument(arg1);
+        cmd.addArgument(absolutePathStr);
+        String toExecute = String.join(" ", cmd.toStrings());
+        channelExec.setCommand(toExecute);
+        channelExec.connect();
+
+      } catch (JSchException e) {
+        if (e.getMessage().toLowerCase().contains("no such file"))
+        {
+          String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
+          throw new NotFoundException(msg);
+        } else {
+          String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opName, systemId, username, host,
+                  remotePath, e.getMessage());
+          throw new IOException(msg, e);
+        }
+      } finally {
+        sshConnection.returnChannel(channelExec);
+      }
     }
 }
