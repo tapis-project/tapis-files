@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -41,12 +42,10 @@ import javax.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 
 /*
  * JAX-RS REST api for linux utility methods.
- * TODO/TBD: Have systemType in top level path or make it a path parameter
- *           (and rename this class to UtilsApiResource)?
+ * Another option would be to have systemType as a path parameter and rename this class to UtilsApiResource.
  */
 @Path("/v3/files/utils/linux")
 public class UtilsLinuxApiResource extends BaseFileOpsResource {
@@ -168,7 +167,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
 
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();
-        } catch (ServiceException | IOException e) {
+        } catch (TapisException | ServiceException | IOException e) {
             String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);

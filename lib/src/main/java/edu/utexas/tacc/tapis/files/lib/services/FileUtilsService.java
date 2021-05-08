@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -77,7 +78,7 @@ public class FileUtilsService implements IFileUtilsService {
   @Override
   public void linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
                       @NotNull String arg, boolean recursive)
-          throws ServiceException, NotAuthorizedException
+          throws TapisException, ServiceException, NotAuthorizedException
   {
     if (!(client instanceof ISSHDataClient)) {
       String msg = Utils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),

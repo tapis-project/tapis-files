@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import org.jetbrains.annotations.NotNull;
 
 import javax.ws.rs.NotFoundException;
@@ -18,7 +19,7 @@ public interface ISSHDataClient extends IRemoteDataClient
   // Native Linux Utility Methods
   // ------------------------------
   FileStatInfo getStatInfo(@NotNull String remotePath, boolean followLinks) throws IOException, NotFoundException;
-  void linuxChmod(@NotNull String remotePath, @NotNull String newPerms, boolean recursive) throws ServiceException, IOException, NotFoundException;
-  void linuxChown(@NotNull String remotePath, @NotNull String newOwner, boolean recursive) throws ServiceException, IOException, NotFoundException;
-  void linuxChgrp(@NotNull String remotePath, @NotNull String newGroup, boolean recursive) throws ServiceException, IOException, NotFoundException;
+  void linuxChmod(@NotNull String remotePath, @NotNull String newPerms, boolean recursive) throws TapisException, IOException, NotFoundException;
+  void linuxChown(@NotNull String remotePath, @NotNull String newOwner, boolean recursive) throws TapisException, IOException, NotFoundException;
+  void linuxChgrp(@NotNull String remotePath, @NotNull String newGroup, boolean recursive) throws TapisException, IOException, NotFoundException;
 }

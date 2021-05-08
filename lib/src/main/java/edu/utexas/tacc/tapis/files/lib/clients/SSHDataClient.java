@@ -17,12 +17,13 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.ssh.system.TapisRunCommand;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,12 +39,10 @@ import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
 import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-
 
 /**
  * This class is the entry point to sile operations over SSH with Tapis.
@@ -67,6 +66,8 @@ public class SSHDataClient implements ISSHDataClient {
     private final SSHConnection sshConnection;
     private final String rootDir;
     private final String systemId;
+    private final TapisSystem tapisSystem;
+
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
     private static final int MAX_PERMS_INT = Integer.parseInt("777", 8);
 
@@ -83,6 +84,7 @@ public class SSHDataClient implements ISSHDataClient {
         host = sys.getHost();
         username = sys.getEffectiveUserId();
         systemId = sys.getId();
+        tapisSystem = sys;
         sshConnection = sshCon;
     }
 
@@ -532,7 +534,7 @@ public class SSHDataClient implements ISSHDataClient {
    */
   @Override
   public void linuxChmod(@NotNull String remotePath, @NotNull String permsStr, boolean recursive)
-          throws ServiceException, IOException, NotFoundException {
+          throws TapisException, IOException, NotFoundException {
     String opName = "chmod";
 
     // Parse and validate the chmod perms argument
@@ -544,12 +546,12 @@ public class SSHDataClient implements ISSHDataClient {
       {
         String msg = Utils.getMsg("FILES_CLIENT_SSH_CHMOD_PERMS", oboTenant, oboUser, systemId, username, host,
                                   remotePath, permsStr);
-        throw new ServiceException(msg);
+        throw new TapisException(msg);
       }
     } catch (NumberFormatException e) {
       String msg = Utils.getMsg("FILES_CLIENT_SSH_CHMOD_ERR", oboTenant, oboUser, systemId, username, host,
                                 remotePath, permsStr, e.getMessage());
-      throw new ServiceException(msg, e);
+      throw new TapisException(msg, e);
     }
 
     // Run the command
@@ -558,7 +560,7 @@ public class SSHDataClient implements ISSHDataClient {
 
   @Override
   public void linuxChown(@NotNull String remotePath, @NotNull String newOwner, boolean recursive)
-          throws ServiceException, IOException, NotFoundException {
+          throws TapisException, IOException, NotFoundException {
     String opName = "chown";
 
     // Validate that owner is valid linux user name
@@ -566,17 +568,16 @@ public class SSHDataClient implements ISSHDataClient {
     {
       String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_USRGRP", oboTenant, oboUser, systemId, username, host,
               remotePath, opName, newOwner);
-      throw new ServiceException(msg);
+      throw new TapisException(msg);
     }
 
     // Run the command
-    // TODO what if command returns an error?
     runLinuxChangeOp(opName, newOwner, remotePath, recursive);
   }
 
   @Override
   public void linuxChgrp(@NotNull String remotePath, @NotNull String newGroup, boolean recursive)
-          throws ServiceException, IOException, NotFoundException {
+          throws TapisException, IOException, NotFoundException {
     String opName = "chgrp";
 
     // Validate that group is valid linux group name
@@ -584,10 +585,9 @@ public class SSHDataClient implements ISSHDataClient {
     {
       String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_USRGRP", oboTenant, oboUser, systemId, username, host,
               remotePath, opName, newGroup);
-      throw new ServiceException(msg);
+      throw new TapisException(msg);
     }
     // Run the command
-    // TODO what if command returns an error?
     runLinuxChangeOp(opName, newGroup, remotePath, recursive);
   }
 
@@ -597,8 +597,7 @@ public class SSHDataClient implements ISSHDataClient {
 
     private ChannelSftp openAndConnectSFTPChannel() throws IOException {
         String CHANNEL_TYPE = "sftp";
-        ChannelSftp channel = (ChannelSftp) sshConnection.createChannel(CHANNEL_TYPE);
-        return channel;
+      return (ChannelSftp) sshConnection.createChannel(CHANNEL_TYPE);
     }
 
     private ChannelExec openCommandChannel() throws IOException {
@@ -624,7 +623,6 @@ public class SSHDataClient implements ISSHDataClient {
       return safePath;
     }
 
-
   /**
    * Run one of the linux change operations: chmod, chown, chgrp
    * @param opName - Operation to execute
@@ -633,14 +631,14 @@ public class SSHDataClient implements ISSHDataClient {
    * @param recursive - add -R for recursive
    */
     private void runLinuxChangeOp(String opName, String arg1, String remotePath, boolean recursive)
-            throws ServiceException, IOException, NotFoundException
+            throws TapisException, IOException, NotFoundException
     {
       // Make sure we have a valid first argument
       if (StringUtils.isBlank(arg1))
       {
         String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_NOARG", oboTenant, oboUser, systemId, username, host,
                                   remotePath, opName);
-        throw new ServiceException(msg);
+        throw new TapisException(msg);
       }
 
       // Path should have already been normalized and checked but for safety and security do it
@@ -652,31 +650,19 @@ public class SSHDataClient implements ISSHDataClient {
       // Check that path exists. This will throw a NotFoundException if path is not there
       this.ls(safePath);
 
-      // Open a command channel and build the command
-      ChannelExec channelExec = openCommandChannel();
-      try {
-        // Build and execute the linux command
-        // TODO what if command returns an error? can we capture the exit code and msg (and throw a ServiceException)?
-        CommandLine cmd = new CommandLine(opName);
-        if (recursive) cmd.addArgument("-R");
-        cmd.addArgument(arg1);
-        cmd.addArgument(absolutePathStr);
-        String toExecute = String.join(" ", cmd.toStrings());
-        channelExec.setCommand(toExecute);
-        channelExec.connect();
+      // Build the command and execute it.
+      var cmdRunner = new TapisRunCommand(tapisSystem, sshConnection);
 
-      } catch (JSchException e) {
-        if (e.getMessage().toLowerCase().contains("no such file"))
-        {
-          String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
-          throw new NotFoundException(msg);
-        } else {
-          String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opName, systemId, username, host,
-                  remotePath, e.getMessage());
-          throw new IOException(msg, e);
-        }
-      } finally {
-        sshConnection.returnChannel(channelExec);
+      StringBuilder sb = new StringBuilder(opName);
+      if (recursive) sb.append(" -R");
+      sb.append(" ").append(arg1).append(" ").append(absolutePathStr);
+      // Execute the command
+      String stdOut = cmdRunner.execute(sb.toString());
+      if (cmdRunner.getExitStatus() != 0)
+      {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, username, host,
+                                  remotePath, opName, cmdRunner.getExitStatus(), stdOut, cmdRunner.getErrorStreamMessage());
+        throw new TapisException(msg);
       }
     }
 }
