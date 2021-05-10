@@ -56,6 +56,12 @@ public class FilePermsService {
 
     public void replacePathPrefix(String tenantId, String username, String systemId, String oldPath, String newPath) throws ServiceException {
         try {
+            if (!oldPath.startsWith("/")) {
+                oldPath = "/" + oldPath;
+            }
+            if (!newPath.startsWith("/")) {
+                newPath = "/" + newPath;
+            }
             SKClient skClient = getSKClient(tenantId, username);
             int modified = skClient.replacePathPrefix(tenantId, "files", null, systemId, systemId, oldPath, newPath);
             log.debug(String.valueOf(modified));
@@ -66,15 +72,24 @@ public class FilePermsService {
     }
 
     public boolean isPermitted(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path, @NotNull Permission perm) throws ServiceException {
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
         return permsCache.checkPerm(tenantId, username, systemId, path, perm);
     }
 
     public Permission getPermission(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path) throws ServiceException {
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
         return permsCache.fetchPerm(tenantId, username, systemId, path);
     }
 
     public void revokePermission(String tenantId, String username, String systemId, String path) throws ServiceException {
         try {
+            if (!path.startsWith("/")) {
+                path = "/" + path;
+            }
             SKClient skClient = getSKClient(tenantId, username);
             String permSpec = String.format(PERMSPEC, tenantId, Permission.READ, systemId, path);
             skClient.revokeUserPermission(tenantId, username, permSpec);
