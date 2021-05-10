@@ -42,6 +42,12 @@ public class FilePermsCache {
 
     public boolean checkPerm(String tenantId, String username, String systemId, String path, Permission perm) throws ServiceException {
         try {
+            // 99% of the time, a user will have access to the root of the storage system, so lets
+            // just check that first. If they have access to the top level, anything below is also permitted.
+            FilePermCacheKey topKey = new FilePermCacheKey(tenantId, systemId, "/", username, perm);
+            boolean hasTopAccess = cache.get(topKey);
+            if (hasTopAccess) return true;
+            // If that didn't catch it, lets check for the true path given.
             FilePermCacheKey key = new FilePermCacheKey(tenantId, systemId, path, username, perm);
             return cache.get(key);
         } catch (ExecutionException ex) {
