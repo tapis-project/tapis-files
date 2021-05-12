@@ -398,6 +398,7 @@ public class FileTransfersDAO {
             if (task.getEndTime() != null) {
                 endTime = Timestamp.from(task.getEndTime());
             }
+            log.info(startTime.toString());
             TransferTaskParent updatedTask = runner.query(connection, stmt, handler,
                 task.getSourceURI().toString(),
                 task.getDestinationURI().toString(),

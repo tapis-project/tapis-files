@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.NotNull;

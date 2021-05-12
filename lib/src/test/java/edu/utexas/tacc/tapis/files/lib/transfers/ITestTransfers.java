@@ -389,7 +389,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
-        // Double check that the files really are in the destination
+
         //wipe out the dest folder just in case
         fileOpsService.delete(destClient, "/");
 

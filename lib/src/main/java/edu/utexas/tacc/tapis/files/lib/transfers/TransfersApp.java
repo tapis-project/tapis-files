@@ -1,9 +1,11 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
@@ -43,9 +45,11 @@ public class TransfersApp {
             @Override
             protected void configure() {
                 bindAsContract(RemoteDataClientFactory.class);
-                bindAsContract(SystemsCache.class);
+                bindAsContract(SystemsCache.class).in(Singleton.class);
                 bindAsContract(FileTransfersDAO.class);
-                bindAsContract(TransfersService.class);
+                bindAsContract(TransfersService.class).in(Singleton.class);
+                bindAsContract(FilePermsService.class).in(Singleton.class);
+                bindAsContract(FilePermsCache.class).in(Singleton.class);
                 bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
                 bind(new SSHConnectionCache(60, TimeUnit.SECONDS)).to(SSHConnectionCache.class);
                 bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);

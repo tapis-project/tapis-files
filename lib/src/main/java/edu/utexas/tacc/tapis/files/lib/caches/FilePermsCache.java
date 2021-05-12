@@ -23,7 +23,6 @@ import java.util.concurrent.ExecutionException;
 @Service
 public class FilePermsCache {
 
-    private final IRuntimeConfig config;
     private final LoadingCache<FilePermCacheKey, Boolean> cache;
     // PERMSPEC is "files:tenant:r,rw,*:systemId:path
     private static final String PERMSPEC = "files:%s:%s:%s:%s";
@@ -33,9 +32,8 @@ public class FilePermsCache {
 
     @Inject
     public FilePermsCache() {
-        this.config = RuntimeSettings.get();
         cache = CacheBuilder.newBuilder()
-            .expireAfterWrite(Duration.ofMinutes(5))
+            .expireAfterWrite(Duration.ofMinutes(1))
             .build(new PermsLoader());
     }
 
