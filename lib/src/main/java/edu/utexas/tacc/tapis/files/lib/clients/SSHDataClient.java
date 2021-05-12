@@ -661,7 +661,7 @@ public class SSHDataClient implements ISSHDataClient {
       if (cmdRunner.getExitStatus() != 0)
       {
         String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, username, host,
-                                  remotePath, opName, cmdRunner.getExitStatus(), stdOut, cmdRunner.getErrorStreamMessage());
+                                  remotePath, opName, cmdRunner.getExitStatus(), stdOut, cmdRunner.getStdErr());
         throw new TapisException(msg);
       }
     }

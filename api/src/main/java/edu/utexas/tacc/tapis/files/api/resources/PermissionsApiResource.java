@@ -152,7 +152,7 @@ public class PermissionsApiResource  {
                     description = "FilePermission",
                     content = @Content(schema = @Schema(implementation = FilePermissionResponse.class)))
     })
-    public Response grantPermissions(
+    public TapisResponse<FilePermission> grantPermissions(
             @Parameter(description = "System ID",required=true) @PathParam("systemId") String systemId,
             @Parameter(description = "path",required=true) @PathParam("path") String path,
             @Valid @Parameter(required = true) CreatePermissionRequest createPermissionRequest,
@@ -162,8 +162,14 @@ public class PermissionsApiResource  {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             permsService.grantPermission(user.getOboTenantId(), createPermissionRequest.getUsername(), systemId, path, createPermissionRequest.getPermission());
-            TapisResponse<String> response = TapisResponse.createSuccessResponse("Permissions granted.");
-            return Response.ok(response).build();
+            FilePermission filePermission = new FilePermission();
+            filePermission.setPath(path);
+            filePermission.setSystemId(systemId);
+            filePermission.setUsername(createPermissionRequest.getUsername());
+            filePermission.setTenantId(user.getOboTenantId());
+            filePermission.setPermission(createPermissionRequest.getPermission());
+            TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(filePermission);
+            return response;
         } catch (ServiceException ex) {
             String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);

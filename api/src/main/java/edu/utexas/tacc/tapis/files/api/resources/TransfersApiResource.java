@@ -213,6 +213,9 @@ public class  TransfersApiResource {
     public Response createTransferTask(
             @Valid @Parameter(required = true) TransferTaskRequest transferTaskRequest,
             @Context SecurityContext securityContext) {
+        log.info("TRANSFER CREATING");
+        log.info(transferTaskRequest.toString());
+
         String opName = "createTransferTask";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
@@ -224,6 +227,8 @@ public class  TransfersApiResource {
             );
             TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
             resp.setMessage("Transfer created.");
+            log.info("TRANSFER SAVED");
+            log.info(task.toString());
             return Response.ok(resp).build();
         } catch (ServiceException ex) {
             String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());

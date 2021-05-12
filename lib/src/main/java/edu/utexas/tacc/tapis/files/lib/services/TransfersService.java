@@ -204,6 +204,7 @@ public class TransfersService {
         // Check ofr authorization on both source and dest systems/paths
 
         for (TransferTaskRequestElement elem: elements) {
+            log.info("Checking permissions for transfer");
             // For http inputs no need to do any permission checking on the source
             boolean isHttpSource = elem.getSourceURI().getProtocol().equalsIgnoreCase("http");
 
@@ -217,6 +218,8 @@ public class TransfersService {
               Utils.checkPermitted(permsService, tenantId, username, srcSystemId, srcPath, srcPath, Permission.READ);
             }
             Utils.checkPermitted(permsService, tenantId, username, destSystemId, destPath, destPath, Permission.READ);
+            log.info("Permissions checks complete for");
+            log.info(elem.toString());
         }
 
         TransferTask task = new TransferTask();
