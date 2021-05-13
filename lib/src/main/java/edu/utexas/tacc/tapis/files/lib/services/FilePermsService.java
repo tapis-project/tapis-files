@@ -12,6 +12,7 @@ import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -42,9 +43,9 @@ public class FilePermsService {
         try {
             // This avoids ambiguous path issues with the SK. basically ensures that
             // the even if the path is dir/file1.txt the entry will be /dir/file1.txt
-            if (!path.startsWith("/")) {
-                path = "/" + path;
-            }
+            // Also removes any trailing slashes if present needed for SK permissions checks
+            path = StringUtils.removeEnd(path, "/");
+            path = StringUtils.prependIfMissing(path, "/");
             SKClient skClient = getSKClient(tenantId, username);
             String permSpec = String.format(PERMSPEC, tenantId, perm, systemId, path);
             skClient.grantUserPermission(tenantId, username, permSpec);
@@ -56,12 +57,8 @@ public class FilePermsService {
 
     public void replacePathPrefix(String tenantId, String username, String systemId, String oldPath, String newPath) throws ServiceException {
         try {
-            if (!oldPath.startsWith("/")) {
-                oldPath = "/" + oldPath;
-            }
-            if (!newPath.startsWith("/")) {
-                newPath = "/" + newPath;
-            }
+            oldPath = StringUtils.prependIfMissing(oldPath, "/");
+            newPath = StringUtils.prependIfMissing(newPath, "/");
             SKClient skClient = getSKClient(tenantId, username);
             int modified = skClient.replacePathPrefix(tenantId, "files", null, systemId, systemId, oldPath, newPath);
             log.debug(String.valueOf(modified));
@@ -72,24 +69,21 @@ public class FilePermsService {
     }
 
     public boolean isPermitted(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path, @NotNull Permission perm) throws ServiceException {
-        if (!path.startsWith("/")) {
-            path = "/" + path;
-        }
+        path = StringUtils.removeEnd(path, "/");
+        path = StringUtils.prependIfMissing(path, "/");
         return permsCache.checkPerm(tenantId, username, systemId, path, perm);
     }
 
     public Permission getPermission(@NotNull String tenantId, @NotNull String username, @NotNull String systemId, @NotNull String path) throws ServiceException {
-        if (!path.startsWith("/")) {
-            path = "/" + path;
-        }
+        path = StringUtils.removeEnd(path, "/");
+        path = StringUtils.prependIfMissing(path, "/");
         return permsCache.fetchPerm(tenantId, username, systemId, path);
     }
 
     public void revokePermission(String tenantId, String username, String systemId, String path) throws ServiceException {
         try {
-            if (!path.startsWith("/")) {
-                path = "/" + path;
-            }
+            path = StringUtils.removeEnd(path, "/");
+            path = StringUtils.prependIfMissing(path, "/");
             SKClient skClient = getSKClient(tenantId, username);
             String permSpec = String.format(PERMSPEC, tenantId, Permission.READ, systemId, path);
             skClient.revokeUserPermission(tenantId, username, permSpec);

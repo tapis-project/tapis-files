@@ -51,7 +51,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     @BeforeMethod
     public void initialize() throws Exception {
-
         Mockito.reset(skClient);
         Mockito.reset(serviceClients);
         Mockito.reset(systemsClient);
@@ -64,17 +63,57 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         fileOpsService.insert(client,"file1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
         fileOpsService.insert(client,"file2.txt", in);
-
-
     }
 
     @AfterMethod
     public void tearDown() throws Exception {
+        Mockito.reset(skClient);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         fileOpsService.delete(client,"/");
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         fileOpsService.delete(client,"/");
     }
+
+    @Test
+    public void testNotPermitted() throws Exception {
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("tapis://sourceSystem/");
+        element.setDestinationURI("tapis://destSystem/");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element);
+        TransferTask t1 = transfersService.createTransfer(
+            "testuser",
+            "dev",
+            "tag",
+            elements
+        );
+        Flux<AcknowledgableDelivery> messages = transfersService.streamParentMessages();
+        Flux<TransferTaskParent> tasks = transfersService.processParentTasks(messages);
+        // Task should be FAILED after the pipeline runs
+        StepVerifier
+            .create(tasks)
+            .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.FAILED))
+            .thenCancel()
+            .verify();
+        TransferTaskParent task = transfersService.getTransferTaskParentByUUID(t1.getParentTasks().get(0).getUuid());
+        Assert.assertEquals(task.getStatus(), TransferTaskStatus.FAILED);
+
+        TransferTask topTask = transfersService.getTransferTaskByUUID(t1.getUuid());
+        Assert.assertEquals(task.getStatus(), TransferTaskStatus.FAILED);
+
+        transfersService.deleteQueue(childQ).subscribe();
+        transfersService.deleteQueue(parentQ).subscribe();
+    }
+
 
     @Test
     public void testTagSaveAndReturned() throws Exception {
@@ -389,7 +428,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
-        // Double check that the files really are in the destination
+
         //wipe out the dest folder just in case
         fileOpsService.delete(destClient, "/");
 
