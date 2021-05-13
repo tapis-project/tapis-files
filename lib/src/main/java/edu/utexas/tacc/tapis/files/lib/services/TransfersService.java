@@ -195,35 +195,6 @@ public class TransfersService {
 
     public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId, String tag, List<TransferTaskRequestElement> elements) throws ServiceException, ForbiddenException {
 
-        // Check ofr authorization on both source and dest systems/paths
-
-//        for (TransferTaskRequestElement elem: elements) {
-//            log.info("Checking permissions for transfer");
-//            // For http inputs no need to do any permission checking on the source
-//            boolean isHttpSource = elem.getSourceURI().getProtocol().equalsIgnoreCase("http");
-//
-//            String srcSystemId = elem.getSourceURI().getSystemId();
-//            String srcPath = elem.getSourceURI().getPath();
-//            String destSystemId = elem.getDestinationURI().getSystemId();
-//            String destPath = elem.getDestinationURI().getPath();
-//
-//            // If we have a tapis:// link, have to do the source perms check
-//            if (!isHttpSource) {
-//                boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
-//                if (!sourcePerms) {
-//                    String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", tenantId, username, srcSystemId, srcPath);
-//                    throw new NotAuthorizedException(msg);
-//                }
-//            }
-//            boolean destPerms = permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
-//            if (!destPerms) {
-//                String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", tenantId, username, destSystemId, destPath);
-//                throw new NotAuthorizedException(msg);
-//            }
-//            log.info("Permissions checks complete for");
-//            log.info(elem.toString());
-//        }
-
         TransferTask task = new TransferTask();
         task.setTenantId(tenantId);
         task.setUsername(username);
@@ -380,6 +351,34 @@ public class TransfersService {
     }
 
 
+    private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException {
+        log.info("Checking permissions for transfer");
+        // For http inputs no need to do any permission checking on the source
+        boolean isHttpSource = parentTask.getSourceURI().getProtocol().equalsIgnoreCase("http");
+        String tenantId = parentTask.getTenantId();
+        String username = parentTask.getUsername();
+
+        String srcSystemId = parentTask.getSourceURI().getSystemId();
+        String srcPath = parentTask.getSourceURI().getPath();
+        String destSystemId = parentTask.getDestinationURI().getSystemId();
+        String destPath = parentTask.getDestinationURI().getPath();
+
+        // If we have a tapis:// link, have to do the source perms check
+        if (!isHttpSource) {
+            boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
+            if (!sourcePerms) {
+                return false;
+            }
+        }
+        boolean destPerms = permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
+        if (!destPerms) {
+           return false;
+        }
+        log.info("Permissions checks complete for {}", parentTask);
+        return true;
+    }
+
+
     /**
      * We prepare a "bill of materials" for the total transfer task. This includes doing a recursive listing and
      * inserting the records into the DB, then publishing all of the messages to rabbitmq. After that, the child task workers
@@ -388,11 +387,16 @@ public class TransfersService {
      * @return
      * @throws ServiceException
      */
-    private TransferTaskParent doParentChevronOne(TransferTaskParent parentTask) throws ServiceException {
+    private TransferTaskParent doParentChevronOne(TransferTaskParent parentTask) throws ServiceException, ForbiddenException {
         log.debug("***** DOING doParentChevronOne ****");
         log.debug(parentTask.toString());
         TapisSystem sourceSystem;
         IRemoteDataClient sourceClient;
+
+        boolean isPermitted = checkPermissionsForParent(parentTask);
+        if (!isPermitted) {
+            throw new ForbiddenException();
+        }
 
         // Update the top level task first, if it is not already updated with the startTime
         try {
