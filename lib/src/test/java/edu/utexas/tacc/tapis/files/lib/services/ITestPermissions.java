@@ -36,7 +36,7 @@ public class ITestPermissions {
 
         ServiceClients serviceClients = ServiceClients.getInstance();
         SKClient skClient = serviceClients.getClient("testuser2", "dev", SKClient.class);
-        int recs = skClient.grantUserPermission("dev", "testuser1", "files:dev:READ:testSystem2:/dir1/dir2/");
+        int recs = skClient.grantUserPermission("dev", "testuser1", "files:dev:READ:testSystem2:/dir1/dir2");
         boolean isPermitted = skClient.isPermitted("dev", "testuser1", "files:dev:READ:testSystem2:/dir1/dir2/testFile.txt");
         Assert.assertTrue(isPermitted);
     }
