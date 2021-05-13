@@ -18,6 +18,11 @@ import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 
+/*
+ * Service level methods for FileUtils.
+ *   Uses an SSHDataClient to perform top level service operations.
+ * Annotate as an hk2 Service so that default scope for DI is singleton
+ */
 @Service
 public class FileUtilsService implements IFileUtilsService {
 
@@ -31,6 +36,18 @@ public class FileUtilsService implements IFileUtilsService {
         this.permsService = permsService;
     }
 
+  /**
+   * Run the linux stat command on the path and return stat information
+   *
+   * @param client - remote data client
+   * @param path - target path for operation
+   * @param followLinks - When path is a symbolic link whether to get information about the link (false)
+   *                      or the link target (true)
+   * @return FileStatInfo
+   * @throws ServiceException - General problem
+   * @throws NotFoundException - path not found
+   * @throws NotAuthorizedException - user not authorized to operate on path
+   */
   @Override
   public FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String path, boolean followLinks)
           throws ServiceException, NotFoundException, NotAuthorizedException
@@ -50,6 +67,7 @@ public class FileUtilsService implements IFileUtilsService {
         throw new IllegalArgumentException(msg);
       }
 
+      // Check permissions
       Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                            cleanedPath, path, Permission.READ);
 
@@ -57,7 +75,7 @@ public class FileUtilsService implements IFileUtilsService {
       return sshClient.getStatInfo(cleanedPath, followLinks);
 
     } catch (IOException ex) {
-      String msg = Utils.getMsg("FILES_UTILSC_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
+      String msg = Utils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
                                 client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
@@ -66,7 +84,6 @@ public class FileUtilsService implements IFileUtilsService {
 
   /**
    * Run a native linux operation: chown, chmod, chgrp
-   * TODO: Support recursive operations
    * @param client - remote data client
    * @param path - target path for operation
    * @param op - operation to perform
@@ -88,6 +105,7 @@ public class FileUtilsService implements IFileUtilsService {
     ISSHDataClient sshClient = (ISSHDataClient) client;
     try {
       String cleanedPath = FilenameUtils.normalize(path);
+      // Check permissions
       Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                            cleanedPath, path, Permission.MODIFY);
 
@@ -99,7 +117,7 @@ public class FileUtilsService implements IFileUtilsService {
       }
 
     } catch (IOException ex) {
-      String msg = Utils.getMsg("FILES_UTILSC_ERR", client.getOboTenant(), client.getOboUser(), op.name(),
+      String msg = Utils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), op.name(),
                                 client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);

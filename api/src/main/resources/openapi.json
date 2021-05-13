@@ -125,7 +125,7 @@
       "get" : {
         "tags" : [ "file operations" ],
         "summary" : "List files/objects in a storage system.",
-        "description" : "List files in a bucket",
+        "description" : "List files in a storage system",
         "operationId" : "listFiles",
         "parameters" : [ {
           "name" : "systemId",
@@ -1041,6 +1041,15 @@
           "schema" : {
             "type" : "string"
           }
+        }, {
+          "name" : "recursive",
+          "in" : "query",
+          "description" : "If path is a directory this indicates whether or not to apply the changes recursively",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          },
+          "example" : true
         } ],
         "requestBody" : {
           "content" : {
@@ -1699,10 +1708,7 @@
             "type" : "string"
           },
           "result" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/FileStatInfo"
-            }
+            "$ref" : "#/components/schemas/FileStatInfo"
           },
           "version" : {
             "type" : "string"
@@ -1713,16 +1719,16 @@
         }
       },
       "NativeLinuxOpRequest" : {
-        "required" : [ "newPath", "operation" ],
+        "required" : [ "argument", "operation" ],
         "type" : "object",
         "properties" : {
           "operation" : {
             "type" : "string",
             "enum" : [ "CHMOD", "CHOWN", "CHGRP" ]
           },
-          "newPath" : {
+          "argument" : {
             "type" : "string",
-            "description" : "Paths must be absolute, ../.. is not allowed"
+            "description" : "Argument for native linux operation"
           }
         }
       }

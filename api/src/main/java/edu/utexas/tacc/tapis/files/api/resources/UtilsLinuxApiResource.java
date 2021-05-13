@@ -103,6 +103,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
 
+            // Make the service call
             FileStatInfo fileStatInfo = fileUtilsService.getStatInfo(client, path, followLinks);
 
             String msg = Utils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
@@ -163,6 +164,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             if (client == null) throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
 
+            // Make the service call
             fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(), recursive);
 
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");

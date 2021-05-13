@@ -94,7 +94,7 @@ paths:
       tags:
       - file operations
       summary: List files/objects in a storage system.
-      description: List files in a bucket
+      description: List files in a storage system
       operationId: listFiles
       parameters:
       - name: systemId
@@ -740,6 +740,14 @@ paths:
         required: true
         schema:
           type: string
+      - name: recursive
+        in: query
+        description: If path is a directory this indicates whether or not to apply
+          the changes recursively
+        schema:
+          type: boolean
+          default: false
+        example: true
       requestBody:
         content:
           application/json:
@@ -1233,16 +1241,14 @@ components:
         message:
           type: string
         result:
-          type: array
-          items:
-            $ref: '#/components/schemas/FileStatInfo'
+          $ref: '#/components/schemas/FileStatInfo'
         version:
           type: string
         metadata:
           type: object
     NativeLinuxOpRequest:
       required:
-      - newPath
+      - argument
       - operation
       type: object
       properties:
@@ -1252,6 +1258,6 @@ components:
           - CHMOD
           - CHOWN
           - CHGRP
-        newPath:
+        argument:
           type: string
-          description: Paths must be absolute, ../.. is not allowed
+          description: Argument for native linux operation

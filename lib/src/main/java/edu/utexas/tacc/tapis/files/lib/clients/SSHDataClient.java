@@ -502,7 +502,7 @@ public class SSHDataClient implements ISSHDataClient {
     ChannelSftp channelSftp = openAndConnectSFTPChannel();
     SftpATTRS sftpAttrs;
     try {
-      // If path is a symbolic link then lstat gives info for the link, stat gives info for the link target
+      // If path is a symbolic link then stat gives info for the link target, lstat gives info for the link
       sftpAttrs = followLinks ? channelSftp.stat(absolutePathStr) : channelSftp.lstat(absolutePathStr);
     } catch (SftpException e) {
       if (e.getMessage().toLowerCase().contains("no such file")) {
@@ -538,8 +538,7 @@ public class SSHDataClient implements ISSHDataClient {
     String opName = "chmod";
 
     // Parse and validate the chmod perms argument
-    try
-    {
+    try {
       int permsInt = Integer.parseInt(permsStr, 8);
       // Check that value is in allowed range
       if (permsInt > MAX_PERMS_INT || permsInt < 0)

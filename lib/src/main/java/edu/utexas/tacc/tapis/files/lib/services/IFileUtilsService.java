@@ -7,7 +7,13 @@ import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService.NativeLinuxOper
 
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import org.jetbrains.annotations.NotNull;
+import org.jvnet.hk2.annotations.Contract;
 
+/*
+ * Interface for FileUtils Service
+ * Annotate as an hk2 Contract in case we have multiple implementations
+ */
+@Contract
 public interface IFileUtilsService
 {
   FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String path, boolean followLinks) throws ServiceException;
