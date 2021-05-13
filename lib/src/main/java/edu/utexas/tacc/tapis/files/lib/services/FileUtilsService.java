@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.ISSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
+import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import org.apache.commons.io.FilenameUtils;
@@ -30,6 +31,9 @@ public class FileUtilsService implements IFileUtilsService {
   private final FilePermsService permsService;
 
   public enum NativeLinuxOperation { CHMOD, CHOWN, CHGRP}
+
+  // TODO
+  public static final NativeLinuxOpResult NATIVE_LINUX_OP_RESULT_NOOP = new NativeLinuxOpResult("NO_OP", -1, "", "");
 
   @Inject
   public FileUtilsService(FilePermsService permsService) {
@@ -89,14 +93,16 @@ public class FileUtilsService implements IFileUtilsService {
    * @param op - operation to perform
    * @param arg - argument for operation
    * @param recursive - flag indicating if operation should be applied recursively for directories
+   * @return - result of running the command
    * @throws ServiceException - General problem
    * @throws NotAuthorizedException - user not authorized to operate on path
    */
   @Override
-  public void linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
-                      @NotNull String arg, boolean recursive)
+  public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
+                                     @NotNull String arg, boolean recursive)
           throws TapisException, ServiceException, NotAuthorizedException
   {
+    NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
     if (!(client instanceof ISSHDataClient)) {
       String msg = Utils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                 ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
@@ -111,9 +117,9 @@ public class FileUtilsService implements IFileUtilsService {
 
       // Make the remoteDataClient call
       switch (op) {
-        case CHMOD -> sshClient.linuxChmod(cleanedPath, arg, recursive);
-        case CHOWN -> sshClient.linuxChown(cleanedPath, arg, recursive);
-        case CHGRP -> sshClient.linuxChgrp(cleanedPath, arg, recursive);
+        case CHMOD -> nativeLinuxOpResult = sshClient.linuxChmod(cleanedPath, arg, recursive);
+        case CHOWN -> nativeLinuxOpResult = sshClient.linuxChown(cleanedPath, arg, recursive);
+        case CHGRP -> nativeLinuxOpResult = sshClient.linuxChgrp(cleanedPath, arg, recursive);
       }
 
     } catch (IOException ex) {
@@ -122,5 +128,6 @@ public class FileUtilsService implements IFileUtilsService {
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
+    return nativeLinuxOpResult;
   }
 }

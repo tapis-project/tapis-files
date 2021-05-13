@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.ssh.system.TapisRunCommand;
 import org.apache.commons.exec.CommandLine;
@@ -533,7 +534,7 @@ public class SSHDataClient implements ISSHDataClient {
    * @param recursive - add -R for recursive
    */
   @Override
-  public void linuxChmod(@NotNull String remotePath, @NotNull String permsStr, boolean recursive)
+  public NativeLinuxOpResult linuxChmod(@NotNull String remotePath, @NotNull String permsStr, boolean recursive)
           throws TapisException, IOException, NotFoundException {
     String opName = "chmod";
 
@@ -554,11 +555,11 @@ public class SSHDataClient implements ISSHDataClient {
     }
 
     // Run the command
-    runLinuxChangeOp(opName, permsStr, remotePath, recursive);
+    return runLinuxChangeOp(opName, permsStr, remotePath, recursive);
   }
 
   @Override
-  public void linuxChown(@NotNull String remotePath, @NotNull String newOwner, boolean recursive)
+  public NativeLinuxOpResult linuxChown(@NotNull String remotePath, @NotNull String newOwner, boolean recursive)
           throws TapisException, IOException, NotFoundException {
     String opName = "chown";
 
@@ -571,11 +572,11 @@ public class SSHDataClient implements ISSHDataClient {
     }
 
     // Run the command
-    runLinuxChangeOp(opName, newOwner, remotePath, recursive);
+    return runLinuxChangeOp(opName, newOwner, remotePath, recursive);
   }
 
   @Override
-  public void linuxChgrp(@NotNull String remotePath, @NotNull String newGroup, boolean recursive)
+  public NativeLinuxOpResult linuxChgrp(@NotNull String remotePath, @NotNull String newGroup, boolean recursive)
           throws TapisException, IOException, NotFoundException {
     String opName = "chgrp";
 
@@ -587,7 +588,7 @@ public class SSHDataClient implements ISSHDataClient {
       throw new TapisException(msg);
     }
     // Run the command
-    runLinuxChangeOp(opName, newGroup, remotePath, recursive);
+    return runLinuxChangeOp(opName, newGroup, remotePath, recursive);
   }
 
     // ------------------------------
@@ -629,7 +630,7 @@ public class SSHDataClient implements ISSHDataClient {
    * @param remotePath - target of operation
    * @param recursive - add -R for recursive
    */
-    private void runLinuxChangeOp(String opName, String arg1, String remotePath, boolean recursive)
+    private NativeLinuxOpResult runLinuxChangeOp(String opName, String arg1, String remotePath, boolean recursive)
             throws TapisException, IOException, NotFoundException
     {
       // Make sure we have a valid first argument
@@ -655,13 +656,15 @@ public class SSHDataClient implements ISSHDataClient {
       StringBuilder sb = new StringBuilder(opName);
       if (recursive) sb.append(" -R");
       sb.append(" ").append(arg1).append(" ").append(absolutePathStr);
+      String cmdStr = sb.toString();
       // Execute the command
-      String stdOut = cmdRunner.execute(sb.toString());
+      String stdOut = cmdRunner.execute(cmdStr);
       if (cmdRunner.getExitStatus() != 0)
       {
         String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, username, host,
                                   remotePath, opName, cmdRunner.getExitStatus(), stdOut, cmdRunner.getStdErr());
-        throw new TapisException(msg);
+        log.warn(msg);
       }
+      return new NativeLinuxOpResult(cmdStr, cmdRunner.getExitStatus(), cmdRunner.getStdOut(), cmdRunner.getStdErr());
     }
 }

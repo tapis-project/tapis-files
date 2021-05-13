@@ -759,6 +759,12 @@ paths:
           content:
             application/json:
               schema:
+                $ref: '#/components/schemas/NativeLinuxOpResultResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
                 $ref: '#/components/schemas/FileStringResponse'
         "401":
           description: Not Authenticated
@@ -1224,11 +1230,11 @@ components:
         perms:
           type: string
         accessTime:
-          type: string
-          format: date-time
+          type: integer
+          format: int64
         modifyTime:
-          type: string
-          format: date-time
+          type: integer
+          format: int64
         dir:
           type: boolean
         link:
@@ -1242,6 +1248,31 @@ components:
           type: string
         result:
           $ref: '#/components/schemas/FileStatInfo'
+        version:
+          type: string
+        metadata:
+          type: object
+    NativeLinuxOpResult:
+      type: object
+      properties:
+        command:
+          type: string
+        exitCode:
+          type: integer
+          format: int32
+        stdOut:
+          type: string
+        stdErr:
+          type: string
+    NativeLinuxOpResultResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          $ref: '#/components/schemas/NativeLinuxOpResult'
         version:
           type: string
         metadata:

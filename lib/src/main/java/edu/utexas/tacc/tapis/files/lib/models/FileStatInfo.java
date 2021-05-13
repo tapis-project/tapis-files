@@ -19,17 +19,13 @@ public class FileStatInfo
   private String perms;
   private Instant accessTime;
   private Instant modifyTime;
-//  private LocalDateTime accessTime;
-//  private LocalDateTime modifyTime;
-  @JsonProperty("dir")
-  private boolean isDir;
-  @JsonProperty("link")
-  private boolean isLink;
+  private boolean dir;
+  private boolean link;
 
   public FileStatInfo() { }
 
   public FileStatInfo(String path1, int uid1, int gid1, long size1, String perms1,
-                      int aTime, int mTime, boolean isDir1, boolean isLink1)
+                      int aTime, int mTime, boolean dir1, boolean link1)
   {
     absolutePath = path1;
     uid = uid1;
@@ -37,10 +33,9 @@ public class FileStatInfo
     size = size1;
     perms = perms1;
     accessTime = LocalDateTime.ofEpochSecond(aTime, 0, ZoneOffset.UTC).toInstant(ZoneOffset.UTC);
-//    accessTime = LocalDateTime.ofEpochSecond(aTime, 0, ZoneOffset.UTC);
     modifyTime = LocalDateTime.ofEpochSecond(mTime, 0, ZoneOffset.UTC).toInstant(ZoneOffset.UTC);
-    isDir = isDir1;
-    isLink = isLink1;
+    dir = dir1;
+    link = link1;
   }
 
   public String getAbsolutePath() {
@@ -50,9 +45,6 @@ public class FileStatInfo
   public int getGid() { return gid; }
   public long getSize() { return size; }
   public Instant getAccessTime() { return accessTime; }
-//  public LocalDateTime getAccessTime() { return accessTime; }
-//  public void setAccessTime(Instant i) { accessTime = i; }
-//  public void setAccessTime(String s) { accessTime = LocalDateTime.ofInstant(Instant.parse(s), ZoneOffset.UTC); }
   public void setAccessTime(String s) { accessTime = Instant.parse(s); }
   public Instant getModifyTime() { return modifyTime; }
   public void setModifyTime(Instant i) { modifyTime = i; }
@@ -62,6 +54,13 @@ public class FileStatInfo
   public String getPerms() {
         return perms;
     }
-  public boolean isDir() { return isDir; }
-  public boolean isLink() { return isLink; }
+  public boolean isDir() { return dir; }
+  public boolean isLink() { return link; }
+
+ public String toString()
+ {
+   return
+      String.format("AbsolutePath: %s%n Uid: %d%n Gid: %d%n Size: %d%n Perms: %s%n AccessTime: %s%n ModifyTime: %s%n isDir: %b%n isLink: %b%n",
+           absolutePath, uid, gid, size, perms, accessTime, modifyTime, dir, link);
+ }
 }

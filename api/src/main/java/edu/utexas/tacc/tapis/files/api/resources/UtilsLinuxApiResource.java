@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
+import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
@@ -55,6 +56,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
     private static final Logger log = LoggerFactory.getLogger(UtilsLinuxApiResource.class);
 
     private static class FileStatInfoResponse extends TapisResponse<FileStatInfo> { }
+    private static class NativeLinuxOpResultResponse extends TapisResponse<NativeLinuxOpResult> { }
     private static class FileStringResponse extends TapisResponse<String> { }
 
     @Inject
@@ -130,8 +132,12 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
     @ApiResponses(value = {
         @ApiResponse(
             responseCode = "200",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            content = @Content(schema = @Schema(implementation = NativeLinuxOpResultResponse.class)),
             description = "OK"),
+        @ApiResponse(
+            responseCode = "400",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Bad Request"),
         @ApiResponse(
             responseCode = "401",
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
@@ -165,9 +171,10 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
             if (client == null) throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
 
             // Make the service call
-            fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(), recursive);
+            NativeLinuxOpResult nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(),
+                                                                               request.getArgument(), recursive);
 
-            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
+            TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse("ok", nativeLinuxOpResult);
             return Response.ok(resp).build();
         } catch (TapisException | ServiceException | IOException e) {
             String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
