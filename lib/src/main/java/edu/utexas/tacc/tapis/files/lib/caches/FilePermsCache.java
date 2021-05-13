@@ -24,7 +24,7 @@ import java.util.concurrent.ExecutionException;
 public class FilePermsCache {
 
     private final LoadingCache<FilePermCacheKey, Boolean> cache;
-    // PERMSPEC is "files:tenant:r,rw,*:systemId:path
+    // PERMSPEC is "files:tenant:READ,MODIFY:systemId:path
     private static final String PERMSPEC = "files:%s:%s:%s:%s";
 
     @Inject

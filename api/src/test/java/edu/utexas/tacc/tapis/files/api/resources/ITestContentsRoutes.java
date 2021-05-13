@@ -207,7 +207,9 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     public void testZipOutput(TapisSystem system) throws Exception {
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
         addTestFilesToBucket(system, "a/test1.txt", 10 * 1000);
-        addTestFilesToBucket(system, "a/test2.txt", 10 * 1000);
+        addTestFilesToBucket(system, "a/b/test2.txt", 10 * 1000);
+        addTestFilesToBucket(system, "a/b/test3.txt", 10 * 1000);
+
         Response response = target("/v3/files/content/testSystem/a/")
             .queryParam("zip", true)
             .request()
@@ -217,11 +219,11 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         InputStream is = response.readEntity(InputStream.class);
         ZipInputStream zis = new ZipInputStream(is);
         ZipEntry ze;
+        int count=0;
         while ((ze = zis.getNextEntry()) != null) {
-            log.info(ze.toString());
-            String fname = ze.getName();
-            Assert.assertTrue(fname.startsWith("a/test"));
+            count++;
         }
+        Assert.assertEquals(count, 3);
     }
 
 

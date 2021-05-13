@@ -54,20 +54,22 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Mockito.reset(skClient);
         Mockito.reset(serviceClients);
         Mockito.reset(systemsClient);
+        Mockito.reset(permsService);
         sourceSystem = testSystemS3;
         destSystem = testSystemSSH;
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
-        fileOpsService.delete(client, "/");
         InputStream in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert(client,"file1.txt", in);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+        fileOpsService.insert(client,"/file1.txt", in);
         in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert(client,"file2.txt", in);
+        fileOpsService.insert(client,"/file2.txt", in);
     }
 
     @AfterMethod
     public void tearDown() throws Exception {
         Mockito.reset(skClient);
+        Mockito.reset(permsService);
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         fileOpsService.delete(client,"/");
@@ -112,6 +114,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         transfersService.deleteQueue(childQ).subscribe();
         transfersService.deleteQueue(parentQ).subscribe();
+        Mockito.reset(permsService);
+
     }
 
 

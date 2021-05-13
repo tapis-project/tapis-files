@@ -13,6 +13,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
@@ -71,7 +73,6 @@ public class ContentApiResource extends BaseFileOpsResource {
             String contentDisposition;
             java.nio.file.Path filepath = Paths.get(path);
             String filename = filepath.getFileName().toString();
-            contentDisposition = String.format("attachment; filename=%s", filename);
 
             if (zip) {
                 StreamingOutput outStream = output -> {
@@ -81,9 +82,10 @@ public class ContentApiResource extends BaseFileOpsResource {
                         throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
                     }
                 };
-
+                String newName = changeFileExtensionForZip(filename);
+                String disposition = String.format("attachment; filename=%s", newName);
                 Response resp =  Response.ok(outStream, mtype)
-                    .header("content-disposition", contentDisposition)
+                    .header("content-disposition", disposition)
                     .build();
                 asyncResponse.resume(resp);
             }
@@ -92,7 +94,7 @@ public class ContentApiResource extends BaseFileOpsResource {
             if (path.endsWith("/")) {
                 throw new BadRequestException(Utils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
             }
-
+            contentDisposition = String.format("attachment; filename=%s", filename);
 
             if (range != null) {
                 stream = fileOpsService.getBytes(client, path, range.getMin(), range.getMax());
@@ -116,5 +118,10 @@ public class ContentApiResource extends BaseFileOpsResource {
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
+    }
+
+    private String changeFileExtensionForZip(String name) {
+        String filename = FilenameUtils.removeExtension(name);
+        return filename + ".zip";
     }
 }

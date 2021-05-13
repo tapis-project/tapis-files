@@ -10,6 +10,7 @@ import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.apache.commons.lang3.StringUtils;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 
@@ -49,7 +50,7 @@ public class FileInfo   {
         this.name = tmpPath.getFileName().toString();
         this.lastModified = listing.lastModified();
         this.size = listing.size();
-        this.path = listing.key();
+        this.path = StringUtils.prependIfMissing(listing.key(), "/");
         try {
             this.mimeType = Files.probeContentType(tmpPath);
         } catch (IOException ex) {
@@ -108,7 +109,7 @@ public class FileInfo   {
 
     @JsonIgnore
     public boolean isDir() {
-        return this.path.endsWith("/");
+        return this.type.equals("dir");
     }
 
 
