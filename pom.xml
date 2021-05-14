@@ -17,7 +17,6 @@
         <java.version>16</java.version>
         <tapis-client-java.version>[1.11.70, 2.0]</tapis-client-java.version>
         <tapis-shared.version>[1.11.80, 2.0]</tapis-shared.version>
-<!--        <tapis-shared.version>1.11.90-SNAPSHOT</tapis-shared.version>-->
         <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
         <hk2.inhabitant.version>3.0.1</hk2.inhabitant.version>
         <jetbrains.annotations.version>20.1.0</jetbrains.annotations.version>

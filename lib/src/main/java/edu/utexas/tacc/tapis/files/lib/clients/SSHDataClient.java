@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisSSHConnectionException;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.NotNull;
@@ -473,13 +474,21 @@ public class SSHDataClient implements IRemoteDataClient {
     }
 
     private ChannelSftp openAndConnectSFTPChannel() throws IOException {
-        String CHANNEL_TYPE = "sftp";
-        ChannelSftp channel = (ChannelSftp) sshConnection.createChannel(CHANNEL_TYPE);
-        return channel;
+        try {
+            String CHANNEL_TYPE = "sftp";
+            ChannelSftp channel = (ChannelSftp) sshConnection.createChannel(CHANNEL_TYPE);
+            return channel;
+        } catch (TapisException ex) {
+            throw new IOException(ex.getMessage(), ex);
+        }
     }
 
     private ChannelExec openCommandChannel() throws IOException {
-        String CHANNEL_TYPE = "exec";
-        return (ChannelExec) sshConnection.createChannel(CHANNEL_TYPE);
+        try {
+            String CHANNEL_TYPE = "exec";
+            return (ChannelExec) sshConnection.createChannel(CHANNEL_TYPE);
+        } catch (TapisException ex) {
+            throw new IOException(ex.getMessage(), ex);
+        }
     }
 }
