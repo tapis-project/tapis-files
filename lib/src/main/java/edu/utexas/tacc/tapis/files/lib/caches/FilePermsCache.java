@@ -33,11 +33,20 @@ public class FilePermsCache {
     @Inject
     public FilePermsCache() {
         cache = CacheBuilder.newBuilder()
-            .expireAfterWrite(Duration.ofMinutes(1))
+            .expireAfterWrite(Duration.ofMillis(10))
             .build(new PermsLoader());
     }
 
-
+    /**
+     * Return Permission or null if no permission granted
+     *
+     * @param tenantId tenantId
+     * @param username username
+     * @param systemId ID of system
+     * @param path path to file/folder
+     * @return Permission - null if no permission granted
+     * @throws ServiceException IF SK call failed
+     */
     public boolean checkPerm(String tenantId, String username, String systemId, String path, Permission perm) throws ServiceException {
         try {
             // 99% of the time, a user will have access to the root of the storage system, so lets
@@ -57,12 +66,12 @@ public class FilePermsCache {
     /**
      * Return Permission or null if no permission granted
      *
-     * @param tenantId
-     * @param username
-     * @param systemId
-     * @param path
+     * @param tenantId tenantId
+     * @param username username
+     * @param systemId ID of system
+     * @param path path to file/folder
      * @return Permission - null if no permission granted
-     * @throws ServiceException
+     * @throws ServiceException IF SK call failed
      */
     public Permission fetchPerm(String tenantId, String username, String systemId, String path) throws ServiceException {
         try {

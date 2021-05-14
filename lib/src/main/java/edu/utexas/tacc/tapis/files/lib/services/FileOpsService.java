@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +37,7 @@ public class FileOpsService implements IFileOpsService {
 
     // 0 = tenantBaseUri, 1=systemId, 2=path
     private String TAPIS_FILES_URI_FORMAT = "tapis://{0}/{1}/{2}";
-    private static int MAX_RECURSION = 5;
+    private static int MAX_RECURSION = 20;
 
     @Inject
     public FileOpsService(FilePermsService permsService) {
@@ -84,6 +85,7 @@ public class FileOpsService implements IFileOpsService {
     public List<FileInfo> ls(IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException, NotFoundException {
         try {
             String cleanedPath = FilenameUtils.normalize(path);
+            if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
             checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, FileInfo.Permission.READ);
             List<FileInfo> listing = client.ls(cleanedPath, limit, offset);
             return listing;
