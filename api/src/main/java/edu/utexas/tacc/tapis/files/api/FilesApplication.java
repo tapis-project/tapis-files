@@ -5,9 +5,11 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
+import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
@@ -100,6 +102,7 @@ public class FilesApplication extends BaseResourceConfig {
         register(ShareApiResource.class);
         register(HealthApiResource.class);
         register(OperationsApiResource.class);
+        register(UtilsLinuxApiResource.class);
 
         //OpenAPI jazz
         register(OpenApiResource.class);
@@ -119,6 +122,7 @@ public class FilesApplication extends BaseResourceConfig {
                 bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
                 bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
                 bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+                bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
             }
         });
 		setApplicationName("files");
