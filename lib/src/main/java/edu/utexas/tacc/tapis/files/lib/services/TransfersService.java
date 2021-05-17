@@ -510,9 +510,9 @@ public class TransfersService {
         }
     }
 
-    private Integer groupByParentTask(AcknowledgableDelivery message) throws ServiceException {
+    private Integer groupByTopTask(AcknowledgableDelivery message) throws ServiceException {
         try {
-            return mapper.readValue(message.getBody(), TransferTaskChild.class).getParentTaskId();
+            return mapper.readValue(message.getBody(), TransferTaskChild.class).getTaskId();
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_TXFR_SVC_ERR12", ex.getMessage());
             log.error(msg);
@@ -542,7 +542,7 @@ public class TransfersService {
             .log()
             .groupBy( m-> {
                 try {
-                    return groupByParentTask(m);
+                    return groupByTopTask(m);
                 } catch (ServiceException ex) {
                     return Mono.empty();
                 }
@@ -811,6 +811,7 @@ public class TransfersService {
             TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
             if (task.getStatus().equals(TransferTaskStatus.COMPLETED)) {
                 dao.updateTransferTask(task);
+                log.info("Top Task COMPLETE: {}", task);
                 log.info(scheduler.toString());
                 log.info("Child TASK {} COMPLETE", taskChild);
                 log.info("CHILD TASK RETRIES: {}", taskChild.getRetries());

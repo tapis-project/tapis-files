@@ -88,6 +88,12 @@ public class FileOpsService implements IFileOpsService {
             if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
             checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, FileInfo.Permission.READ);
             List<FileInfo> listing = client.ls(cleanedPath, limit, offset);
+            //TODO: This feels like it should be in the service layer
+            listing.forEach(f -> {
+                String uri = String.format("%s/%s/%s", client.getOboTenant(), client.getSystemId(), f.getPath());
+                uri = StringUtils.replace(uri, "//", "/");
+                f.setUri("tapis://" + uri);
+            });
             return listing;
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "listing",

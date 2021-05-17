@@ -70,7 +70,6 @@ public class OperationsApiResource extends BaseFileOpsResource {
 
 
     @GET
-    @FileOpsAuthorization(permRequired = Permission.READ)
     @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "List files/objects in a storage system.", description = "List files in a storage system", tags = {"file operations"})
@@ -110,11 +109,6 @@ public class OperationsApiResource extends BaseFileOpsResource {
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
-            //TODO: This feels like it should be in the service layer
-            listing.forEach(f -> {
-                String uri = String.format("tapis://%s/%s/%s", user.getOboTenantId(), systemId, f.getPath());
-                f.setUri(uri);
-            });
             String msg = Utils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
             log.debug(msg);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
