@@ -596,13 +596,22 @@ public class SSHDataClient implements ISSHDataClient {
     // ------------------------------
 
     private ChannelSftp openAndConnectSFTPChannel() throws IOException {
-        String CHANNEL_TYPE = "sftp";
-      return (ChannelSftp) sshConnection.createChannel(CHANNEL_TYPE);
+        try {
+            String CHANNEL_TYPE = "sftp";
+            ChannelSftp channel = (ChannelSftp) sshConnection.createChannel(CHANNEL_TYPE);
+            return channel;
+        } catch (TapisException ex) {
+            throw new IOException(ex.getMessage(), ex);
+        }
     }
 
     private ChannelExec openCommandChannel() throws IOException {
-        String CHANNEL_TYPE = "exec";
-        return (ChannelExec) sshConnection.createChannel(CHANNEL_TYPE);
+        try {
+            String CHANNEL_TYPE = "exec";
+            return (ChannelExec) sshConnection.createChannel(CHANNEL_TYPE);
+        } catch (TapisException ex) {
+            throw new IOException(ex.getMessage(), ex);
+        }
     }
 
     /**

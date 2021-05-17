@@ -119,4 +119,17 @@ public class ITestSSHConnection {
     }
 
 
+    // Disabled for now, the timeout takes the full 15 seconds at the moment which slows down the
+    // integration tests.
+    @Test(enabled = false)
+    public void timeouts() throws Exception {
+        try {
+            SSHConnection connection = new SSHConnection("192.168.255.255", 22, "testuser", "password");
+        } catch (TapisException ex) {
+            Assert.assertTrue(ex.getMessage().contains("timeout"));
+        }
+
+    }
+
+
 }

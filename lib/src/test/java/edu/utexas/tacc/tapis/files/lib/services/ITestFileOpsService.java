@@ -22,6 +22,7 @@ import org.testng.Assert;
 import org.testng.annotations.*;
 
 import javax.inject.Singleton;
+import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import java.io.File;
@@ -134,7 +135,7 @@ public class ITestFileOpsService {
     }
 
     @BeforeTest()
-    public void setUp() {
+    public void setUp() throws Exception {
 
     }
 
@@ -225,21 +226,28 @@ public class ITestFileOpsService {
     public void testZipFolder(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+        log.info(client.ls("/").toString());
+        client.delete("/");
         fileOpsService.insert(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
         fileOpsService.insert(client,"a/test2.txt", Utils.makeFakeFile(1000 * 1024));
+        fileOpsService.insert(client,"a/b/test3.txt", Utils.makeFakeFile(1000 * 1024));
+
         File file = File.createTempFile("test", ".zip");
         OutputStream outputStream = new FileOutputStream(file);
-        fileOpsService.getZip(client, outputStream, "a/");
+        fileOpsService.getZip(client, outputStream, "/a");
 
         try (FileInputStream fis = new FileInputStream(file);
              ZipInputStream zis = new ZipInputStream(fis);
         ) {
             ZipEntry ze;
+            int count = 0;
             while ( (ze = zis.getNextEntry()) != null) {
                 log.info(ze.toString());
                 String fname = ze.getName();
-                Assert.assertTrue(fname.startsWith("a/test"));
+                Assert.assertTrue(fname.startsWith("/a/"));
+                count++;
             }
+            Assert.assertEquals(count, 3);
 
         }
         file.deleteOnExit();
@@ -253,7 +261,7 @@ public class ITestFileOpsService {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
 
-        Assert.assertThrows(NotAuthorizedException.class, ()-> {
+        Assert.assertThrows(ForbiddenException.class, ()-> {
             fileOpsService.insert(client,"test.txt", in);
         });
     }
@@ -262,9 +270,25 @@ public class ITestFileOpsService {
     public void testListingNoAuthz(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        Assert.assertThrows(NotAuthorizedException.class, ()-> {
+        Assert.assertThrows(ForbiddenException.class, ()-> {
             fileOpsService.ls(client,"test.txt");
         });
+
+    }
+
+    @Test(dataProvider = "testSystems")
+    public void testListingRecursive(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+        client.delete("/");
+        fileOpsService.insert(client,"/1.txt", Utils.makeFakeFile(10*1024));
+        fileOpsService.insert(client,"/a/2.txt", Utils.makeFakeFile(10*1024));
+        fileOpsService.insert(client,"/a/b/3.txt", Utils.makeFakeFile(10*1024));
+        fileOpsService.insert(client,"/a/b/c/4.txt", Utils.makeFakeFile(10*1024));
+
+        List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", 5);
+        log.info(listing.toString());
+        Assert.assertEquals(listing.size(), 4);
 
     }
 

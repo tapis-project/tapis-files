@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import org.jetbrains.annotations.NotNull;
 
+import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,7 +16,9 @@ public interface IFileOpsService {
 
     List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException;
 
-    List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException, NotFoundException;
+    List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException, NotFoundException, ForbiddenException;
+
+    List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull int maxDepth) throws ServiceException, NotFoundException, ForbiddenException;
 
     void mkdir(@NotNull IRemoteDataClient client, String path) throws ServiceException;
 

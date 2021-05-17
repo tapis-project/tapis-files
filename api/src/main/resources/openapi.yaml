@@ -547,50 +547,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
-  /v3/files/transfers:
+  /v3/files/transfers/{transferTaskId}/details:
     get:
       tags:
       - transfers
-      summary: Get a list of recent transfer tasks starting with the most recent
-      description: Get a list of recent transfer tasks starting with the most recent
-      operationId: getRecentTransferTasks
+      summary: Get details of a transfer task
+      operationId: getTransferTaskDetails
       parameters:
-      - name: limit
-        in: query
-        description: pagination limit
-        schema:
-          type: integer
-          format: int32
-          default: 1000
-        example: 100
-      - name: offset
-        in: query
-        description: pagination offset
-        schema:
-          type: integer
-          format: int32
-          default: 0
-        example: 1000
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskListResponse'
-    post:
-      tags:
-      - transfers
-      summary: Transfer data
-      description: This creates a background task which will transfer files into the
-        storage system
-      operationId: createTransferTask
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TransferTaskRequest'
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
         required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
       responses:
         "200":
           description: OK
@@ -639,20 +609,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StringResponse'
-  /v3/files/transfers/{transferTaskId}/details:
+  /v3/files/transfers:
     get:
       tags:
       - transfers
-      summary: Get details of a transfer task
-      operationId: getTransferTaskDetails
+      summary: Get a list of recent transfer tasks starting with the most recent
+      description: Get a list of recent transfer tasks starting with the most recent
+      operationId: getRecentTransferTasks
       parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
+      - name: limit
+        in: query
+        description: pagination limit
         schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+          type: integer
+          format: int32
+          default: 1000
+        example: 100
+      - name: offset
+        in: query
+        description: pagination offset
+        schema:
+          type: integer
+          format: int32
+          default: 0
+        example: 1000
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskListResponse'
+    post:
+      tags:
+      - transfers
+      summary: Transfer data
+      description: This creates a background task which will transfer files into the
+        storage system
+      operationId: createTransferTask
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferTaskRequest'
+        required: true
       responses:
         "200":
           description: OK
