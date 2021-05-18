@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -10,7 +11,9 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.sharedapi.validators.ValidUUID;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -29,6 +32,8 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,6 +46,9 @@ public class  TransfersApiResource {
 
     @Inject
     TransfersService transfersService;
+
+    @Inject
+    SystemsCache systemsCache;
 
     @Inject
     FilePermsService permsService;
@@ -219,6 +227,46 @@ public class  TransfersApiResource {
         String opName = "createTransferTask";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
+            // If we have transferTask elements make sure src and dst systems exist and are enabled.
+            if (!transferTaskRequest.getElements().isEmpty()) {
+              // TODO Collect and log the list of systems that are missing or disabled instead of bailing at first err
+              var errMessages = new ArrayList<String>();
+              for (TransferTaskRequestElement txfrElement : transferTaskRequest.getElements())
+              {
+                // Check source and destination systems
+                validateSystemForTxfr(txfrElement.getSourceURI(), errMessages);
+                validateSystemForTxfr(txfrElement.getDestinationURI(), errMessages);
+// TODO move to validate method
+                try {
+                  String sysId = null;
+                  TapisSystem system = null;
+                  system = null;
+                  sysId = txfrElement.getSourceURI().getSystemId();
+                  system = systemsCache.getSystem(user.getTenantId(), sysId, user.getName());
+                } catch (ServiceException se) {
+                  // Unable to locate system
+                  errMessages.add("Unable to fetch system. SystemId: " + sysId);
+                }
+                try {
+                  if (system != null) Utils.checkEnabled(user, system);
+                } catch (BadRequestException bre) {
+                  // System not enabled.
+                  errMessages.add("System not enabled. SystemId: " + sysId);
+                }
+                // Check dest system
+              }
+
+
+              if (!errMessages.isEmpty()) {
+                // Construct message reporting all errors
+                String allErrors = getListOfErrors(errMessages, user);
+                log.error(allErrors);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(TapisRestUtils.createErrorResponse(allErrors, true)).build();
+              }
+            }
+
+            // Create the txfr task
             TransferTask task = transfersService.createTransfer(
                     user.getOboUser(),
                     user.getOboTenantId(),

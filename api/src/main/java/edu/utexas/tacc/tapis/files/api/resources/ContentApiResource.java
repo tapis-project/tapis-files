@@ -49,6 +49,7 @@ public class ContentApiResource extends BaseFileOpsResource {
     @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "content" })
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "400", description = "Bad Request"),
         @ApiResponse(responseCode = "401", description = "Not Authenticated"),
         @ApiResponse(responseCode = "404", description = "Not Found"),
         @ApiResponse(responseCode = "403", description = "Not Authorized")
@@ -67,6 +68,7 @@ public class ContentApiResource extends BaseFileOpsResource {
 
         try {
             TapisSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
+            Utils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             String mtype = MediaType.APPLICATION_OCTET_STREAM;

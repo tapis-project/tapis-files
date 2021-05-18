@@ -106,6 +106,7 @@ public class PermissionsApiResource  {
         String username;
         try {
             system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            Utils.checkEnabled(user, system);
         } catch (ServiceException ex) {
             String msg = Utils.getMsgAuth("FILES_SYSOPS_ERR", user, systemId, "getSystem", ex.getMessage());
             log.error(msg, ex);

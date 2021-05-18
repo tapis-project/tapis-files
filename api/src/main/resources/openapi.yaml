@@ -69,6 +69,8 @@ paths:
       responses:
         "200":
           description: OK
+        "400":
+          description: Bad Request
         "401":
           description: Not Authenticated
         "404":
@@ -134,6 +136,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileListingResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
         "401":
           description: Not Authenticated
           content:
@@ -185,6 +193,12 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "400":
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -251,6 +265,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileStringResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
         "401":
           description: Not Authenticated
           content:
@@ -291,6 +311,12 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "400":
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -341,6 +367,12 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "400":
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -547,68 +579,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedFileObject'
-  /v3/files/transfers/{transferTaskId}/details:
-    get:
-      tags:
-      - transfers
-      summary: Get details of a transfer task
-      operationId: getTransferTaskDetails
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
-        schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskResponse'
-  /v3/files/transfers/{transferTaskId}:
-    get:
-      tags:
-      - transfers
-      summary: Get a transfer task
-      operationId: getTransferTask
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
-        schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TransferTaskResponse'
-    delete:
-      tags:
-      - transfers
-      summary: Stop/Cancel a transfer task
-      operationId: cancelTransferTask
-      parameters:
-      - name: transferTaskId
-        in: path
-        description: Transfer task ID
-        required: true
-        schema:
-          type: string
-        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StringResponse'
   /v3/files/transfers:
     get:
       tags:
@@ -660,6 +630,68 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferTaskResponse'
+  /v3/files/transfers/{transferTaskId}:
+    get:
+      tags:
+      - transfers
+      summary: Get a transfer task
+      operationId: getTransferTask
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
+    delete:
+      tags:
+      - transfers
+      summary: Stop/Cancel a transfer task
+      operationId: cancelTransferTask
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringResponse'
+  /v3/files/transfers/{transferTaskId}/details:
+    get:
+      tags:
+      - transfers
+      summary: Get details of a transfer task
+      operationId: getTransferTaskDetails
+      parameters:
+      - name: transferTaskId
+        in: path
+        description: Transfer task ID
+        required: true
+        schema:
+          type: string
+        example: 6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferTaskResponse'
   /v3/files/utils/linux/{systemId}/{path}:
     get:
       tags:
@@ -697,6 +729,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileStatInfoResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
         "401":
           description: Not Authenticated
           content:
@@ -1104,6 +1142,21 @@ components:
         endTime:
           type: string
           format: date-time
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
+        metadata:
+          type: object
     TransferTaskParent:
       type: object
       properties:
@@ -1198,21 +1251,6 @@ components:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
-        metadata:
-          type: object
     FileStatInfo:
       type: object
       properties:
