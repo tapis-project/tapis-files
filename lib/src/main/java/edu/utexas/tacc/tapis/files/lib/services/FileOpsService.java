@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -86,7 +87,7 @@ public class FileOpsService implements IFileOpsService {
         try {
             String cleanedPath = FilenameUtils.normalize(path);
             if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, FileInfo.Permission.READ);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, path, Permission.READ);
             List<FileInfo> listing = client.ls(cleanedPath, limit, offset);
             //TODO: This feels like it should be in the service layer
             listing.forEach(f -> {
@@ -107,7 +108,7 @@ public class FileOpsService implements IFileOpsService {
     public void mkdir(IRemoteDataClient client, String path) throws ServiceException, ForbiddenException {
         try {
             String cleanedPath = FilenameUtils.normalize(path);
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, path, Permission.MODIFY);
             client.mkdir(cleanedPath);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdir",
@@ -120,7 +121,7 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void insert(IRemoteDataClient client, String path, @NotNull InputStream inputStream) throws ServiceException, NotFoundException, ForbiddenException {
         try {
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.MODIFY);
             client.insert(path, inputStream);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "insert",
@@ -133,8 +134,9 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void move(IRemoteDataClient client, String path, String newPath) throws ServiceException, NotFoundException, ForbiddenException {
         try {
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.MODIFY);
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), newPath, FileInfo.Permission.MODIFY);
+            // Check the source and destination both have MODIFY perm
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.MODIFY);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), newPath, path, Permission.MODIFY);
             client.move(path, newPath);
             permsService.replacePathPrefix(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, newPath);
         } catch (IOException ex) {
@@ -148,8 +150,9 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void copy(IRemoteDataClient client, String path, String newPath) throws ServiceException, NotFoundException, ForbiddenException {
         try {
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), newPath, FileInfo.Permission.MODIFY);
+            // Check the source has READ and destination has MODIFY perm
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), newPath, path, Permission.MODIFY);
             client.copy(path, newPath);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "copy",
@@ -163,7 +166,7 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void delete(IRemoteDataClient client, @NotNull String path) throws ServiceException, NotFoundException, ForbiddenException {
         try {
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.MODIFY);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.MODIFY);
             client.delete(path);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "delete",
@@ -186,7 +189,7 @@ public class FileOpsService implements IFileOpsService {
     public InputStream getStream(IRemoteDataClient client, String path) throws ServiceException, NotFoundException, ForbiddenException{
 
         try {
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
             InputStream fileStream = client.getStream(path);
             return fileStream;
         } catch (IOException ex) {
@@ -200,7 +203,7 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public InputStream getBytes(IRemoteDataClient client, @NotNull String path, long startByte, long count) throws ServiceException, NotFoundException, ForbiddenException {
         try  {
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
             InputStream fileStream = client.getBytesByRange(path, startByte, count);
             return fileStream;
         } catch (IOException ex) {
@@ -215,7 +218,7 @@ public class FileOpsService implements IFileOpsService {
     public InputStream more(IRemoteDataClient client, @NotNull String path, long startPage) throws ServiceException, NotFoundException, ForbiddenException {
         long startByte = (startPage - 1) * 1024;
         try  {
-            checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
+            Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
             InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023);
             return fileStream;
         } catch (IOException ex) {
@@ -235,7 +238,7 @@ public class FileOpsService implements IFileOpsService {
      */
     @Override
     public void getZip(IRemoteDataClient client, @NotNull OutputStream outputStream, @NotNull String path) throws ServiceException, ForbiddenException {
-        checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
+        Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
         //TODO: This should be made for recursive listings
         List<FileInfo> listing = this.lsRecursive(client, path, MAX_RECURSION);
         log.info(listing.toString());

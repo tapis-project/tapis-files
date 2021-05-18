@@ -35,11 +35,6 @@ public class HTTPClient implements IRemoteDataClient {
     }
 
     @Override
-    public void makeBucket(String name) throws IOException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "makeBucket"));
-    }
-
-    @Override
     public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "ls"));
     }

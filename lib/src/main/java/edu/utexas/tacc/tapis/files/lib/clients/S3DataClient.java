@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
@@ -45,13 +46,15 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-public class S3DataClient implements IRemoteDataClient {
+public class S3DataClient implements IS3DataClient {
 
     private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
 
     public String getOboTenant() { return oboTenant; }
     public String getOboUser() { return oboUser; }
     public String getSystemId() { return system.getId(); }
+    public String getBucket() { return bucket; }
+
     private final String oboTenant;
     private final String oboUser;
 
@@ -107,7 +110,6 @@ public class S3DataClient implements IRemoteDataClient {
             throw new IOException(msg, e);
         }
     }
-
 
     public URI configEndpoint(String host) throws URISyntaxException {
         URI endpoint;
