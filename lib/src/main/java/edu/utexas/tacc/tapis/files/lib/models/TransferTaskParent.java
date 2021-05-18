@@ -21,7 +21,7 @@ public class TransferTaskParent {
     protected UUID uuid;
     protected long totalBytes;
     protected long bytesTransferred;
-    private int taskId;
+    protected int taskId;
     protected TransferTaskStatus status;
 
     @Schema(type="string", format = "date-time")
@@ -229,6 +229,7 @@ public class TransferTaskParent {
     public String toString() {
         return new StringJoiner(", ", TransferTaskParent.class.getSimpleName() + "[", "]")
             .add("id=" + id)
+            .add("taskId=" + taskId)
             .add("tenantId='" + tenantId + "'")
             .add("username='" + username + "'")
             .add("sourceURI='" + sourceURI + "'")
@@ -236,7 +237,6 @@ public class TransferTaskParent {
             .add("uuid=" + uuid)
             .add("totalBytes=" + totalBytes)
             .add("bytesTransferred=" + bytesTransferred)
-            .add("taskId=" + taskId)
             .add("status='" + status + "'")
             .add("created=" + created)
             .add("startTime=" + startTime)

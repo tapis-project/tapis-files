@@ -700,7 +700,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         //Add some files to transfer
         fileOpsService.insert(sourceClient,"/a/1.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert(sourceClient,"/a/2.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.insert(sourceClient,"/a/2.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.insert(sourceClient,"/a/3.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.insert(sourceClient,"/a/4.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.insert(sourceClient,"/a/5.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.insert(sourceClient,"/a/6.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.insert(sourceClient,"/a/7.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.insert(sourceClient,"/a/8.txt", Utils.makeFakeFile(10000 * 1024));
+
+
         String childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(childQ);
         String parentQ = UUID.randomUUID().toString();
@@ -732,14 +740,32 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                  .assertNext(t->{
                      Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
                  })
+                .assertNext(t->{
+                    Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+                })
+                .assertNext(t->{
+                    Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+                })
+                .assertNext(t-> {
+                    Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+                })
+                .assertNext(t-> {
+                     Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+                })
+                .assertNext(t-> {
+                    Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+                })
+                .assertNext(t-> {
+                    Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+                })
                 .thenCancel()
-                .verify(Duration.ofSeconds(5));
+                .verify(Duration.ofSeconds(30));
 
         stream.subscribe(taskChild -> log.info(taskChild.toString()));
         // MUST sleep here for a bit for a bit for things to resolve. Alternatively could
         // use a StepVerifier or put some of this in the subscribe callback
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
-        Assert.assertEquals(listing.size(), 2);
+        Assert.assertEquals(listing.size(), 8);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
         transfersService.deleteQueue(parentQ).subscribe();

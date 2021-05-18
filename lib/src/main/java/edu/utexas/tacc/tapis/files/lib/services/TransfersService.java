@@ -549,13 +549,13 @@ public class TransfersService {
             })
             .flatMap(group-> {
                 Scheduler scheduler = Schedulers.newBoundedElastic(5,100,"ChildPool:"+group.key());
-
                 return group
                     .parallel()
                     .runOn(scheduler)
                     .flatMap(
                         //Wwe need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
+                            .log(scheduler.toString())
                             .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
@@ -823,7 +823,6 @@ public class TransfersService {
         }
     }
 
-
     private Mono<ControlMessage> deserializeControlMessage(AcknowledgableDelivery message) {
         try {
             ControlMessage controlMessage = mapper.readValue(message.getBody(), ControlMessage.class);
@@ -834,7 +833,6 @@ public class TransfersService {
             return Mono.empty();
         }
     }
-
 
     /**
      * Stream the messages coming off of the CONTROL_QUEUE
