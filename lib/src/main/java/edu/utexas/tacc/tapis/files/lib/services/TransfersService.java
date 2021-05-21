@@ -199,7 +199,17 @@ public class TransfersService {
         }
     }
 
-    public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId, String tag, List<TransferTaskRequestElement> elements) throws ServiceException, ForbiddenException {
+
+    /**
+     * Creates the top level TransferTask and the associated TransferTaskParents that were requested in the elements List.
+     * @param username Obo username
+     * @param tenantId tenantId
+     * @param tag Optional identifier
+     * @param elements List of requested paths to transfer
+     * @return TransferTask The TransferTask that has been saved to the DB
+     * @throws ServiceException Saving to DB fails
+     */
+    public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId, String tag, List<TransferTaskRequestElement> elements) throws ServiceException {
 
         TransferTask task = new TransferTask();
         task.setTenantId(tenantId);
@@ -320,6 +330,14 @@ public class TransfersService {
             );
     }
 
+
+    /**
+     * This method handles exceptions/errors if the parent task failed.
+     * @param m message from rabbitmq
+     * @param e Throwable
+     * @param parent TransferTaskParent
+     * @return Mono TransferTaskParent
+     */
     private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent) {
         log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
         log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", e));
@@ -356,7 +374,12 @@ public class TransfersService {
         return Mono.empty();
     }
 
-
+    /**
+     * This method checks the permissions on both the source and destination of the transfer.
+     * @param parentTask
+     * @return boolean is/is not permitted.
+     * @throws ServiceException
+     */
     private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException {
         log.info("Checking permissions for transfer");
         // For http inputs no need to do any permission checking on the source
@@ -470,7 +493,8 @@ public class TransfersService {
 
 
     /**
-     * Child task message processing
+     * Helper function to publish many child task messages at once.
+     * @param children A list of TransferTaskChild
      */
     public void publishBulkChildMessages(List<TransferTaskChild> children) {
             Flux<OutboundMessageResult> messages = sender.sendWithPublishConfirms(
@@ -516,6 +540,13 @@ public class TransfersService {
         }
     }
 
+
+    /**
+     * Helper method to extract the top level taskId which we group on for all the children tasks.
+     * @param message Message from rabbitmq
+     * @return Id of the top level task.
+     * @throws ServiceException If the wrong format of message is passed in.
+     */
     private Integer groupByTopTask(AcknowledgableDelivery message) throws ServiceException {
         try {
             return mapper.readValue(message.getBody(), TransferTaskChild.class).getTaskId();
@@ -526,6 +557,13 @@ public class TransfersService {
         }
     }
 
+
+    /**
+     * This method listens on the CHILD_QUEUE and creates a Flux<AcknowledgableDelivery> that
+     * we can push through the transfers workflow
+     *
+     * @return
+     */
     public Flux<AcknowledgableDelivery> streamChildMessages() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
@@ -554,15 +592,14 @@ public class TransfersService {
                 }
             })
             .flatMap(group-> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(5,100,"ChildPool:"+group.key());
+                Scheduler scheduler = Schedulers.newBoundedElastic(10,100,"ChildPool:"+group.key());
                 return group
-                    .parallel()
-                    .runOn(scheduler)
                     .flatMap(
                         //Wwe need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
                             .log(scheduler.toString())
                             .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
+                                .subscribeOn(scheduler) // IMPORTANT. This has to go here
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
                                         .maxBackoff(Duration.ofSeconds(10))
@@ -579,6 +616,7 @@ public class TransfersService {
                                 ).onErrorResume(e -> doErrorChevronOne(m, e, t2))
                             )
                             .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
+                                .subscribeOn(scheduler)
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
                                         .maxBackoff(Duration.ofSeconds(10))
@@ -597,17 +635,16 @@ public class TransfersService {
                                 return Mono.just(t5);
                             })
                           .flatMap(t6->Mono.fromCallable(()->chevronFive(t6, scheduler)))
-
-                    );
+                    ).subscribeOn(scheduler);
             });
     }
 
     /**
-     *
+     *  Error handler for any of the steps.
      * @param message Message from rabbitmq
      * @param cause Exception that was thrown
      * @param child the Child task that failed
-     * @return
+     * @return Mono with the updated TransferTaskChild
      */
     private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable cause, TransferTaskChild child) {
         message.nack(false);
@@ -644,8 +681,8 @@ public class TransfersService {
     /**
      * Step one: We update the task's status and the parent task if necessary
      *
-     * @param taskChild
-     * @return
+     * @param taskChild The child transfer task
+     * @return Updated TransferTaskChild
      */
     private TransferTaskChild chevronOne(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.debug("***** DOING chevronOne ****");
@@ -675,14 +712,14 @@ public class TransfersService {
 
 
     /**
-     * Chevron 2: The meat of the operation. We get remote clients for source and dest and send bytes
+     * The meat of the operation.
      * @param taskChild
      * @return
      * @throws ServiceException
      */
     private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException, TapisException {
-        log.debug("***** DOING chevronTwo ****");
-        log.debug(taskChild.toString());
+        log.info("***** DOING chevronTwo ****");
+        log.info(taskChild.toString());
         TapisSystem sourceSystem;
         TapisSystem destSystem;
         IRemoteDataClient sourceClient;
@@ -726,11 +763,12 @@ public class TransfersService {
                   "chevronTwoB", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
 
-        //Step 3: Stream the file contents to dest
+        //Step 3: Stream the file contents to dest. While the InputStream is open,
+        // we put a tap on it and send events that get grouped into 1 second intervals. Progress
+        // on the child tasks are updated during the reading of the source input stream.
         try (InputStream sourceStream =  sourceClient.getStream(sourcePath);
              ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream)
         ){
-
             // Observe the progress event stream, just get the last event from
             // the past 1 second.
             final TransferTaskChild finalTaskChild = taskChild;
@@ -746,11 +784,18 @@ public class TransfersService {
         return taskChild;
     }
 
-    private Mono<Long> updateProgress(Long aLong, TransferTaskChild taskChild) {
-        taskChild.setBytesTransferred(aLong);
+
+    /**
+     *
+     * @param bytesSent total bytes sent in latest update
+     * @param taskChild The transfer task that is being worked on currently
+     * @return Mono with number of bytes sent
+     */
+    private Mono<Long> updateProgress(Long bytesSent, TransferTaskChild taskChild) {
+        taskChild.setBytesTransferred(bytesSent);
         try {
             dao.updateTransferTaskChild(taskChild);
-            return Mono.just(aLong);
+            return Mono.just(bytesSent);
         } catch (DAOException ex) {
             log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                     "updateProgress", taskChild.getId(), taskChild.getUuid(), ex.getMessage()));
@@ -759,10 +804,10 @@ public class TransfersService {
     }
 
     /**
-     * Book keeping and cleanup. Mark the child as COMPLETE and check if the parent task is complete.
+     * Book keeping and cleanup. Mark the child as COMPLETE.
      *
-     * @param taskChild
-     * @return
+     * @param taskChild The child transfer task
+     * @return updated TransferTaskChild
      */
     private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.info("***** DOING chevronThree **** {}", taskChild);
@@ -777,6 +822,15 @@ public class TransfersService {
         }
     }
 
+    /**
+     * In this step, we check to see if there are unfinished children for both thw
+     * top level TransferTask and the TransferTaskParent. If there all children
+     * that belong to a parent are COMPLETED, then we can mark the parent as COMPLETED. Similarly
+     * for the top TransferTask, if ALL children have completed, the entire transfer is done.
+     * @param taskChild TransferTaskChild instance
+     * @return updated child
+     * @throws ServiceException If the updates to the records in the DB failed
+     */
     private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.info("***** DOING chevronFour **** {}", taskChild);
         try {
@@ -811,6 +865,13 @@ public class TransfersService {
         }
     }
 
+    /**
+     *
+     * @param taskChild
+     * @param scheduler
+     * @return
+     * @throws ServiceException
+     */
     private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild, Scheduler scheduler) throws ServiceException {
         log.info("***** DOING chevronFive **** {}", taskChild);
         try {
