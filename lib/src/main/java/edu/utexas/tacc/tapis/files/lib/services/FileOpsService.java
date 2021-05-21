@@ -168,6 +168,7 @@ public class FileOpsService implements IFileOpsService {
         try {
             Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.MODIFY);
             client.delete(path);
+            permsService.removePathPermissionFromAllRoles(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "delete",
                                       client.getSystemId(), path, ex.getMessage());
