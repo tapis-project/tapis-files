@@ -89,6 +89,9 @@
           "200" : {
             "description" : "OK"
           },
+          "400" : {
+            "description" : "Bad Request"
+          },
           "401" : {
             "description" : "Not Authenticated"
           },
@@ -177,6 +180,16 @@
               }
             }
           },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
           "401" : {
             "description" : "Not Authenticated",
             "content" : {
@@ -253,6 +266,16 @@
         "responses" : {
           "200" : {
             "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -352,6 +375,16 @@
               }
             }
           },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
           "401" : {
             "description" : "Not Authenticated",
             "content" : {
@@ -409,6 +442,16 @@
         "responses" : {
           "200" : {
             "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -487,6 +530,16 @@
         "responses" : {
           "200" : {
             "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -974,6 +1027,16 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/FileStatInfoResponse"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description" : "Bad Request",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FileStringResponse"
                 }
               }
             }

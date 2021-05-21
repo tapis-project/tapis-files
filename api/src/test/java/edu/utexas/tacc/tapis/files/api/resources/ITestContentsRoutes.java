@@ -59,6 +59,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     private final String oboUser = "oboUser";
     private final TapisSystem testSystem;
     private final TapisSystem testSystemSSH;
+    private final TapisSystem testSystemDisabled;
     private final Credential creds;
     private final Map<String, Tenant> tenantMap = new HashMap<>();
     Site site;
@@ -86,7 +87,17 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         testSystem.setAuthnCredential(creds);
         testSystem.setRootDir("/");
 
-        //SSH system with username/password
+        testSystemDisabled = new TapisSystem();
+        testSystemDisabled.setSystemType(SystemTypeEnum.S3);
+        testSystemDisabled.setHost("http://localhost");
+        testSystemDisabled.setPort(9000);
+        testSystemDisabled.setBucketName("test");
+        testSystemDisabled.setId("testSystemDisabled");
+        testSystemDisabled.setAuthnCredential(creds);
+        testSystemDisabled.setRootDir("/");
+        testSystemDisabled.setEnabled(false);
+
+      //SSH system with username/password
         Credential sshCreds = new Credential();
         sshCreds.setAccessKey("testuser");
         sshCreds.setPassword("password");
@@ -181,6 +192,8 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
     public void tearDownTest() throws Exception {
         S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystem);
+        client.delete("/");
+        client = new S3DataClient(oboTenant, oboUser, testSystemDisabled);
         client.delete("/");
 
         IRemoteDataClient client2 = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemSSH, "testuser");
@@ -318,19 +331,40 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(contentDisposition, "attachment; filename=testfile1.txt");
     }
 
-
-    // Tries to serve a folder, which is not allowed resulting in 400
-    @Test(dataProvider = "testSystemsDataProvider")
-    public void testBadRequest(TapisSystem system) throws Exception {
+    // Various requests that should result in a BadRequest status code (400)
+    //  - Attempt to serve a folder, which is not allowed resulting in 400
+    //  - Attempt to serve from a system that does not exist
+    //  - Attempt to retrieve from a system which is disabled
+//    @Test(dataProvider = "testSystemsDataProvider")
+    @Test
+    public void testBadRequests() throws Exception {
+      when(systemsClient.getSystemWithCredentials(eq("testSystem"), any())).thenReturn(testSystem);
+      when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
+      when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
+      // TODO: How to mock and test a system that does not exist
+//      when(systemsClient.getSystemWithCredentials(eq("testMissingSystem"), any())).thenReturn(null);
 
         Response response = target("/v3/files/content/testSystem/BAD-PATH/")
             .request()
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .get();
         Assert.assertEquals(response.getStatus(), 400);
+
+        // Attempt to retrieve from a system which is disabled
+        response = target("/v3/files/content/testSystemDisabled/testfile1.txt")
+                .request()
+                .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+                .get();
+        Assert.assertEquals(response.getStatus(), 400);
+
+// TODO        // Attempt to retrieve from a system which does not exist
+//        response = target("/v3/files/content/testMissingSystem/testfile1.txt")
+//              .request()
+//              .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+//              .get();
+//        Assert.assertEquals(response.getStatus(), 400);
     }
 
     //TODO: Add tests for strange chars in filename or path.
-
 
 }

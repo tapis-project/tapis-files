@@ -64,6 +64,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     private ServiceJWT serviceJWT;
     private final Tenant tenant;
     private final Site testSite;
+    private SystemsCache systemsCache;
     private final Map<String, Tenant> tenantMap = new HashMap<>();
 
 
@@ -99,6 +100,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         serviceClients = Mockito.mock(ServiceClients.class);
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
+        systemsCache = Mockito.mock(SystemsCache.class);
         JWTValidateRequestFilter.setSiteId("tacc");
         JWTValidateRequestFilter.setService("files");
         ResourceConfig app = new BaseResourceConfig()
@@ -110,7 +112,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
                     bind(systemsClient).to(SystemsClient.class);
                     bind(serviceJWT).to(ServiceJWT.class);
                     bind(tenantManager).to(TenantManager.class);
-                    bindAsContract(SystemsCache.class).in(Singleton.class);
+                    bind(systemsCache).to(SystemsCache.class);
                     bindAsContract(FilePermsCache.class).in(Singleton.class);
                     bindAsContract(FilePermsService.class).in(Singleton.class);
                     bindAsContract(TransfersService.class).in(Singleton.class);
@@ -140,7 +142,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
         when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
         when(tenantManager.getSite(any())).thenReturn(testSite);
-
+        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
     }
 
 

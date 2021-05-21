@@ -75,6 +75,10 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
             content = @Content(schema = @Schema(implementation = FileStatInfoResponse.class)),
             description = "Linux stat information for the file or directory."),
         @ApiResponse(
+            responseCode = "400",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Bad Request"),
+        @ApiResponse(
             responseCode = "401",
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "Not Authenticated"),
@@ -102,6 +106,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
         try {
             Instant start = Instant.now();
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            Utils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
 
@@ -112,8 +117,6 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
             log.debug(msg);
             TapisResponse<FileStatInfo> resp = TapisResponse.createSuccessResponse("ok", fileStatInfo);
             return Response.status(Status.OK).entity(resp).build();
-        } catch (NotFoundException e) {
-            throw new NotFoundException(Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage()));
         } catch (ServiceException | IOException e) {
             String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
             log.error(msg, e);
@@ -166,6 +169,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            Utils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             if (client == null) throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));

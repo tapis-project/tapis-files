@@ -6,7 +6,6 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
-import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.slf4j.Logger;

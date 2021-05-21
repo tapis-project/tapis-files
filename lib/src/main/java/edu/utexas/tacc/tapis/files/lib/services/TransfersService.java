@@ -451,6 +451,12 @@ public class TransfersService {
 
             if (sourceURI.toString().startsWith("tapis://")) {
                 sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURI.getSystemId(), parentTask.getUsername());
+                if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
+                {
+                  String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", parentTask.getTenantId(),
+                          parentTask.getUsername(), parentTask.getId(), parentTask.getUuid(), sourceSystem.getId());
+                  throw new ServiceException(msg);
+                }
                 sourceClient = remoteDataClientFactory.getRemoteDataClient(parentTask.getTenantId(), parentTask.getUsername(),
                                                                            sourceSystem, parentTask.getUsername());
 
@@ -748,6 +754,12 @@ public class TransfersService {
         } else  {
             sourcePath = sourceURL.getPath();
             sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
+            if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
+            {
+              String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", taskChild.getTenantId(),
+                      taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), sourceSystem.getId());
+              throw new ServiceException(msg);
+            }
             sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
                                                                        sourceSystem, taskChild.getUsername());
 
@@ -756,6 +768,12 @@ public class TransfersService {
         //Step 2: Get clients for source / dest
         try {
             destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
+            if (destSystem.getEnabled() == null || !destSystem.getEnabled())
+            {
+              String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", taskChild.getTenantId(),
+                      taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), destSystem.getId());
+              throw new ServiceException(msg);
+            }
             destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
                                                                      destSystem, taskChild.getUsername());
         } catch (IOException | ServiceException ex) {

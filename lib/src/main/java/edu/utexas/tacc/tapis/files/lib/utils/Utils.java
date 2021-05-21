@@ -5,9 +5,11 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotAuthorizedException;
 import java.text.MessageFormat;
@@ -140,5 +142,16 @@ public class Utils
       String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToLog);
       throw new ForbiddenException(msg);
     }
+  }
+
+  /**
+   * Standard check that system is available for use. If not available throw BadRequestException
+   *   which results in a response status of BAD_REQUEST (400).
+   * Mapping happens in edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper
+   */
+  public static void checkEnabled(AuthenticatedUser authenticatedUser, TapisSystem sys) throws BadRequestException
+  {
+    if (sys.getEnabled() == null || !sys.getEnabled())
+      throw new BadRequestException(getMsgAuth("FILES_SYS_NOTENABLED", authenticatedUser, sys.getId()));
   }
 }

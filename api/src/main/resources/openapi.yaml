@@ -69,6 +69,8 @@ paths:
       responses:
         "200":
           description: OK
+        "400":
+          description: Bad Request
         "401":
           description: Not Authenticated
         "404":
@@ -134,6 +136,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileListingResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
         "401":
           description: Not Authenticated
           content:
@@ -185,6 +193,12 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "400":
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -251,6 +265,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileStringResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
         "401":
           description: Not Authenticated
           content:
@@ -291,6 +311,12 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "400":
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -341,6 +367,12 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
+        "400":
+          description: Bad Request
           content:
             application/json:
               schema:
@@ -697,6 +729,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileStatInfoResponse'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileStringResponse'
         "401":
           description: Not Authenticated
           content:

@@ -79,6 +79,10 @@ public class OperationsApiResource extends BaseFileOpsResource {
             content = @Content(schema = @Schema(implementation = FileListingResponse.class)),
             description = "A list of files"),
         @ApiResponse(
+            responseCode = "400",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Bad Request"),
+        @ApiResponse(
             responseCode = "401",
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "Not Authenticated"),
@@ -106,6 +110,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         try {
             Instant start = Instant.now();
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            Utils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
@@ -136,6 +141,10 @@ public class OperationsApiResource extends BaseFileOpsResource {
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "OK"),
         @ApiResponse(
+            responseCode = "400",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Bad Request"),
+        @ApiResponse(
             responseCode = "401",
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "Not Authenticated"),
@@ -157,6 +166,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            Utils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             fileOpsService.insert(client, path, fileInputStream);
@@ -182,6 +192,10 @@ public class OperationsApiResource extends BaseFileOpsResource {
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "OK"),
         @ApiResponse(
+            responseCode = "400",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Bad Request"),
+        @ApiResponse(
             responseCode = "401",
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "Not Authenticated"),
@@ -202,6 +216,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            Utils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             fileOpsService.mkdir(client, mkdirRequest.getPath());
@@ -225,6 +240,10 @@ public class OperationsApiResource extends BaseFileOpsResource {
             responseCode = "200",
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "OK"),
+        @ApiResponse(
+            responseCode = "400",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Bad Request"),
         @ApiResponse(
             responseCode = "401",
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
@@ -251,6 +270,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            Utils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             if (client == null) {
@@ -282,6 +302,10 @@ public class OperationsApiResource extends BaseFileOpsResource {
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "OK"),
         @ApiResponse(
+            responseCode = "400",
+            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
+            description = "Bad Request"),
+        @ApiResponse(
             responseCode = "401",
             content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
             description = "Not Authenticated"),
@@ -307,6 +331,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+            Utils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
             fileOpsService.delete(client, path);
