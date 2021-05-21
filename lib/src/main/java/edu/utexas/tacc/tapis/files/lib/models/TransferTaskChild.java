@@ -89,9 +89,10 @@ public class TransferTaskChild extends TransferTaskParent {
     @Override
     public String toString() {
         return new StringJoiner(", ", TransferTaskChild.class.getSimpleName() + "[", "]")
-            .add("parentTaskId=" + parentTaskId)
-            .add("retries=" + retries)
             .add("id=" + id)
+            .add("parentTaskId=" + parentTaskId)
+            .add("taskId=" + getTaskId())
+            .add("retries=" + retries)
             .add("tenantId='" + tenantId + "'")
             .add("username='" + username + "'")
             .add("sourceURI='" + sourceURI + "'")

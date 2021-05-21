@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api;
 import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthzSystemPath;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
+import edu.utexas.tacc.tapis.files.api.providers.FilesExceptionMapper;
 import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
 import edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper;
 import edu.utexas.tacc.tapis.sharedapi.providers.ValidationExceptionMapper;
@@ -22,7 +23,7 @@ public class BaseResourceConfig extends ResourceConfig {
         register(ObjectMapperContextResolver.class);
         // ExceptionMappers, need both because ValidationMapper is a custom Jersey thing and
         // can't be implemented in a generic mapper
-        register(TapisExceptionMapper.class);
+        register(FilesExceptionMapper.class);
         register(ValidationExceptionMapper.class);
 
         // AuthZ filters

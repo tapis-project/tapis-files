@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.BadRequestException;
+import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotAuthorizedException;
 import java.text.MessageFormat;
 import java.util.Locale;
@@ -135,11 +136,11 @@ public class Utils
    */
   public static void checkPermitted(FilePermsService svc, String oboTenant, String oboUser, String systemId,
                                     String pathToCheck, String pathToLog, Permission perm)
-          throws NotAuthorizedException, ServiceException
+          throws ForbiddenException, ServiceException
   {
     if (!svc.isPermitted(oboTenant, oboUser, systemId, pathToCheck, perm)) {
-      String msg = getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToLog);
-      throw new NotAuthorizedException(msg);
+      String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToLog);
+      throw new ForbiddenException(msg);
     }
   }
 
