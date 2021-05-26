@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
+import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.apache.commons.io.FilenameUtils;
@@ -22,6 +23,8 @@ import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -244,7 +247,8 @@ public class FileOpsService implements IFileOpsService {
         try (ZipOutputStream zipStream = new ZipOutputStream(outputStream)) {
             for (FileInfo fileInfo: listing) {
                 try (InputStream inputStream = this.getStream(client, fileInfo.getPath()) ) {
-                    ZipEntry entry = new ZipEntry(fileInfo.getPath());
+                    Path pth = Paths.get(path).relativize(Paths.get(fileInfo.getPath()));
+                    ZipEntry entry = new ZipEntry(pth.toString());
                     zipStream.putNextEntry(entry);
                     inputStream.transferTo(zipStream);
                     zipStream.closeEntry();

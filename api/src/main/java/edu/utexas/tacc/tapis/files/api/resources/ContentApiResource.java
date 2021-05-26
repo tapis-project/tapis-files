@@ -67,7 +67,7 @@ public class ContentApiResource extends BaseFileOpsResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
-            TapisSystem system = systemsCache.getSystem(user.getTenantId(), systemId, user.getName());
+            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
             Utils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
