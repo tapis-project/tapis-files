@@ -90,31 +90,28 @@ public class ContentApiResource extends BaseFileOpsResource {
                     .header("content-disposition", disposition)
                     .build();
                 asyncResponse.resume(resp);
-            }
-
-            // Ensure that the path is not a dir, if not zip, then this will error out
-            if (path.endsWith("/")) {
-                throw new BadRequestException(Utils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
-            }
-            contentDisposition = String.format("attachment; filename=%s", filename);
-
-            if (range != null) {
-                stream = fileOpsService.getBytes(client, path, range.getMin(), range.getMax());
-            } else if (!Objects.isNull(moreStartPage)) {
-                mtype = MediaType.TEXT_PLAIN;
-                stream = fileOpsService.more(client, path, moreStartPage);
-                contentDisposition = "inline";
-            }
-            else {
-                stream = fileOpsService.getStream(client, path);
-            }
-
-            Response response =  Response
+            } else {
+                // Ensure that the path is not a dir, if not zip, then this will error out
+                if (path.endsWith("/")) {
+                    throw new BadRequestException(Utils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
+                }
+                contentDisposition = String.format("attachment; filename=%s", filename);
+                if (range != null) {
+                    stream = fileOpsService.getBytes(client, path, range.getMin(), range.getMax());
+                } else if (!Objects.isNull(moreStartPage)) {
+                    mtype = MediaType.TEXT_PLAIN;
+                    stream = fileOpsService.more(client, path, moreStartPage);
+                    contentDisposition = "inline";
+                } else {
+                    stream = fileOpsService.getStream(client, path);
+                }
+                Response response = Response
                     .ok(stream, mtype)
                     .header("content-disposition", contentDisposition)
                     .header("cache-control", "max-age=3600")
                     .build();
-            asyncResponse.resume(response);
+                asyncResponse.resume(response);
+            }
         } catch (ServiceException | IOException ex) {
             String msg = Utils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, ex.getMessage());
             log.error(msg, ex);

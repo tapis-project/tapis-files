@@ -37,14 +37,13 @@ import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
 
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
-import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-
+import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
 /**
  * This class is the entry point to sile operations over SSH with Tapis.
  * All path parameters as inputs to methods are assumed to be relative to the rootDir

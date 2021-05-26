@@ -139,6 +139,7 @@ public class FilesApplication extends BaseResourceConfig {
             final TCPNIOTransport transport = listener.getTransport();
             transport.setKeepAlive(true);
             transport.setWriteTimeout(0, TimeUnit.MINUTES);
+
             final ThreadPoolConfig tpc = transport.getWorkerThreadPoolConfig();
             tpc.setQueueLimit(-1).setCorePoolSize(100).setMaxPoolSize(100);
         }

@@ -78,7 +78,6 @@ public class FileOpsService implements IFileOpsService {
         checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
         List<FileInfo> listing = new ArrayList<>();
         listDirectoryRec(client, path, listing, 0, maxDepth);
-        log.info(listing.toString());
         return listing;
     }
 
@@ -242,7 +241,6 @@ public class FileOpsService implements IFileOpsService {
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
         //TODO: This should be made for recursive listings
         List<FileInfo> listing = this.lsRecursive(client, path, MAX_RECURSION);
-        log.info(listing.toString());
         try (ZipOutputStream zipStream = new ZipOutputStream(outputStream)) {
             for (FileInfo fileInfo: listing) {
                 try (InputStream inputStream = this.getStream(client, fileInfo.getPath()) ) {
@@ -250,7 +248,6 @@ public class FileOpsService implements IFileOpsService {
                     zipStream.putNextEntry(entry);
                     inputStream.transferTo(zipStream);
                     zipStream.closeEntry();
-                    log.debug("Added {} to zip", fileInfo);
                 }
             }
         } catch (IOException ex) {
