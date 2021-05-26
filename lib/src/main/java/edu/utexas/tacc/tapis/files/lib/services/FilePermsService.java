@@ -97,18 +97,21 @@ public class FilePermsService {
 
     public void removePathPermissionFromAllRoles(String tenantId, String username,  String systemId, String path) throws ServiceException {
         try {
-            // TODO: if a dir, use skClient.removePathPermissionFromAllRoles and make sure permspec path
-            // ends with /
-
-            path = StringUtils.removeEnd(path, "/");
             path = StringUtils.prependIfMissing(path, "/");
-            SKClient skClient = getSKClient(tenantId, username);
-            String permSpec = String.format(PERMSPEC, tenantId, Permission.READ, systemId, path);
-            skClient.removePermissionFromAllRoles(tenantId, permSpec);
-            String permSpec2 = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
-            skClient.removePermissionFromAllRoles(tenantId, permSpec2);
-            permSpec = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
-            skClient.revokeUserPermission(tenantId, username, permSpec);
+            if (path.endsWith("/")) {
+                SKClient skClient = getSKClient(tenantId, username);
+                String permSpec = String.format(PERMSPEC, tenantId, Permission.READ, systemId, path);
+                skClient.removePathPermissionFromAllRoles(tenantId, permSpec);
+                String permSpec2 = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
+                skClient.removePathPermissionFromAllRoles(tenantId, permSpec2);
+            } else {
+                path = StringUtils.removeEnd(path, "/");
+                SKClient skClient = getSKClient(tenantId, username);
+                String permSpec = String.format(PERMSPEC, tenantId, Permission.READ, systemId, path);
+                skClient.removePermissionFromAllRoles(tenantId, permSpec);
+                String permSpec2 = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
+                skClient.removePermissionFromAllRoles(tenantId, permSpec2);
+            }
         } catch (TapisClientException ex) {
             String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
             throw new ServiceException(msg, ex);
