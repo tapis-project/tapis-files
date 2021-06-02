@@ -343,7 +343,9 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
       when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
       when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
       // TODO: How to mock and test a system that does not exist
-//      when(systemsClient.getSystemWithCredentials(eq("testMissingSystem"), any())).thenReturn(null);
+// TODO     when(systemsClient.getSystemWithCredentials(eq("testMissingSystem"), any())).thenReturn(null);
+// TODO exception cannot be a checked exception and ServiceException is a checked exception
+//      when(systemsClient.getSystemWithCredentials(eq("testMissingSystem"), any())).thenThrow(new ServiceException("No system: testMissingSystem"));
 
         Response response = target("/v3/files/content/testSystem/BAD-PATH/")
             .request()
