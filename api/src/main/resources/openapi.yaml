@@ -970,19 +970,6 @@ components:
           type: string
         metadata:
           type: object
-    CreatePermissionRequest:
-      required:
-      - permission
-      - username
-      type: object
-      properties:
-        username:
-          type: string
-        permission:
-          type: string
-          enum:
-          - READ
-          - MODIFY
     StringResponse:
       type: object
       properties:
@@ -996,6 +983,19 @@ components:
           type: string
         metadata:
           type: object
+    CreatePermissionRequest:
+      required:
+      - permission
+      - username
+      type: object
+      properties:
+        username:
+          type: string
+        permission:
+          type: string
+          enum:
+          - READ
+          - MODIFY
     SharedFileObject:
       type: object
       properties:

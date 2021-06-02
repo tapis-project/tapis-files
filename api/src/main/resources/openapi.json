@@ -1389,19 +1389,6 @@
           }
         }
       },
-      "CreatePermissionRequest" : {
-        "required" : [ "permission", "username" ],
-        "type" : "object",
-        "properties" : {
-          "username" : {
-            "type" : "string"
-          },
-          "permission" : {
-            "type" : "string",
-            "enum" : [ "READ", "MODIFY" ]
-          }
-        }
-      },
       "StringResponse" : {
         "type" : "object",
         "properties" : {
@@ -1419,6 +1406,19 @@
           },
           "metadata" : {
             "type" : "object"
+          }
+        }
+      },
+      "CreatePermissionRequest" : {
+        "required" : [ "permission", "username" ],
+        "type" : "object",
+        "properties" : {
+          "username" : {
+            "type" : "string"
+          },
+          "permission" : {
+            "type" : "string",
+            "enum" : [ "READ", "MODIFY" ]
           }
         }
       },
