@@ -20,7 +20,7 @@ import java.util.UUID;
 @FileTransfersAuthorization
 public class FileTransfersAuthz implements ContainerRequestFilter {
 
-    private Logger log = LoggerFactory.getLogger(FileOpsAuthzSystemPath.class);
+    private Logger log = LoggerFactory.getLogger(FileTransfersAuthz.class);
     private AuthenticatedUser user;
 
     @Inject private TransfersService transfersService;

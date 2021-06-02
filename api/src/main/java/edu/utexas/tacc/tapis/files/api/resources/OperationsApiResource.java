@@ -6,21 +6,17 @@ import edu.utexas.tacc.tapis.files.api.models.MoveCopyOperation;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +25,7 @@ import javax.inject.Inject;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -107,12 +104,10 @@ public class OperationsApiResource extends BaseFileOpsResource {
         @Context SecurityContext securityContext) {
         String opName = "listFiles";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+
         try {
             Instant start = Instant.now();
-            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
+            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
             List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
             String msg = Utils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
             log.debug(msg);
@@ -128,7 +123,6 @@ public class OperationsApiResource extends BaseFileOpsResource {
     }
 
     @POST
-    @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:.+}")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
@@ -165,10 +159,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         String opName = "insert";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
+            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
             fileOpsService.insert(client, path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
@@ -181,7 +172,6 @@ public class OperationsApiResource extends BaseFileOpsResource {
 
 
     @POST
-    @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -215,10 +205,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         String opName = "mkdir";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
+            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, null);
             fileOpsService.mkdir(client, mkdirRequest.getPath());
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
@@ -230,7 +217,6 @@ public class OperationsApiResource extends BaseFileOpsResource {
     }
 
     @PUT
-    @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Move/copy a file or folder", description = "Move/copy a file in {systemID} at path {path}.", tags = {"file operations"})
     @Produces(MediaType.APPLICATION_JSON)
@@ -269,10 +255,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         String opName = "moveCopy";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
+            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
             if (client == null) {
                 throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
             }
@@ -292,7 +275,6 @@ public class OperationsApiResource extends BaseFileOpsResource {
     }
 
     @DELETE
-    @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:(.*+)}")
     @Operation(summary = "Delete a file or folder", description = "Delete a file in {systemID} at path {path}.", tags = {"file operations"})
     @Produces(MediaType.APPLICATION_JSON)
@@ -330,10 +312,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         String opName = "delete";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
-            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
+            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
             fileOpsService.delete(client, path);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
             return Response.ok(resp).build();

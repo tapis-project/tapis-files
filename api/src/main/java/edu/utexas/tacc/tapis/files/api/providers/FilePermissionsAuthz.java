@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -36,7 +37,7 @@ public class FilePermissionsAuthz implements ContainerRequestFilter {
     private ResourceInfo resourceInfo;
 
     @Override
-    public void filter(ContainerRequestContext requestContext) throws NotAuthorizedException, IOException {
+    public void filter(ContainerRequestContext requestContext) throws ForbiddenException, IOException {
 
         user = (AuthenticatedUser) requestContext.getSecurityContext().getUserPrincipal();
         String username = user.getOboUser();
@@ -47,7 +48,7 @@ public class FilePermissionsAuthz implements ContainerRequestFilter {
         try {
             TapisSystem system = systemsCache.getSystem(tenantId, systemId, username);
             if (!Objects.equals(system.getOwner(), username)) {
-                throw new NotAuthorizedException(Utils.getMsgAuth("FILES_PERM_NOT_AUTH", user, systemId));
+                throw new ForbiddenException(Utils.getMsgAuth("FILES_PERM_NOT_AUTH", user, systemId));
             }
         } catch (ServiceException ex) {
             String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, "authorization", systemId, ex.getMessage());

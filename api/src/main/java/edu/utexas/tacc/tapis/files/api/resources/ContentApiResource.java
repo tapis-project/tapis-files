@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
-import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
@@ -44,7 +43,6 @@ public class ContentApiResource extends BaseFileOpsResource {
 
     @GET
     @ManagedAsync
-    @FileOpsAuthorization(permRequired = Permission.READ)
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "content" })
     @ApiResponses(value = {
@@ -67,10 +65,7 @@ public class ContentApiResource extends BaseFileOpsResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 
         try {
-            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
+            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
             String mtype = MediaType.APPLICATION_OCTET_STREAM;
             String contentDisposition;
             java.nio.file.Path filepath = Paths.get(path);

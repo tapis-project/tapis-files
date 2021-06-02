@@ -242,12 +242,16 @@ public class FileOpsService implements IFileOpsService {
     @Override
     public void getZip(IRemoteDataClient client, @NotNull OutputStream outputStream, @NotNull String path) throws ServiceException, ForbiddenException {
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
-        //TODO: This should be made for recursive listings
+        //TODO: This should be made for recursive listings]
+        String cleanedPath = FilenameUtils.normalize(path);
+        cleanedPath = StringUtils.removeStart(cleanedPath, "/");
+        if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
         List<FileInfo> listing = this.lsRecursive(client, path, MAX_RECURSION);
         try (ZipOutputStream zipStream = new ZipOutputStream(outputStream)) {
             for (FileInfo fileInfo: listing) {
                 try (InputStream inputStream = this.getStream(client, fileInfo.getPath()) ) {
-                    Path pth = Paths.get(path).relativize(Paths.get(fileInfo.getPath()));
+                    String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
+                    Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
                     ZipEntry entry = new ZipEntry(pth.toString());
                     zipStream.putNextEntry(entry);
                     inputStream.transferTo(zipStream);

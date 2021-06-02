@@ -1,10 +1,8 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxOpRequest;
-import edu.utexas.tacc.tapis.files.api.providers.FileOpsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
@@ -63,7 +61,6 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
     IFileUtilsService fileUtilsService;
 
     @GET
-    @FileOpsAuthorization(permRequired = Permission.READ)
     @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Get stat information for a file or directory.",
@@ -125,7 +122,6 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
     }
 
     @POST
-    @FileOpsAuthorization(permRequired = Permission.MODIFY)
     @Path("/{systemId}/{path:.+}")
     @Operation(summary = "Run a native operation",
                description = "Run a native operation: chmod, chown or chgrp.",

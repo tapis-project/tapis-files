@@ -234,6 +234,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         ZipEntry ze;
         int count=0;
         while ((ze = zis.getNextEntry()) != null) {
+            log.info(ze.toString());
             count++;
         }
         Assert.assertEquals(count, 3);

@@ -244,14 +244,11 @@ public class ITestFileOpsService {
             while ( (ze = zis.getNextEntry()) != null) {
                 log.info(ze.toString());
                 String fname = ze.getName();
-                Assert.assertTrue(fname.startsWith("/a/"));
                 count++;
             }
             Assert.assertEquals(count, 3);
-
         }
         file.deleteOnExit();
-
     }
 
 

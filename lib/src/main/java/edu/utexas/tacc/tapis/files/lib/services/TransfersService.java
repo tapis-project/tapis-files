@@ -307,27 +307,26 @@ public class TransfersService {
                     return Mono.empty();
                 }
             })
-            .flatMap(group ->
-
-                group
-                    .parallel()
-                    .runOn(Schedulers.newBoundedElastic(10, 10, "ParentPool:" + group.key()))
+            .flatMap(group -> {
+                Scheduler scheduler = Schedulers.newBoundedElastic(10, 10, "ParentPool:" + group.key());
+                return group
                     .flatMap(m->
                         deserializeParentMessage(m)
-                        .flatMap(t1->Mono.fromCallable(()-> doParentChevronOne(t1))
-                                .retryWhen(
-                                    Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
-                                            .maxBackoff(Duration.ofMinutes(60))
-                                            .filter(e -> e.getClass() == IOException.class)
-                                )
+                        .flatMap(t1 -> Mono.fromCallable(() -> doParentChevronOne(t1))
+                            .publishOn(scheduler)
+                            .retryWhen(
+                                Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
+                                    .maxBackoff(Duration.ofMinutes(60))
+                                    .filter(e -> e.getClass() == IOException.class)
+                            )
                             .onErrorResume(e -> doErrorParentChevronOne(m, e, t1))
                         )
-                        .flatMap(t2->{
+                        .flatMap(t2 -> {
                             m.ack();
                             return Mono.just(t2);
                         })
-                    )
-            );
+                    );
+            });
     }
 
 
@@ -603,9 +602,8 @@ public class TransfersService {
                     .flatMap(
                         //Wwe need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
-                            .log(scheduler.toString())
                             .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
-                                .subscribeOn(scheduler) // IMPORTANT. This has to go here
+                                .publishOn(scheduler)
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
                                         .maxBackoff(Duration.ofSeconds(10))
@@ -615,14 +613,13 @@ public class TransfersService {
                             .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2))
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofMillis(100))
-                                        .maxBackoff(Duration.ofMinutes(30))
+                                        .maxBackoff(Duration.ofMinutes(10))
                                         .scheduler(scheduler)
                                         .filter(e -> e.getClass() == IOException.class)
 //                                        .filter(e -> e.getClass() != TapisException.class)
                                 ).onErrorResume(e -> doErrorChevronOne(m, e, t2))
                             )
                             .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
-                                .subscribeOn(scheduler)
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofSeconds(0))
                                         .maxBackoff(Duration.ofSeconds(10))
@@ -641,7 +638,7 @@ public class TransfersService {
                                 return Mono.just(t5);
                             })
                           .flatMap(t6->Mono.fromCallable(()->chevronFive(t6, scheduler)))
-                    ).subscribeOn(scheduler);
+                    );
             });
     }
 
@@ -723,7 +720,7 @@ public class TransfersService {
      * @return
      * @throws ServiceException
      */
-    private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException, TapisException {
+    private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException {
         log.info("***** DOING chevronTwo ****");
         log.info(taskChild.toString());
         TapisSystem sourceSystem;
