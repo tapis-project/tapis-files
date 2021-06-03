@@ -343,7 +343,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
       when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
       when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
       // TODO: How to mock and test a system that does not exist
-// TODO     when(systemsClient.getSystemWithCredentials(eq("testMissingSystem"), any())).thenReturn(null);
+//      when(systemsClient.getSystemWithCredentials(eq("testMissingSystem"), any())).thenReturn(null);
 // TODO exception cannot be a checked exception and ServiceException is a checked exception
 //      when(systemsClient.getSystemWithCredentials(eq("testMissingSystem"), any())).thenThrow(new ServiceException("No system: testMissingSystem"));
 
@@ -360,12 +360,12 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
                 .get();
         Assert.assertEquals(response.getStatus(), 400);
 
-// TODO        // Attempt to retrieve from a system which does not exist
+//        // Attempt to retrieve from a system which does not exist
 //        response = target("/v3/files/content/testMissingSystem/testfile1.txt")
 //              .request()
 //              .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
 //              .get();
-//        Assert.assertEquals(response.getStatus(), 400);
+//        Assert.assertEquals(response.getStatus(), 404);
     }
 
     //TODO: Add tests for strange chars in filename or path.

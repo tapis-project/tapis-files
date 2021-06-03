@@ -33,7 +33,7 @@ public class FilePermsCache {
     @Inject
     public FilePermsCache() {
         cache = CacheBuilder.newBuilder()
-            .expireAfterWrite(Duration.ofSeconds(60))
+            .expireAfterWrite(Duration.ofMillis(10))
             .build(new PermsLoader());
     }
 

@@ -76,7 +76,7 @@ public class FileOpsService implements IFileOpsService {
     }
 
     @Override
-    public List<FileInfo> lsRecursive(IRemoteDataClient client, @NotNull String path, @NotNull int maxDepth) throws ServiceException, NotFoundException, ForbiddenException {
+    public List<FileInfo> lsRecursive(IRemoteDataClient client, @NotNull String path, int maxDepth) throws ServiceException, NotFoundException, ForbiddenException {
         maxDepth = Math.min(maxDepth, MAX_RECURSION);
         checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, FileInfo.Permission.READ);
         List<FileInfo> listing = new ArrayList<>();
