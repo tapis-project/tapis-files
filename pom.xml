@@ -6,7 +6,7 @@
     <parent>
         <groupId>edu.utexas.tacc.tapis</groupId>
         <artifactId>tapis-bom</artifactId>
-        <version>1.11.37</version>
+        <version>[1.11,2.0)</version>
     </parent>
 
     <artifactId>tapis-files</artifactId>
@@ -36,6 +36,17 @@
                 <skipITs>false</skipITs>
 <!--                <flyway.baselineOnMigrate>true</flyway.baselineOnMigrate>-->
             </properties>
+        </profile>
+        <profile>
+            <id>tacc</id>
+            <activation> <activeByDefault>true</activeByDefault> </activation>
+            <repositories>
+                <repository>
+                    <id>tapis-local-releases</id>
+                    <name>Local repo for releases</name>
+                    <url>http://c002.rodeo.tacc.utexas.edu:30044/repository/maven-releases</url>
+                </repository>
+            </repositories>
         </profile>
     </profiles>
     <build>

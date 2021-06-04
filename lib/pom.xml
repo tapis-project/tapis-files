@@ -103,10 +103,6 @@
             <artifactId>reactor-rabbitmq</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.projectreactor.addons</groupId>
-            <artifactId>reactor-extra</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-exec</artifactId>
             <version>${apache-commons-exec.version}</version>
