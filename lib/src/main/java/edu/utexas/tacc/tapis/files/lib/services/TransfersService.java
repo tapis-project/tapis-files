@@ -740,7 +740,6 @@ public class TransfersService {
         IRemoteDataClient sourceClient;
         IRemoteDataClient destClient;
 
-
         //Step 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
         try {
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
