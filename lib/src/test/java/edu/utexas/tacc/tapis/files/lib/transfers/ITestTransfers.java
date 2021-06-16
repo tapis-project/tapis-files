@@ -24,6 +24,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.test.StepVerifier;
@@ -33,6 +34,7 @@ import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -323,10 +325,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         transfersService.deleteQueue(childQ).subscribe();
         transfersService.deleteQueue(parentQ).subscribe();
-
-
     }
-
 
     @DataProvider
     private Object[] testSourcesProvider() {
@@ -417,7 +416,66 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.deleteQueue(parentQ).subscribe();
     }
 
+    /**
+     * TODO: This don't work
+     * Tests to se if the grouping does not hang after 256 groups
+     */
+    @Test(enabled=false)
+    public void testMaxGroupSize() throws Exception {
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
 
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
+        // Double check that the files really are in the destination
+        //wipe out the dest folder just in case
+        fileOpsService.delete(destClient, "/");
+
+
+        //Add some files to transfer
+        int FILESIZE = 10 * 1000 * 1024;
+        InputStream in = Utils.makeFakeFile(FILESIZE);
+        fileOpsService.insert(sourceClient, "a/1.txt", in);
+
+
+        //Fix the queues to something random to avoid any lingering messages
+        String childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(childQ);
+        String parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(parentQ);
+
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("tapis://sourceSystem/a/");
+        element.setDestinationURI("tapis://destSystem/b/");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element);
+
+        Flux<AcknowledgableDelivery> parentTaskStream = transfersService.streamParentMessages();
+        transfersService.processParentTasks(parentTaskStream).subscribe();
+
+        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
+        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
+
+        for (var i=0; i<300; i++) {
+            TransferTask t1 = transfersService.createTransfer(
+                "testuser",
+                "dev",
+                "tag",
+                elements
+            );
+        }
+        AtomicInteger counter = new AtomicInteger();
+        stream
+            .subscribe( (t)->{
+                counter.incrementAndGet();
+                System.out.println(t.toString());
+            }, (e)->{
+                log.info(e.toString());
+            });
+        Thread.sleep(Duration.ofSeconds(60).toMillis());
+        Assert.assertEquals(counter.get(), 300);
+    }
     /**
      * This test is important, basically testing a simple but complete transfer. We check the entries in the database
      * as well as the files at the destination to make sure it actually completed. If this test fails, something needs to

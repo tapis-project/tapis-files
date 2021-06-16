@@ -30,6 +30,7 @@ import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.GroupedFlux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -388,7 +389,6 @@ public class TransfersService {
      * @throws ServiceException
      */
     private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException {
-        log.info("Checking permissions for transfer");
         // For http inputs no need to do any permission checking on the source
         boolean isHttpSource = parentTask.getSourceURI().getProtocol().equalsIgnoreCase("http");
         String tenantId = parentTask.getTenantId();
@@ -410,7 +410,6 @@ public class TransfersService {
         if (!destPerms) {
             return false;
         }
-        log.info("Permissions checks complete for {}", parentTask);
         return true;
     }
 
@@ -562,13 +561,14 @@ public class TransfersService {
      * @return Id of the top level task.
      * @throws ServiceException If the wrong format of message is passed in.
      */
-    private Integer groupByTopTask(AcknowledgableDelivery message) throws ServiceException {
+    private Mono<String> childTaskGrouper(AcknowledgableDelivery message) {
         try {
-            return mapper.readValue(message.getBody(), TransferTaskChild.class).getTaskId();
+            String tenantId = mapper.readValue(message.getBody(), TransferTaskChild.class).getTenantId();
+            return Mono.just(tenantId);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_TXFR_SVC_ERR12", ex.getMessage());
             log.error(msg);
-            throw new ServiceException(msg, ex);
+            return Mono.empty();
         }
     }
 
@@ -598,59 +598,73 @@ public class TransfersService {
      */
     public Flux<TransferTaskChild> processChildTasks(@NotNull Flux<AcknowledgableDelivery> messageStream) {
         // Deserialize the message so that we can pass that into the reactor chain.
+
         return messageStream
-            .log()
-            .groupBy(m -> {
-                try {
-                    return groupByTopTask(m);
-                } catch (ServiceException ex) {
-                    return Mono.empty();
-                }
-            })
-            .flatMap(group -> {
+            .groupBy(this::childTaskGrouper)
+            .flatMap(group-> {
                 Scheduler scheduler = Schedulers.newBoundedElastic(10, 100, "ChildPool:" + group.key());
-                return group
-                    .flatMap(
-                        //Wwe need the message in scope so we can ack/nack it later
-                        m -> deserializeChildMessage(m)
-                            .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
-                                .publishOn(scheduler)
-                                .retryWhen(
-                                    Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
-                                        .maxBackoff(Duration.ofSeconds(10))
-                                        .scheduler(scheduler)
-                                ).onErrorResume(e -> doErrorChevronOne(m, e, t1))
-                            )
-                            .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2))
-                                .retryWhen(
-                                    Retry.backoff(MAX_RETRIES, Duration.ofMillis(100))
-                                        .maxBackoff(Duration.ofMinutes(10))
-                                        .scheduler(scheduler)
-                                        .filter(e -> e.getClass().equals(IOException.class))
-                                ).onErrorResume(e -> doErrorChevronOne(m, e, t2))
-                            )
-                            .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
-                                .retryWhen(
-                                    Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
-                                        .maxBackoff(Duration.ofSeconds(10))
-                                        .scheduler(scheduler)
-                                ).onErrorResume(e -> doErrorChevronOne(m, e, t3))
-                            )
-                            .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4))
-                                .retryWhen(
-                                    Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
-                                        .maxBackoff(Duration.ofSeconds(10))
-                                        .scheduler(scheduler)
-                                ).onErrorResume(e -> doErrorChevronOne(m, e, t4))
-                            )
-                            .flatMap(t5 -> {
-                                m.ack();
-                                return Mono.just(t5);
-                            })
-                            .flatMap(t6 -> Mono.fromCallable(() -> chevronFive(t6, scheduler)))
-                    );
+                return group.flatMap(
+                    //We need the message in scope so we can ack/nack it later
+                    m -> deserializeChildMessage(m)
+                        .publishOn(scheduler)
+                        .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
+                            .retryWhen(
+                                Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
+                                    .maxBackoff(Duration.ofSeconds(10))
+                                    .scheduler(scheduler)
+                            ).onErrorResume(e -> doErrorChevronOne(m, e, t1))
+                        )
+                        .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2))
+                            .retryWhen(
+                                Retry.backoff(MAX_RETRIES * 10, Duration.ofMillis(100))
+                                    .maxBackoff(Duration.ofMinutes(10))
+                                    .scheduler(scheduler)
+                                    .filter(e -> e.getClass().equals(IOException.class))
+                            ).onErrorResume(e -> doErrorChevronOne(m, e, t2))
+                        )
+                        .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
+                            .retryWhen(
+                                Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
+                                    .maxBackoff(Duration.ofSeconds(10))
+                                    .scheduler(scheduler)
+                            ).onErrorResume(e -> doErrorChevronOne(m, e, t3))
+                        )
+                        .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4))
+                            .retryWhen(
+                                Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
+                                    .maxBackoff(Duration.ofSeconds(10))
+                                    .scheduler(scheduler)
+                            ).onErrorResume(e -> doErrorChevronOne(m, e, t4))
+                        )
+                        .flatMap(t5 -> {
+                            m.ack();
+                            return Mono.just(t5);
+                        })
+                        .flatMap(t6 -> Mono.fromCallable(() -> chevronFive(t6)))
+                );
             });
     }
+
+    /**
+     * @param taskChild The TransferTaskChild
+     * @return true if the top level task is in a final state
+     */
+    private boolean isTaskComplete(TransferTaskChild taskChild) {
+        try {
+            TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
+            if (task.getStatus().equals(TransferTaskStatus.COMPLETED) ||
+                task.getStatus().equals(TransferTaskStatus.FAILED) ||
+                task.getStatus().equals(TransferTaskStatus.CANCELLED) ||
+                task.getStatus().equals(TransferTaskStatus.PAUSED)
+            ) {
+                return false;
+            }
+        } catch (DAOException ex) {
+            return true;
+        }
+        return true;
+    }
+
 
     /**
      * Error handler for any of the steps.
@@ -733,12 +747,11 @@ public class TransfersService {
      * @throws ServiceException If the DAO updates failed or a transfer failed in flight
      */
     private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException {
-        log.info("***** DOING chevronTwo ****");
-        log.info(taskChild.toString());
         TapisSystem sourceSystem;
         TapisSystem destSystem;
         IRemoteDataClient sourceClient;
         IRemoteDataClient destClient;
+        log.info("***** DOING chevronTwo ****");
 
         //Step 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
         try {
@@ -800,7 +813,6 @@ public class TransfersService {
             observableInputStream.getEventStream()
                 .window(Duration.ofMillis(1000))
                 .flatMap(window -> window.takeLast(1))
-                .publishOn(Schedulers.boundedElastic())
                 .flatMap((prog) -> this.updateProgress(prog, finalTaskChild))
                 .subscribe();
             destClient.insert(destURL.getPath(), observableInputStream);
@@ -834,7 +846,6 @@ public class TransfersService {
      * @return updated TransferTaskChild
      */
     private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        log.info("***** DOING chevronThree **** {}", taskChild);
         try {
             taskChild.setStatus(TransferTaskStatus.COMPLETED);
             taskChild.setEndTime(Instant.now());
@@ -857,7 +868,6 @@ public class TransfersService {
      * @throws ServiceException If the updates to the records in the DB failed
      */
     private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        log.info("***** DOING chevronFour **** {}", taskChild);
         try {
             TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
             TransferTaskParent parent = dao.getTransferTaskParentById(taskChild.getParentTaskId());
@@ -879,7 +889,6 @@ public class TransfersService {
                     parent.setEndTime(Instant.now());
                     parent.setBytesTransferred(parent.getBytesTransferred() + taskChild.getBytesTransferred());
                     dao.updateTransferTaskParent(parent);
-                    log.info("Updated parent task {}", parent);
                 }
             }
 
@@ -892,20 +901,15 @@ public class TransfersService {
 
     /**
      * @param taskChild child task
-     * @param scheduler the scheduler used
      * @return Updated child task
      * @throws ServiceException if we can't update the record in the DB
      */
-    private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild, Scheduler scheduler) throws ServiceException {
+    private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild) throws ServiceException {
         log.info("***** DOING chevronFive **** {}", taskChild);
         try {
             TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
             if (task.getStatus().equals(TransferTaskStatus.COMPLETED)) {
                 dao.updateTransferTask(task);
-                log.info("Top Task COMPLETE: {}", task);
-                log.info(scheduler.toString());
-                log.info("Child TASK {} COMPLETE", taskChild);
-                log.info("CHILD TASK RETRIES: {}", taskChild.getRetries());
             }
             return taskChild;
         } catch (DAOException ex) {
