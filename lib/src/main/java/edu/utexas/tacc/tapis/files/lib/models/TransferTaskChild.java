@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
@@ -8,6 +9,8 @@ import javax.validation.constraints.NotNull;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 
@@ -69,6 +72,16 @@ public class TransferTaskChild extends TransferTaskParent {
 
     public int getRetries() {return retries; }
     public void setRetries(int retries) {this.retries = retries;}
+
+    @JsonIgnore
+    public boolean isTerminal() {
+        Set<TransferTaskStatus> terminalStates = new HashSet<>();
+        terminalStates.add(TransferTaskStatus.COMPLETED);
+        terminalStates.add(TransferTaskStatus.FAILED);
+        terminalStates.add(TransferTaskStatus.CANCELLED);
+        terminalStates.add(TransferTaskStatus.PAUSED);
+        return terminalStates.contains(this.status);
+    }
 
     @Override
     public boolean equals(Object o) {

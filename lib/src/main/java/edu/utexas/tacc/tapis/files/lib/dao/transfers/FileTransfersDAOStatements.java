@@ -181,6 +181,13 @@ public class FileTransfersDAOStatements {
             " values (?, ?, ?, ?, ?, ?, ?, ?, ?) " +
             " RETURNING * ";
 
+    //language=SQL
+    public static final String CANCEL_TRANSFER_TASK_AND_CHILDREN =
+        """
+            UPDATE transfer_tasks set status = 'CANCELLED' where id = ?;
+            UPDATE transfer_tasks_parent set status = 'CANCELLED' where task_id = ?;
+            UPDATE transfer_tasks_child set status = 'CANCELLED' where task_id = ?;
+        """;
 
 
 }

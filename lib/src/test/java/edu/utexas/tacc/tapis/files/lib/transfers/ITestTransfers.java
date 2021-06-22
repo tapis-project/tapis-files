@@ -3,7 +3,9 @@ package edu.utexas.tacc.tapis.files.lib.transfers;
 import edu.utexas.tacc.tapis.files.lib.BaseDatabaseIntegrationTest;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
@@ -50,6 +52,24 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     private final String oboUser = "oboUser";
     private TapisSystem sourceSystem;
     private TapisSystem destSystem;
+    private String childQ;
+    private String parentQ;
+
+
+    @BeforeMethod
+    public void setUpQueues() {
+        this.childQ = UUID.randomUUID().toString();
+        transfersService.setChildQueue(this.childQ);
+        this.parentQ = UUID.randomUUID().toString();
+        transfersService.setParentQueue(this.parentQ);
+    }
+
+    @AfterMethod
+    public void deleteQueues() {
+        transfersService.deleteQueue(childQ).subscribe();
+        transfersService.deleteQueue(parentQ).subscribe();
+    }
+
 
     @BeforeMethod
     public void initialize() throws Exception {
@@ -85,10 +105,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
-        String childQ = UUID.randomUUID().toString();
-        transfersService.setChildQueue(childQ);
-        String parentQ = UUID.randomUUID().toString();
-        transfersService.setParentQueue(parentQ);
+
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
         element.setDestinationURI("tapis://destSystem/");
@@ -178,9 +195,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         // The total size should be the sum of the 2 files inserted into the bucket in beforeTest()
         Assert.assertEquals(task.getTotalBytes(), 2 * 10 * 1024);
 
-        transfersService.deleteQueue(childQ).subscribe();
-        transfersService.deleteQueue(parentQ).subscribe();
-
     }
 
     @Test
@@ -230,8 +244,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         // should be 2, one for each file created in the setUp method above;
         Assert.assertEquals(children.size(), 2);
 
-        transfersService.deleteQueue(parentQ).subscribe();
-        transfersService.deleteQueue(childQ).subscribe();
     }
 
     @Test
@@ -274,9 +286,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         // should be 2, one for each file created in the setUp method above;
         Assert.assertEquals(children.size(), 0);
-
-        transfersService.deleteQueue(parentQ).subscribe();
-        transfersService.deleteQueue(childQ).subscribe();
         sourceSystem.setHost("http://localhost");
     }
 
@@ -323,8 +332,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
         Assert.assertEquals(children.size(), 2);
 
-        transfersService.deleteQueue(childQ).subscribe();
-        transfersService.deleteQueue(parentQ).subscribe();
     }
 
     @DataProvider
@@ -412,18 +419,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         Assert.assertEquals(listing.size(), 2);
-        transfersService.deleteQueue(childQ).subscribe();
-        transfersService.deleteQueue(parentQ).subscribe();
     }
 
     /**
-     * TODO: This don't work
      * Tests to se if the grouping does not hang after 256 groups
      */
-    @Test(enabled=false)
+    @Test(enabled=true)
     public void testMaxGroupSize() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(testSystemS3);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
@@ -432,12 +436,10 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         //wipe out the dest folder just in case
         fileOpsService.delete(destClient, "/");
 
-
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
         InputStream in = Utils.makeFakeFile(FILESIZE);
         fileOpsService.insert(sourceClient, "a/1.txt", in);
-
 
         //Fix the queues to something random to avoid any lingering messages
         String childQ = UUID.randomUUID().toString();
@@ -543,9 +545,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         List<FileInfo> listing = fileOpsService.ls(destClient,"/b");
         Assert.assertEquals(listing.size(), 1);
-
-        transfersService.deleteQueue(childQ).subscribe();
-        transfersService.deleteQueue(parentQ).subscribe();
     }
 
 
@@ -615,8 +614,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         List<FileInfo> listing = fileOpsService.ls(destClient, "/");
         Assert.assertEquals(listing.size(), 1);
-        transfersService.deleteQueue(childQ).subscribe();
-        transfersService.deleteQueue(parentQ).subscribe();
     }
 
     @Test
@@ -685,8 +682,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         List<FileInfo> listing = fileOpsService.ls(destClient, "file1.txt");
         Assert.assertEquals(listing.size(), 1);
-        transfersService.deleteQueue(childQ).subscribe();
-        transfersService.deleteQueue(parentQ).subscribe();
     }
 
 
@@ -743,8 +738,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         //NOT-THERE/1.txt should NOT BE THERE
         Assert.assertEquals(listing.size(), 1);
-        transfersService.deleteQueue(childQ).subscribe();
-        transfersService.deleteQueue(parentQ).subscribe();
 
     }
 
@@ -826,8 +819,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.size(), 8);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
-        transfersService.deleteQueue(parentQ).subscribe();
-        transfersService.deleteQueue(childQ).subscribe();
     }
 
     @Test(groups={"performance"})
@@ -888,8 +879,73 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.size(), 3);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
-        transfersService.deleteQueue(parentQ).subscribe();
-        transfersService.deleteQueue(childQ).subscribe();
+    }
+
+    @Test
+    public void testCancelTransfer() throws Exception {
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
+        // Double check that the files really are in the destination
+        //wipe out the dest folder just in case
+        fileOpsService.delete(destClient, "/");
+
+        //Add some files to transfer
+        int FILESIZE = 1000 * 1000 * 1024;
+        InputStream in = Utils.makeFakeFile(FILESIZE);
+        fileOpsService.insert(sourceClient, "file1.txt", in);
+
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("tapis://sourceSystem/file1.txt");
+        element.setDestinationURI("tapis://destSystem/file1.txt");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element);
+
+        Flux<AcknowledgableDelivery> parentTaskStream = transfersService.streamParentMessages();
+        transfersService.processParentTasks(parentTaskStream).subscribe();
+
+        Flux<AcknowledgableDelivery> messageStream = transfersService.streamChildMessages();
+        Flux<TransferTaskChild> stream = transfersService.processChildTasks(messageStream);
+        stream
+            .take(Duration.ofSeconds(10))
+            .subscribe((childTask)->{
+                log.info(childTask.toString());
+                Assert.assertEquals(childTask.getStatus(), TransferTaskStatus.CANCELLED);
+            });
+        TransferTask t1 = transfersService.createTransfer(
+            "testuser",
+            "dev",
+            "tag",
+            elements
+        );
+        Thread.sleep(50);
+        transfersService.cancelTransfer(t1);
+        Thread.sleep(1000);
+    }
+
+    @Test
+    public void testControlMessages() throws Exception {
+        TransferControlAction action = new TransferControlAction();
+        action.setTaskId(1);
+        action.setTenantId("dev");
+        action.setAction(TransferControlAction.ControlAction.CANCEL);
+
+        StepVerifier.create(transfersService.streamControlMessages())
+            .then(()->{
+                try {
+                    transfersService.publishControlMessage(action);
+                } catch (ServiceException e) {
+                    e.printStackTrace();
+                }
+            })
+            .assertNext((m)->{
+                Assert.assertEquals(m.getTaskId(), 1);
+            })
+            .thenCancel()
+            .verify(Duration.ofSeconds(10));
     }
 
 }

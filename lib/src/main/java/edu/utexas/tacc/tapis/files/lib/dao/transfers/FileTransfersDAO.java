@@ -523,7 +523,7 @@ public class FileTransfersDAO {
         }
     }
 
-    public TransferTaskChild getChildTaskByUUID(@NotNull TransferTaskChild task) throws DAOException {
+    public TransferTaskChild getChildTaskByUUID(@NotNull UUID taskUUID) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
 
         try (Connection connection = HikariConnectionPool.getConnection()) {
@@ -531,13 +531,12 @@ public class FileTransfersDAO {
             String stmt = FileTransfersDAOStatements.GET_CHILD_TASK_BY_UUID;
             QueryRunner runner = new QueryRunner();
             TransferTaskChild child = runner.query(connection, stmt, handler,
-                task.getUuid()
+                taskUUID
             );
 
             return child;
         } catch (SQLException ex) {
-            throw new DAOException(Utils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "getChildTaskByUUID", task.getId(), task.getUuid(), ex.getMessage()), ex);
+            throw new DAOException(Utils.getMsg("FILES_TXFR_DAO_ERR1", ex), ex);
         }
     }
 
@@ -639,6 +638,24 @@ public class FileTransfersDAO {
         }
         task.setParentTasks(parents);
         return task;
+    }
+
+    public void cancelTransfer(@NotNull TransferTask task) throws DAOException {
+        try (Connection connection = HikariConnectionPool.getConnection()) {
+            String stmt = FileTransfersDAOStatements.CANCEL_TRANSFER_TASK_AND_CHILDREN;
+            QueryRunner runner = new QueryRunner();
+
+            runner.execute(
+                connection,
+                stmt,
+                task.getId(),
+                task.getId(),
+                task.getId()
+            );
+        } catch (SQLException ex) {
+            throw new DAOException(Utils.getMsg("FILES_TXFR_DAO_ERR4", task.getTenantId(), task.getUsername(),
+                "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
+        }
     }
 
 }

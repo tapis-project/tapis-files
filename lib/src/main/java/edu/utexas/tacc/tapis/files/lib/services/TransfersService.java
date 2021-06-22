@@ -2,8 +2,10 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jcraft.jsch.IO;
 import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.Delivery;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -12,8 +14,8 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.models.ControlMessage;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
@@ -29,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
 import reactor.core.publisher.Mono;
@@ -36,6 +39,7 @@ import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.ConsumeOptions;
+import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.OutboundMessage;
 import reactor.rabbitmq.OutboundMessageResult;
 import reactor.rabbitmq.QueueSpecification;
@@ -57,13 +61,23 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static reactor.rabbitmq.BindingSpecification.binding;
 
 @Service
 public class TransfersService {
     private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
+    private final String TRANSFERS_EXCHANGE = "tapis.files";
     private String PARENT_QUEUE = "tapis.files.transfers.parent";
     private String CHILD_QUEUE = "tapis.files.transfers.child";
-    private String CONTROL_QUEUE = "tapis.files.transfers.control";
+    private String CONTROL_EXCHANGE = "tapis.files.transfers.control";
     private static final int MAX_RETRIES = 5;
     private final Receiver receiver;
     private final Sender sender;
@@ -97,18 +111,53 @@ public class TransfersService {
         this.remoteDataClientFactory = remoteDataClientFactory;
         this.systemsCache = systemsCache;
         this.permsService = permsService;
+        init();
+    }
+
+    private void init() {
+
+        // Initialize the exchanges and queues
+        ExchangeSpecification controlExSpec = ExchangeSpecification.exchange(CONTROL_EXCHANGE)
+            .type("fanout")
+            .durable(true)
+            .autoDelete(false);
+
+        ExchangeSpecification transferExSpec = ExchangeSpecification.exchange(TRANSFERS_EXCHANGE)
+            .type("direct")
+            .durable(true)
+            .autoDelete(false);
+
+        QueueSpecification childSpec = QueueSpecification.queue(CHILD_QUEUE)
+            .durable(true)
+            .autoDelete(false);
+
+        QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
+            .durable(true)
+            .autoDelete(false);
+
+        sender.declare(controlExSpec)
+            .then(sender.declare(transferExSpec))
+            .then(sender.declare(childSpec))
+            .then(sender.declare(parentSpec))
+            .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
+            .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
+            .subscribe();
+
     }
 
     public void setParentQueue(String name) {
         this.PARENT_QUEUE = name;
+        init();
     }
 
     public void setChildQueue(String name) {
         this.CHILD_QUEUE = name;
+        init();
     }
 
-    public void setControlQueue(String name) {
-        this.CONTROL_QUEUE = name;
+    public void setControlExchange(String name) {
+        this.CONTROL_EXCHANGE = name;
+        init();
     }
 
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskUuid) throws ServiceException {
@@ -223,8 +272,10 @@ public class TransfersService {
         task.setUsername(username);
         task.setStatus(TransferTaskStatus.ACCEPTED);
         task.setTag(tag);
+
         try {
             TransferTask newTask = dao.createTransferTask(task, elements);
+
             for (TransferTaskParent parent : newTask.getParentTasks()) {
                 this.publishParentTaskMessage(parent);
             }
@@ -246,8 +297,14 @@ public class TransfersService {
 
     public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException {
         try {
-            task.setStatus(TransferTaskStatus.CANCELLED);
-            dao.updateTransferTask(task);
+            dao.cancelTransfer(task);
+
+            TransferControlAction action = new TransferControlAction();
+            action.setAction(TransferControlAction.ControlAction.CANCEL);
+            action.setCreated(Instant.now());
+            action.setTenantId(task.getTenantId());
+            action.setTaskId(task.getId());
+            this.publishControlMessage(action);
             // todo: publish cancel message on the control queue
         } catch (DAOException ex) {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
@@ -262,15 +319,24 @@ public class TransfersService {
     private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException {
         try {
             String m = mapper.writeValueAsString(task);
-            OutboundMessage message = new OutboundMessage("", PARENT_QUEUE, m.getBytes());
-            Flux<OutboundMessageResult> confirms = sender.sendWithPublishConfirms(Mono.just(message));
-            sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE))
-                .thenMany(confirms)
-                .subscribe();
+            OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, PARENT_QUEUE, m.getBytes());
+            sender.sendWithPublishConfirms(Mono.just(message)).subscribe();
         } catch (Exception e) {
             log.info(e.getMessage());
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
                 "publishParentTaskMessage", task.getId(), task.getUuid(), e.getMessage()), e);
+        }
+    }
+
+    public void publishControlMessage(@NotNull TransferControlAction action) throws ServiceException {
+        try {
+            String m = mapper.writeValueAsString(action);
+            OutboundMessage message = new OutboundMessage(CONTROL_EXCHANGE, "#", m.getBytes());
+            Flux<OutboundMessageResult> confirms = sender.sendWithPublishConfirms(Mono.just(message));
+            confirms.subscribe();
+        } catch ( JsonProcessingException e) {
+            log.info(e.getMessage());
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR_PUBLISH_MESSAGE"));
         }
     }
 
@@ -301,8 +367,7 @@ public class TransfersService {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
         Flux<AcknowledgableDelivery> parentStream = receiver.consumeManualAck(PARENT_QUEUE, options);
-        return parentStream
-            .delaySubscription(sender.declareQueue(QueueSpecification.queue(PARENT_QUEUE)));
+        return parentStream;
     }
 
     public Flux<TransferTaskParent> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
@@ -384,9 +449,9 @@ public class TransfersService {
     /**
      * This method checks the permissions on both the source and destination of the transfer.
      *
-     * @param parentTask
+     * @param parentTask the TransferTaskParent
      * @return boolean is/is not permitted.
-     * @throws ServiceException
+     * @throws ServiceException When api calls for permissions fail
      */
     private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException {
         // For http inputs no need to do any permission checking on the source
@@ -419,9 +484,9 @@ public class TransfersService {
      * inserting the records into the DB, then publishing all of the messages to rabbitmq. After that, the child task workers
      * will pick them up and begin the actual transferring of bytes.
      *
-     * @param parentTask
-     * @return
-     * @throws ServiceException
+     * @param parentTask TransferTaskParent
+     * @return Updated task
+     * @throws ServiceException When a listing or DAO error occurs
      */
     private TransferTaskParent doParentChevronOne(TransferTaskParent parentTask) throws ServiceException, ForbiddenException {
         log.debug("***** DOING doParentChevronOne ****");
@@ -515,27 +580,21 @@ public class TransfersService {
                 .flatMap(task -> {
                     try {
                         String m = mapper.writeValueAsString(task);
-                        return Flux.just(new OutboundMessage("", CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8)));
+                        return Flux.just(new OutboundMessage(TRANSFERS_EXCHANGE, CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8)));
                     } catch (JsonProcessingException e) {
                         return Flux.empty();
                     }
                 })
         );
-
-        sender.declareQueue(QueueSpecification.queue(CHILD_QUEUE))
-            .thenMany(messages)
-            .subscribe();
+        messages.subscribe();
     }
 
     public void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
         try {
             String m = mapper.writeValueAsString(childTask);
-            OutboundMessage message = new OutboundMessage("", CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
+            OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
 
-            sender.declareQueue(QueueSpecification.queue(CHILD_QUEUE))
-                .subscribe();
-            sender.send(Mono.just(message))
-                .subscribe();
+            sender.send(Mono.just(message)).subscribe();
         } catch (JsonProcessingException ex) {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", childTask.getTenantId(), childTask.getUsername(),
                 "publishChildMessage", childTask.getId(), childTask.getUuid(), ex.getMessage()), ex);
@@ -559,17 +618,10 @@ public class TransfersService {
      *
      * @param message Message from rabbitmq
      * @return Id of the top level task.
-     * @throws ServiceException If the wrong format of message is passed in.
      */
-    private Mono<String> childTaskGrouper(AcknowledgableDelivery message) {
-        try {
-            String tenantId = mapper.readValue(message.getBody(), TransferTaskChild.class).getTenantId();
-            return Mono.just(tenantId);
-        } catch (IOException ex) {
-            String msg = Utils.getMsg("FILES_TXFR_SVC_ERR12", ex.getMessage());
-            log.error(msg);
-            return Mono.empty();
-        }
+    private int childTaskGrouper(AcknowledgableDelivery message) throws IOException {
+        int taskId = mapper.readValue(message.getBody(), TransferTaskChild.class).getTaskId();
+        return taskId % 10;
     }
 
 
@@ -583,8 +635,7 @@ public class TransfersService {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
         Flux<AcknowledgableDelivery> childMessageStream = receiver.consumeManualAck(CHILD_QUEUE, options);
-        return childMessageStream
-            .delaySubscription(sender.declareQueue(QueueSpecification.queue(CHILD_QUEUE)));
+        return childMessageStream;
     }
 
 
@@ -600,10 +651,17 @@ public class TransfersService {
         // Deserialize the message so that we can pass that into the reactor chain.
 
         return messageStream
-            .groupBy(this::childTaskGrouper)
-            .flatMap(group-> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(10, 100, "ChildPool:" + group.key());
-                return group.flatMap(
+            .groupBy((m)-> {
+                try {
+                    return this.childTaskGrouper(m);
+                } catch (IOException ex) {
+                    return Mono.empty();
+                }
+            })
+            .flatMap(group -> {
+                Scheduler scheduler = Schedulers.newBoundedElastic(5, 100, "ChildPool:" + group.key());
+                return group
+                    .flatMap(
                     //We need the message in scope so we can ack/nack it later
                     m -> deserializeChildMessage(m)
                         .publishOn(scheduler)
@@ -614,13 +672,15 @@ public class TransfersService {
                                     .scheduler(scheduler)
                             ).onErrorResume(e -> doErrorChevronOne(m, e, t1))
                         )
-                        .flatMap(t2 -> Mono.fromCallable(() -> chevronTwo(t2))
+                        .flatMap(t2 -> Mono.fromCallable(() -> testRunner(t2))
                             .retryWhen(
-                                Retry.backoff(MAX_RETRIES * 10, Duration.ofMillis(100))
+                                Retry.backoff(MAX_RETRIES * 10, Duration.ofMillis(1000))
                                     .maxBackoff(Duration.ofMinutes(10))
                                     .scheduler(scheduler)
+                                    .doBeforeRetry(signal-> log.error("RETRY", signal.failure()))
                                     .filter(e -> e.getClass().equals(IOException.class))
-                            ).onErrorResume(e -> doErrorChevronOne(m, e, t2))
+                            )
+                            .onErrorResume(e -> doErrorChevronOne(m, e, t2))
                         )
                         .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
                             .retryWhen(
@@ -643,26 +703,6 @@ public class TransfersService {
                         .flatMap(t6 -> Mono.fromCallable(() -> chevronFive(t6)))
                 );
             });
-    }
-
-    /**
-     * @param taskChild The TransferTaskChild
-     * @return true if the top level task is in a final state
-     */
-    private boolean isTaskComplete(TransferTaskChild taskChild) {
-        try {
-            TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
-            if (task.getStatus().equals(TransferTaskStatus.COMPLETED) ||
-                task.getStatus().equals(TransferTaskStatus.FAILED) ||
-                task.getStatus().equals(TransferTaskStatus.CANCELLED) ||
-                task.getStatus().equals(TransferTaskStatus.PAUSED)
-            ) {
-                return false;
-            }
-        } catch (DAOException ex) {
-            return true;
-        }
-        return true;
     }
 
 
@@ -699,9 +739,9 @@ public class TransfersService {
             topTask.setErrorMessage(cause.getMessage());
             dao.updateTransferTask(topTask);
 
-        } catch (DAOException ignored) {
+        } catch (DAOException ex) {
             log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
-                "doErrorChevronOne", child.getId(), child.getUuid(), ignored.getMessage()), ignored);
+                "doErrorChevronOne", child.getId(), child.getUuid(), ex.getMessage()), ex);
         }
         return Mono.empty();
     }
@@ -719,7 +759,7 @@ public class TransfersService {
             if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED)) {
                 return taskChild;
             }
-            taskChild = dao.getChildTaskByUUID(taskChild);
+            taskChild = dao.getChildTaskByUUID(taskChild.getUuid());
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
             taskChild.setStartTime(Instant.now());
             dao.updateTransferTaskChild(taskChild);
@@ -730,6 +770,7 @@ public class TransfersService {
                 parentTask.setStartTime(Instant.now());
                 dao.updateTransferTaskParent(parentTask);
             }
+
             return taskChild;
         } catch (DAOException ex) {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
@@ -738,6 +779,49 @@ public class TransfersService {
 
     }
 
+    private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild) {
+        try {
+            taskChild.setStatus(TransferTaskStatus.CANCELLED);
+            taskChild.setEndTime(Instant.now());
+            return dao.updateTransferTaskChild(taskChild);
+        } catch (DAOException ex) {
+            log.error("CANCEL", ex);
+            return null;
+        }
+    }
+
+    private TransferTaskChild testRunner(TransferTaskChild taskChild) throws ServiceException, IOException {
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        Future<TransferTaskChild> future = executorService.submit(new Callable<TransferTaskChild>() {
+            @Override
+            public TransferTaskChild call() throws IOException, ServiceException {
+                return chevronTwo(taskChild);
+            }
+        });
+        streamControlMessages()
+            .subscribe( (message)-> {
+                future.cancel(true);
+            });
+
+        try {
+            // Blocking call, but the subscription above will still listen
+            return future.get();
+        } catch (ExecutionException ex) {
+            if (ex.getCause() instanceof IOException) {
+                throw new IOException(ex.getCause().getMessage(), ex.getCause());
+            } else if (ex.getCause() instanceof ServiceException){
+                throw new ServiceException(ex.getCause().getMessage(), ex.getCause());
+            } else {
+                throw new RuntimeException("TODO", ex);
+            }
+        } catch (CancellationException ex) {
+            return cancelTransferChild(taskChild);
+        } catch (Exception ex) {
+          return null;
+        } finally {
+            executorService.shutdown();
+        }
+    }
 
     /**
      * The meat of the operation.
@@ -747,6 +831,9 @@ public class TransfersService {
      * @throws ServiceException If the DAO updates failed or a transfer failed in flight
      */
     private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException {
+
+        if (taskChild.isTerminal()) return taskChild;
+
         TapisSystem sourceSystem;
         TapisSystem destSystem;
         IRemoteDataClient sourceClient;
@@ -846,6 +933,8 @@ public class TransfersService {
      * @return updated TransferTaskChild
      */
     private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
+        // If it cancelled/failed somehow, just push it through unchanged.
+        if (taskChild.isTerminal()) return taskChild;
         try {
             taskChild.setStatus(TransferTaskStatus.COMPLETED);
             taskChild.setEndTime(Instant.now());
@@ -868,11 +957,11 @@ public class TransfersService {
      * @throws ServiceException If the updates to the records in the DB failed
      */
     private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
+        if (taskChild.isTerminal()) return taskChild;
         try {
             TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
             TransferTaskParent parent = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             // Check to see if all the children are complete. If so, update the parent task
-            // TODO: Race condition?
             if (!task.getStatus().equals(TransferTaskStatus.COMPLETED)) {
                 long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getTaskId());
                 if (incompleteCount == 0) {
@@ -904,27 +993,17 @@ public class TransfersService {
      * @return Updated child task
      * @throws ServiceException if we can't update the record in the DB
      */
-    private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild) throws ServiceException {
+    private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild) {
         log.info("***** DOING chevronFive **** {}", taskChild);
-        try {
-            TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
-            if (task.getStatus().equals(TransferTaskStatus.COMPLETED)) {
-                dao.updateTransferTask(task);
-            }
-            return taskChild;
-        } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronFive", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
-        }
+
+         return taskChild;
     }
 
-    private Mono<ControlMessage> deserializeControlMessage(AcknowledgableDelivery message) {
+    private Mono<TransferControlAction> deserializeControlMessage(Delivery message) {
         try {
-            ControlMessage controlMessage = mapper.readValue(message.getBody(), ControlMessage.class);
+            TransferControlAction controlMessage = mapper.readValue(message.getBody(), TransferControlAction.class);
             return Mono.just(controlMessage);
         } catch (IOException ex) {
-            // DO NOT requeue the message if it fails here!
-            message.nack(false);
             return Mono.empty();
         }
     }
@@ -934,12 +1013,20 @@ public class TransfersService {
      *
      * @return A flux of ControlMessage
      */
-    public Flux<ControlMessage> streamControlMessages() {
+    public Flux<TransferControlAction> streamControlMessages() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
-        Flux<AcknowledgableDelivery> controlMessageStream = receiver.consumeManualAck(CONTROL_QUEUE, options);
+
+        // Each new transfer needs its own queue. Autodelete them when
+        // the connection closes.
+        String queueName = "control." + UUID.randomUUID();
+        QueueSpecification qspec = QueueSpecification.queue(queueName)
+            .autoDelete(true);
+
+        Flux<Delivery> controlMessageStream = receiver.consumeAutoAck(queueName, options);
         return controlMessageStream
-            .delaySubscription(sender.declareQueue(QueueSpecification.queue(CONTROL_QUEUE)))
-            .flatMap(this::deserializeControlMessage);
+            .delaySubscription(sender.declareQueue(qspec)
+                .then(sender.bind(binding(CONTROL_EXCHANGE, "#", queueName)))
+            ).flatMap(this::deserializeControlMessage);
     }
 }
