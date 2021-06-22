@@ -147,12 +147,22 @@ public class TransfersService {
 
     public void setParentQueue(String name) {
         this.PARENT_QUEUE = name;
-        init();
+        QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
+            .durable(true)
+            .autoDelete(false);
+        sender.declare(parentSpec)
+            .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
+            .subscribe();
     }
 
     public void setChildQueue(String name) {
         this.CHILD_QUEUE = name;
-        init();
+        QueueSpecification parentSpec = QueueSpecification.queue(CHILD_QUEUE)
+            .durable(true)
+            .autoDelete(false);
+        sender.declare(parentSpec)
+            .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
+            .subscribe();
     }
 
     public void setControlExchange(String name) {
@@ -187,6 +197,15 @@ public class TransfersService {
         }
 
 
+    }
+
+    public TransferTaskChild getChildTaskByUUID(UUID uuid) throws ServiceException {
+        try {
+            return dao.getChildTaskByUUID(uuid);
+        } catch (DAOException e) {
+            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", null, null,
+                "getChildTaskByUUID", null, uuid, e.getMessage()), e);
+        }
     }
 
     public List<TransferTaskChild> getAllChildrenTasks(TransferTask task) throws ServiceException {
@@ -298,14 +317,12 @@ public class TransfersService {
     public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException {
         try {
             dao.cancelTransfer(task);
-
             TransferControlAction action = new TransferControlAction();
             action.setAction(TransferControlAction.ControlAction.CANCEL);
             action.setCreated(Instant.now());
             action.setTenantId(task.getTenantId());
             action.setTaskId(task.getId());
             this.publishControlMessage(action);
-            // todo: publish cancel message on the control queue
         } catch (DAOException ex) {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
                 "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
@@ -340,235 +357,6 @@ public class TransfersService {
         }
     }
 
-    private Mono<TransferTaskParent> deserializeParentMessage(AcknowledgableDelivery message) {
-        try {
-            TransferTaskParent parent = mapper.readValue(message.getBody(), TransferTaskParent.class);
-            return Mono.just(parent);
-        } catch (IOException ex) {
-            // DO NOT requeue the message if it fails here!
-            message.nack(false);
-            return Mono.empty();
-        }
-    }
-
-    private String groupByTenant(AcknowledgableDelivery message) throws ServiceException {
-        try {
-            return mapper.readValue(message.getBody(), TransferTaskParent.class).getTenantId();
-        } catch (IOException ex) {
-            message.nack(false);
-            String msg = Utils.getMsg("FILES_TXFR_SVC_ERR11", ex.getMessage());
-            log.error(msg);
-            throw new ServiceException(msg, ex);
-        }
-    }
-
-
-    public Flux<AcknowledgableDelivery> streamParentMessages() {
-        ConsumeOptions options = new ConsumeOptions();
-        options.qos(1000);
-        Flux<AcknowledgableDelivery> parentStream = receiver.consumeManualAck(PARENT_QUEUE, options);
-        return parentStream;
-    }
-
-    public Flux<TransferTaskParent> processParentTasks(Flux<AcknowledgableDelivery> messageStream) {
-        return messageStream
-            .groupBy(m -> {
-                try {
-                    return groupByTenant(m);
-                } catch (ServiceException ex) {
-                    return Mono.empty();
-                }
-            })
-            .flatMap(group -> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(10, 10, "ParentPool:" + group.key());
-                return group
-                    .flatMap(m ->
-                        deserializeParentMessage(m)
-                            .flatMap(t1 -> Mono.fromCallable(() -> doParentChevronOne(t1))
-                                .publishOn(scheduler)
-                                .retryWhen(
-                                    Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
-                                        .maxBackoff(Duration.ofMinutes(60))
-                                        .filter(e -> e.getClass() == IOException.class)
-                                )
-                                .onErrorResume(e -> doErrorParentChevronOne(m, e, t1))
-                            )
-                            .flatMap(t2 -> {
-                                m.ack();
-                                return Mono.just(t2);
-                            })
-                    );
-            });
-    }
-
-
-    /**
-     * This method handles exceptions/errors if the parent task failed.
-     *
-     * @param m      message from rabbitmq
-     * @param e      Throwable
-     * @param parent TransferTaskParent
-     * @return Mono TransferTaskParent
-     */
-    private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent) {
-        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
-        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", e));
-        m.nack(false);
-
-        //TODO: UPDATE this when the Optional stuff gets integrated
-        try {
-            TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
-            if (task == null) {
-                return Mono.empty();
-            }
-            task.setStatus(TransferTaskStatus.FAILED);
-            task.setEndTime(Instant.now());
-            task.setErrorMessage(e.getMessage());
-            dao.updateTransferTask(task);
-        } catch (DAOException ex) {
-            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR8", parent.getTaskId(), parent.getUuid()));
-        }
-
-        parent.setStatus(TransferTaskStatus.FAILED);
-        parent.setEndTime(Instant.now());
-        parent.setErrorMessage(e.getMessage());
-        try {
-            parent = dao.updateTransferTaskParent(parent);
-            // This should really never happen, it means that the parent with that ID
-            // was not even in the database.
-            if (parent == null) {
-                return Mono.empty();
-            }
-            return Mono.just(parent);
-        } catch (DAOException ex) {
-            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR9", parent.getTaskId(), parent.getUuid()));
-        }
-        return Mono.empty();
-    }
-
-    /**
-     * This method checks the permissions on both the source and destination of the transfer.
-     *
-     * @param parentTask the TransferTaskParent
-     * @return boolean is/is not permitted.
-     * @throws ServiceException When api calls for permissions fail
-     */
-    private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException {
-        // For http inputs no need to do any permission checking on the source
-        boolean isHttpSource = parentTask.getSourceURI().getProtocol().equalsIgnoreCase("http");
-        String tenantId = parentTask.getTenantId();
-        String username = parentTask.getUsername();
-
-        String srcSystemId = parentTask.getSourceURI().getSystemId();
-        String srcPath = parentTask.getSourceURI().getPath();
-        String destSystemId = parentTask.getDestinationURI().getSystemId();
-        String destPath = parentTask.getDestinationURI().getPath();
-
-        // If we have a tapis:// link, have to do the source perms check
-        if (!isHttpSource) {
-            boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
-            if (!sourcePerms) {
-                return false;
-            }
-        }
-        boolean destPerms = permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
-        if (!destPerms) {
-            return false;
-        }
-        return true;
-    }
-
-
-    /**
-     * We prepare a "bill of materials" for the total transfer task. This includes doing a recursive listing and
-     * inserting the records into the DB, then publishing all of the messages to rabbitmq. After that, the child task workers
-     * will pick them up and begin the actual transferring of bytes.
-     *
-     * @param parentTask TransferTaskParent
-     * @return Updated task
-     * @throws ServiceException When a listing or DAO error occurs
-     */
-    private TransferTaskParent doParentChevronOne(TransferTaskParent parentTask) throws ServiceException, ForbiddenException {
-        log.debug("***** DOING doParentChevronOne ****");
-        log.debug(parentTask.toString());
-        TapisSystem sourceSystem;
-        IRemoteDataClient sourceClient;
-
-        boolean isPermitted = checkPermissionsForParent(parentTask);
-        if (!isPermitted) {
-            throw new ForbiddenException();
-        }
-
-        // Update the top level task first, if it is not already updated with the startTime
-        try {
-            TransferTask task = dao.getTransferTaskByID(parentTask.getTaskId());
-            if (task.getStartTime() == null) {
-                task.setStartTime(Instant.now());
-                task.setStatus(TransferTaskStatus.IN_PROGRESS);
-                dao.updateTransferTask(task);
-            }
-
-            //update parent task status, start time
-            parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
-            parentTask.setStartTime(Instant.now());
-            parentTask = dao.updateTransferTaskParent(parentTask);
-
-        } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-                "doParentChevronOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage()), ex);
-        }
-
-        try {
-            TransferURI sourceURI = parentTask.getSourceURI();
-
-            if (sourceURI.toString().startsWith("tapis://")) {
-                sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURI.getSystemId(), parentTask.getUsername());
-                if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled()) {
-                    String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", parentTask.getTenantId(),
-                        parentTask.getUsername(), parentTask.getId(), parentTask.getUuid(), sourceSystem.getId());
-                    throw new ServiceException(msg);
-                }
-                sourceClient = remoteDataClientFactory.getRemoteDataClient(parentTask.getTenantId(), parentTask.getUsername(),
-                    sourceSystem, parentTask.getUsername());
-
-                //TODO: Retries will break this, should delete anything in the DB if it is a retry?
-                List<FileInfo> fileListing;
-                fileListing = sourceClient.ls(sourceURI.getPath());
-                List<TransferTaskChild> children = new ArrayList<>();
-                long totalBytes = 0;
-                for (FileInfo f : fileListing) {
-                    totalBytes += f.getSize();
-                    TransferTaskChild child = new TransferTaskChild(parentTask, f);
-                    children.add(child);
-                }
-                parentTask.setTotalBytes(totalBytes);
-                parentTask.setStatus(TransferTaskStatus.STAGED);
-                parentTask = dao.updateTransferTaskParent(parentTask);
-                dao.bulkInsertChildTasks(children);
-                children = dao.getAllChildren(parentTask);
-                publishBulkChildMessages(children);
-            } else if (sourceURI.toString().startsWith("http://") || sourceURI.toString().startsWith("https://")) {
-                TransferTaskChild task = new TransferTaskChild();
-                task.setSourceURI(parentTask.getSourceURI());
-                task.setParentTaskId(parentTask.getId());
-                task.setTaskId(parentTask.getTaskId());
-                task.setDestinationURI(parentTask.getDestinationURI());
-                task.setStatus(TransferTaskStatus.ACCEPTED);
-                task.setTenantId(parentTask.getTenantId());
-                task.setUsername(parentTask.getUsername());
-                task = dao.insertChildTask(task);
-                publishChildMessage(task);
-                parentTask.setStatus(TransferTaskStatus.STAGED);
-                parentTask = dao.updateTransferTaskParent(parentTask);
-            }
-            return parentTask;
-        } catch (DAOException | TapisException | IOException e) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-                "doParentChevronOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage()), e);
-        }
-    }
-
-
     /**
      * Helper function to publish many child task messages at once.
      *
@@ -601,30 +389,6 @@ public class TransfersService {
         }
     }
 
-    private Mono<TransferTaskChild> deserializeChildMessage(AcknowledgableDelivery message) {
-        try {
-            TransferTaskChild child = mapper.readValue(message.getBody(), TransferTaskChild.class);
-            return Mono.just(child);
-        } catch (IOException ex) {
-            // DO NOT requeue the message if it fails here!
-            message.nack(false);
-            return Mono.empty();
-        }
-    }
-
-
-    /**
-     * Helper method to extract the top level taskId which we group on for all the children tasks.
-     *
-     * @param message Message from rabbitmq
-     * @return Id of the top level task.
-     */
-    private int childTaskGrouper(AcknowledgableDelivery message) throws IOException {
-        int taskId = mapper.readValue(message.getBody(), TransferTaskChild.class).getTaskId();
-        return taskId % 10;
-    }
-
-
     /**
      * This method listens on the CHILD_QUEUE and creates a Flux<AcknowledgableDelivery> that
      * we can push through the transfers workflow
@@ -638,365 +402,11 @@ public class TransfersService {
         return childMessageStream;
     }
 
-
-    /**
-     * This is the main processing workflow. Starting with the raw message stream created by streamChildMessages(),
-     * we walk through the transfer process. A Flux<TransferTaskChild> is returned and can be subscribed to later
-     * for further processing / notifications / logging
-     *
-     * @param messageStream stream of messages from RabbitMQ
-     * @return a Flux of TransferTaskChild
-     */
-    public Flux<TransferTaskChild> processChildTasks(@NotNull Flux<AcknowledgableDelivery> messageStream) {
-        // Deserialize the message so that we can pass that into the reactor chain.
-
-        return messageStream
-            .groupBy((m)-> {
-                try {
-                    return this.childTaskGrouper(m);
-                } catch (IOException ex) {
-                    return Mono.empty();
-                }
-            })
-            .flatMap(group -> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(5, 100, "ChildPool:" + group.key());
-                return group
-                    .flatMap(
-                    //We need the message in scope so we can ack/nack it later
-                    m -> deserializeChildMessage(m)
-                        .publishOn(scheduler)
-                        .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
-                            .retryWhen(
-                                Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
-                                    .maxBackoff(Duration.ofSeconds(10))
-                                    .scheduler(scheduler)
-                            ).onErrorResume(e -> doErrorChevronOne(m, e, t1))
-                        )
-                        .flatMap(t2 -> Mono.fromCallable(() -> testRunner(t2))
-                            .retryWhen(
-                                Retry.backoff(MAX_RETRIES * 10, Duration.ofMillis(1000))
-                                    .maxBackoff(Duration.ofMinutes(10))
-                                    .scheduler(scheduler)
-                                    .doBeforeRetry(signal-> log.error("RETRY", signal.failure()))
-                                    .filter(e -> e.getClass().equals(IOException.class))
-                            )
-                            .onErrorResume(e -> doErrorChevronOne(m, e, t2))
-                        )
-                        .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
-                            .retryWhen(
-                                Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
-                                    .maxBackoff(Duration.ofSeconds(10))
-                                    .scheduler(scheduler)
-                            ).onErrorResume(e -> doErrorChevronOne(m, e, t3))
-                        )
-                        .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4))
-                            .retryWhen(
-                                Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
-                                    .maxBackoff(Duration.ofSeconds(10))
-                                    .scheduler(scheduler)
-                            ).onErrorResume(e -> doErrorChevronOne(m, e, t4))
-                        )
-                        .flatMap(t5 -> {
-                            m.ack();
-                            return Mono.just(t5);
-                        })
-                        .flatMap(t6 -> Mono.fromCallable(() -> chevronFive(t6)))
-                );
-            });
-    }
-
-
-    /**
-     * Error handler for any of the steps.
-     *
-     * @param message Message from rabbitmq
-     * @param cause   Exception that was thrown
-     * @param child   the Child task that failed
-     * @return Mono with the updated TransferTaskChild
-     */
-    private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable cause, TransferTaskChild child) {
-        message.nack(false);
-        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR10", child.toString()));
-
-        //TODO: Fix this for the "optional" flag
-        try {
-
-            // Child First
-            child.setStatus(TransferTaskStatus.FAILED);
-            child.setErrorMessage(cause.getMessage());
-            dao.updateTransferTaskChild(child);
-
-            //Now parent
-            TransferTaskParent parent = dao.getTransferTaskParentById(child.getParentTaskId());
-            parent.setStatus(TransferTaskStatus.FAILED);
-            parent.setEndTime(Instant.now());
-            parent.setErrorMessage(cause.getMessage());
-            dao.updateTransferTaskParent(parent);
-
-            //Finally the top level task
-            TransferTask topTask = dao.getTransferTaskByID(child.getTaskId());
-            topTask.setStatus(TransferTaskStatus.FAILED);
-            topTask.setErrorMessage(cause.getMessage());
-            dao.updateTransferTask(topTask);
-
-        } catch (DAOException ex) {
-            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
-                "doErrorChevronOne", child.getId(), child.getUuid(), ex.getMessage()), ex);
-        }
-        return Mono.empty();
-    }
-
-    /**
-     * Step one: We update the task's status and the parent task if necessary
-     *
-     * @param taskChild The child transfer task
-     * @return Updated TransferTaskChild
-     */
-    private TransferTaskChild chevronOne(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        log.debug("***** DOING chevronOne ****");
-        try {
-            TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-            if (parentTask.getStatus().equals(TransferTaskStatus.CANCELLED)) {
-                return taskChild;
-            }
-            taskChild = dao.getChildTaskByUUID(taskChild.getUuid());
-            taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
-            taskChild.setStartTime(Instant.now());
-            dao.updateTransferTaskChild(taskChild);
-
-            // If the parent task has not been set to IN_PROGRESS do it here.
-            if (!parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS)) {
-                parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
-                parentTask.setStartTime(Instant.now());
-                dao.updateTransferTaskParent(parentTask);
-            }
-
-            return taskChild;
-        } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronOne", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
-        }
-
-    }
-
-    private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild) {
-        try {
-            taskChild.setStatus(TransferTaskStatus.CANCELLED);
-            taskChild.setEndTime(Instant.now());
-            return dao.updateTransferTaskChild(taskChild);
-        } catch (DAOException ex) {
-            log.error("CANCEL", ex);
-            return null;
-        }
-    }
-
-    private TransferTaskChild testRunner(TransferTaskChild taskChild) throws ServiceException, IOException {
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        Future<TransferTaskChild> future = executorService.submit(new Callable<TransferTaskChild>() {
-            @Override
-            public TransferTaskChild call() throws IOException, ServiceException {
-                return chevronTwo(taskChild);
-            }
-        });
-        streamControlMessages()
-            .subscribe( (message)-> {
-                future.cancel(true);
-            });
-
-        try {
-            // Blocking call, but the subscription above will still listen
-            return future.get();
-        } catch (ExecutionException ex) {
-            if (ex.getCause() instanceof IOException) {
-                throw new IOException(ex.getCause().getMessage(), ex.getCause());
-            } else if (ex.getCause() instanceof ServiceException){
-                throw new ServiceException(ex.getCause().getMessage(), ex.getCause());
-            } else {
-                throw new RuntimeException("TODO", ex);
-            }
-        } catch (CancellationException ex) {
-            return cancelTransferChild(taskChild);
-        } catch (Exception ex) {
-          return null;
-        } finally {
-            executorService.shutdown();
-        }
-    }
-
-    /**
-     * The meat of the operation.
-     *
-     * @param taskChild the incoming child task
-     * @return update child task
-     * @throws ServiceException If the DAO updates failed or a transfer failed in flight
-     */
-    private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException {
-
-        if (taskChild.isTerminal()) return taskChild;
-
-        TapisSystem sourceSystem;
-        TapisSystem destSystem;
-        IRemoteDataClient sourceClient;
-        IRemoteDataClient destClient;
-        log.info("***** DOING chevronTwo ****");
-
-        //Step 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
-        try {
-            taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
-            taskChild.setRetries(taskChild.getRetries() + 1);
-            taskChild = dao.updateTransferTaskChild(taskChild);
-        } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronTwoA", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
-        }
-
-        String sourcePath;
-        TransferURI destURL;
-        TransferURI sourceURL = taskChild.getSourceURI();
-
-        destURL = taskChild.getDestinationURI();
-
-        if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://")) {
-            sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
-            //This should be the full string URL such as http://google.com
-            sourcePath = sourceURL.toString();
-        } else {
-            sourcePath = sourceURL.getPath();
-            sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
-            if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled()) {
-                String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", taskChild.getTenantId(),
-                    taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), sourceSystem.getId());
-                throw new ServiceException(msg);
-            }
-            sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
-                sourceSystem, taskChild.getUsername());
-
-        }
-
-        //Step 2: Get clients for source / dest
-        try {
-            destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
-            if (destSystem.getEnabled() == null || !destSystem.getEnabled()) {
-                String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", taskChild.getTenantId(),
-                    taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), destSystem.getId());
-                throw new ServiceException(msg);
-            }
-            destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
-                destSystem, taskChild.getUsername());
-        } catch (IOException | ServiceException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronTwoB", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
-        }
-
-        //Step 3: Stream the file contents to dest. While the InputStream is open,
-        // we put a tap on it and send events that get grouped into 1 second intervals. Progress
-        // on the child tasks are updated during the reading of the source input stream.
-        try (InputStream sourceStream = sourceClient.getStream(sourcePath);
-             ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream)
-        ) {
-            // Observe the progress event stream, just get the last event from
-            // the past 1 second.
-            final TransferTaskChild finalTaskChild = taskChild;
-            observableInputStream.getEventStream()
-                .window(Duration.ofMillis(1000))
-                .flatMap(window -> window.takeLast(1))
-                .flatMap((prog) -> this.updateProgress(prog, finalTaskChild))
-                .subscribe();
-            destClient.insert(destURL.getPath(), observableInputStream);
-
-        }
-        return taskChild;
-    }
-
-
-    /**
-     * @param bytesSent total bytes sent in latest update
-     * @param taskChild The transfer task that is being worked on currently
-     * @return Mono with number of bytes sent
-     */
-    private Mono<Long> updateProgress(Long bytesSent, TransferTaskChild taskChild) {
-        taskChild.setBytesTransferred(bytesSent);
-        try {
-            dao.updateTransferTaskChild(taskChild);
-            return Mono.just(bytesSent);
-        } catch (DAOException ex) {
-            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "updateProgress", taskChild.getId(), taskChild.getUuid(), ex.getMessage()));
-            return Mono.empty();
-        }
-    }
-
-    /**
-     * Book keeping and cleanup. Mark the child as COMPLETE.
-     *
-     * @param taskChild The child transfer task
-     * @return updated TransferTaskChild
-     */
-    private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        // If it cancelled/failed somehow, just push it through unchanged.
-        if (taskChild.isTerminal()) return taskChild;
-        try {
-            taskChild.setStatus(TransferTaskStatus.COMPLETED);
-            taskChild.setEndTime(Instant.now());
-            taskChild = dao.updateTransferTaskChild(taskChild);
-            return taskChild;
-        } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronThree", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
-        }
-    }
-
-    /**
-     * In this step, we check to see if there are unfinished children for both thw
-     * top level TransferTask and the TransferTaskParent. If there all children
-     * that belong to a parent are COMPLETED, then we can mark the parent as COMPLETED. Similarly
-     * for the top TransferTask, if ALL children have completed, the entire transfer is done.
-     *
-     * @param taskChild TransferTaskChild instance
-     * @return updated child
-     * @throws ServiceException If the updates to the records in the DB failed
-     */
-    private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        if (taskChild.isTerminal()) return taskChild;
-        try {
-            TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
-            TransferTaskParent parent = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-            // Check to see if all the children are complete. If so, update the parent task
-            if (!task.getStatus().equals(TransferTaskStatus.COMPLETED)) {
-                long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getTaskId());
-                if (incompleteCount == 0) {
-                    task.setStatus(TransferTaskStatus.COMPLETED);
-                    task.setEndTime(Instant.now());
-                    dao.updateTransferTask(task);
-                }
-            }
-
-            if (!parent.getStatus().equals(TransferTaskStatus.COMPLETED)) {
-                long incompleteCount = dao.getIncompleteChildrenCountForParent(taskChild.getParentTaskId());
-                if (incompleteCount == 0) {
-                    parent.setStatus(TransferTaskStatus.COMPLETED);
-                    parent.setEndTime(Instant.now());
-                    parent.setBytesTransferred(parent.getBytesTransferred() + taskChild.getBytesTransferred());
-                    dao.updateTransferTaskParent(parent);
-                }
-            }
-
-            return taskChild;
-        } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronFour", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
-        }
-    }
-
-    /**
-     * @param taskChild child task
-     * @return Updated child task
-     * @throws ServiceException if we can't update the record in the DB
-     */
-    private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild) {
-        log.info("***** DOING chevronFive **** {}", taskChild);
-
-         return taskChild;
+    public Flux<AcknowledgableDelivery> streamParentMessages() {
+        ConsumeOptions options = new ConsumeOptions();
+        options.qos(1000);
+        Flux<AcknowledgableDelivery> parentStream = receiver.consumeManualAck(PARENT_QUEUE, options);
+        return parentStream;
     }
 
     private Mono<TransferControlAction> deserializeControlMessage(Delivery message) {

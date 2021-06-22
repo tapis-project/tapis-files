@@ -4,10 +4,12 @@ import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
+import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
+import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
@@ -49,6 +51,8 @@ public class TransfersApp {
                 bindAsContract(FileTransfersDAO.class);
                 bindAsContract(TransfersService.class).in(Singleton.class);
                 bindAsContract(FilePermsService.class).in(Singleton.class);
+                bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
+                bindAsContract(ParentTaskTransferService.class).in(Singleton.class);
                 bindAsContract(FilePermsCache.class).in(Singleton.class);
                 bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
                 bind(new SSHConnectionCache(60, TimeUnit.SECONDS)).to(SSHConnectionCache.class);
@@ -64,14 +68,12 @@ public class TransfersApp {
         tenantManager.getTenants();
         ServiceContext serviceContext = locator.getService(ServiceContext.class);
 
-        TransfersService transfersService = locator.getService(TransfersService.class);
-
-        Flux<AcknowledgableDelivery> parentMessageStream = transfersService.streamParentMessages();
-        Flux<TransferTaskParent> parentTaskFlux = transfersService.processParentTasks(parentMessageStream);
+        ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
+        ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
+        Flux<TransferTaskParent> parentTaskFlux = parentTaskTransferService.runPipeline();
         parentTaskFlux.subscribe();
 
-        Flux<AcknowledgableDelivery> childMessageStream = transfersService.streamChildMessages();
-        Flux<TransferTaskChild> childTaskFlux = transfersService.processChildTasks(childMessageStream);
+        Flux<TransferTaskChild> childTaskFlux = childTaskTransferService.runPipeline();
         childTaskFlux.subscribe();
 
     }

@@ -3,11 +3,13 @@ package edu.utexas.tacc.tapis.files.lib;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
+import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
+import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
@@ -69,6 +71,8 @@ public abstract class BaseDatabaseIntegrationTest  {
     protected FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
     protected TransfersService transfersService;
+    protected ChildTaskTransferService childTaskTransferService;
+    protected ParentTaskTransferService parentTaskTransferService;
     protected IFileOpsService fileOpsService;
 
     @BeforeClass
@@ -131,6 +135,8 @@ public abstract class BaseDatabaseIntegrationTest  {
             bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
             bindAsContract(SystemsCache.class).in(Singleton.class);
             bindAsContract(TransfersService.class).in(Singleton.class);
+            bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
+            bindAsContract(ParentTaskTransferService.class).in(Singleton.class);
             bindAsContract(FileTransfersDAO.class);
             bind(permsService).to(FilePermsService.class);
             bind(serviceClients).to(ServiceClients.class);
@@ -142,6 +148,8 @@ public abstract class BaseDatabaseIntegrationTest  {
         remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
         transfersService = locator.getService(TransfersService.class);
         fileOpsService = locator.getService(IFileOpsService.class);
+        childTaskTransferService = locator.getService(ChildTaskTransferService.class);
+        parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
     }
 
     @BeforeMethod

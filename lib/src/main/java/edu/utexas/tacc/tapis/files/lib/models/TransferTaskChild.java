@@ -73,15 +73,7 @@ public class TransferTaskChild extends TransferTaskParent {
     public int getRetries() {return retries; }
     public void setRetries(int retries) {this.retries = retries;}
 
-    @JsonIgnore
-    public boolean isTerminal() {
-        Set<TransferTaskStatus> terminalStates = new HashSet<>();
-        terminalStates.add(TransferTaskStatus.COMPLETED);
-        terminalStates.add(TransferTaskStatus.FAILED);
-        terminalStates.add(TransferTaskStatus.CANCELLED);
-        terminalStates.add(TransferTaskStatus.PAUSED);
-        return terminalStates.contains(this.status);
-    }
+
 
     @Override
     public boolean equals(Object o) {

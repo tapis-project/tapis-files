@@ -6,7 +6,9 @@ import io.swagger.annotations.ApiModelProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public class TransferTask {
@@ -171,5 +173,15 @@ public class TransferTask {
 
     public void setParentTasks(List<TransferTaskParent> parentTasks) {
         this.parentTasks = parentTasks;
+    }
+
+    @JsonIgnore
+    public boolean isTerminal() {
+        Set<TransferTaskStatus> terminalStates = new HashSet<>();
+        terminalStates.add(TransferTaskStatus.COMPLETED);
+        terminalStates.add(TransferTaskStatus.FAILED);
+        terminalStates.add(TransferTaskStatus.CANCELLED);
+        terminalStates.add(TransferTaskStatus.PAUSED);
+        return terminalStates.contains(this.status);
     }
 }

@@ -11,7 +11,7 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.UUID;
 
-public class TransferTaskParent {
+public class TransferTaskParent extends TransferTask {
 
     protected int id;
     protected String tenantId;
