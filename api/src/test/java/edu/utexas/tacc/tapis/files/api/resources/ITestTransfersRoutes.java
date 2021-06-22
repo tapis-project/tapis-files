@@ -47,9 +47,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
+public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
 
-    private final Logger log = LoggerFactory.getLogger(ITestTransfersRoutesS3toS3.class);
+    private final Logger log = LoggerFactory.getLogger(ITestTransfersRoutes.class);
     private final TapisSystem testSystem;
     private final Credential creds;
 
@@ -68,7 +68,7 @@ public class ITestTransfersRoutesS3toS3 extends BaseDatabaseIntegrationTest {
     private final Map<String, Tenant> tenantMap = new HashMap<>();
 
 
-    private ITestTransfersRoutesS3toS3() throws Exception {
+    private ITestTransfersRoutes() throws Exception {
         //List<String> creds = new ArrayList<>();
         creds = new Credential();
         creds.setAccessKey("user");
