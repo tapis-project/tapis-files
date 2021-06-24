@@ -6,12 +6,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 
-public class TransferTaskParent extends TransferTask {
+public class TransferTaskParent {
 
     protected int id;
     protected String tenantId;
@@ -224,6 +226,15 @@ public class TransferTaskParent extends TransferTask {
         return  Objects.hash(uuid, created, status);
     }
 
+    @JsonIgnore
+    public boolean isTerminal() {
+        Set<TransferTaskStatus> terminalStates = new HashSet<>();
+        terminalStates.add(TransferTaskStatus.COMPLETED);
+        terminalStates.add(TransferTaskStatus.FAILED);
+        terminalStates.add(TransferTaskStatus.CANCELLED);
+        terminalStates.add(TransferTaskStatus.PAUSED);
+        return terminalStates.contains(this.status);
+    }
 
     @Override
     public String toString() {
@@ -244,14 +255,4 @@ public class TransferTaskParent extends TransferTask {
             .toString();
     }
 
-    /**
-     * Convert the given object to string with each line indented by 4 spaces
-     * (except the first line).
-     */
-    private String toIndentedString(java.lang.Object o) {
-        if (o == null) {
-            return "null";
-        }
-        return o.toString().replace("\n", "\n    ");
-    }
 }

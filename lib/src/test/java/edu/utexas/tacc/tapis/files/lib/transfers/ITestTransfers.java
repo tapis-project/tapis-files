@@ -756,7 +756,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
     @Test
-    public void testCancelTransfer() throws Exception {
+    public void testCancelSingleTransfer() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
@@ -768,7 +768,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         fileOpsService.delete(destClient, "/");
 
         //Add some files to transfer
-        int FILESIZE = 100 * 1000 * 1024;
+        int FILESIZE = 500 * 1000 * 1024;
         InputStream in = Utils.makeFakeFile(FILESIZE);
         fileOpsService.insert(sourceClient, "file1.txt", in);
 
@@ -788,7 +788,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         );
 
         //Give it a sec to complete the parent task and get the child
-        Thread.sleep(100);
+        Thread.sleep(200);
         TransferTaskChild taskChild = transfersService.getAllChildrenTasks(t1).get(0);
 
         TransferTaskChild finalTaskChild = taskChild;
@@ -798,12 +798,80 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             } catch (Exception ignored){}
         });
         thread.start();
-        Thread.sleep(50);
+        Thread.sleep(2000);
         transfersService.cancelTransfer(t1);
-        Thread.sleep(50);
+        Thread.sleep(1000);
         taskChild = transfersService.getChildTaskByUUID(taskChild.getUuid());
         Assert.assertEquals(taskChild.getStatus(), TransferTaskStatus.CANCELLED);
+        Assert.assertTrue(taskChild.getBytesTransferred() > 0);
+    }
 
+    @Test
+    public void testCancelMultipleTransfers() throws Exception {
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
+
+        //wipe out the dest folder just in case
+        fileOpsService.delete(destClient, "/");
+
+        //Add some files to transfer
+        int FILESIZE = 100 * 1000 * 1024;
+        fileOpsService.insert(sourceClient, "file1.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "file2.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "file3.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "file4.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "file5.txt", Utils.makeFakeFile(FILESIZE));
+
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("tapis://sourceSystem/");
+        element.setDestinationURI("tapis://destSystem/");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element);
+        Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
+
+
+        TransferTask t1 = transfersService.createTransfer(
+            "testuser",
+            "dev",
+            "tag",
+            elements
+        );
+        StepVerifier.create(tasks)
+            .assertNext((parent)-> {
+                Assert.assertEquals(parent.getStatus(), TransferTaskStatus.STAGED);
+            })
+            .then(()-> {
+                StepVerifier.create(childTaskTransferService.runPipeline())
+                    .thenAwait(Duration.ofMillis(100))
+                    .then(()->{
+                        try {
+                            transfersService.cancelTransfer(t1);
+                        } catch (Exception ignored) {}
+                    })
+                    .assertNext((child)-> {
+                        Assert.assertEquals(child.getStatus(), TransferTaskStatus.CANCELLED);
+                    })
+                    .assertNext((child)-> {
+                        Assert.assertEquals(child.getStatus(), TransferTaskStatus.CANCELLED);
+                    })
+                    .assertNext((child)-> {
+                        Assert.assertEquals(child.getStatus(), TransferTaskStatus.CANCELLED);
+                    })
+                    .assertNext((child)-> {
+                        Assert.assertEquals(child.getStatus(), TransferTaskStatus.CANCELLED);
+                    })
+                    .assertNext((child)-> {
+                        Assert.assertEquals(child.getStatus(), TransferTaskStatus.CANCELLED);
+                    })
+                    .thenCancel()
+                    .verify(Duration.ofSeconds(60));
+            })
+            .thenCancel()
+            .verify(Duration.ofSeconds(60));
     }
 
     @Test
@@ -813,19 +881,26 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         action.setTenantId("dev");
         action.setAction(TransferControlAction.ControlAction.CANCEL);
 
-        StepVerifier.create(transfersService.streamControlMessages())
-            .then(()->{
-                try {
-                    transfersService.publishControlMessage(action);
-                } catch (ServiceException e) {
-                    e.printStackTrace();
-                }
-            })
-            .assertNext((m)->{
-                Assert.assertEquals(m.getTaskId(), 1);
-            })
-            .thenCancel()
-            .verify(Duration.ofSeconds(5));
+        transfersService.streamControlMessages()
+            .take(Duration.ofSeconds(1))
+            .subscribe((controlAction -> {
+                Assert.assertEquals(controlAction.getTaskId(), 1);
+            }));
+        transfersService.publishControlMessage(action);
+    }
+
+    public void testFlux() {
+        Flux<Integer> flux = Flux.just(1, 2, 3, null, 4, 5, 6)
+            .flatMap(i-> Mono.just(i*2))
+            .onErrorResume((e)->Flux.just(42));
+
+        StepVerifier.create(flux)
+            .expectNext(2)
+            .expectNext(4)
+            .expectNext(6)
+            .expectNext(42)
+            .expectComplete()
+            .verify();
     }
 
 }

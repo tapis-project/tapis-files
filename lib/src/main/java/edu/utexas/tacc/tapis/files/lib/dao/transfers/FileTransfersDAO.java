@@ -363,6 +363,29 @@ public class FileTransfersDAO {
     }
 
     /**
+     * This method is used to increment the total size of the transfer. As the directory
+     * is recursively walked, we will add the size of the files to the current total.
+     *
+     * @param task
+     * @param newBytes The size in bytes to be added to the total size of the transfer
+     */
+    public void updateTransferTaskChildBytesTransferred(@NotNull TransferTaskChild task, Long newBytes) throws DAOException {
+        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
+        try (Connection connection = HikariConnectionPool.getConnection()) {
+            String stmt = FileTransfersDAOStatements.UPDATE_CHILD_TASK_BYTES_TRANSFERRED;
+            QueryRunner runner = new QueryRunner();
+            runner.execute(connection, stmt,
+                newBytes,
+                task.getId());
+        } catch (SQLException ex) {
+            throw new DAOException(Utils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
+                "updateTransferTaskParentSize", task.getId(), task.getUuid(), ex.getMessage()), ex);
+        }
+    }
+
+
+
+    /**
      * This method is used to increment the bytes that have been transferred in the parent task
      *
      * @param taskId

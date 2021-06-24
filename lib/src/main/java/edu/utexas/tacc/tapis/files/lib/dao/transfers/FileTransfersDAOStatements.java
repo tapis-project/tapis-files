@@ -189,5 +189,11 @@ public class FileTransfersDAOStatements {
             UPDATE transfer_tasks_child set status = 'CANCELLED' where task_id = ?;
         """;
 
+    //language=SQL
+    public static final String UPDATE_CHILD_TASK_BYTES_TRANSFERRED =
+        """
+            UPDATE transfer_tasks_child set bytes_transferred = ? WHERE id = ?
+        """;
+
 
 }

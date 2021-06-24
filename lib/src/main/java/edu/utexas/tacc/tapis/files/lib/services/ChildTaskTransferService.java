@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rabbitmq.client.Delivery;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -11,7 +10,6 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
@@ -29,7 +27,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.ConsumeOptions;
 import reactor.util.retry.Retry;
 
 import javax.inject.Inject;
@@ -169,7 +166,6 @@ public class ChildTaskTransferService {
 
         //TODO: Fix this for the "optional" flag
         try {
-
             // Child First
             child.setStatus(TransferTaskStatus.FAILED);
             child.setErrorMessage(cause.getMessage());
@@ -208,7 +204,6 @@ public class ChildTaskTransferService {
             taskChild = dao.getTransferTaskChild(taskChild.getUuid());
             if (taskChild.isTerminal()) return taskChild;
 
-            taskChild = dao.getChildTaskByUUID(taskChild.getUuid());
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
             taskChild.setStartTime(Instant.now());
             dao.updateTransferTaskChild(taskChild);
@@ -230,10 +225,12 @@ public class ChildTaskTransferService {
     }
 
     private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild) {
+        log.info("CANCELLING TRANSFER CHILD");
         try {
             taskChild.setStatus(TransferTaskStatus.CANCELLED);
             taskChild.setEndTime(Instant.now());
-            return dao.updateTransferTaskChild(taskChild);
+            taskChild = dao.updateTransferTaskChild(taskChild);
+            return taskChild;
         } catch (DAOException ex) {
             log.error("CANCEL", ex);
             return null;
@@ -241,6 +238,9 @@ public class ChildTaskTransferService {
     }
 
     public TransferTaskChild doTransfer(TransferTaskChild taskChild) throws ServiceException, IOException {
+
+        //We are going to run the meat of the transfer, checvron2 in a separate Future which we can cancel.
+        //This just sets up the future, we first subscribe to the control messages and then
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<TransferTaskChild> future = executorService.submit(new Callable<TransferTaskChild>() {
             @Override
@@ -248,7 +248,10 @@ public class ChildTaskTransferService {
                 return chevronTwo(taskChild);
             }
         });
+
+        //Listen for control messages and filter on the top taskID
         transfersService.streamControlMessages()
+            .filter((controlAction)-> controlAction.getTaskId() == taskChild.getTaskId())
             .subscribe( (message)-> {
                 future.cancel(true);
             });
@@ -257,6 +260,7 @@ public class ChildTaskTransferService {
             // Blocking call, but the subscription above will still listen
             return future.get();
         } catch (ExecutionException ex) {
+            //TODO: docs about retries
             if (ex.getCause() instanceof IOException) {
                 throw new IOException(ex.getCause().getMessage(), ex.getCause());
             } else if (ex.getCause() instanceof ServiceException){
@@ -267,6 +271,7 @@ public class ChildTaskTransferService {
         } catch (CancellationException ex) {
             return cancelTransferChild(taskChild);
         } catch (Exception ex) {
+            // Returning a null here tells the Flux to stop consuming downstream of chevron2
             return null;
         } finally {
             executorService.shutdown();
@@ -348,14 +353,21 @@ public class ChildTaskTransferService {
             // the past 1 second.
             final TransferTaskChild finalTaskChild = taskChild;
             observableInputStream.getEventStream()
-                .window(Duration.ofMillis(1000))
+                .window(Duration.ofMillis(100))
                 .flatMap(window -> window.takeLast(1))
-                .flatMap((prog) -> this.updateProgress(prog, finalTaskChild))
+                .flatMap((progress) -> this.updateProgress(progress, finalTaskChild))
                 .subscribe();
             destClient.insert(destURL.getPath(), observableInputStream);
-
         }
-        return taskChild;
+
+        //The ChildTransferTask gets updated in another thread so we look it up again here
+        //before passing it on
+        try {
+            taskChild = dao.getTransferTaskChild(taskChild.getUuid());
+            return taskChild;
+        } catch (DAOException ex) {
+            return null;
+        }
     }
 
 
@@ -365,9 +377,10 @@ public class ChildTaskTransferService {
      * @return Mono with number of bytes sent
      */
     private Mono<Long> updateProgress(Long bytesSent, TransferTaskChild taskChild) {
-        taskChild.setBytesTransferred(bytesSent);
+        //Important, CANNOT update the status here, the taskChild from chevron2 might actually
+        //be cancelled. That would overwrite the DB from CANCELLED to IN_PROGRESS.
         try {
-            dao.updateTransferTaskChild(taskChild);
+            dao.updateTransferTaskChildBytesTransferred(taskChild, bytesSent);
             return Mono.just(bytesSent);
         } catch (DAOException ex) {
             log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
@@ -384,6 +397,7 @@ public class ChildTaskTransferService {
      */
     private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
         // If it cancelled/failed somehow, just push it through unchanged.
+        log.info("DOING chevron3 {}", taskChild);
         if (taskChild.isTerminal()) return taskChild;
         try {
             taskChild.setStatus(TransferTaskStatus.COMPLETED);
@@ -407,7 +421,6 @@ public class ChildTaskTransferService {
      * @throws ServiceException If the updates to the records in the DB failed
      */
     private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        if (taskChild.isTerminal()) return taskChild;
         try {
             TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
             TransferTaskParent parent = dao.getTransferTaskParentById(taskChild.getParentTaskId());

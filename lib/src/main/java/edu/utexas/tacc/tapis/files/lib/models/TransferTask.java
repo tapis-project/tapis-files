@@ -13,24 +13,24 @@ import java.util.UUID;
 
 public class TransferTask {
 
-    private int id;
-    private String username;
-    private String tenantId;
-    private String tag;
-    private UUID uuid;
+    protected int id;
+    protected String username;
+    protected String tenantId;
+    protected String tag;
+    protected UUID uuid;
     @Schema(type="string", format = "date-time")
-    private Instant created;
+    protected Instant created;
     @Schema(type="string", format = "date-time")
-    private Instant startTime;
+    protected Instant startTime;
     @Schema(type="string", format = "date-time")
-    private Instant endTime;
-    private TransferTaskStatus status;
-    private List<TransferTaskParent> parentTasks;
-    private long estimatedTotalBytes;
-    private long totalBytesTransferred;
-    private int totalTransfers;
-    private int completeTransfers;
-    private String errorMessage;
+    protected Instant endTime;
+    protected TransferTaskStatus status;
+    protected List<TransferTaskParent> parentTasks;
+    protected long estimatedTotalBytes;
+    protected long totalBytesTransferred;
+    protected int totalTransfers;
+    protected int completeTransfers;
+    protected String errorMessage;
 
     public String getErrorMessage() {
         return errorMessage;
