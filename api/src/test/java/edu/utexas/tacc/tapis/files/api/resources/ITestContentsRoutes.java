@@ -70,7 +70,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     private SKClient skClient;
     private ServiceJWT serviceJWT;
     private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(1, TimeUnit.SECONDS);
-    private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
+    private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory();
     private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
     private ITestContentsRoutes() throws Exception {
