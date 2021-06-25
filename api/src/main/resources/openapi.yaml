@@ -1090,25 +1090,9 @@ components:
         id:
           type: integer
           format: int32
-        username:
-          type: string
         tenantId:
           type: string
-        tag:
-          type: string
-        estimatedTotalBytes:
-          type: integer
-          format: int64
-        totalBytesTransferred:
-          type: integer
-          format: int64
-        totalTransfers:
-          type: integer
-          format: int32
-        completeTransfers:
-          type: integer
-          format: int32
-        errorMessage:
+        username:
           type: string
         sourceURI:
           type: string
@@ -1123,6 +1107,8 @@ components:
         taskId:
           type: integer
           format: int32
+        errorMessage:
+          type: string
         parentTaskId:
           type: integer
           format: int32
@@ -1133,15 +1119,6 @@ components:
           type: string
           description: Unique ID of the task.
           format: uuid
-        created:
-          type: string
-          format: date-time
-        startTime:
-          type: string
-          format: date-time
-        endTime:
-          type: string
-          format: date-time
         status:
           type: string
           description: The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED,
@@ -1156,6 +1133,15 @@ components:
           - CANCELLED
           - FAILED
           - PAUSED
+        created:
+          type: string
+          format: date-time
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
     TransferTaskListResponse:
       type: object
       properties:
@@ -1177,25 +1163,9 @@ components:
         id:
           type: integer
           format: int32
-        username:
-          type: string
         tenantId:
           type: string
-        tag:
-          type: string
-        estimatedTotalBytes:
-          type: integer
-          format: int64
-        totalBytesTransferred:
-          type: integer
-          format: int64
-        totalTransfers:
-          type: integer
-          format: int32
-        completeTransfers:
-          type: integer
-          format: int32
-        errorMessage:
+        username:
           type: string
         sourceURI:
           type: string
@@ -1214,19 +1184,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TransferTaskChild'
+        errorMessage:
+          type: string
         uuid:
           type: string
           description: Unique ID of the task.
           format: uuid
-        created:
-          type: string
-          format: date-time
-        startTime:
-          type: string
-          format: date-time
-        endTime:
-          type: string
-          format: date-time
         status:
           type: string
           description: The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED,
@@ -1241,6 +1204,15 @@ components:
           - CANCELLED
           - FAILED
           - PAUSED
+        created:
+          type: string
+          format: date-time
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
     TransferTaskResponse:
       type: object
       properties:

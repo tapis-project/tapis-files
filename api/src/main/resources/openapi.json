@@ -1535,32 +1535,10 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "username" : {
-            "type" : "string"
-          },
           "tenantId" : {
             "type" : "string"
           },
-          "tag" : {
-            "type" : "string"
-          },
-          "estimatedTotalBytes" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalBytesTransferred" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalTransfers" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "completeTransfers" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "errorMessage" : {
+          "username" : {
             "type" : "string"
           },
           "sourceURI" : {
@@ -1581,6 +1559,9 @@
             "type" : "integer",
             "format" : "int32"
           },
+          "errorMessage" : {
+            "type" : "string"
+          },
           "parentTaskId" : {
             "type" : "integer",
             "format" : "int32"
@@ -1594,6 +1575,12 @@
             "description" : "Unique ID of the task.",
             "format" : "uuid"
           },
+          "status" : {
+            "type" : "string",
+            "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
+            "example" : "PENDING",
+            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
+          },
           "created" : {
             "type" : "string",
             "format" : "date-time"
@@ -1605,12 +1592,6 @@
           "endTime" : {
             "type" : "string",
             "format" : "date-time"
-          },
-          "status" : {
-            "type" : "string",
-            "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
-            "example" : "PENDING",
-            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
           }
         }
       },
@@ -1644,32 +1625,10 @@
             "type" : "integer",
             "format" : "int32"
           },
-          "username" : {
-            "type" : "string"
-          },
           "tenantId" : {
             "type" : "string"
           },
-          "tag" : {
-            "type" : "string"
-          },
-          "estimatedTotalBytes" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalBytesTransferred" : {
-            "type" : "integer",
-            "format" : "int64"
-          },
-          "totalTransfers" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "completeTransfers" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "errorMessage" : {
+          "username" : {
             "type" : "string"
           },
           "sourceURI" : {
@@ -1696,10 +1655,19 @@
               "$ref" : "#/components/schemas/TransferTaskChild"
             }
           },
+          "errorMessage" : {
+            "type" : "string"
+          },
           "uuid" : {
             "type" : "string",
             "description" : "Unique ID of the task.",
             "format" : "uuid"
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
+            "example" : "PENDING",
+            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
           },
           "created" : {
             "type" : "string",
@@ -1712,12 +1680,6 @@
           "endTime" : {
             "type" : "string",
             "format" : "date-time"
-          },
-          "status" : {
-            "type" : "string",
-            "description" : "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED",
-            "example" : "PENDING",
-            "enum" : [ "ACCEPTED", "STAGING", "STAGED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED", "PAUSED" ]
           }
         }
       },

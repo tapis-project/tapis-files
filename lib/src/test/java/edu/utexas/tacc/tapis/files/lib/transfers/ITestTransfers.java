@@ -581,7 +581,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
 
         //Add some files to transfer
-        int FILESIZE = 10 * 1000 * 1024;
+        int FILESIZE = 100 * 1000 * 1024;
         InputStream in = Utils.makeFakeFile(FILESIZE);
         fileOpsService.insert(sourceClient, "file1.txt", in);
 
@@ -745,7 +745,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                     Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
                 })
                 .thenCancel()
-                .verify(Duration.ofSeconds(30));
+                .verify(Duration.ofSeconds(60));
 
         // MUST sleep here for a bit for a bit for things to resolve. Alternatively could
         // use a StepVerifier or put some of this in the subscribe callback

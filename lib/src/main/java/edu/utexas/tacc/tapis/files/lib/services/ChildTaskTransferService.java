@@ -71,7 +71,7 @@ public class ChildTaskTransferService {
      */
     private int childTaskGrouper(AcknowledgableDelivery message) throws IOException {
         int taskId = mapper.readValue(message.getBody(), TransferTaskChild.class).getTaskId();
-        return taskId % 10;
+        return taskId % 255;
     }
 
 
@@ -105,12 +105,12 @@ public class ChildTaskTransferService {
                 }
             })
             .flatMap(group -> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(5, 100, "ChildPool:" + group.key());
+                Scheduler scheduler = Schedulers.newBoundedElastic(10, 100, "ChildPool:" + group.key());
                 return group
                     .flatMap(
                         //We need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
-                            .publishOn(scheduler)
+                            .subscribeOn(scheduler)
                             .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
@@ -120,7 +120,7 @@ public class ChildTaskTransferService {
                             )
                             .flatMap(t2 -> Mono.fromCallable(() -> doTransfer(t2))
                                 .retryWhen(
-                                    Retry.backoff(MAX_RETRIES * 10, Duration.ofMillis(1000))
+                                    Retry.backoff(MAX_RETRIES * 10, Duration.ofMillis(100))
                                         .maxBackoff(Duration.ofMinutes(10))
                                         .scheduler(scheduler)
                                         .doBeforeRetry(signal-> log.error("RETRY", signal.failure()))

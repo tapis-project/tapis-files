@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -81,6 +82,7 @@ public class ITestFileOpsService {
         testSystemSSH.setPort(2222);
         testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setId("testSystem");
+        testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
         testSystemSSH.setEffectiveUserId("testuser");
 
         // PKI Keys system
@@ -94,6 +96,7 @@ public class ITestFileOpsService {
         testSystemPKI.setPort(2222);
         testSystemPKI.setRootDir("/data/home/testuser/");
         testSystemPKI.setId("testSystem");
+        testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
         testSystemPKI.setEffectiveUserId("testuser");
 
         //S3 system
@@ -108,6 +111,7 @@ public class ITestFileOpsService {
         testSystemS3.setPort(9000);
         testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
+        testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
     }
 
     @DataProvider(name="testSystems")
