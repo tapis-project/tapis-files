@@ -74,7 +74,4 @@ public interface IRemoteDataClient {
      */
     void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException;
     void download(String path) throws IOException;
-
-    void connect() throws IOException;
-    void disconnect();
 }

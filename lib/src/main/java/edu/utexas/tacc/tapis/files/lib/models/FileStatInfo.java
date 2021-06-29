@@ -25,15 +25,15 @@ public class FileStatInfo
   public FileStatInfo() { }
 
   public FileStatInfo(String path1, int uid1, int gid1, long size1, String perms1,
-                      int aTime, int mTime, boolean dir1, boolean link1)
+                      Instant aTime, Instant mTime, boolean dir1, boolean link1)
   {
     absolutePath = path1;
     uid = uid1;
     gid = gid1;
     size = size1;
     perms = perms1;
-    accessTime = LocalDateTime.ofEpochSecond(aTime, 0, ZoneOffset.UTC).toInstant(ZoneOffset.UTC);
-    modifyTime = LocalDateTime.ofEpochSecond(mTime, 0, ZoneOffset.UTC).toInstant(ZoneOffset.UTC);
+    accessTime = aTime;
+    modifyTime = mTime;
     dir = dir1;
     link = link1;
   }

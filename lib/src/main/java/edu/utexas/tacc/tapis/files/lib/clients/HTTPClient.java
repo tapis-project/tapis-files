@@ -105,13 +105,4 @@ public class HTTPClient implements IRemoteDataClient {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
     }
 
-    @Override
-    public void connect() throws IOException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
-    }
-
-    @Override
-    public void disconnect() {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
-    }
 }

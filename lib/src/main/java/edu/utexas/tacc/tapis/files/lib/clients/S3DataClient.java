@@ -374,16 +374,6 @@ public class S3DataClient implements IS3DataClient {
     }
 
     @Override
-    public void connect() throws IOException {
-
-    }
-
-    @Override
-    public void disconnect() {
-
-    }
-
-    @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException, NotFoundException {
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, path);
         try {

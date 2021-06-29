@@ -2,8 +2,8 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
+import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
+import edu.utexas.tacc.tapis.shared.ssh.apache.system.TapisSSH;
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -37,32 +37,9 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
     }
 
     private SSHConnection getSSHConnection(TapisSystem system, String username) throws IOException {
-        SSHConnection sshConnection;
-        int port;
-        AuthnEnum accessMethodEnum = system.getDefaultAuthnMethod();
-        // This should not be null, but if it is, we default to password.
-        accessMethodEnum = accessMethodEnum == null ? AuthnEnum.PASSWORD : accessMethodEnum;
         try {
-            if(accessMethodEnum.equals(AuthnEnum.PASSWORD)) {
-                String password = system.getAuthnCredential().getPassword();
-                port = system.getPort();
-                if (port <= 0) port = 22;
-                sshConnection = new SSHConnection(
-                    system.getHost(),
-                    port,
-                    username,
-                    password);
-            } else if(accessMethodEnum.equals(AuthnEnum.PKI_KEYS)) {
-                String pubKey = system.getAuthnCredential().getPublicKey();
-                String privateKey = system.getAuthnCredential().getPrivateKey();
-                port = system.getPort();
-                if (port <= 0) port = 22;
-                sshConnection = new SSHConnection(system.getHost(), username, port, pubKey, privateKey);
-            } else {
-                String msg = String.format("Access method of %s is not valid.", accessMethodEnum.getValue());
-                throw new IllegalArgumentException(msg);
-            }
-            return sshConnection;
+            TapisSSH ssh = new TapisSSH(system);
+            return ssh.getConnection();
         } catch (TapisException ex) {
             throw new IOException(ex.getMessage(), ex);
         }

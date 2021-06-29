@@ -1,50 +1,49 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.ssh.system.TapisRunCommand;
-import org.apache.commons.exec.CommandLine;
-import org.apache.commons.io.FilenameUtils;
-import org.jetbrains.annotations.NotNull;
-
-import javax.ws.rs.NotFoundException;
-
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.ChannelSftp.LsEntry;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpATTRS;
 import com.jcraft.jsch.SftpException;
-
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
+import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-import edu.utexas.tacc.tapis.shared.ssh.TapisJSCHInputStream;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
+import edu.utexas.tacc.tapis.shared.ssh.apache.SSHExecChannel;
+import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
+import edu.utexas.tacc.tapis.shared.ssh.system.TapisRunCommand;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.sshd.sftp.client.SftpClient.Attributes;
+import org.apache.sshd.sftp.client.SftpClient.CloseableHandle;
+import org.apache.sshd.sftp.client.SftpClient.DirEntry;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.ws.rs.NotFoundException;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * This class is the entry point to sile operations over SSH with Tapis.
@@ -134,14 +133,14 @@ public class SSHDataClient implements ISSHDataClient {
         long startIdx = Math.max(offset, 0);
 
         List<FileInfo> filesList = new ArrayList<>();
-        List<?> filelist;
+        List<DirEntry> filelist;
         Path absolutePath = Paths.get(rootDir, remotePath);
 
-        ChannelSftp channelSftp = openAndConnectSFTPChannel();
-
-        try {
-            filelist = channelSftp.ls(absolutePath.toString());
-        } catch (SftpException e) {
+        try (SSHSftpClient sftpClient = sshConnection.getSftpClient();
+             CloseableHandle handle = sftpClient.open(absolutePath.toString())
+        ) {
+            filelist = sftpClient.readDir(handle);
+        } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
                 throw new NotFoundException(msg);
@@ -149,37 +148,31 @@ public class SSHDataClient implements ISSHDataClient {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "ls", systemId, username, host, remotePath, e.getMessage());
                 throw new IOException(msg, e);
             }
-        } finally {
-            sshConnection.returnChannel(channelSftp);
         }
 
         // For each entry in the fileList received, get the fileInfo object
         for (int i = 0; i < filelist.size(); i++) {
-            LsEntry entry = (LsEntry) filelist.get(i);
+            DirEntry entry = filelist.get(i);
             // Get the file attributes
-            SftpATTRS attrs = entry.getAttrs();
+            Attributes attrs = entry.getAttributes();
             FileInfo fileInfo = new FileInfo();
             // Ignore filename . and ..
             if (entry.getFilename().equals(".") || entry.getFilename().equals("..")) {
                 continue;
             }
             fileInfo.setName(entry.getFilename());
-            // Obtain the modified time for the file from the attribute
-            // and set lastModified field
-            DateTimeFormatter dateTimeformatter = DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss zzz uuuu", Locale.US);
-            ZonedDateTime lastModified = ZonedDateTime.parse(attrs.getMtimeString(), dateTimeformatter);
-            fileInfo.setLastModified(lastModified.toInstant());
+            fileInfo.setLastModified(attrs.getModifyTime().toInstant());
             fileInfo.setSize(attrs.getSize());
             Path tmpPath = Paths.get(entry.getFilename());
             fileInfo.setMimeType(Files.probeContentType(tmpPath));
-            if (attrs.isDir()) {
+            if (attrs.isDirectory()) {
                 fileInfo.setType("dir");
             } else {
                 fileInfo.setType("file");
             }
-            fileInfo.setOwner(String.valueOf(attrs.getUId()));
-            fileInfo.setGroup(String.valueOf(attrs.getGId()));
-            fileInfo.setNativePermissions(attrs.getPermissionsString());
+            fileInfo.setOwner(String.valueOf(attrs.getOwner()));
+            fileInfo.setGroup(String.valueOf(attrs.getGroupId()));
+            fileInfo.setNativePermissions(String.valueOf(attrs.getPermissions()));
             //TODO: This path munging is tricky, but it seems to work as far as listings are concerned
             Path fullPath;
             if (absolutePath.getFileName().equals(Paths.get(entry.getFilename()))) {
@@ -203,20 +196,11 @@ public class SSHDataClient implements ISSHDataClient {
      */
     @Override
     public void mkdir(@NotNull String remotePath) throws IOException {
-
-        Path remote = Paths.get(remotePath);
-        ChannelSftp channelSftp = openAndConnectSFTPChannel();
-        try {
-            channelSftp.cd(rootDir);
-            for (Path part : remote) {
-                try {
-                    channelSftp.cd(part.toString());
-                } catch (SftpException ex) {
-                    channelSftp.mkdir(part.toString());  // do we need to set some permission on the directory??
-                    channelSftp.cd(part.toString());
-                }
-            }
-        } catch (SftpException e) {
+        remotePath = FilenameUtils.normalize(remotePath);
+        Path remote = Paths.get(rootDir, remotePath);
+        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
+            sftpClient.mkdir(remote.toString());
+        } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
                 throw new NotFoundException(msg);
@@ -225,7 +209,7 @@ public class SSHDataClient implements ISSHDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            sshConnection.returnChannel(channelSftp);
+            sshConnection.close();
         }
 
     }
@@ -236,20 +220,13 @@ public class SSHDataClient implements ISSHDataClient {
         Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
         Path parentPath = relativeRemotePath.getParent();
 
-        ChannelSftp channelSftp = openAndConnectSFTPChannel();
-
-        int channelOptions = append ? ChannelSftp.APPEND : ChannelSftp.OVERWRITE;
-
-        try {
+        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
             if (parentPath != null) this.mkdir(parentPath.toString());
-            channelSftp.cd(rootDir);
-            if (parentPath != null) channelSftp.cd(parentPath.toString());
-            channelSftp.put(fileStream, absolutePath.getFileName().toString(), channelOptions);
-        } catch (SftpException ex) {
+            OutputStream outputStream = sftpClient.write(absolutePath.getFileName().toString());
+            fileStream.transferTo(outputStream);
+        } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "insertOrAppend", systemId, username, host, path, ex.getMessage());
             throw new IOException(msg, ex);
-        } finally {
-            sshConnection.returnChannel(channelSftp);
         }
     }
 
@@ -276,11 +253,9 @@ public class SSHDataClient implements ISSHDataClient {
         Path absoluteOldPath = Paths.get(rootDir, oldPath);
         Path absoluteNewPath = Paths.get(rootDir, newPath);
 
-        ChannelSftp channelSftp = openAndConnectSFTPChannel();
-
-        try {
-            channelSftp.rename(absoluteOldPath.toString(), absoluteNewPath.toString());
-        } catch (SftpException e) {
+        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
+            sftpClient.rename(absoluteOldPath.toString(), absoluteNewPath.toString());
+        } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, oldPath);
                 throw new NotFoundException(msg);
@@ -289,7 +264,7 @@ public class SSHDataClient implements ISSHDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            sshConnection.returnChannel(channelSftp);
+            sshConnection.close();
         }
     }
 
@@ -311,8 +286,8 @@ public class SSHDataClient implements ISSHDataClient {
 
         //This will throw a NotFoundException if source is not there
         this.ls(currentPath);
-        ChannelExec channel = openCommandChannel();
-        try {
+        try  {
+            SSHExecChannel channel = sshConnection.getExecChannel();
             Map<String, String> args = new HashMap<>();
             args.put("targetParentPath", targetParentPath.toString());
             args.put("source", absoluteCurrentPath.toString());
@@ -327,9 +302,8 @@ public class SSHDataClient implements ISSHDataClient {
             cmd.addArgument("${target}");
             cmd.setSubstitutionMap(args);
             String toExecute = String.join(" ", cmd.toStrings());
-            channel.setCommand(toExecute);
-            channel.connect();
-        } catch (JSchException e) {
+            channel.execute(toExecute);
+        } catch (TapisException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, currentPath);
                 throw new NotFoundException(msg);
@@ -338,67 +312,19 @@ public class SSHDataClient implements ISSHDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            sshConnection.returnChannel(channel);
+            sshConnection.close();
         }
 
-    }
-
-
-    /**
-     * Path is relative to rootDir
-     *
-     * @param channelSftp
-     * @param path
-     * @throws SftpException
-     */
-    private void recursiveDelete(ChannelSftp channelSftp, String path) throws SftpException {
-        String cleanedPath = Paths.get(path).normalize().toString();
-
-        SftpATTRS attrs = channelSftp.stat(cleanedPath);
-        if (attrs.isDir()) {
-            Collection<LsEntry> files = channelSftp.ls(path);
-            if (files != null && !files.isEmpty()) {
-                for (LsEntry entry : files) {
-                    if ((!entry.getFilename().equals(".")) && (!entry.getFilename().equals(".."))) {
-                        recursiveDelete(channelSftp, path + "/" + entry.getFilename());
-                    }
-                }
-            }
-            channelSftp.rmdir(path);
-        } else {
-            channelSftp.rm(path);
-        }
-    }
-
-    private void clearRootDir(ChannelSftp channel) {
-        Collection<LsEntry> files;
-        try {
-            files = channel.ls(rootDir);
-            if (files != null && files.size() > 0) {
-                for (LsEntry entry : files) {
-                    if ((!entry.getFilename().equals(".")) && (!entry.getFilename().equals(".."))) {
-                        recursiveDelete(channel, rootDir + "/" + entry.getFilename());
-                    }
-                }
-            }
-        } catch (SftpException ex) {
-            ex.printStackTrace();
-        }
     }
 
 
     @Override
     public void delete(@NotNull String path) throws IOException {
         Path absPath = Paths.get(rootDir, path);
-        ChannelSftp channelSftp = openAndConnectSFTPChannel();
         // If the path is "/", then just clear everything out of rootDir?
-        try {
-            if (absPath.equals(Paths.get(rootDir))) {
-                clearRootDir(channelSftp);
-            } else {
-                recursiveDelete(channelSftp, absPath.toString());
-            }
-        } catch (SftpException e) {
+        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
+            sftpClient.rmdir(absPath.toString());
+        } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, path);
                 throw new NotFoundException(msg);
@@ -407,20 +333,19 @@ public class SSHDataClient implements ISSHDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            sshConnection.returnChannel(channelSftp);
+            sshConnection.close();
         }
     }
 
     @Override
     public InputStream getStream(@NotNull String path) throws IOException {
         Path absPath = Paths.get(rootDir, path);
-        ChannelSftp channelSftp = openAndConnectSFTPChannel();
-        InputStream inputStream = null;
-        try {
-            inputStream = channelSftp.get(absPath.toString());
-            TapisJSCHInputStream shellInputStream = new TapisJSCHInputStream(inputStream, sshConnection, channelSftp);
+
+        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
+            InputStream inputStream = sftpClient.read(absPath.toString());
+            TapisSSHInputStream shellInputStream = new TapisSSHInputStream(inputStream, sshConnection);
             return shellInputStream;
-        } catch (SftpException e) {
+        } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, path);
                 throw new NotFoundException(msg);
@@ -438,35 +363,27 @@ public class SSHDataClient implements ISSHDataClient {
     }
 
     @Override
-    public void connect() throws IOException {
-        try {
-            if (!sshConnection.getSession().isConnected()) {
-                sshConnection.getSession().connect();
-            }
-        } catch (JSchException ex) {
-            String msg = Utils.getMsg("FILES_CLIENT_SSH_CONN_ERR1", oboTenant, oboUser, systemId, username, host, ex.getMessage());
-            log.error(msg);
-            throw new IOException(msg, ex);
-        }
-    }
-
-    @Override
-    public void disconnect() {
-        sshConnection.closeSession();
-    }
-
-    @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
         Path absPath = Paths.get(rootDir, path).normalize();
-        ChannelExec channel = openCommandChannel();
         try {
+            SSHExecChannel channel = sshConnection.getExecChannel();
             String command = String.format("dd if=%s ibs=1 skip=%s count=%s", absPath.toString(), startByte, count);
-            channel.setCommand(command);
-            InputStream commandOutput = channel.getInputStream();
-            TapisJSCHInputStream shellInputStream = new TapisJSCHInputStream(commandOutput, sshConnection, channel);
-            channel.connect();
+            PipedInputStream in = new PipedInputStream();
+            PipedInputStream inErr = new PipedInputStream();
+            PipedOutputStream out = new PipedOutputStream(in);
+            PipedOutputStream outErr = new PipedOutputStream(inErr);
+            new Thread(()->{
+                try {
+                    channel.execute(command, out, outErr);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (TapisException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+            TapisSSHInputStream shellInputStream = new TapisSSHInputStream(in, sshConnection);
             return shellInputStream;
-        } catch (JSchException e) {
+        } catch (Exception e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, path);
                 throw new NotFoundException(msg);
@@ -516,12 +433,11 @@ public class SSHDataClient implements ISSHDataClient {
         String safePath = getNormalizedPath(remotePath);
         Path absolutePath = Paths.get(rootDir, safePath);
         String absolutePathStr = absolutePath.normalize().toString();
-        ChannelSftp channelSftp = openAndConnectSFTPChannel();
-        SftpATTRS sftpAttrs;
-        try {
+        Attributes sftpAttrs;
+        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
             // If path is a symbolic link then stat gives info for the link target, lstat gives info for the link
-            sftpAttrs = followLinks ? channelSftp.stat(absolutePathStr) : channelSftp.lstat(absolutePathStr);
-        } catch (SftpException e) {
+            sftpAttrs = followLinks ? sftpClient.stat(absolutePathStr) : sftpClient.lstat(absolutePathStr);
+        } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
                 throw new NotFoundException(msg);
@@ -531,13 +447,13 @@ public class SSHDataClient implements ISSHDataClient {
                 throw new IOException(msg, e);
             }
         } finally {
-            sshConnection.returnChannel(channelSftp);
+            sshConnection.close();
         }
 
         // Populate the FileStatInfo object
-        statInfo = new FileStatInfo(absolutePathStr, sftpAttrs.getUId(), sftpAttrs.getGId(),
-            sftpAttrs.getSize(), sftpAttrs.getPermissionsString(),
-            sftpAttrs.getATime(), sftpAttrs.getMTime(), sftpAttrs.isDir(), sftpAttrs.isLink());
+        statInfo = new FileStatInfo(absolutePathStr, sftpAttrs.getUserId(), sftpAttrs.getGroupId(),
+            sftpAttrs.getSize(), String.valueOf(sftpAttrs.getPermissions()),
+            sftpAttrs.getAccessTime().toInstant(), sftpAttrs.getModifyTime().toInstant(), sftpAttrs.isDirectory(), sftpAttrs.isSymbolicLink());
         return statInfo;
     }
 
@@ -604,28 +520,6 @@ public class SSHDataClient implements ISSHDataClient {
         return runLinuxChangeOp(opName, newGroup, remotePath, recursive);
     }
 
-    // ------------------------------
-    // Private Methods
-    // ------------------------------
-
-    private ChannelSftp openAndConnectSFTPChannel() throws IOException {
-        try {
-            String CHANNEL_TYPE = "sftp";
-            ChannelSftp channel = (ChannelSftp) sshConnection.createChannel(CHANNEL_TYPE);
-            return channel;
-        } catch (TapisException ex) {
-            throw new IOException(ex.getMessage(), ex);
-        }
-    }
-
-    private ChannelExec openCommandChannel() throws IOException {
-        try {
-            String CHANNEL_TYPE = "exec";
-            return (ChannelExec) sshConnection.createChannel(CHANNEL_TYPE);
-        } catch (TapisException ex) {
-            throw new IOException(ex.getMessage(), ex);
-        }
-    }
 
     /**
      * Use Apache's FileNameUtils to get a normalized path
@@ -671,19 +565,19 @@ public class SSHDataClient implements ISSHDataClient {
         this.ls(safePath);
 
         // Build the command and execute it.
-        var cmdRunner = new TapisRunCommand(tapisSystem, sshConnection);
+        var cmdRunner = sshConnection.getExecChannel();
 
         StringBuilder sb = new StringBuilder(opName);
         if (recursive) sb.append(" -R");
         sb.append(" ").append(arg1).append(" ").append(absolutePathStr);
         String cmdStr = sb.toString();
         // Execute the command
-        String stdOut = cmdRunner.execute(cmdStr);
-        if (cmdRunner.getExitStatus() != 0) {
+        int stdOut = cmdRunner.execute(cmdStr);
+        if (stdOut != 0) {
             String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, username, host,
-                remotePath, opName, cmdRunner.getExitStatus(), stdOut, cmdRunner.getStdErr());
+                remotePath, opName, stdOut, stdOut, stdOut);
             log.warn(msg);
         }
-        return new NativeLinuxOpResult(cmdStr, cmdRunner.getExitStatus(), cmdRunner.getStdOut(), cmdRunner.getStdErr());
+        return new NativeLinuxOpResult(cmdStr, stdOut, String.valueOf(stdOut), String.valueOf(stdOut));
     }
 }
