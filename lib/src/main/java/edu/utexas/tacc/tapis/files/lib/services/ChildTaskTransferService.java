@@ -121,7 +121,7 @@ public class ChildTaskTransferService {
                             .flatMap(t2 -> Mono.fromCallable(() -> doTransfer(t2))
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES * 10, Duration.ofMillis(100))
-                                        .maxBackoff(Duration.ofMinutes(10))
+                                        .maxBackoff(Duration.ofSeconds(120))
                                         .scheduler(scheduler)
                                         .doBeforeRetry(signal-> log.error("RETRY", signal.failure()))
                                         .filter(e -> e.getClass().equals(IOException.class))
