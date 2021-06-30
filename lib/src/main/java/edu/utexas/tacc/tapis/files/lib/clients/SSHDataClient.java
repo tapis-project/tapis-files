@@ -205,8 +205,15 @@ public class SSHDataClient implements ISSHDataClient {
     public void mkdir(@NotNull String remotePath) throws IOException {
         remotePath = FilenameUtils.normalize(remotePath);
         Path remote = Paths.get(rootDir, remotePath);
+        Path rootDirPath = Paths.get(rootDir);
+        Path relativePath = rootDirPath.relativize(remote);
+
         try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
-            sftpClient.mkdir(remote.toString());
+
+            for (Path part: relativePath) {
+                Path tmpPath = rootDirPath.resolve(part);
+                sftpClient.mkdir(tmpPath.toString());
+            }
         } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
