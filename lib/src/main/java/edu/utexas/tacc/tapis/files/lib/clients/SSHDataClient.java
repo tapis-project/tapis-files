@@ -4,7 +4,6 @@ import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpATTRS;
-import com.jcraft.jsch.SftpException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
@@ -22,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.sshd.sftp.client.SftpClient.Attributes;
 import org.apache.sshd.sftp.client.SftpClient.CloseableHandle;
 import org.apache.sshd.sftp.client.SftpClient.DirEntry;
+import org.apache.sshd.sftp.common.SftpException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,9 +210,14 @@ public class SSHDataClient implements ISSHDataClient {
 
         try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
 
+            Path tmpPath = Paths.get(rootDir);
             for (Path part: relativePath) {
-                Path tmpPath = rootDirPath.resolve(part);
-                sftpClient.mkdir(tmpPath.toString());
+                tmpPath = tmpPath.resolve(part);
+                try {
+                    sftpClient.mkdir(tmpPath.toString());
+                } catch (SftpException ex) {
+                    log.error(ex.getMessage(), ex);
+                }
             }
         } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
@@ -222,10 +227,7 @@ public class SSHDataClient implements ISSHDataClient {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "mkdir", systemId, username, host, remotePath, e.getMessage());
                 throw new IOException(msg, e);
             }
-        } finally {
-            sshConnection.close();
         }
-
     }
 
 
@@ -334,23 +336,25 @@ public class SSHDataClient implements ISSHDataClient {
         path = FilenameUtils.normalize(path);
         Path absPath = Paths.get(rootDir, path);
         // If the path is "/", then just clear everything out of rootDir?
-        String tmpPath = "";
+        String tmpAbsPath = "";
         try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
             log.info(path);
             for (FileInfo info : ls(path)) {
-                if (!info.isDir()) {
+                tmpAbsPath = Paths.get(rootDir, info.getPath()).toString();
+                if (info.isDir()) {
                     log.info(info.toString());
-                    tmpPath = Paths.get(rootDir, info.getPath()).toString();
-                    log.info(tmpPath);
-                    sftpClient.remove(tmpPath);
+                    log.info(tmpAbsPath);
+                    delete(tmpAbsPath);
+                } else {
+                    sftpClient.remove(tmpAbsPath);
                 }
             }
         } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
-                String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, tmpPath);
+                String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, tmpAbsPath);
                 throw new NotFoundException(msg);
             } else {
-                String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "delete", systemId, username, host, tmpPath, e.getMessage());
+                String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "delete", systemId, username, host, tmpAbsPath, e.getMessage());
                 throw new IOException(msg, e);
             }
         }
