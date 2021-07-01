@@ -331,23 +331,29 @@ public class SSHDataClient implements ISSHDataClient {
     }
 
 
+    private void doDelete(@NotNull String path, SSHSftpClient sftpClient) throws IOException {
+
+    }
+
+
     @Override
     public void delete(@NotNull String path) throws IOException {
         path = FilenameUtils.normalize(path);
         Path absPath = Paths.get(rootDir, path);
-        // If the path is "/", then just clear everything out of rootDir?
         String tmpAbsPath = "";
         try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
-            log.info(path);
-            for (FileInfo info : ls(path)) {
-                tmpAbsPath = Paths.get(rootDir, info.getPath()).toString();
-                if (info.isDir()) {
-                    log.info(info.toString());
-                    log.info(tmpAbsPath);
-                    delete(tmpAbsPath);
-                } else {
-                    sftpClient.remove(tmpAbsPath);
+            Attributes attrs = sftpClient.stat(absPath.toString());
+            if (attrs.isDirectory()) {
+                for (FileInfo info : ls(path)) {
+                    tmpAbsPath = Paths.get(rootDir, info.getPath()).toString();
+                    if (info.isDir()) {
+                        log.info(info.toString());
+                        log.info(tmpAbsPath);
+                        doDelete(tmpAbsPath, sftpClient);
+                    }
                 }
+            } else {
+                sftpClient.remove(absPath.toString());
             }
         } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
