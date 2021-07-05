@@ -66,7 +66,7 @@ public class ContentApiResource extends BaseFileOpsResource {
         try {
             IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
             if (zip) {
-               sendZip(asyncResponse, client, path);
+               sendZip(asyncResponse, client, path, user, systemId);
             } else {
                 // Ensure that the path is not a dir, if not zip, then this will error out
                 if (path.endsWith("/")) {
@@ -99,15 +99,13 @@ public class ContentApiResource extends BaseFileOpsResource {
                 .build();
             asyncResponse.resume(response);
         }
-
     }
-
 
     private void sendText(AsyncResponse asyncResponse, IRemoteDataClient client, String path, Long moreStartPage) throws ServiceException, IOException {
         java.nio.file.Path filepath = Paths.get(path);
         String filename = filepath.getFileName().toString();
         try (InputStream stream = fileOpsService.more(client, path, moreStartPage)) {
-            String contentDisposition = String.format("attachment; filename=%s", filename);
+            String contentDisposition = "inline";
             Response response = Response
                 .ok(stream, MediaType.TEXT_PLAIN)
                 .header("content-disposition", contentDisposition)
@@ -115,21 +113,24 @@ public class ContentApiResource extends BaseFileOpsResource {
                 .build();
             asyncResponse.resume(response);
         }
-
     }
 
-    private void sendZip(AsyncResponse asyncResponse, IRemoteDataClient client, String path) throws ServiceException, IOException {
+    private void sendZip(AsyncResponse asyncResponse, IRemoteDataClient client, String path, AuthenticatedUser user, String systemId) throws ServiceException, IOException {
         java.nio.file.Path filepath = Paths.get(path);
         String filename = filepath.getFileName().toString();
-        try (InputStream stream = fileOpsService.getZip(client, )) {
-            String newName = changeFileExtensionForZip(filename);
-            String disposition = String.format("attachment; filename=%s", newName);
-            Response resp = Response
-                .ok(outStream, MediaType.APPLICATION_OCTET_STREAM)
-                .header("content-disposition", disposition)
-                .build();
-            asyncResponse.resume(resp);
-        }
+        StreamingOutput outStream = output -> {
+            try {
+                fileOpsService.getZip(client, output, path);
+            } catch (Exception e) {
+                throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
+            }
+        };
+        String newName = changeFileExtensionForZip(filename);
+        String disposition = String.format("attachment; filename=%s", newName);
+        Response resp =  Response.ok(outStream, MediaType.APPLICATION_OCTET_STREAM)
+            .header("content-disposition", disposition)
+            .build();
+        asyncResponse.resume(resp);
     }
 
 

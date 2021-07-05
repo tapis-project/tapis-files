@@ -1,9 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.JSchException;
-import com.jcraft.jsch.SftpATTRS;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
@@ -13,13 +9,11 @@ import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHExecChannel;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
-import edu.utexas.tacc.tapis.shared.ssh.system.TapisRunCommand;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sshd.sftp.client.SftpClient.Attributes;
-import org.apache.sshd.sftp.client.SftpClient.CloseableHandle;
 import org.apache.sshd.sftp.client.SftpClient.DirEntry;
 import org.apache.sshd.sftp.common.SftpException;
 import org.jetbrains.annotations.NotNull;
@@ -27,8 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.NotFoundException;
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -38,14 +30,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * This class is the entry point to sile operations over SSH with Tapis.
@@ -167,7 +157,8 @@ public class SSHDataClient implements ISSHDataClient {
             if (entry.getFilename().equals(".") || entry.getFilename().equals("..")) {
                 continue;
             }
-            fileInfo.setName(entry.getFilename());
+            Path entryPath = Paths.get(entry.getFilename());
+            fileInfo.setName(entryPath.getFileName().toString());
             fileInfo.setLastModified(attrs.getModifyTime().toInstant());
             fileInfo.setSize(attrs.getSize());
             Path tmpPath = Paths.get(entry.getFilename());
@@ -180,15 +171,8 @@ public class SSHDataClient implements ISSHDataClient {
             fileInfo.setOwner(String.valueOf(attrs.getOwner()));
             fileInfo.setGroup(String.valueOf(attrs.getGroupId()));
             fileInfo.setNativePermissions(String.valueOf(attrs.getPermissions()));
-            //TODO: This path munging is tricky, but it seems to work as far as listings are concerned
-            Path fullPath;
-            if (absolutePath.getFileName().equals(Paths.get(entry.getFilename()))) {
-                fullPath = Paths.get(remotePath);
-            } else {
-                fullPath = Paths.get(remotePath).resolve(entry.getFilename());
-            }
 
-            fileInfo.setPath(fullPath.toString());
+            fileInfo.setPath(entryPath.toString());
             filesList.add(fileInfo);
         }
         filesList.sort(Comparator.comparing(FileInfo::getName));
@@ -351,15 +335,14 @@ public class SSHDataClient implements ISSHDataClient {
     @Override
     public void delete(@NotNull String path) throws IOException {
         path = FilenameUtils.normalize(path);
-        String tmpAbsPath = "";
         try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
             recursiveDelete(sftpClient, path);
         } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
-                String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, tmpAbsPath);
+                String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, path);
                 throw new NotFoundException(msg);
             } else {
-                String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "delete", systemId, username, host, tmpAbsPath, e.getMessage());
+                String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "delete", systemId, username, host, path, e.getMessage());
                 throw new IOException(msg, e);
             }
         }
