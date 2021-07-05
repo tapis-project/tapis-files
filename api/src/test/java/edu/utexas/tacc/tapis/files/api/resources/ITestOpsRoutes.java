@@ -23,6 +23,7 @@ import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -100,6 +101,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setId("testSystem");
         testSystemSSH.setEffectiveUserId("testuser");
+        testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
 
         creds = new Credential();
         creds.setAccessKey("user");
@@ -113,6 +115,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         testSystemS3.setId("testSystem");
         testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
+        testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
         testSystems.add(testSystemSSH);
         testSystems.add(testSystemS3);

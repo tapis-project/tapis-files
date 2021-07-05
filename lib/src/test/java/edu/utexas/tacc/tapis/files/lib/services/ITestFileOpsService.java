@@ -161,9 +161,9 @@ public class ITestFileOpsService {
         fileOpsService.insert(client,"test.txt", in);
         List<FileInfo> listing = fileOpsService.ls(client,"test.txt");
         Assert.assertEquals(listing.size(), 1);
-        fileOpsService.delete(client,"/test.txt");
+        fileOpsService.delete(client,"test.txt");
         Assert.assertThrows(NotFoundException.class, ()-> {
-            fileOpsService.ls(client, "/test.txt");
+            fileOpsService.ls(client, "test.txt");
         });
     }
 
@@ -188,8 +188,9 @@ public class ITestFileOpsService {
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.insert(client,"test.txt", in);
         InputStream out = fileOpsService.getStream(client,"test.txt");
-        Assert.assertEquals(out.readAllBytes().length,10* 1024);
+        Assert.assertEquals(out.readAllBytes().length,10 * 1024);
         out.close();
+        in.close();
     }
 
 
@@ -202,7 +203,7 @@ public class ITestFileOpsService {
         List<FileInfo> listing = fileOpsService.ls(client,"test.txt");
         Assert.assertEquals(listing.size(), 1);
         Assert.assertEquals(listing.get(0).getName(), "test.txt");
-
+        in.close();
     }
 
     @Test(dataProvider = "testSystems")
@@ -231,7 +232,6 @@ public class ITestFileOpsService {
     public void testZipFolder(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        log.info(client.ls("/").toString());
         client.delete("/");
         fileOpsService.insert(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
         fileOpsService.insert(client,"a/test2.txt", Utils.makeFakeFile(1000 * 1024));
@@ -289,7 +289,6 @@ public class ITestFileOpsService {
         fileOpsService.insert(client,"/a/b/c/4.txt", Utils.makeFakeFile(10*1024));
 
         List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", 5);
-        log.info(listing.toString());
         Assert.assertEquals(listing.size(), 4);
 
     }

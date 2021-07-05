@@ -91,7 +91,6 @@ public class FileOpsService implements IFileOpsService {
             if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
             Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, path, Permission.READ);
             List<FileInfo> listing = client.ls(cleanedPath, limit, offset);
-            //TODO: This feels like it should be in the service layer
             listing.forEach(f -> {
                 String uri = String.format("%s/%s/%s", client.getOboTenant(), client.getSystemId(), f.getPath());
                 uri = StringUtils.replace(uri, "//", "/");

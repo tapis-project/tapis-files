@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import com.jcraft.jsch.IO;
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -61,51 +62,23 @@ public class ContentApiResource extends BaseFileOpsResource {
             @Context SecurityContext securityContext,
             @Suspended final AsyncResponse asyncResponse) {
 
-        InputStream stream = null;
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-
         try {
             IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-            String mtype = MediaType.APPLICATION_OCTET_STREAM;
-            String contentDisposition;
-            java.nio.file.Path filepath = Paths.get(path);
-            String filename = filepath.getFileName().toString();
-
             if (zip) {
-                StreamingOutput outStream = output -> {
-                    try {
-                        fileOpsService.getZip(client, output, path);
-                    } catch (Exception e) {
-                        throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
-                    }
-                };
-                String newName = changeFileExtensionForZip(filename);
-                String disposition = String.format("attachment; filename=%s", newName);
-                Response resp =  Response.ok(outStream, mtype)
-                    .header("content-disposition", disposition)
-                    .build();
-                asyncResponse.resume(resp);
+               sendZip(asyncResponse, client, path);
             } else {
                 // Ensure that the path is not a dir, if not zip, then this will error out
                 if (path.endsWith("/")) {
                     throw new BadRequestException(Utils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
                 }
-                contentDisposition = String.format("attachment; filename=%s", filename);
                 if (range != null) {
-                    stream = fileOpsService.getBytes(client, path, range.getMin(), range.getMax());
+                    sendByteRange(asyncResponse, client, path, range);
                 } else if (!Objects.isNull(moreStartPage)) {
-                    mtype = MediaType.TEXT_PLAIN;
-                    stream = fileOpsService.more(client, path, moreStartPage);
-                    contentDisposition = "inline";
+                  sendText(asyncResponse, client, path, moreStartPage);
                 } else {
-                    stream = fileOpsService.getStream(client, path);
+                   sendFullStream(asyncResponse, client, path);
                 }
-                Response response = Response
-                    .ok(stream, mtype)
-                    .header("content-disposition", contentDisposition)
-                    .header("cache-control", "max-age=3600")
-                    .build();
-                asyncResponse.resume(response);
             }
         } catch (ServiceException | IOException ex) {
             String msg = Utils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, ex.getMessage());
@@ -113,6 +86,68 @@ public class ContentApiResource extends BaseFileOpsResource {
             throw new WebApplicationException(msg, ex);
         }
     }
+
+    private void sendByteRange(AsyncResponse asyncResponse, IRemoteDataClient client, String path, HeaderByteRange range) throws ServiceException, IOException {
+        java.nio.file.Path filepath = Paths.get(path);
+        String filename = filepath.getFileName().toString();
+        try (InputStream stream = fileOpsService.getBytes(client, path, range.getMin(), range.getMax())) {
+            String contentDisposition = String.format("attachment; filename=%s", filename);
+            Response response = Response
+                .ok(stream, MediaType.TEXT_PLAIN)
+                .header("content-disposition", contentDisposition)
+                .header("cache-control", "max-age=3600")
+                .build();
+            asyncResponse.resume(response);
+        }
+
+    }
+
+
+    private void sendText(AsyncResponse asyncResponse, IRemoteDataClient client, String path, Long moreStartPage) throws ServiceException, IOException {
+        java.nio.file.Path filepath = Paths.get(path);
+        String filename = filepath.getFileName().toString();
+        try (InputStream stream = fileOpsService.more(client, path, moreStartPage)) {
+            String contentDisposition = String.format("attachment; filename=%s", filename);
+            Response response = Response
+                .ok(stream, MediaType.TEXT_PLAIN)
+                .header("content-disposition", contentDisposition)
+                .header("cache-control", "max-age=3600")
+                .build();
+            asyncResponse.resume(response);
+        }
+
+    }
+
+    private void sendZip(AsyncResponse asyncResponse, IRemoteDataClient client, String path) throws ServiceException, IOException {
+        java.nio.file.Path filepath = Paths.get(path);
+        String filename = filepath.getFileName().toString();
+        try (InputStream stream = fileOpsService.getZip(client, )) {
+            String newName = changeFileExtensionForZip(filename);
+            String disposition = String.format("attachment; filename=%s", newName);
+            Response resp = Response
+                .ok(outStream, MediaType.APPLICATION_OCTET_STREAM)
+                .header("content-disposition", disposition)
+                .build();
+            asyncResponse.resume(resp);
+        }
+    }
+
+
+    private void sendFullStream(AsyncResponse asyncResponse, IRemoteDataClient client, String path) throws ServiceException, IOException {
+        try (InputStream stream = fileOpsService.getStream(client, path)) {
+            java.nio.file.Path filepath = Paths.get(path);
+            String filename = filepath.getFileName().toString();
+            String contentDisposition = String.format("attachment; filename=%s", filename);
+            Response response = Response
+                .ok(stream, MediaType.APPLICATION_OCTET_STREAM)
+                .header("content-disposition", contentDisposition)
+                .header("cache-control", "max-age=3600")
+                .build();
+            asyncResponse.resume(response);
+        }
+    }
+
+
 
     private String changeFileExtensionForZip(String name) {
         String filename = FilenameUtils.removeExtension(name);

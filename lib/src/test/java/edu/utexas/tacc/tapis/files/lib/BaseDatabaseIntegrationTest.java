@@ -22,6 +22,7 @@ import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -98,6 +99,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setId("destSystem");
         testSystemSSH.setEffectiveUserId("testuser");
+        testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
 
         //S3 system
         creds = new Credential();
@@ -112,6 +114,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemS3.setPort(9000);
         testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
+        testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
         // PKI Keys system
         creds = new Credential();
@@ -125,6 +128,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemPKI.setRootDir("/data/home/testuser/");
         testSystemPKI.setId("testSystem");
         testSystemPKI.setEffectiveUserId("testuser");
+        testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
         ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
 
 

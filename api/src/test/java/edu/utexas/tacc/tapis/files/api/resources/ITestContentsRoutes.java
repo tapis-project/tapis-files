@@ -21,6 +21,7 @@ import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -86,6 +87,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         testSystem.setId("testSystem");
         testSystem.setAuthnCredential(creds);
         testSystem.setRootDir("/");
+        testSystem.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
 
         testSystemDisabled = new TapisSystem();
         testSystemDisabled.setSystemType(SystemTypeEnum.S3);
@@ -96,6 +98,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         testSystemDisabled.setAuthnCredential(creds);
         testSystemDisabled.setRootDir("/");
         testSystemDisabled.setEnabled(false);
+        testSystemDisabled.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
       //SSH system with username/password
         Credential sshCreds = new Credential();
@@ -109,6 +112,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setId("destSystem");
         testSystemSSH.setEffectiveUserId("testuser");
+        testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     }
 
     @Override
