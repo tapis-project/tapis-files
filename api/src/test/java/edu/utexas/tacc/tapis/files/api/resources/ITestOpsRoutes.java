@@ -480,7 +480,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/2.txt", 10 * 1024);
         addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
+        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/4.txt", 10 * 1024);
 
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/dir2/")
             .request()

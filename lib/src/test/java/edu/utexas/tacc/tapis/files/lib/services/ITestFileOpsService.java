@@ -118,9 +118,7 @@ public class ITestFileOpsService {
     @DataProvider(name="testSystems")
     public Object[] testSystemsDataProvider () {
         return new TapisSystem[]{
-                testSystemSSH,
-                testSystemPKI,
-                testSystemS3
+                testSystemSSH
         };
     }
 
@@ -154,7 +152,7 @@ public class ITestFileOpsService {
     }
 
     @Test(dataProvider = "testSystems")
-    public void testInsertAndDelete(TapisSystem testSystem) throws Exception {
+    public void testListingPath(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
@@ -164,6 +162,33 @@ public class ITestFileOpsService {
         fileOpsService.delete(client,"test.txt");
         Assert.assertThrows(NotFoundException.class, ()-> {
             fileOpsService.ls(client, "test.txt");
+        });
+    }
+
+    @Test(dataProvider = "testSystems")
+    public void testListingPathNested(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+        InputStream in = Utils.makeFakeFile(10*1024);
+        fileOpsService.insert(client,"/dir1/dir2/test.txt", in);
+        List<FileInfo> listing = fileOpsService.ls(client,"/dir1/dir2");
+        Assert.assertEquals(listing.size(), 1);
+        Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
+    }
+
+
+    @Test(dataProvider = "testSystems")
+    public void testInsertAndDelete(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+        InputStream in = Utils.makeFakeFile(10*1024);
+        fileOpsService.insert(client,"/dir1/dir2/test.txt", in);
+        List<FileInfo> listing = fileOpsService.ls(client,"dir1/dir2/");
+        Assert.assertEquals(listing.size(), 1);
+        Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
+        fileOpsService.delete(client,"dir1/dir2/test.txt");
+        Assert.assertThrows(NotFoundException.class, ()-> {
+            fileOpsService.ls(client, "dir1/dir2/test.txt");
         });
     }
 

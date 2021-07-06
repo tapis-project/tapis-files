@@ -114,21 +114,25 @@ public class SSHDataClient implements ISSHDataClient {
     /**
      * Returns the files listing output on a remotePath
      *
-     * @param remotePath
+     * @param remotePath Always relative to rootDir
      * @return list of FileInfo
      * @throws IOException       Generally a network error
      * @throws NotFoundException No file at target
      */
     @Override
     public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
+        remotePath = FilenameUtils.normalize(remotePath);
+        remotePath = StringUtils.isEmpty(remotePath) ? "/" : remotePath;
         long count = Math.min(limit, Constants.MAX_LISTING_SIZE);
         long startIdx = Math.max(offset, 0);
 
         List<FileInfo> filesList = new ArrayList<>();
         List<DirEntry> dirEntries = new ArrayList<>();
         Path absolutePath = Paths.get(rootDir, remotePath);
+        Path rootDirPath = Paths.get(rootDir);
 
-        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
+        try (SSHSftpClient sftpClient = sshConnection.getSftpClient();
+        ) {
             Attributes attributes = sftpClient.stat(absolutePath.toString());
             if (attributes.isDirectory()) {
                 Iterable<DirEntry> tmp = sftpClient.readDir(absolutePath.toString());
@@ -148,8 +152,7 @@ public class SSHDataClient implements ISSHDataClient {
         }
 
         // For each entry in the fileList received, get the fileInfo object
-        for (int i = 0; i < dirEntries.size(); i++) {
-            DirEntry entry = dirEntries.get(i);
+        for (DirEntry entry: dirEntries) {
             // Get the file attributes
             Attributes attrs = entry.getAttributes();
             FileInfo fileInfo = new FileInfo();
@@ -161,6 +164,8 @@ public class SSHDataClient implements ISSHDataClient {
             fileInfo.setName(entryPath.getFileName().toString());
             fileInfo.setLastModified(attrs.getModifyTime().toInstant());
             fileInfo.setSize(attrs.getSize());
+
+            //Try to determine the Mimetype
             Path tmpPath = Paths.get(entry.getFilename());
             fileInfo.setMimeType(Files.probeContentType(tmpPath));
             if (attrs.isDirectory()) {
@@ -171,8 +176,14 @@ public class SSHDataClient implements ISSHDataClient {
             fileInfo.setOwner(String.valueOf(attrs.getOwner()));
             fileInfo.setGroup(String.valueOf(attrs.getGroupId()));
             fileInfo.setNativePermissions(String.valueOf(attrs.getPermissions()));
+            //Path should be relative to rootDir
+            Path tmpFilePath = Paths.get(rootDir, entry.getFilename());
+            if (tmpFilePath.equals(absolutePath)) {
+                fileInfo.setPath(entryPath.toString());
+            } else {
+                fileInfo.setPath(Paths.get("/", remotePath, entryPath.toString()).toString());
+            }
 
-            fileInfo.setPath(entryPath.toString());
             filesList.add(fileInfo);
         }
         filesList.sort(Comparator.comparing(FileInfo::getName));
@@ -317,14 +328,19 @@ public class SSHDataClient implements ISSHDataClient {
 
 
     private void recursiveDelete(SSHSftpClient sftpClient, String path) throws IOException {
+        path = FilenameUtils.normalize(path);
+        path = StringUtils.isEmpty(path) ? "/" : path;
         String cleanedPath = Paths.get(rootDir, path).normalize().toString();
         List<FileInfo> files = ls(path);
         FileStatInfo attributes = getStatInfo(path, false);
         for (FileInfo entry : files) {
             if ((!entry.getName().equals(".")) && (!entry.getName().equals("..")) && (entry.isDir())) {
-                recursiveDelete(sftpClient, path + "/" + entry.getName());
+                Path tmpPath = Paths.get(path, entry.getName()).normalize();
+                recursiveDelete(sftpClient, tmpPath.toString());
             } else {
-                sftpClient.remove(Paths.get(rootDir, entry.getPath()).normalize().toString());
+                //The path from the file listing is relative to rootDir
+                Path tmpPath = Paths.get(rootDir, entry.getPath());
+                sftpClient.remove(tmpPath.normalize().toString());
             }
         }
         if (!cleanedPath.equals(rootDir) && attributes.isDir()) {
