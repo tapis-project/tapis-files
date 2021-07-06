@@ -21,6 +21,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.NotFoundException;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -476,8 +478,8 @@ public class SSHDataClient implements ISSHDataClient {
         }
         // Populate the FileStatInfo object
         statInfo = new FileStatInfo(absolutePathStr, sftpAttrs.getUserId(), sftpAttrs.getGroupId(),
-            sftpAttrs.getSize(), String.valueOf(sftpAttrs.getPermissions()),
-            sftpAttrs.getAccessTime().toInstant(), sftpAttrs.getModifyTime().toInstant(), sftpAttrs.isDirectory(), sftpAttrs.isSymbolicLink());
+                sftpAttrs.getSize(), sftpAttrs.getPermissions(), sftpAttrs.getAccessTime().toInstant(),
+                sftpAttrs.getModifyTime().toInstant(), sftpAttrs.isDirectory(), sftpAttrs.isSymbolicLink());
         return statInfo;
     }
 
@@ -595,12 +597,14 @@ public class SSHDataClient implements ISSHDataClient {
         sb.append(" ").append(arg1).append(" ").append(absolutePathStr);
         String cmdStr = sb.toString();
         // Execute the command
-        int stdOut = cmdRunner.execute(cmdStr);
-        if (stdOut != 0) {
+        OutputStream stdOut = new ByteArrayOutputStream();
+        OutputStream stdErr = new ByteArrayOutputStream();
+        int exitCode = cmdRunner.execute(cmdStr, stdOut, stdErr);
+        if (exitCode != 0) {
             String msg = Utils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, username, host,
-                remotePath, opName, stdOut, stdOut, stdOut);
+                remotePath, opName, exitCode, stdOut.toString(), stdErr.toString());
             log.warn(msg);
         }
-        return new NativeLinuxOpResult(cmdStr, stdOut, String.valueOf(stdOut), String.valueOf(stdOut));
+        return new NativeLinuxOpResult(cmdStr, exitCode, stdOut.toString(), stdErr.toString());
     }
 }

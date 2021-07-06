@@ -23,6 +23,7 @@ import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -86,9 +87,9 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
   private static final String TEST_FILE2 = "testfile2.txt";
   private static final String TEST_FILE3 = "testfile3.txt";
   private static final String TEST_FILE4 = "testfile4.txt";
-  private static final String TEST_FILE_PERMS = "-rw-r--r--";
+  private static final String TEST_FILE_PERMS = "rw-r--r--";
   private static final String TEST_CHMOD_ARG = "755";
-  private static final String TEST_FILE_NEWPERMS = "-rwxr-xr-x";
+  private static final String TEST_FILE_NEWPERMS = "rwxr-xr-x";
   private static final int TEST_FILE_SIZE = 10 * 1024;
   private static final String OPS_ROUTE = "/v3/files/ops";
   private static final String UTILS_ROUTE = "/v3/files/utils/linux";
@@ -116,6 +117,7 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
     testSystemSSH.setRootDir(ROOT_DIR);
     testSystemSSH.setId(SYSTEM_ID);
     testSystemSSH.setEffectiveUserId(TEST_USR);
+    testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
 
     testSystems.add(testSystemSSH);
   }
@@ -235,7 +237,7 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertNotNull(response);
     FileStatInfo result = response.getResult();
     Assert.assertNotNull(result);
-    System.out.printf("FileStatInfo result:%n%s%n", result.toString());
+    System.out.printf("FileStatInfo result:%n%s%n", result);
     validateFileProperties(result, TEST_FILE1, TEST_FILE_PERMS);
   }
 
@@ -272,7 +274,7 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertNotNull(response2);
     NativeLinuxOpResult result = response2.getResult();
     Assert.assertNotNull(result);
-    System.out.printf("NativeLinuxOp result:%n%s%n", result.toString());
+    System.out.printf("NativeLinuxOp result:%n%s%n", result);
     Assert.assertEquals(result.getExitCode(), 0);
 
     // Get stat info and check file properties after chmod
@@ -441,6 +443,8 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
    */
   private void validateFileProperties(FileStatInfo fileStatInfo, String fileName, String filePerms)
   {
+    System.out.printf("Validating file properties for File: %s against perms: %s%n", fileName, filePerms);
+    System.out.printf("Got fileStatInfo:%n%s", fileStatInfo.toString());
     Assert.assertEquals(fileStatInfo.getAbsolutePath(), String.format("%s/%s", ROOT_DIR, fileName));
     Assert.assertEquals(fileStatInfo.getSize(), TEST_FILE_SIZE);
     Assert.assertEquals(fileStatInfo.getUid(), 1000);

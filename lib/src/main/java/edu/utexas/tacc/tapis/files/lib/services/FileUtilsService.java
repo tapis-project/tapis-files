@@ -30,9 +30,9 @@ public class FileUtilsService implements IFileUtilsService {
   private static final Logger log = LoggerFactory.getLogger(FileUtilsService.class);
   private final FilePermsService permsService;
 
-  public enum NativeLinuxOperation { CHMOD, CHOWN, CHGRP}
+  public enum NativeLinuxOperation {CHMOD, CHOWN, CHGRP}
 
-  // TODO
+  // Initial value for a NativeLinuxOpResult.
   public static final NativeLinuxOpResult NATIVE_LINUX_OP_RESULT_NOOP = new NativeLinuxOpResult("NO_OP", -1, "", "");
 
   @Inject

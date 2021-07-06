@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import com.jcraft.jsch.IO;
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;

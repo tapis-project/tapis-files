@@ -1,7 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import com.jcraft.jsch.Channel;
-import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
 
 import java.io.FilterInputStream;
@@ -17,7 +15,6 @@ public class TapisSSHInputStream extends FilterInputStream {
 
 
     private SSHSftpClient connection;
-    private Channel channel;
 
     protected TapisSSHInputStream(InputStream in) {
         super(in);

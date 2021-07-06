@@ -1,9 +1,9 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 
-import com.jcraft.jsch.Channel;
-import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.SftpException;
+//import com.jcraft.jsch.Channel;
+//import com.jcraft.jsch.ChannelSftp;
+//import com.jcraft.jsch.SftpException;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisSSHConnectionException;
 import edu.utexas.tacc.tapis.shared.ssh.SSHConnection;
@@ -44,29 +44,29 @@ public class ITestSSHConnection {
         }
     }
 
-    /**
-     * The test ssh container has a default of 10 open connections. After that, we should get the recoverable exception
-     * @throws Exception
-     */
-    @Test
-    public void testMaxSessions() throws Exception {
-        SSHConnection connection = new SSHConnection("localhost", 2222, "testuser", "password");
-        Assert.assertThrows(TapisSSHConnectionException.class, ()-> {
-            for (var j=0;j<20;j++) {
-                ChannelSftp channel = (ChannelSftp) connection.createChannel("sftp");
-                Vector results = channel.ls("/home/testuser/");
-            }
-        });
-    }
-
-    @Test
-    public void testNoPosixAuthorization() throws Exception {
-        SSHConnection connection = new SSHConnection("localhost", 2222, "testuser", "password");
-        Assert.assertThrows(SftpException.class, ()-> {
-            ChannelSftp channel = (ChannelSftp) connection.createChannel("sftp");
-            Vector results = channel.ls("/root/");
-        });
-    }
+//    /**
+//     * The test ssh container has a default of 10 open connections. After that, we should get the recoverable exception
+//     * @throws Exception
+//     */
+//    @Test
+//    public void testMaxSessions() throws Exception {
+//        SSHConnection connection = new SSHConnection("localhost", 2222, "testuser", "password");
+//        Assert.assertThrows(TapisSSHConnectionException.class, ()-> {
+//            for (var j=0;j<20;j++) {
+//                ChannelSftp channel = (ChannelSftp) connection.createChannel("sftp");
+//                Vector results = channel.ls("/home/testuser/");
+//            }
+//        });
+//    }
+//
+//    @Test
+//    public void testNoPosixAuthorization() throws Exception {
+//        SSHConnection connection = new SSHConnection("localhost", 2222, "testuser", "password");
+//        Assert.assertThrows(SftpException.class, ()-> {
+//            ChannelSftp channel = (ChannelSftp) connection.createChannel("sftp");
+//            Vector results = channel.ls("/root/");
+//        });
+//    }
 
     @Test
     public void testNoHost() throws Exception {
@@ -89,35 +89,34 @@ public class ITestSSHConnection {
         });
     }
 
-    @Test
-    public void openChannelOnClosedSession() throws Exception {
-        SSHConnection connection = new SSHConnection("localhost", 2222, "testuser", "password");
-        connection.closeSession();
-        ChannelSftp channel = (ChannelSftp) connection.createChannel("sftp");
-        Vector results = channel.ls("/home/testuser/");
-        Assert.assertTrue(results.size()>0);
-    }
-
-    @Test
-    public void droppedSession() throws Exception {
-        SSHConnection connection = new SSHConnection("localhost", 2222, "testuser", "password");
-        ChannelSftp channel = (ChannelSftp) connection.createChannel("sftp");
-        Runnable background = ()-> {
-            try {
-                log.info("copying large file");
-                channel.put(new RandomInputStream(1000 * 1000 * 100), "/home/testuser/test.file");
-            } catch (Exception ex) {
-                Assert.assertTrue(ex instanceof SftpException);
-                Assert.assertTrue(ex.getMessage().contains("Pipe closed"));
-            }
-        };
-        Thread thread = new Thread(background);
-        thread.start();
-        // Give it a sec to get going
-        Thread.sleep(100);
-        connection.closeSession();
-    }
-
+//    @Test
+//    public void openChannelOnClosedSession() throws Exception {
+//        SSHConnection connection = new SSHConnection("localhost", 2222, "testuser", "password");
+//        connection.closeSession();
+//        ChannelSftp channel = (ChannelSftp) connection.createChannel("sftp");
+//        Vector results = channel.ls("/home/testuser/");
+//        Assert.assertTrue(results.size()>0);
+//    }
+//
+//    @Test
+//    public void droppedSession() throws Exception {
+//        SSHConnection connection = new SSHConnection("localhost", 2222, "testuser", "password");
+//        ChannelSftp channel = (ChannelSftp) connection.createChannel("sftp");
+//        Runnable background = ()-> {
+//            try {
+//                log.info("copying large file");
+//                channel.put(new RandomInputStream(1000 * 1000 * 100), "/home/testuser/test.file");
+//            } catch (Exception ex) {
+//                Assert.assertTrue(ex instanceof SftpException);
+//                Assert.assertTrue(ex.getMessage().contains("Pipe closed"));
+//            }
+//        };
+//        Thread thread = new Thread(background);
+//        thread.start();
+//        // Give it a sec to get going
+//        Thread.sleep(100);
+//        connection.closeSession();
+//    }
 
     // Disabled for now, the timeout takes the full 15 seconds at the moment which slows down the
     // integration tests.
@@ -130,6 +129,4 @@ public class ITestSSHConnection {
         }
 
     }
-
-
 }
