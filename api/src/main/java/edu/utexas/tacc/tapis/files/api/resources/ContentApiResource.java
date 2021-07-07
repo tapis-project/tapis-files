@@ -1,30 +1,38 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.HeaderByteRange;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.constraints.Min;
-import javax.ws.rs.*;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
-import javax.ws.rs.core.*;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
@@ -72,11 +80,11 @@ public class ContentApiResource extends BaseFileOpsResource {
                     throw new BadRequestException(Utils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
                 }
                 if (range != null) {
-                    sendByteRange(asyncResponse, client, path, range);
+                    sendByteRange(asyncResponse, client, path, range, user, systemId);
                 } else if (!Objects.isNull(moreStartPage)) {
-                  sendText(asyncResponse, client, path, moreStartPage);
+                  sendText(asyncResponse, client, path, moreStartPage, user, systemId);
                 } else {
-                   sendFullStream(asyncResponse, client, path);
+                   sendFullStream(asyncResponse, client, path, user, systemId);
                 }
             }
         } catch (ServiceException | IOException ex) {
@@ -86,32 +94,54 @@ public class ContentApiResource extends BaseFileOpsResource {
         }
     }
 
-    private void sendByteRange(AsyncResponse asyncResponse, IRemoteDataClient client, String path, HeaderByteRange range) throws ServiceException, IOException {
+    private void sendByteRange(AsyncResponse asyncResponse, IRemoteDataClient client, String path, HeaderByteRange range,
+                               AuthenticatedUser user, String systemId) throws ServiceException, IOException {
         java.nio.file.Path filepath = Paths.get(path);
         String filename = filepath.getFileName().toString();
-        try (InputStream stream = fileOpsService.getBytes(client, path, range.getMin(), range.getMax())) {
-            String contentDisposition = String.format("attachment; filename=%s", filename);
-            Response response = Response
-                .ok(stream, MediaType.TEXT_PLAIN)
-                .header("content-disposition", contentDisposition)
-                .header("cache-control", "max-age=3600")
-                .build();
-            asyncResponse.resume(response);
-        }
+        StreamingOutput outStream = output -> {
+            InputStream stream = null;
+            try {
+                stream = fileOpsService.getBytes(client, path, range.getMin(), range.getMax());
+                stream.transferTo(output);
+            } catch (NotFoundException ex) {
+                throw ex;
+            } catch (Exception e) {
+                throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
+            } finally {
+                IOUtils.closeQuietly(stream);
+            }
+        };
+        String contentDisposition = String.format("attachment; filename=%s", filename);
+        Response response = Response
+            .ok(outStream, MediaType.TEXT_PLAIN)
+            .header("content-disposition", contentDisposition)
+            .header("cache-control", "max-age=3600")
+            .build();
+        asyncResponse.resume(response);
     }
 
-    private void sendText(AsyncResponse asyncResponse, IRemoteDataClient client, String path, Long moreStartPage) throws ServiceException, IOException {
-        java.nio.file.Path filepath = Paths.get(path);
-        String filename = filepath.getFileName().toString();
-        try (InputStream stream = fileOpsService.more(client, path, moreStartPage)) {
-            String contentDisposition = "inline";
-            Response response = Response
-                .ok(stream, MediaType.TEXT_PLAIN)
-                .header("content-disposition", contentDisposition)
-                .header("cache-control", "max-age=3600")
-                .build();
-            asyncResponse.resume(response);
-        }
+    private void sendText(AsyncResponse asyncResponse, IRemoteDataClient client, String path, Long moreStartPage,
+                          AuthenticatedUser user, String systemId) throws ServiceException, IOException {
+        StreamingOutput outStream = output -> {
+            InputStream stream = null;
+            try {
+                stream = fileOpsService.more(client, path, moreStartPage);
+                stream.transferTo(output);
+            } catch (NotFoundException ex) {
+                throw ex;
+            } catch (Exception e) {
+                throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
+            } finally {
+                IOUtils.closeQuietly(stream);
+            }
+        };
+        String contentDisposition = "inline";
+        Response response = Response
+            .ok(outStream, MediaType.TEXT_PLAIN)
+            .header("content-disposition", contentDisposition)
+            .header("cache-control", "max-age=3600")
+            .build();
+        asyncResponse.resume(response);
     }
 
     private void sendZip(AsyncResponse asyncResponse, IRemoteDataClient client, String path, AuthenticatedUser user, String systemId) throws ServiceException, IOException {
@@ -120,6 +150,8 @@ public class ContentApiResource extends BaseFileOpsResource {
         StreamingOutput outStream = output -> {
             try {
                 fileOpsService.getZip(client, output, path);
+            } catch (NotFoundException ex) {
+                throw ex;
             } catch (Exception e) {
                 throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
             }
@@ -133,18 +165,30 @@ public class ContentApiResource extends BaseFileOpsResource {
     }
 
 
-    private void sendFullStream(AsyncResponse asyncResponse, IRemoteDataClient client, String path) throws ServiceException, IOException {
-        try (InputStream stream = fileOpsService.getStream(client, path)) {
-            java.nio.file.Path filepath = Paths.get(path);
-            String filename = filepath.getFileName().toString();
-            String contentDisposition = String.format("attachment; filename=%s", filename);
-            Response response = Response
-                .ok(stream, MediaType.APPLICATION_OCTET_STREAM)
-                .header("content-disposition", contentDisposition)
-                .header("cache-control", "max-age=3600")
-                .build();
-            asyncResponse.resume(response);
-        }
+    private void sendFullStream(AsyncResponse asyncResponse, IRemoteDataClient client, String path, AuthenticatedUser user, String systemId) throws ServiceException, IOException {
+
+        StreamingOutput outStream = output -> {
+            InputStream stream = null;
+            try {
+                stream = fileOpsService.getStream(client, path);
+                stream.transferTo(output);
+            } catch (NotFoundException ex) {
+                throw ex;
+            } catch (Exception e) {
+                throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
+            } finally {
+                IOUtils.closeQuietly(stream);
+            }
+        };
+        java.nio.file.Path filepath = Paths.get(path);
+        String filename = filepath.getFileName().toString();
+        String contentDisposition = String.format("attachment; filename=%s", filename);
+        Response response = Response
+            .ok(outStream, MediaType.APPLICATION_OCTET_STREAM)
+            .header("content-disposition", contentDisposition)
+            .header("cache-control", "max-age=3600")
+            .build();
+        asyncResponse.resume(response);
     }
 
 

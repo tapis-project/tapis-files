@@ -133,7 +133,6 @@ public abstract class BaseDatabaseIntegrationTest  {
             @Override
             protected void configure() {
             bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-            bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
             bindAsContract(SystemsCache.class).in(Singleton.class);
             bindAsContract(TransfersService.class).in(Singleton.class);
             bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
@@ -143,6 +142,7 @@ public abstract class BaseDatabaseIntegrationTest  {
             bind(serviceClients).to(ServiceClients.class);
             bind(serviceContext).to(ServiceContext.class);
             bindAsContract(RemoteDataClientFactory.class);
+            bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
             bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
             }
         });

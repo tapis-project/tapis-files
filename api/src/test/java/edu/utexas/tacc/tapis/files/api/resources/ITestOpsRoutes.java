@@ -409,7 +409,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
         List<FileInfo> listing = doListing(testSystem.getId(), "renamed", getJwtForUser("dev", "testuser1"));
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "renamed");
+        Assert.assertEquals(listing.get(0).getPath(), "/renamed");
     }
 
     @Test(dataProvider = "testSystemsProvider")

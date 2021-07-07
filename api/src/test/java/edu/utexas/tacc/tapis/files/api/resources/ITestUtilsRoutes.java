@@ -87,9 +87,9 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
   private static final String TEST_FILE2 = "testfile2.txt";
   private static final String TEST_FILE3 = "testfile3.txt";
   private static final String TEST_FILE4 = "testfile4.txt";
-  private static final String TEST_FILE_PERMS = "-rw-r--r--";
+  private static final String TEST_FILE_PERMS = "rw-r--r--";
   private static final String TEST_CHMOD_ARG = "755";
-  private static final String TEST_FILE_NEWPERMS = "-rwxr-xr-x";
+  private static final String TEST_FILE_NEWPERMS = "rwxr-xr-x";
   private static final int TEST_FILE_SIZE = 10 * 1024;
   private static final String OPS_ROUTE = "/v3/files/ops";
   private static final String UTILS_ROUTE = "/v3/files/utils/linux";
@@ -146,6 +146,7 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
               @Override
               protected void configure()
               {
+                bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bind(serviceClients).to(ServiceClients.class);
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
@@ -154,7 +155,6 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
                 bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
                 bindAsContract(RemoteDataClientFactory.class);
                 bind(serviceContext).to(ServiceContext.class);
-                bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
               }
             });
 
@@ -237,7 +237,7 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertNotNull(response);
     FileStatInfo result = response.getResult();
     Assert.assertNotNull(result);
-    System.out.printf("FileStatInfo result:%n%s%n", result.toString());
+    System.out.printf("FileStatInfo result:%n%s%n", result);
     validateFileProperties(result, TEST_FILE1, TEST_FILE_PERMS);
   }
 
@@ -274,7 +274,7 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertNotNull(response2);
     NativeLinuxOpResult result = response2.getResult();
     Assert.assertNotNull(result);
-    System.out.printf("NativeLinuxOp result:%n%s%n", result.toString());
+    System.out.printf("NativeLinuxOp result:%n%s%n", result);
     Assert.assertEquals(result.getExitCode(), 0);
 
     // Get stat info and check file properties after chmod
@@ -443,6 +443,8 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
    */
   private void validateFileProperties(FileStatInfo fileStatInfo, String fileName, String filePerms)
   {
+    System.out.printf("Validating file properties for File: %s against perms: %s%n", fileName, filePerms);
+    System.out.printf("Got fileStatInfo:%n%s", fileStatInfo.toString());
     Assert.assertEquals(fileStatInfo.getAbsolutePath(), String.format("%s/%s", ROOT_DIR, fileName));
     Assert.assertEquals(fileStatInfo.getSize(), TEST_FILE_SIZE);
     Assert.assertEquals(fileStatInfo.getUid(), 1000);

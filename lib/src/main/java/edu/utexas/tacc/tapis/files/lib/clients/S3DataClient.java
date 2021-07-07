@@ -294,6 +294,7 @@ public class S3DataClient implements IS3DataClient {
     @Override
     public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
         String remotePath = DataClientUtils.getRemotePathForS3(rootDir, currentPath);
+        doesExist(remotePath);
         Stream<S3Object> response = listWithIterator(remotePath);
         response.forEach(object -> {
             String key = null, newKey = null;

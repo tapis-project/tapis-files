@@ -105,7 +105,7 @@ public class ChildTaskTransferService {
                 }
             })
             .flatMap(group -> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(10, 100, "ChildPool:" + group.key());
+                Scheduler scheduler = Schedulers.newBoundedElastic(5, 100, "ChildPool:" + group.key());
                 return group
                     .flatMap(
                         //We need the message in scope so we can ack/nack it later
@@ -120,7 +120,7 @@ public class ChildTaskTransferService {
                             )
                             .flatMap(t2 -> Mono.fromCallable(() -> doTransfer(t2))
                                 .retryWhen(
-                                    Retry.backoff(MAX_RETRIES * 10, Duration.ofMillis(100))
+                                    Retry.backoff( 10, Duration.ofMillis(100))
                                         .maxBackoff(Duration.ofSeconds(120))
                                         .scheduler(scheduler)
                                         .doBeforeRetry(signal-> log.error("RETRY", signal.failure()))

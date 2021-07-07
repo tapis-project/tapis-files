@@ -6,6 +6,7 @@ public class RuntimeSettings {
 
     static class BaseConfig implements IRuntimeConfig{
 
+        protected String hostName = settings.get("TAPIS_LOCAL_NODE_NAME", "devHost");
         protected String siteId = settings.get("tapis.side.id", "tacc");
         protected String dbHost = settings.get("DB_HOST", "localhost");
         protected String dbName = settings.get("DB_NAME", "dev");
@@ -19,6 +20,10 @@ public class RuntimeSettings {
         protected String servicePassword = settings.get("SERVICE_PASSWORD", "dev");
         protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
+
+        public String getHostName() {
+            return hostName;
+        }
 
         public String getDbHost() {
             return dbHost;

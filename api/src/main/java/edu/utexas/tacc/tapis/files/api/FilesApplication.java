@@ -18,6 +18,7 @@ import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
+import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource;
@@ -92,6 +93,7 @@ public class FilesApplication extends BaseResourceConfig {
         tenantManager.getTenants();
         JWTValidateRequestFilter.setSiteId(runtimeConfig.getSiteId());
         JWTValidateRequestFilter.setService("files");
+        SSHConnection.setLocalNodeName(runtimeConfig.getHostName());
         //JWT validation
         register(JWTValidateRequestFilter.class);
 
@@ -111,13 +113,13 @@ public class FilesApplication extends BaseResourceConfig {
         register(new AbstractBinder() {
             @Override
             protected void configure() {
+                bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(FileTransfersDAO.class);
                 bindAsContract(TransfersService.class);
                 bindAsContract(SystemsCache.class).in(Singleton.class);
                 bindAsContract(FilePermsService.class).in(Singleton.class);
                 bindAsContract(FilePermsCache.class).in(Singleton.class);
                 bind(tenantManager).to(TenantManager.class);
-                bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
                 bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
                 bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);

@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -13,10 +15,10 @@ import java.io.InputStream;
  *  also need to return the channel to the session and close that channel.
  */
 public class TapisSSHInputStream extends FilterInputStream {
-
-
     private SSHSftpClient sftpClient;
     private SSHConnectionHolder holder;
+    private static final Logger log = LoggerFactory.getLogger(TapisSSHInputStream.class);
+
     protected TapisSSHInputStream(InputStream in) {
         super(in);
     }
@@ -35,6 +37,7 @@ public class TapisSSHInputStream extends FilterInputStream {
     @Override
     public void close() throws IOException {
         super.close();
+        log.info("Closing Stream and returning sftp client");
         this.holder.returnSftpClient(sftpClient);
         sftpClient.close();
     }
