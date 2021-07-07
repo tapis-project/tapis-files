@@ -2,24 +2,22 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
-import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
+import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
-import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
-import edu.utexas.tacc.tapis.security.client.SKClient;
-import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
@@ -34,7 +32,10 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.*;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
 
 import javax.inject.Singleton;
 import javax.ws.rs.core.MultivaluedMap;
@@ -43,7 +44,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -70,8 +73,8 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     private SystemsClient systemsClient;
     private SKClient skClient;
     private ServiceJWT serviceJWT;
-    private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(1, TimeUnit.SECONDS);
-    private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory();
+    private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(1, TimeUnit.MINUTES);
+    private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
     private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
     private ITestContentsRoutes() throws Exception {
@@ -100,7 +103,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         testSystemDisabled.setEnabled(false);
         testSystemDisabled.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
-      //SSH system with username/password
+        //SSH system with username/password
         Credential sshCreds = new Credential();
         sshCreds.setAccessKey("testuser");
         sshCreds.setPassword("password");
@@ -145,7 +148,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
                     bindAsContract(FilePermsService.class);
                     bind(serviceContext).to(ServiceContext.class);
                     bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-                    bindAsContract(RemoteDataClientFactory.class);
+                    bind(remoteDataClientFactory).to(RemoteDataClientFactory.class);
                     bind(sshConnectionCache).to(SSHConnectionCache.class);
                 }
             });
@@ -236,7 +239,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
         InputStream is = response.readEntity(InputStream.class);
         ZipInputStream zis = new ZipInputStream(is);
         ZipEntry ze;
-        int count=0;
+        int count = 0;
         while ((ze = zis.getNextEntry()) != null) {
             log.info(ze.toString());
             count++;
@@ -343,13 +346,9 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 //    @Test(dataProvider = "testSystemsDataProvider")
     @Test
     public void testBadRequests() throws Exception {
-      when(systemsClient.getSystemWithCredentials(eq("testSystem"), any())).thenReturn(testSystem);
-      when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
-      when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
-      // TODO: How to mock and test a system that does not exist
-//      when(systemsClient.getSystemWithCredentials(eq("testMissingSystem"), any())).thenReturn(null);
-// TODO exception cannot be a checked exception and ServiceException is a checked exception
-//      when(systemsClient.getSystemWithCredentials(eq("testMissingSystem"), any())).thenThrow(new ServiceException("No system: testMissingSystem"));
+        when(systemsClient.getSystemWithCredentials(eq("testSystem"), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
+        when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
 
         Response response = target("/v3/files/content/testSystem/BAD-PATH/")
             .request()
@@ -359,17 +358,11 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
 
         // Attempt to retrieve from a system which is disabled
         response = target("/v3/files/content/testSystemDisabled/testfile1.txt")
-                .request()
-                .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
-                .get();
+            .request()
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get();
         Assert.assertEquals(response.getStatus(), 400);
 
-//        // Attempt to retrieve from a system which does not exist
-//        response = target("/v3/files/content/testMissingSystem/testfile1.txt")
-//              .request()
-//              .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
-//              .get();
-//        Assert.assertEquals(response.getStatus(), 404);
     }
 
     //TODO: Add tests for strange chars in filename or path.

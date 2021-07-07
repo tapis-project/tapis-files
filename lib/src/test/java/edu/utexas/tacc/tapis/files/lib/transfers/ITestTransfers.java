@@ -685,6 +685,46 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
     @Test()
+    public void test100Files() throws Exception {
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
+        //Add some files to transfer
+        for (var i=0;i<100;i++) {
+            fileOpsService.insert(sourceClient, String.format("a/%s.txt", i), Utils.makeFakeFile(10000 * 1024));
+        }
+
+
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("tapis://sourceSystem/a/");
+        element.setDestinationURI("tapis://destSystem/b/");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element);
+        TransferTask t1 = transfersService.createTransfer(
+            "testuser",
+            "dev",
+            "tag",
+            elements
+        );
+
+        Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
+        tasks.subscribe();
+
+        Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
+        stream.take(100).blockLast();
+
+        // MUST sleep here for a bit for a bit for things to resolve. Alternatively could
+        // use a StepVerifier or put some of this in the subscribe callback
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
+        Assert.assertEquals(listing.size(), 100);
+        t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
+        Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
+    }
+
+    @Test()
     public void testFullPipeline() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);

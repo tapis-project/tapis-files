@@ -19,10 +19,11 @@ import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -116,6 +117,7 @@ public class ITestUtilsRoutes extends BaseDatabaseIntegrationTest
     testSystemSSH.setRootDir(ROOT_DIR);
     testSystemSSH.setId(SYSTEM_ID);
     testSystemSSH.setEffectiveUserId(TEST_USR);
+    testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
 
     testSystems.add(testSystemSSH);
   }

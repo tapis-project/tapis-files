@@ -360,6 +360,7 @@ public class ChildTaskTransferService {
             destClient.insert(destURL.getPath(), observableInputStream);
         }
 
+
         //The ChildTransferTask gets updated in another thread so we look it up again here
         //before passing it on
         try {

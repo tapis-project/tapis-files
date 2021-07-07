@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
+import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
@@ -21,6 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.NotFoundException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -71,10 +74,10 @@ public class SSHDataClient implements ISSHDataClient {
 
     private final String host;
     private final String username;
-    private final SSHConnection sshConnection;
     private final String rootDir;
     private final String systemId;
     private final TapisSystem tapisSystem;
+    private final SSHConnectionHolder connectionHolder;
 
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
     private static final int MAX_PERMS_INT = Integer.parseInt("777", 8);
@@ -83,7 +86,7 @@ public class SSHDataClient implements ISSHDataClient {
     //   and may end with $
     private static final Pattern USER_REGEX = Pattern.compile("^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\\$)$");
 
-    public SSHDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem sys, SSHConnection sshCon) {
+    public SSHDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem sys, SSHConnectionHolder holder) {
         oboTenant = oboTenant1;
         oboUser = oboUser1;
         String rdir = sys.getRootDir();
@@ -93,7 +96,7 @@ public class SSHDataClient implements ISSHDataClient {
         username = sys.getEffectiveUserId();
         systemId = sys.getId();
         tapisSystem = sys;
-        sshConnection = sshCon;
+        connectionHolder = holder;
     }
 
     private void listDirectoryRec(String basePath, List<FileInfo> listing) throws IOException, NotFoundException {
@@ -130,9 +133,8 @@ public class SSHDataClient implements ISSHDataClient {
         List<DirEntry> dirEntries = new ArrayList<>();
         Path absolutePath = Paths.get(rootDir, remotePath);
         Path rootDirPath = Paths.get(rootDir);
-
-        try (SSHSftpClient sftpClient = sshConnection.getSftpClient();
-        ) {
+        SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+        try {
             Attributes attributes = sftpClient.stat(absolutePath.toString());
             if (attributes.isDirectory()) {
                 Iterable<DirEntry> tmp = sftpClient.readDir(absolutePath.toString());
@@ -149,6 +151,9 @@ public class SSHDataClient implements ISSHDataClient {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "ls", systemId, username, host, remotePath, e.getMessage());
                 throw new IOException(msg, e);
             }
+        } finally {
+            sftpClient.close();
+            connectionHolder.returnSftpClient(sftpClient);
         }
 
         // For each entry in the fileList received, get the fileInfo object
@@ -202,8 +207,8 @@ public class SSHDataClient implements ISSHDataClient {
         Path remote = Paths.get(rootDir, remotePath);
         Path rootDirPath = Paths.get(rootDir);
         Path relativePath = rootDirPath.relativize(remote);
-
-        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
+        SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+        try {
 
             Path tmpPath = Paths.get(rootDir);
             for (Path part: relativePath) {
@@ -220,6 +225,9 @@ public class SSHDataClient implements ISSHDataClient {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "mkdir", systemId, username, host, remotePath, e.getMessage());
                 throw new IOException(msg, e);
             }
+        } finally {
+            sftpClient.close();
+            connectionHolder.returnSftpClient(sftpClient);
         }
     }
 
@@ -229,17 +237,18 @@ public class SSHDataClient implements ISSHDataClient {
         Path absolutePath = Paths.get(rootDir, path).normalize();
         Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
         Path parentPath = relativeRemotePath.getParent();
-
+        SSHSftpClient sftpClient = connectionHolder.getSftpClient();
         try (fileStream) {
-            SSHSftpClient sftpClient = sshConnection.getSftpClient();
             if (parentPath != null) this.mkdir(parentPath.toString());
             OutputStream outputStream = sftpClient.write(absolutePath.toString());
             fileStream.transferTo(outputStream);
             outputStream.close();
-            sftpClient.close();
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "insertOrAppend", systemId, username, host, path, ex.getMessage());
             throw new IOException(msg, ex);
+        } finally {
+            sftpClient.close();
+            connectionHolder.returnSftpClient(sftpClient);
         }
     }
 
@@ -265,8 +274,8 @@ public class SSHDataClient implements ISSHDataClient {
         newPath = FilenameUtils.normalize(newPath);
         Path absoluteOldPath = Paths.get(rootDir, oldPath);
         Path absoluteNewPath = Paths.get(rootDir, newPath);
-
-        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
+        SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+        try {
             sftpClient.rename(absoluteOldPath.toString(), absoluteNewPath.toString());
         } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
@@ -276,6 +285,9 @@ public class SSHDataClient implements ISSHDataClient {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "move", systemId, username, host, oldPath, newPath, e.getMessage());
                 throw new IOException(msg, e);
             }
+        }  finally {
+            sftpClient.close();
+            connectionHolder.returnSftpClient(sftpClient);
         }
     }
 
@@ -297,8 +309,8 @@ public class SSHDataClient implements ISSHDataClient {
 
         //This will throw a NotFoundException if source is not there
         this.ls(currentPath);
+        SSHExecChannel channel = connectionHolder.getExecChannel();
         try  {
-            SSHExecChannel channel = sshConnection.getExecChannel();
             Map<String, String> args = new HashMap<>();
             args.put("targetParentPath", targetParentPath.toString());
             args.put("source", absoluteCurrentPath.toString());
@@ -322,6 +334,8 @@ public class SSHDataClient implements ISSHDataClient {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "copy", systemId, username, host, currentPath, newPath, e.getMessage());
                 throw new IOException(msg, e);
             }
+        } finally {
+            connectionHolder.returnExecChannel(channel);
         }
 
     }
@@ -351,7 +365,8 @@ public class SSHDataClient implements ISSHDataClient {
     @Override
     public void delete(@NotNull String path) throws IOException {
         path = FilenameUtils.normalize(path);
-        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
+        SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+        try  {
             recursiveDelete(sftpClient, path);
         } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
@@ -361,18 +376,21 @@ public class SSHDataClient implements ISSHDataClient {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "delete", systemId, username, host, path, e.getMessage());
                 throw new IOException(msg, e);
             }
+        } finally {
+            sftpClient.close();
+            connectionHolder.returnSftpClient(sftpClient);
         }
     }
 
     @Override
     public InputStream getStream(@NotNull String path) throws IOException {
         Path absPath = Paths.get(rootDir, path);
-
+        SSHSftpClient sftpClient = connectionHolder.getSftpClient();
         try {
-            SSHSftpClient sftpClient = sshConnection.getSftpClient();
             InputStream inputStream = sftpClient.read(absPath.toString());
-            TapisSSHInputStream shellInputStream = new TapisSSHInputStream(inputStream, sftpClient);
-            return shellInputStream;
+            //TapisSSHInputStream closes the sftp connection after reading completes
+
+            return new TapisSSHInputStream(inputStream, connectionHolder, sftpClient);
         } catch (IOException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, path);
@@ -393,24 +411,17 @@ public class SSHDataClient implements ISSHDataClient {
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
         Path absPath = Paths.get(rootDir, path).normalize();
+        SSHExecChannel channel = connectionHolder.getExecChannel();
         try {
-            SSHExecChannel channel = sshConnection.getExecChannel();
+            //TODO: This should use Piped streams
             String command = String.format("dd if=%s ibs=1 skip=%s count=%s", absPath.toString(), startByte, count);
-            PipedInputStream in = new PipedInputStream();
-            PipedInputStream inErr = new PipedInputStream();
-            PipedOutputStream out = new PipedOutputStream(in);
-            PipedOutputStream outErr = new PipedOutputStream(inErr);
-            new Thread(()->{
-                try {
-                    channel.execute(command, out, outErr);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (TapisException e) {
-                    e.printStackTrace();
-                }
-            }).start();
-            return in;
-        } catch (Exception e) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ByteArrayOutputStream outErr = new ByteArrayOutputStream();
+            channel.execute(command, out, outErr);
+            connectionHolder.returnExecChannel(channel);
+            return new ByteArrayInputStream(out.toByteArray());
+
+        } catch (TapisException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, path);
                 throw new NotFoundException(msg);
@@ -461,7 +472,8 @@ public class SSHDataClient implements ISSHDataClient {
         Path absolutePath = Paths.get(rootDir, safePath);
         String absolutePathStr = absolutePath.normalize().toString();
         Attributes sftpAttrs;
-        try (SSHSftpClient sftpClient = sshConnection.getSftpClient()) {
+        SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+        try {
             // If path is a symbolic link then stat gives info for the link target, lstat gives info for the link
             sftpAttrs = followLinks ? sftpClient.stat(absolutePathStr) : sftpClient.lstat(absolutePathStr);
         } catch (IOException e) {
@@ -473,6 +485,9 @@ public class SSHDataClient implements ISSHDataClient {
                     remotePath, e.getMessage());
                 throw new IOException(msg, e);
             }
+        } finally {
+            connectionHolder.returnSftpClient(sftpClient);
+            sftpClient.close();
         }
         // Populate the FileStatInfo object
         statInfo = new FileStatInfo(absolutePathStr, sftpAttrs.getUserId(), sftpAttrs.getGroupId(),
@@ -588,7 +603,7 @@ public class SSHDataClient implements ISSHDataClient {
         this.ls(safePath);
 
         // Build the command and execute it.
-        var cmdRunner = sshConnection.getExecChannel();
+        var cmdRunner = connectionHolder.getExecChannel();
 
         StringBuilder sb = new StringBuilder(opName);
         if (recursive) sb.append(" -R");
@@ -601,6 +616,7 @@ public class SSHDataClient implements ISSHDataClient {
                 remotePath, opName, stdOut, stdOut, stdOut);
             log.warn(msg);
         }
+        connectionHolder.returnExecChannel(cmdRunner);
         return new NativeLinuxOpResult(cmdStr, stdOut, String.valueOf(stdOut), String.valueOf(stdOut));
     }
 }

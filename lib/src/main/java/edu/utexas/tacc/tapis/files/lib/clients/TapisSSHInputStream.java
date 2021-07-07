@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import com.jcraft.jsch.Channel;
-import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
+import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
 
 import java.io.FilterInputStream;
@@ -16,9 +15,8 @@ import java.io.InputStream;
 public class TapisSSHInputStream extends FilterInputStream {
 
 
-    private SSHSftpClient connection;
-    private Channel channel;
-
+    private SSHSftpClient sftpClient;
+    private SSHConnectionHolder holder;
     protected TapisSSHInputStream(InputStream in) {
         super(in);
     }
@@ -28,15 +26,17 @@ public class TapisSSHInputStream extends FilterInputStream {
         return super.read();
     }
 
-    public TapisSSHInputStream(InputStream in, SSHSftpClient connection) {
+    public TapisSSHInputStream(InputStream in, SSHConnectionHolder holder, SSHSftpClient client) {
         super(in);
-        this.connection = connection;
+        this.sftpClient = client;
+        this.holder = holder;
     }
 
     @Override
     public void close() throws IOException {
         super.close();
-        this.connection.close();
+        this.holder.returnSftpClient(sftpClient);
+        sftpClient.close();
     }
 
     @Override
