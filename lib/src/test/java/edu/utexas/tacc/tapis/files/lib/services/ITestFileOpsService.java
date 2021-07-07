@@ -3,7 +3,6 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -128,7 +127,6 @@ public class ITestFileOpsService {
         ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
             @Override
             protected void configure() {
-                bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
                 bind(permsService).to(FilePermsService.class).ranked(1);
             }

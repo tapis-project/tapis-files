@@ -12,7 +12,6 @@ import edu.utexas.tacc.tapis.files.api.resources.*;
 import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
@@ -117,7 +116,6 @@ public class FilesApplication extends BaseResourceConfig {
                 bindAsContract(FilePermsService.class).in(Singleton.class);
                 bindAsContract(FilePermsCache.class).in(Singleton.class);
                 bind(tenantManager).to(TenantManager.class);
-                bind(new SSHConnectionCache(2, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
                 bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
                 bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);

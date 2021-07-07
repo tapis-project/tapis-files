@@ -12,7 +12,6 @@ import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
@@ -136,7 +135,6 @@ public abstract class BaseDatabaseIntegrationTest  {
             @Override
             protected void configure() {
             bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-            bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
             bindAsContract(SystemsCache.class).in(Singleton.class);
             bindAsContract(TransfersService.class).in(Singleton.class);
             bindAsContract(ChildTaskTransferService.class).in(Singleton.class);

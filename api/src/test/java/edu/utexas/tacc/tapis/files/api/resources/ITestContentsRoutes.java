@@ -13,7 +13,6 @@ import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.security.client.SKClient;
@@ -70,7 +69,6 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     private SystemsClient systemsClient;
     private SKClient skClient;
     private ServiceJWT serviceJWT;
-    private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(1, TimeUnit.SECONDS);
     private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory();
     private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
@@ -146,7 +144,6 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
                     bind(serviceContext).to(ServiceContext.class);
                     bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
                     bindAsContract(RemoteDataClientFactory.class);
-                    bind(sshConnectionCache).to(SSHConnectionCache.class);
                 }
             });
 

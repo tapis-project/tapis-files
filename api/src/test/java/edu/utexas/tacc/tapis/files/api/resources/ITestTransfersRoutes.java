@@ -7,7 +7,6 @@ import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
-import edu.utexas.tacc.tapis.shared.ssh.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
@@ -118,7 +117,6 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
                     bindAsContract(TransfersService.class).in(Singleton.class);
                     bindAsContract(FileTransfersDAO.class);
                     bindAsContract(RemoteDataClientFactory.class);
-                    bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
 
                 }
             });
