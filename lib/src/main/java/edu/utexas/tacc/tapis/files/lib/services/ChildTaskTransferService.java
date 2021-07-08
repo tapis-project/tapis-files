@@ -255,6 +255,8 @@ public class ChildTaskTransferService {
             .filter((controlAction)-> controlAction.getTaskId() == taskChild.getTaskId())
             .subscribe( (message)-> {
                 future.cancel(true);
+            }, (err)->{
+                log.error(err.getMessage(), err);
             });
 
         try {

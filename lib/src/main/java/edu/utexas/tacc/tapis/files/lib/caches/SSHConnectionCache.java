@@ -21,9 +21,7 @@ import java.util.concurrent.TimeUnit;
  * checked to see if the SSH sessions are active or not. If the session is not active, it
  * is disconnected and removed from the cache. THe next get() operation on the cache will reinstantiate
  * the connection and place it back in the cache.
- *
- * This should be the main point of entry for
- *
+ **
  * A single threaded ScheduledExecutorService is used to periodically do the maintenance
  *
  * The cache key is a combination of systemId, tenant and username
@@ -48,13 +46,12 @@ public class SSHConnectionCache {
                 .build(new SSHConnectionCacheLoader());
         executorService.scheduleAtFixedRate( ()-> {
             sessionCache.asMap().forEach( (SSHConnectionCacheKey key, SSHConnectionHolder holder) -> {
-                if (holder.getChannelCount() <= 0) {
+                //TODO: Should never go negative!
+                if (holder.getChannelCount() == 0) {
                     log.info("Closing SSH connecting from cache: {} for user {}", holder.getSshConnection().getHost(), holder.getSshConnection().getUsername());
+                    //Not sure what to do there?
+                    holder.getSshConnection().stop();
                     sessionCache.invalidate(key);
-                    try {
-                        //Not sure what to do there?
-                        holder.getSshConnection().getSession().close();
-                    } catch (IOException ignored) {}
                 }
             });
         }, this.timeout, this.timeout, this.timeUnit); //

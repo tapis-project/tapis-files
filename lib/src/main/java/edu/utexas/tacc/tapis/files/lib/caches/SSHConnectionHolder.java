@@ -4,22 +4,20 @@ import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHExecChannel;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHScpClient;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
-import org.apache.sshd.client.session.ClientSession;
-import org.apache.sshd.common.channel.Channel;
-import org.apache.sshd.common.channel.ChannelListener;
-import org.apache.sshd.common.session.Session;
-import org.apache.sshd.common.session.SessionListener;
 import org.apache.sshd.sftp.client.SftpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SSHConnectionHolder {
     private static final Logger log = LoggerFactory.getLogger(SSHConnectionHolder.class);
     private final SSHConnection sshConnection;
-    private final AtomicInteger counter = new AtomicInteger();
+    private final Set<SSHSftpClient> sftpClientSet = ConcurrentHashMap.newKeySet();
+    private final Set<SSHExecChannel> execChannelSet = ConcurrentHashMap.newKeySet();
+    private final Set<SSHScpClient> scpClientSet = ConcurrentHashMap.newKeySet();
 
     public SSHConnectionHolder(SSHConnection sshConnection) {
         this.sshConnection = sshConnection;
@@ -27,45 +25,47 @@ public class SSHConnectionHolder {
 
     public synchronized void returnSftpClient(SSHSftpClient client) throws IOException {
         client.close();
-        counter.decrementAndGet();
-        log.info("returnSftpClient: {}", counter);
+        sftpClientSet.remove(client);
+        log.info("returnSftpClient: {}", getChannelCount());
     }
 
     public synchronized SSHSftpClient getSftpClient() throws IOException {
+        SSHSftpClient client;
         try {
-            counter.incrementAndGet();
-            log.info("getSftpClient: {}", counter);
-            return sshConnection.getSftpClient();
+            client = sshConnection.getSftpClient();
         } catch (IOException ex) {
-            counter.decrementAndGet();
-            log.info("getSftpClient: {}", counter);
             throw ex;
         }
+        sftpClientSet.add(client);
+        log.info("getSftpClient: {}", getChannelCount());
+        return client;
     }
 
     public synchronized SSHExecChannel getExecChannel() {
-        counter.incrementAndGet();
-        log.info("getExecChannel: {}", counter);
-        return sshConnection.getExecChannel();
+        log.info("getExecChannel: {}", getChannelCount());
+        SSHExecChannel channel = sshConnection.getExecChannel();
+        execChannelSet.add(channel);
+        return channel;
     }
 
     public synchronized void returnExecChannel(SSHExecChannel channel) {
-        counter.decrementAndGet();
-        log.info("returnExecChannel: {}", counter);
+        execChannelSet.remove(channel);
+        log.info("returnExecChannel: {}", getChannelCount());
     }
 
     public synchronized SSHScpClient getScpClient() throws IOException {
+        SSHScpClient scpClient;
         try {
-            counter.incrementAndGet();
-            return sshConnection.getScpClient();
+            scpClient = sshConnection.getScpClient();
         } catch (IOException ex) {
-            counter.decrementAndGet();
             throw ex;
         }
+        scpClientSet.add(scpClient);
+        return scpClient;
     }
 
-    public synchronized void returnScpClient() {
-        counter.decrementAndGet();
+    public synchronized void returnScpClient(SSHScpClient client) {
+        scpClientSet.remove(client);
     }
 
 
@@ -75,7 +75,7 @@ public class SSHConnectionHolder {
 
 
     public synchronized int getChannelCount() {
-        return counter.get();
+        return sftpClientSet.size() + scpClientSet.size() + execChannelSet.size();
     }
 
 }
