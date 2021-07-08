@@ -100,7 +100,7 @@ public class ParentTaskTransferService {
                 }
             })
             .flatMap(group -> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(10, 10, "ParentPool:" + group.key());
+                Scheduler scheduler = Schedulers.newBoundedElastic(5, 10, "ParentPool:" + group.key());
                 return group
                     .flatMap(m ->
                         deserializeParentMessage(m)

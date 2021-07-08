@@ -49,9 +49,12 @@ public class SSHConnectionCache {
         executorService.scheduleAtFixedRate( ()-> {
             sessionCache.asMap().forEach( (SSHConnectionCacheKey key, SSHConnectionHolder holder) -> {
                 if (holder.getChannelCount() == 0) {
-                    log.info("Closing SSH connecting from cache: {}", holder);
-                    holder.getSshConnection().close();
+                    log.info("Closing SSH connecting from cache: {} for user {}", holder.getSshConnection().getHost(), holder.getSshConnection().getUsername());
                     sessionCache.invalidate(key);
+                    try {
+                        //Not sure what to do there?
+                        holder.getSshConnection().getSession().close();
+                    } catch (IOException ignored) {}
                 }
             });
         }, this.timeout, this.timeout, this.timeUnit); //

@@ -240,7 +240,8 @@ public class ChildTaskTransferService {
     public TransferTaskChild doTransfer(TransferTaskChild taskChild) throws ServiceException, IOException {
 
         //We are going to run the meat of the transfer, checvron2 in a separate Future which we can cancel.
-        //This just sets up the future, we first subscribe to the control messages and then
+        //This just sets up the future, we first subscribe to the control messages and then start the future
+        //which is a blocking call.
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<TransferTaskChild> future = executorService.submit(new Callable<TransferTaskChild>() {
             @Override
@@ -287,6 +288,7 @@ public class ChildTaskTransferService {
      */
     private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException {
 
+        //If we are cancelled/failed we can skip the transfer
         if (taskChild.isTerminal()) return taskChild;
 
         TapisSystem sourceSystem;
@@ -373,13 +375,16 @@ public class ChildTaskTransferService {
 
 
     /**
+     * This method is called during the actual transfer of bytes. As the stream is read, events on
+     * the number of bytes transferred are passed here to be written to the datastore.
      * @param bytesSent total bytes sent in latest update
      * @param taskChild The transfer task that is being worked on currently
      * @return Mono with number of bytes sent
      */
     private Mono<Long> updateProgress(Long bytesSent, TransferTaskChild taskChild) {
-        //Important, CANNOT update the status here, the taskChild from chevron2 might actually
-        //be cancelled. That would overwrite the DB from CANCELLED to IN_PROGRESS.
+        // Be careful here if any other updates need to be done, this method (probably) runs in a different
+        // thread than the main thread. It is possible for the TransferTaskChild passed in above to have been updated
+        // on a different thread.
         try {
             dao.updateTransferTaskChildBytesTransferred(taskChild, bytesSent);
             return Mono.just(bytesSent);
