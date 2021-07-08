@@ -69,12 +69,12 @@ public class SSHConnectionHolder {
     }
 
 
-    public SSHConnection getSshConnection() {
+    public synchronized SSHConnection getSshConnection() {
         return sshConnection;
     }
 
 
-    public int getChannelCount() {
+    public synchronized int getChannelCount() {
         return counter.get();
     }
 
