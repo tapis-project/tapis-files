@@ -68,7 +68,7 @@ public class FileStatInfo
   * Convert permissions from int representation to string,
   *   e.g. 755 -> rwxr-xr-x
   */
- private static String getPermsFromInt(int permsAsInt)
+ public static String getPermsFromInt(int permsAsInt)
  {
    StringBuilder sb = new StringBuilder();
    if ((permsAsInt & 256) != 0) sb.append('r'); else sb.append('-');

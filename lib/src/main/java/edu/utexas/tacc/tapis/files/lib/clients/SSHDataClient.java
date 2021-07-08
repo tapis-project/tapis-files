@@ -178,9 +178,9 @@ public class SSHDataClient implements ISSHDataClient {
             } else {
                 fileInfo.setType("file");
             }
-            fileInfo.setOwner(String.valueOf(attrs.getOwner()));
+            fileInfo.setOwner(String.valueOf(attrs.getUserId()));
             fileInfo.setGroup(String.valueOf(attrs.getGroupId()));
-            fileInfo.setNativePermissions(String.valueOf(attrs.getPermissions()));
+            fileInfo.setNativePermissions(FileStatInfo.getPermsFromInt(attrs.getPermissions()));
             //Path should be relative to rootDir
             Path tmpFilePath = Paths.get(rootDir, entry.getFilename());
             if (tmpFilePath.equals(absolutePath)) {
