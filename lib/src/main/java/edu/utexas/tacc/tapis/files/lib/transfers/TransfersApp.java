@@ -46,7 +46,7 @@ public class TransfersApp {
         ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
             @Override
             protected void configure() {
-                bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class);
                 bindAsContract(SystemsCache.class).in(Singleton.class);
                 bindAsContract(FileTransfersDAO.class);
