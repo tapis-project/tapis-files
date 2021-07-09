@@ -696,8 +696,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         for (var i=0;i<100;i++) {
             fileOpsService.insert(sourceClient, String.format("a/%s.txt", i), Utils.makeFakeFile(10000 * 1024));
         }
-
-
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a/");
         element.setDestinationURI("tapis://destSystem/b/");

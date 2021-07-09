@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
+import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -59,6 +60,7 @@ public class ITestFileOpsService {
     private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
     private ITestFileOpsService() throws IOException {
+        SSHConnection.setLocalNodeName("dev");
         String privateKey = IOUtils.toString(
                 this.getClass().getResourceAsStream("/test-machine"),
                 StandardCharsets.UTF_8

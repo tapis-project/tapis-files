@@ -3,8 +3,6 @@ package edu.utexas.tacc.tapis.files.lib.caches;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
