@@ -239,7 +239,7 @@ public class ChildTaskTransferService {
 
     public TransferTaskChild doTransfer(TransferTaskChild taskChild) throws ServiceException, IOException {
 
-        //We are going to run the meat of the transfer, checvron2 in a separate Future which we can cancel.
+        //We are going to run the meat of the transfer, chevron2 in a separate Future which we can cancel.
         //This just sets up the future, we first subscribe to the control messages and then start the future
         //which is a blocking call.
         ExecutorService executorService = Executors.newSingleThreadExecutor();
