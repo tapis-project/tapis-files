@@ -901,35 +901,6 @@
         }
       }
     },
-    "/v3/files/transfers/{transferTaskId}/details" : {
-      "get" : {
-        "tags" : [ "transfers" ],
-        "summary" : "Get details of a transfer task",
-        "operationId" : "getTransferTaskDetails",
-        "parameters" : [ {
-          "name" : "transferTaskId",
-          "in" : "path",
-          "description" : "Transfer task ID",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          },
-          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/TransferTaskResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v3/files/transfers/{transferTaskId}" : {
       "get" : {
         "tags" : [ "transfers" ],
@@ -979,6 +950,35 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/StringResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v3/files/transfers/{transferTaskId}/details" : {
+      "get" : {
+        "tags" : [ "transfers" ],
+        "summary" : "Get details of a transfer task",
+        "operationId" : "getTransferTaskDetails",
+        "parameters" : [ {
+          "name" : "transferTaskId",
+          "in" : "path",
+          "description" : "Transfer task ID",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          },
+          "example" : "6491c2a5-acb2-40ef-b2c0-bc1fc4cd7e6c"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransferTaskResponse"
                 }
               }
             }
@@ -1595,6 +1595,29 @@
           }
         }
       },
+      "TransferTaskListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "result" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TransferTask"
+            }
+          },
+          "version" : {
+            "type" : "string"
+          },
+          "metadata" : {
+            "type" : "object"
+          }
+        }
+      },
       "TransferTaskParent" : {
         "type" : "object",
         "properties" : {
@@ -1708,29 +1731,6 @@
           "optional" : {
             "type" : "boolean",
             "description" : "Allow the full transfer to succeed even if this portion fails? Default is false"
-          }
-        }
-      },
-      "TransferTaskListResponse" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "result" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/TransferTask"
-            }
-          },
-          "version" : {
-            "type" : "string"
-          },
-          "metadata" : {
-            "type" : "object"
           }
         }
       },
