@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 1.0.0 - 2021-07-14
+## 1.0.0 - 2021-07-16
 
 Initial release supporting basic file operations in the Tapis ecosystem.
 Users can perform file listing, uploading, operations such as move/copy/delete
