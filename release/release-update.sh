@@ -21,7 +21,7 @@ RC_VER=$3
 # service contains three docker images as part of deployment
 IMG1="tapis-files"
 IMG2="tapis-files-workers"
-IMG2="tapis-files-migrations"
+IMG3="tapis-files-migrations"
 
 # Check number of arguments
 if [ $# -ne 3 ]; then
@@ -53,16 +53,9 @@ TAG_DEV1="${REPO}/${IMG1}:dev"
 TAG_DEV2="${REPO}/${IMG2}:dev"
 TAG_DEV3="${REPO}/${IMG3}:dev"
 
-# If branch name is UNKNOWN or empty as might be the case in a jenkins job then
-#   set it to GIT_BRANCH. Jenkins jobs should have this set in the env.
-if [ -z "$GIT_BRANCH_LBL" -o "x$GIT_BRANCH_LBL" = "xUNKNOWN" ]; then
-  GIT_BRANCH_LBL=$(echo "$GIT_BRANCH" | awk -F"/" '{print $2}')
-fi
-
 # Build images from Dockerfiles
 echo "Building local images"
 echo "  VER=        ${VER}"
-echo "  GIT_BRANCH_LBL= ${GIT_BRANCH_LBL}"
 echo "  GIT_COMMIT= ${GIT_COMMIT}"
 
 cd ..
