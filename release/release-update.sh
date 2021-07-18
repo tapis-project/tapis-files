@@ -65,9 +65,10 @@ echo "  VER=        ${VER}"
 echo "  GIT_BRANCH_LBL= ${GIT_BRANCH_LBL}"
 echo "  GIT_COMMIT= ${GIT_COMMIT}"
 
-docker build -f ../deploy/Dockerfile -t "${TAG_UNIQ1}" .
-docker build -f ../deploy/Dockerfile.workers -t "${TAG_UNIQ2}" .
-docker build -f ../deploy/Dockerfile.migrations -t "${TAG_UNIQ3}" .
+cd ..
+docker build -f ./deploy/Dockerfile -t "${TAG_UNIQ1}" .
+docker build -f ./deploy/Dockerfile.workers -t "${TAG_UNIQ2}" .
+docker build -f ./deploy/Dockerfile.migrations -t "${TAG_UNIQ3}" .
 
 echo "Creating RC and DEV image tags"
 docker tag "$TAG_UNIQ1" "$TAG_RC1"
