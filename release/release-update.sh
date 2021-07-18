@@ -9,12 +9,14 @@
 #
 
 PrgName=$(basename "$0")
-USAGE="Usage: $PrgName { <rc_version> }"
+USAGE="Usage: $PrgName { <tapis_version> <commit_hash> <rc_version> }"
 
 SVC_NAME="files"
 REPO="tapis"
 BUILD_DIR="../api/target"
-RC_VER=$1
+VER=$1
+GIT_COMMIT=$2
+RC_VER=$3
 
 # service contains three docker images as part of deployment
 IMG1="tapis-files"
@@ -22,7 +24,7 @@ IMG2="tapis-files-workers"
 IMG2="tapis-files-migrations"
 
 # Check number of arguments
-if [ $# -ne 1 ]; then
+if [ $# -ne 3 ]; then
   echo $USAGE
   exit 1
 fi
@@ -41,12 +43,9 @@ if [ ! -d "$BUILD_DIR" ]; then
 fi
 
 # Set variables used for build
-VER=$(cat classes/tapis.version)
-GIT_BRANCH_LBL=$(awk '{print $1}' classes/git.info)
-GIT_COMMIT_LBL=$(awk '{print $2}' classes/git.info)
-TAG_UNIQ1="${REPO}/${IMG1}:${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
-TAG_UNIQ2="${REPO}/${IMG2}:${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
-TAG_UNIQ3="${REPO}/${IMG3}:${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
+TAG_UNIQ1="${REPO}/${IMG1}:${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT}"
+TAG_UNIQ2="${REPO}/${IMG2}:${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT}"
+TAG_UNIQ3="${REPO}/${IMG3}:${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT}"
 TAG_RC1="${REPO}/${IMG1}:${VER}-rc${RC_VER}"
 TAG_RC2="${REPO}/${IMG2}:${VER}-rc${RC_VER}"
 TAG_RC3="${REPO}/${IMG3}:${VER}-rc${RC_VER}"
