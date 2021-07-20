@@ -1,1 +1,1 @@
-${project.version}-${buildNumber}
+${project.version}
