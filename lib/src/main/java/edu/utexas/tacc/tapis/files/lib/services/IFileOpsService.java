@@ -18,7 +18,7 @@ public interface IFileOpsService {
 
     List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException, NotFoundException, ForbiddenException;
 
-    List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull int maxDepth) throws ServiceException, NotFoundException, ForbiddenException;
+    List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth) throws ServiceException, NotFoundException, ForbiddenException;
 
     void mkdir(@NotNull IRemoteDataClient client, String path) throws ServiceException;
 

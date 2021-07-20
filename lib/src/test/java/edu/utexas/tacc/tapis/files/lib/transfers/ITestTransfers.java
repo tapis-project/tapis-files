@@ -242,9 +242,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     @Test
     public void failsTransferWhenParentFails() throws Exception {
-        //TODO: this is a cheesy way to make this break, but it does.
-        sourceSystem.setHost("");
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(null);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
 
@@ -273,9 +271,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(t1.getParentTasks().get(0).getErrorMessage());
 
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
-
         Assert.assertEquals(children.size(), 0);
-        sourceSystem.setHost("http://localhost");
     }
 
 
@@ -540,7 +536,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("https://google.com");
-        element.setDestinationURI("tapis://destSystem/b/");
+        element.setDestinationURI("tapis://destSystem/b/input.html");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(

@@ -51,16 +51,19 @@ public class ParentTaskTransferService {
     private final RemoteDataClientFactory remoteDataClientFactory;
     private final FilePermsService permsService;
     private final SystemsCache systemsCache;
+    private final IFileOpsService fileOpsService;
     private static final Logger log = LoggerFactory.getLogger(ParentTaskTransferService.class);
 
     @Inject
     public ParentTaskTransferService(TransfersService transfersService,
                                      FileTransfersDAO dao,
+                                     IFileOpsService fileOpsService,
                                      FilePermsService permsService,
                                      RemoteDataClientFactory remoteDataClientFactory,
                                      SystemsCache systemsCache) {
         this.transfersService = transfersService;
         this.dao = dao;
+        this.fileOpsService = fileOpsService;
         this.systemsCache = systemsCache;
         this.remoteDataClientFactory = remoteDataClientFactory;
         this.permsService = permsService;
@@ -257,7 +260,7 @@ public class ParentTaskTransferService {
 
                 //TODO: Retries will break this, should delete anything in the DB if it is a retry?
                 List<FileInfo> fileListing;
-                fileListing = sourceClient.ls(sourceURI.getPath());
+                fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 5);
                 List<TransferTaskChild> children = new ArrayList<>();
                 long totalBytes = 0;
                 for (FileInfo f : fileListing) {

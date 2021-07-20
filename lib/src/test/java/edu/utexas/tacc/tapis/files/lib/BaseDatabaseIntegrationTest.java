@@ -94,7 +94,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
         testSystemSSH.setRootDir("/data/home/testuser/");
-        testSystemSSH.setId("destSystem");
+        testSystemSSH.setId("testSystemSSH");
         testSystemSSH.setEffectiveUserId("testuser");
         testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
 
@@ -107,7 +107,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemS3.setTenant("dev");
         testSystemS3.setHost("http://localhost");
         testSystemS3.setBucketName("test");
-        testSystemS3.setId("sourceSystem");
+        testSystemS3.setId("testSystemS3");
         testSystemS3.setPort(9000);
         testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
@@ -123,7 +123,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemPKI.setHost("localhost");
         testSystemPKI.setPort(2222);
         testSystemPKI.setRootDir("/data/home/testuser/");
-        testSystemPKI.setId("testSystem");
+        testSystemPKI.setId("testSystemPKI");
         testSystemPKI.setEffectiveUserId("testuser");
         testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
         ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
