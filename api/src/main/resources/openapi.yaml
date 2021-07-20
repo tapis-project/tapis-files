@@ -1142,6 +1142,21 @@ components:
         endTime:
           type: string
           format: date-time
+    TransferTaskListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransferTask'
+        version:
+          type: string
+        metadata:
+          type: object
     TransferTaskParent:
       type: object
       properties:
@@ -1236,21 +1251,6 @@ components:
           type: boolean
           description: Allow the full transfer to succeed even if this portion fails?
             Default is false
-    TransferTaskListResponse:
-      type: object
-      properties:
-        status:
-          type: string
-        message:
-          type: string
-        result:
-          type: array
-          items:
-            $ref: '#/components/schemas/TransferTask'
-        version:
-          type: string
-        metadata:
-          type: object
     FileStatInfo:
       type: object
       properties:
