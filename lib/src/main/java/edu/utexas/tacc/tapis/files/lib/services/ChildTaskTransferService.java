@@ -110,7 +110,7 @@ public class ChildTaskTransferService {
                     .flatMap(
                         //We need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
-                            .subscribeOn(scheduler)
+                            .publishOn(scheduler)
                             .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))

@@ -47,11 +47,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Path("/v3/files/ops")
 public class OperationsApiResource extends BaseFileOpsResource {
 
+    private static final int MAX_RECURSION_DEPTH = 10;
     private static final String EXAMPLE_SYSTEM_ID = "system123";
     private static final String EXAMPLE_PATH = "/folderA/folderB/";
     private static final Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
@@ -101,6 +103,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         @Parameter(description = "path relative to root of bucket/folder", required = false, example = EXAMPLE_PATH) @PathParam("path") String path,
         @Parameter(description = "pagination limit", example = "100") @DefaultValue("1000") @QueryParam("limit") @Max(1000) int limit,
         @Parameter(description = "pagination offset", example = "1000") @DefaultValue("0") @QueryParam("offset") @Min(0) long offset,
+        @Parameter(description = "recursive listing", example = "false") @DefaultValue("false") @QueryParam("recurse") boolean recurse,
         @Context SecurityContext securityContext) {
         String opName = "listFiles";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
@@ -108,7 +111,12 @@ public class OperationsApiResource extends BaseFileOpsResource {
         try {
             Instant start = Instant.now();
             IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-            List<FileInfo> listing = fileOpsService.ls(client, path, limit, offset);
+            List<FileInfo> listing = new ArrayList<>();
+            if (recurse) {
+                listing = fileOpsService.lsRecursive(client, path, MAX_RECURSION_DEPTH);
+            } else {
+                listing = fileOpsService.ls(client, path, limit, offset);
+            }
             String msg = Utils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
             log.debug(msg);
             TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);

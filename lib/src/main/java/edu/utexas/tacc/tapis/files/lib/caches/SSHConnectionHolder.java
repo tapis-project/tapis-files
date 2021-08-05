@@ -26,7 +26,7 @@ public class SSHConnectionHolder {
     public synchronized void returnSftpClient(SSHSftpClient client) throws IOException {
         client.close();
         sftpClientSet.remove(client);
-        log.info("returnSftpClient: {}", getChannelCount());
+        log.debug("returnSftpClient: {}", getChannelCount());
     }
 
     public synchronized SSHSftpClient getSftpClient() throws IOException {
@@ -37,7 +37,7 @@ public class SSHConnectionHolder {
             throw ex;
         }
         sftpClientSet.add(client);
-        log.info("getSftpClient: {}", getChannelCount());
+        log.debug("getSftpClient: {}", getChannelCount());
         return client;
     }
 
@@ -50,7 +50,7 @@ public class SSHConnectionHolder {
 
     public synchronized void returnExecChannel(SSHExecChannel channel) {
         execChannelSet.remove(channel);
-        log.info("returnExecChannel: {}", getChannelCount());
+        log.debug("returnExecChannel: {}", getChannelCount());
     }
 
     public synchronized SSHScpClient getScpClient() throws IOException {

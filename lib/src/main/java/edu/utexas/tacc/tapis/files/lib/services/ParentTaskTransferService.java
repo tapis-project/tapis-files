@@ -260,7 +260,7 @@ public class ParentTaskTransferService {
 
                 //TODO: Retries will break this, should delete anything in the DB if it is a retry?
                 List<FileInfo> fileListing;
-                fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 5);
+                fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 10);
                 List<TransferTaskChild> children = new ArrayList<>();
                 long totalBytes = 0;
                 for (FileInfo f : fileListing) {

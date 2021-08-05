@@ -41,7 +41,7 @@ public class FileOpsService implements IFileOpsService {
 
     // 0 = tenantBaseUri, 1=systemId, 2=path
     private String TAPIS_FILES_URI_FORMAT = "tapis://{0}/{1}/{2}";
-    private static int MAX_RECURSION = 20;
+    private static final int MAX_RECURSION = 20;
 
     @Inject
     public FileOpsService(FilePermsService permsService) {

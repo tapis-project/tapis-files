@@ -104,6 +104,9 @@
                 </configuration>
             </plugin>
 
+            <!--  this runs a little sed script on the generated openapi specs from above. The current python clients cannot
+                       handle integer status codes in the openapi specs, so this script replaces all the 200,300 etc with
+                       "200", "300" etc -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>

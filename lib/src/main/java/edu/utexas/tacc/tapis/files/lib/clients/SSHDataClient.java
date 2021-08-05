@@ -99,17 +99,6 @@ public class SSHDataClient implements ISSHDataClient {
         connectionHolder = holder;
     }
 
-    private void listDirectoryRec(String basePath, List<FileInfo> listing) throws IOException, NotFoundException {
-        List<FileInfo> currentListing = this.ls(basePath);
-        listing.addAll(currentListing);
-        for (FileInfo fileInfo : currentListing) {
-            if (fileInfo.isDir()) {
-                listDirectoryRec(fileInfo.getPath(), listing);
-            }
-        }
-    }
-
-
     public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
         return this.ls(remotePath, MAX_LISTING_SIZE, 0);
     }
@@ -444,12 +433,6 @@ public class SSHDataClient implements ISSHDataClient {
     @Override
     public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
         insertOrAppend(path, byteStream, true);
-    }
-
-    public List<FileInfo> lsRecursive(String basePath) throws IOException, NotFoundException {
-        List<FileInfo> filesList = new ArrayList<>();
-        listDirectoryRec(basePath, filesList);
-        return filesList;
     }
 
     // ------------------------------

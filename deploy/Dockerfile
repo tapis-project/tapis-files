@@ -1,4 +1,4 @@
-FROM maven:3-openjdk-15 AS build
+FROM openjdk:15 AS build
 EXPOSE 8080
 WORKDIR /app
 # Just copy the jars needed

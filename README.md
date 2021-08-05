@@ -53,7 +53,14 @@ mvn clean install -DskipITs=false -DAPP_ENV=test
 You should also be able to hit the API from postman at 
 `localhost:8080/v3/files/ops/{systemID}/{path}` 
 
-Profit
+Profit 
+
+### specCleaner.sh 
+
+There is (was?) an issue with the python sdk generation where it would error out if the
+status codes in the openapi specs were integers and not strings. There is a little script called
+`specCleaner.sh` in the resources of the api module that cleans the spec up. This is run automatically
+as part of the maven build process. 
 
 
 

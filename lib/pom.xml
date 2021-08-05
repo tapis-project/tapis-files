@@ -47,6 +47,11 @@
             <version>${tapis-shared-java.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.jglobus</groupId>
+            <artifactId>gridftp</artifactId>
+            <version>${globus.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.sshd</groupId>
             <artifactId>sshd-core</artifactId>
         </dependency>
