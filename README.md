@@ -46,7 +46,7 @@ mvn clean install -DskipITs=false -DAPP_ENV=test
 ### Run migrations
 
 ```
-╰─$ mvn -pl migrations flyway:clean flyway:migrate -Dflyway.url=jdbc:postgresql://localhost:5432/dev -Dflyway.user=dev -Dflyway.password=dev -U
+╰─$ mvn -pl migrations flyway:clean flyway:migrate -Dflyway.skip=false -Dflyway.url=jdbc:postgresql://localhost:5432/dev -Dflyway.user=dev -Dflyway.password=dev -U
 ```
 
 ### Hit the API

@@ -132,6 +132,7 @@ public class FileTransfersDAO {
             task.setRetries(rs.getInt("retries"));
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
+            task.setDir(rs.getBoolean("is_dir"));
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             task.setErrorMessage(rs.getString("error_message"));
@@ -506,7 +507,8 @@ public class FileTransfersDAO {
                 child.getDestinationURI().toString(),
                 child.getStatus().name(),
                 child.getBytesTransferred(),
-                child.getTotalBytes()
+                child.getTotalBytes(),
+                child.isDir()
             });
         });
         Object[][] t = new Object[params.size()][];
@@ -536,7 +538,8 @@ public class FileTransfersDAO {
                 task.getDestinationURI().toString(),
                 task.getStatus().name(),
                 task.getBytesTransferred(),
-                task.getTotalBytes()
+                task.getTotalBytes(),
+                task.isDir()
             );
 
             return child;

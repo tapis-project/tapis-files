@@ -313,6 +313,40 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     }
 
+    @Test
+    public void testEmptyDirectories() throws Exception {
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
+
+        fileOpsService.insert(sourceClient,"a/1.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.insert(sourceClient,"a/2.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.mkdir(sourceClient, "a/b/c/d/");
+
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("tapis://sourceSystem/a");
+        element.setDestinationURI("tapis://destSystem/dest/");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element);
+        TransferTask t1 = transfersService.createTransfer(
+            "testuser",
+            "dev",
+            "tag",
+            elements
+        );
+        Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
+        tasks.subscribe();
+        Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
+        //Take for 5 secs then finish
+        stream.take(Duration.ofSeconds(5)).blockLast();
+
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/dest/b/c/");
+        Assert.assertTrue(listing.size() > 0);
+    }
+
     @DataProvider
     private Object[] testSourcesProvider() {
         return new String[] {"tapis://sourceSystem/a/", "https://google.com"};

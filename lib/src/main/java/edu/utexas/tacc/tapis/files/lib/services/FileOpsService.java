@@ -66,7 +66,8 @@ public class FileOpsService implements IFileOpsService {
 
     private void listDirectoryRec(IRemoteDataClient client, String basePath, List<FileInfo> listing, int depth, int maxDepth) throws ServiceException, NotFoundException{
         List<FileInfo> currentListing = this.ls(client, basePath);
-        listing.addAll(currentListing.stream().filter((f)->!f.isDir()).collect(Collectors.toList()));
+        listing.addAll(currentListing);
+//        listing.addAll(currentListing.stream().filter((f)->!f.isDir()).collect(Collectors.toList()));
         for (FileInfo fileInfo: currentListing) {
             if (fileInfo.isDir() && depth < maxDepth) {
                 depth++;

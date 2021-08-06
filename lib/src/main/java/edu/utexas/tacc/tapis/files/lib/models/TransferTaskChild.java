@@ -18,6 +18,7 @@ public class TransferTaskChild extends TransferTaskParent {
 
     private int parentTaskId;
     private int retries;
+    private boolean isDir;
 
     public TransferTaskChild() {}
 
@@ -60,18 +61,22 @@ public class TransferTaskChild extends TransferTaskParent {
         this.setUsername(transferTaskParent.getUsername());
         this.setBytesTransferred(0L);
         this.setTotalBytes(fileInfo.getSize());
+        this.setDir(fileInfo.isDir());
     }
 
     public int getParentTaskId() {
         return parentTaskId;
     }
 
-    public void setParentTaskId(int parentTaskId) {
-        this.parentTaskId = parentTaskId;
+    public void setParentTaskId(int parentTaskId) { this.parentTaskId = parentTaskId; }
+    public int getRetries() { return retries; }
+    public void setRetries(int retries) { this.retries = retries; }
+    public boolean isDir() {
+        return isDir;
     }
-
-    public int getRetries() {return retries; }
-    public void setRetries(int retries) {this.retries = retries;}
+    public void setDir(boolean dir) {
+        this.isDir = dir;
+    }
 
 
 

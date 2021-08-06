@@ -263,7 +263,6 @@ public class ChildTaskTransferService {
             // Blocking call, but the subscription above will still listen
             return future.get();
         } catch (ExecutionException ex) {
-            //TODO: docs about retries
             if (ex.getCause() instanceof IOException) {
                 throw new IOException(ex.getCause().getMessage(), ex.getCause());
             } else if (ex.getCause() instanceof ServiceException){
@@ -347,8 +346,15 @@ public class ChildTaskTransferService {
                 "chevronTwoB", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
 
-        //Step 3: Stream the file contents to dest. While the InputStream is open,
-        // we put a tap on it and send events that get grouped into 1 second intervals. Progress
+
+        // If we have a directory to create, just do that and return the task child
+        if (taskChild.isDir()) {
+            destClient.mkdir(destURL.getPath());
+            return taskChild;
+        }
+
+        //Step 4: Stream the file contents to dest. While the InputStream is open,
+        // we put a tap on it and send events that get grouped into 100 ms intervals. Progress
         // on the child tasks are updated during the reading of the source input stream.
         try (InputStream sourceStream = sourceClient.getStream(sourcePath);
              ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream)
@@ -363,6 +369,8 @@ public class ChildTaskTransferService {
                 .subscribe();
             destClient.insert(destURL.getPath(), observableInputStream);
         }
+
+
 
 
         //The ChildTransferTask gets updated in another thread so we look it up again here
