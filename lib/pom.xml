@@ -52,6 +52,11 @@
             <version>${globus.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.irods.jargon</groupId>
+            <artifactId>jargon-core</artifactId>
+            <version>4.3.2.2-RELEASE</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.sshd</groupId>
             <artifactId>sshd-core</artifactId>
         </dependency>

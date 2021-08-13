@@ -168,6 +168,15 @@
             "default" : 0
           },
           "example" : 1000
+        }, {
+          "name" : "recurse",
+          "in" : "query",
+          "description" : "recursive listing",
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          },
+          "example" : false
         } ],
         "responses" : {
           "200" : {
@@ -1569,6 +1578,9 @@
           "retries" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "dir" : {
+            "type" : "boolean"
           },
           "uuid" : {
             "type" : "string",

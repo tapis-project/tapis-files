@@ -43,6 +43,19 @@
             <activation> <activeByDefault>true</activeByDefault> </activation>
             <repositories>
                 <repository>
+                    <id>dice.repository</id>
+                    <name>dice.repository</name>
+                    <url>https://raw.github.com/DICE-UNC/DICE-Maven/master/releases</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                        <updatePolicy>always</updatePolicy>
+                        <checksumPolicy>warn</checksumPolicy>
+                    </snapshots>
+                </repository>
+                <repository>
                     <id>tapis-local-releases</id>
                     <name>Local repo for releases</name>
                     <url>http://c002.rodeo.tacc.utexas.edu:30044/repository/maven-releases</url>
