@@ -1,0 +1,3 @@
+FROM mjstealey/irods-provider-postgres:latest
+
+
