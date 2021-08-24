@@ -276,9 +276,13 @@ public class IrodsDataClient implements IRemoteDataClient {
         IRODSFileFactory fileFactory = getFileFactory();
         try {
             IRODSFile collection = fileFactory.instanceIRODSFile(cleanedAbsolutePath.toString());
-            for (File file: collection.listFiles()) {
-                IRODSFile tmp = fileFactory.instanceIRODSFile(file.getPath());
-                tmp.delete();
+            if (collection.isFile()) {
+                collection.delete();
+            } else {
+                for (File file : collection.listFiles()) {
+                    IRODSFile tmp = fileFactory.instanceIRODSFile(file.getPath());
+                    tmp.delete();
+                }
             }
         } catch (JargonException ex) {
             String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
@@ -292,7 +296,7 @@ public class IrodsDataClient implements IRemoteDataClient {
         Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());
         IRODSFileFactory fileFactory = getFileFactory();
         try {
-            PackingIrodsInputStream stream = new PackingIrodsInputStream(fileFactory.instanceIRODSFileInputStream(cleanedAbsolutePath.toString()));
+            InputStream stream = new PackingIrodsInputStream(fileFactory.instanceIRODSFileInputStream(cleanedAbsolutePath.toString()));
             return stream;
         } catch (JargonException ex) {
             String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
@@ -351,7 +355,7 @@ public class IrodsDataClient implements IRemoteDataClient {
             account = IRODSAccount.instance(
                 system.getHost(),
                 system.getPort(),
-                oboUsername,
+                system.getAuthnCredential().getAccessKey(),
                 system.getAuthnCredential().getPassword(),
                 homeDir,
                 irodsZone,
@@ -378,7 +382,7 @@ public class IrodsDataClient implements IRemoteDataClient {
             account = IRODSAccount.instance(
                 system.getHost(),
                 system.getPort(),
-                oboUsername,
+                system.getAuthnCredential().getAccessKey(),
                 system.getAuthnCredential().getPassword(),
                 homeDir,
                 irodsZone,

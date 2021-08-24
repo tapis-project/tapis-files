@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -37,7 +38,7 @@ public class ITestIrodsClient {
         system.setAuthnCredential(creds);
     }
 
-    @AfterMethod
+    @BeforeMethod
     public void cleanUp() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
         client.delete("/");
@@ -98,9 +99,9 @@ public class ITestIrodsClient {
     @Test
     public void testDelete() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/test.txt", Utils.makeFakeFile(10000));
-        client.delete("/");
-        Assert.assertEquals(client.ls("/").size(), 0);
+        client.insert("/dir1/dir2/test.txt", Utils.makeFakeFile(10000));
+        client.delete("/dir1/dir2/test.txt");
+        Assert.assertEquals(client.ls("/dir1/dir2/").size(), 0);
     }
 
     @Test
@@ -140,9 +141,10 @@ public class ITestIrodsClient {
 
     @Test
     public void testGetStream() throws Exception {
-        int fileSize = 2000000;
+        int fileSize = 100*1024;
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
         byte[] input = Utils.makeFakeFile(fileSize).readAllBytes();
+        //sanity check...
         Assert.assertEquals(input.length, fileSize);
         client.insert("/a/b/c/test.txt", new ByteArrayInputStream(input));
         try (InputStream stream = client.getStream("/a/b/c/test.txt")) {
@@ -164,6 +166,21 @@ public class ITestIrodsClient {
             byte[] output = IOUtils.toByteArray(stream);
             Assert.assertEquals(output.length, byteCount);
             Assert.assertEquals(Arrays.copyOfRange(input, 0, byteCount), output);
+        }
+    }
+
+    @Test
+    public void testGetBytesByRangeOutOfBounds() throws Exception {
+        int fileSize = 20;
+        int byteCount = 200;
+        IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
+        byte[] input = Utils.makeFakeFile(fileSize).readAllBytes();
+        Assert.assertEquals(input.length, fileSize);
+        client.insert("/a/b/c/test.txt", new ByteArrayInputStream(input));
+        try (InputStream stream = client.getBytesByRange("/a/b/c/test.txt", 30, byteCount)) {
+            byte[] output = IOUtils.toByteArray(stream);
+            Assert.assertEquals(output.length, fileSize);
+            Assert.assertEquals(input, output);
         }
     }
 }

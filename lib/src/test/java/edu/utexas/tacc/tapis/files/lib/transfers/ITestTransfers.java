@@ -765,6 +765,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             FileInfo fileInfo = new FileInfo();
             fileInfo.setPath(path);
             fileInfo.setSize(10 * 1024);
+            fileInfo.setType("file");
             TransferTaskChild child = new TransferTaskChild(parent, fileInfo);
             child = transfersService.createTransferTaskChild(child);
             transfersService.publishChildMessage(child);

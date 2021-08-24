@@ -51,7 +51,7 @@ public class FileInfo   {
         this.name = tmpPath.getFileName().toString();
         this.lastModified = listing.lastModified();
         this.size = listing.size();
-        this.path = StringUtils.prependIfMissing(listing.key(), "/");
+        this.path = StringUtils.removeStart(listing.key(), "/");
         try {
             this.mimeType = Files.probeContentType(tmpPath);
         } catch (IOException ex) {

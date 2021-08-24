@@ -104,6 +104,17 @@ public class SSHDataClient implements ISSHDataClient {
     }
 
     /**
+     * Cleans and ensures that the path is relative
+     * @param remotePath
+     * @return
+     */
+    private Path cleanAndRelativize(String remotePath) {
+        remotePath = StringUtils.removeStart(remotePath, "/");
+        String cleanedPath = FilenameUtils.normalize(remotePath);
+        return Paths.get(cleanedPath);
+    }
+
+    /**
      * Returns the files listing output on a remotePath
      *
      * @param remotePath Always relative to rootDir
@@ -113,7 +124,7 @@ public class SSHDataClient implements ISSHDataClient {
      */
     @Override
     public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
-        remotePath = FilenameUtils.normalize(remotePath);
+        remotePath = cleanAndRelativize(remotePath).toString();
         remotePath = StringUtils.isEmpty(remotePath) ? "/" : remotePath;
         long count = Math.min(limit, Constants.MAX_LISTING_SIZE);
         long startIdx = Math.max(offset, 0);
@@ -173,10 +184,10 @@ public class SSHDataClient implements ISSHDataClient {
             //Path should be relative to rootDir
             Path tmpFilePath = Paths.get(rootDir, entry.getFilename());
             if (tmpFilePath.equals(absolutePath)) {
-                String thePath = StringUtils.prependIfMissing(entryPath.toString(), "/");
+                String thePath = StringUtils.removeStart(entryPath.toString(), "/");
                 fileInfo.setPath(thePath);
             } else {
-                fileInfo.setPath(Paths.get("/", remotePath, entryPath.toString()).toString());
+                fileInfo.setPath(Paths.get(remotePath, entryPath.toString()).toString());
             }
 
             filesList.add(fileInfo);

@@ -54,8 +54,9 @@ public class ITestFileOpsService {
     TapisSystem testSystemSSH;
     TapisSystem testSystemS3;
     TapisSystem testSystemPKI;
+    TapisSystem testSystemIrods;
     private RemoteDataClientFactory remoteDataClientFactory;
-    private IFileOpsService fileOpsService;
+    private FileOpsService fileOpsService;
     private static final Logger log  = LoggerFactory.getLogger(ITestFileOpsService.class);
     private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
@@ -110,12 +111,28 @@ public class ITestFileOpsService {
         testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
         testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+
+        //Irods system
+        creds = new Credential();
+        creds.accessKey("dev");
+        creds.setPassword("dev");
+        testSystemIrods = new TapisSystem();
+        testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
+        testSystemIrods.setHost("localhost");
+        testSystemIrods.setId("testSystem");
+        testSystemIrods.setPort(1247);
+        testSystemIrods.setAuthnCredential(creds);
+        testSystemIrods.setRootDir("/tempZone/home/dev/");
+        testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     }
 
     @DataProvider(name="testSystems")
     public Object[] testSystemsDataProvider () {
         return new TapisSystem[]{
-                testSystemSSH
+                testSystemSSH,
+                testSystemS3,
+                testSystemIrods,
+                testSystemPKI
         };
     }
 
@@ -128,6 +145,7 @@ public class ITestFileOpsService {
                 bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
                 bind(permsService).to(FilePermsService.class).ranked(1);
+                bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
             }
         });
         remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
@@ -170,7 +188,7 @@ public class ITestFileOpsService {
         fileOpsService.insert(client,"/dir1/dir2/test.txt", in);
         List<FileInfo> listing = fileOpsService.ls(client,"/dir1/dir2");
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
+        Assert.assertEquals(listing.get(0).getPath(), "dir1/dir2/test.txt");
     }
 
 
@@ -182,10 +200,10 @@ public class ITestFileOpsService {
         fileOpsService.insert(client,"/dir1/dir2/test.txt", in);
         List<FileInfo> listing = fileOpsService.ls(client,"dir1/dir2/");
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
+        Assert.assertEquals(listing.get(0).getPath(), "dir1/dir2/test.txt");
         fileOpsService.delete(client,"dir1/dir2/test.txt");
         Assert.assertThrows(NotFoundException.class, ()-> {
-            fileOpsService.ls(client, "dir1/dir2/test.txt");
+            fileOpsService.ls(client, "/dir1/dir2/test.txt");
         });
     }
 
@@ -207,12 +225,15 @@ public class ITestFileOpsService {
     public void testInsertAndGet(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        InputStream in = Utils.makeFakeFile(10*1024);
+        fileOpsService.delete(client, "/");
+        InputStream in = Utils.makeFakeFile(100*1024);
         fileOpsService.insert(client,"test.txt", in);
+
+        List<FileInfo> listing = fileOpsService.ls(client, "/test.txt");
+        Assert.assertEquals(listing.get(0).getSize(), 100*1024);
         InputStream out = fileOpsService.getStream(client,"test.txt");
-        Assert.assertEquals(out.readAllBytes().length,10 * 1024);
-        out.close();
-        in.close();
+        byte[] output = IOUtils.toByteArray(out);
+        Assert.assertEquals(output.length, 100 * 1024);
     }
 
 
@@ -311,7 +332,8 @@ public class ITestFileOpsService {
         fileOpsService.insert(client,"/a/b/c/4.txt", Utils.makeFakeFile(10*1024));
 
         List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", 5);
-        Assert.assertEquals(listing.size(), 4);
+        // S3 doesn't really do folders?
+        Assert.assertTrue(listing.size() >=4);
 
     }
 

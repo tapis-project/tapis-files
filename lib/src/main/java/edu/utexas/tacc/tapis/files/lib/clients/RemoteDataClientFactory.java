@@ -3,7 +3,6 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jvnet.hk2.annotations.Service;
@@ -33,6 +32,8 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
             return new SSHDataClient(oboTenant, oboUser, system, holder);
         } else if (SystemTypeEnum.S3.equals(system.getSystemType())) {
             return new S3DataClient(oboTenant, oboUser, system);
+        } else if (SystemTypeEnum.IRODS.equals(system.getSystemType())) {
+            return new IrodsDataClient(oboTenant, oboUser, system);
         } else {
             throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_INVALID", oboTenant, oboUser, system.getId(),
                 system.getSystemType()));
