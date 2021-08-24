@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.apache.commons.lang3.StringUtils;
+import org.irods.jargon.core.pub.io.IRODSFile;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 

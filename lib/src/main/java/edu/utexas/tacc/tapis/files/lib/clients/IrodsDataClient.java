@@ -7,21 +7,27 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.irods.jargon.core.connection.AuthScheme;
 import org.irods.jargon.core.connection.IRODSAccount;
+import org.irods.jargon.core.exception.FileNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.exception.JargonFileOrCollAlreadyExistsException;
+import org.irods.jargon.core.packinstr.TransferOptions;
 import org.irods.jargon.core.pub.DataTransferOperations;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
-import org.irods.jargon.core.pub.io.FileIOOperations;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.pub.io.IRODSFileFactory;
 import org.irods.jargon.core.pub.io.IRODSFileInputStream;
 import org.irods.jargon.core.pub.io.IRODSFileOutputStream;
-import org.irods.jargon.core.utils.MiscIRODSUtils;
+import org.irods.jargon.core.pub.io.PackingIrodsInputStream;
+import org.irods.jargon.core.transfer.DefaultTransferControlBlock;
+import org.irods.jargon.core.transfer.TransferControlBlock;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.NotFoundException;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,6 +49,7 @@ public class IrodsDataClient implements IRemoteDataClient {
     private final String homeDir;
     private final String rootDir;
     private static final String DEFAULT_RESC = "demoResc";
+    private static final int MAX_BYTES_PER_CHUNK = 1000000;
 
     public IrodsDataClient(@NotNull String oboTenantId, @NotNull String oboUsername, @NotNull TapisSystem system) {
         this.oboTenantId = oboTenantId;
@@ -79,13 +86,26 @@ public class IrodsDataClient implements IRemoteDataClient {
         String cleanedPath = FilenameUtils.normalize(remotePath);
         String fullPath = Paths.get("/", rootDir, cleanedPath).toString();
         Path rootDirPath = Paths.get(rootDir);
-        IRODSFileFactory fileFactory = getFactory();
-
+        IRODSFileFactory fileFactory = getFileFactory();
         try {
-            IRODSFile collection= fileFactory.instanceIRODSFile(fullPath);
+            IRODSFile collection = fileFactory.instanceIRODSFile(fullPath);
+            // If the listing is just a single file make the listing manually.
+            if (collection.isFile()) {
+                List<FileInfo> outListing = new ArrayList<>();
+                FileInfo fileInfo = new FileInfo();
+                fileInfo.setSize(collection.length());
+                fileInfo.setType("file");
+                fileInfo.setName(collection.getName());
+                fileInfo.setPath(collection.getPath());
+                fileInfo.setLastModified(Instant.ofEpochSecond(collection.lastModified()));
+                outListing.add(fileInfo);
+                return outListing;
+
+            }
             List<File> listing = Arrays.asList(collection.listFiles());
+            collection.close();
             List<FileInfo> outListing = new ArrayList<>();
-            listing.forEach((file)->{
+            listing.forEach((file) -> {
                 Path tmpPath = Paths.get(file.getPath());
                 Path relPath = rootDirPath.relativize(tmpPath);
                 FileInfo fileInfo = new FileInfo();
@@ -95,7 +115,8 @@ public class IrodsDataClient implements IRemoteDataClient {
                 fileInfo.setSize(file.length());
                 try {
                     fileInfo.setMimeType(Files.probeContentType(tmpPath));
-                } catch (IOException ignored) {}
+                } catch (IOException ignored) {
+                }
 
                 fileInfo.setLastModified(Instant.ofEpochSecond(file.lastModified()));
                 outListing.add(fileInfo);
@@ -104,6 +125,13 @@ public class IrodsDataClient implements IRemoteDataClient {
         } catch (JargonException ex) {
             String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
             throw new IOException(msg, ex);
+        } catch (Exception ex) {
+            if (ex.getCause() instanceof FileNotFoundException) {
+                throw new NotFoundException();
+            }
+            else {
+                throw ex;
+            }
         }
     }
 
@@ -118,7 +146,7 @@ public class IrodsDataClient implements IRemoteDataClient {
         Path cleanedPath = cleanAndRelativize(remotePath);
         Path fullPath = Paths.get("/", rootDir, cleanedPath.toString());
         Path parentDir = fullPath.getParent();
-        IRODSFileFactory fileFactory = getFactory();
+        IRODSFileFactory fileFactory = getFileFactory();
 
         try {
             //Make sure parent path exists first
@@ -127,6 +155,7 @@ public class IrodsDataClient implements IRemoteDataClient {
                 Path relativePathtoParent = Paths.get(rootDir).relativize(parentDir);
                 mkdir(relativePathtoParent.toString());
             }
+            parent.close();
 
             IRODSFile newFile = fileFactory.instanceIRODSFile(fullPath.toString());
             try (
@@ -134,6 +163,8 @@ public class IrodsDataClient implements IRemoteDataClient {
                 IRODSFileOutputStream outputStream = fileFactory.instanceIRODSFileOutputStream(newFile);
             ) {
                 fileStream.transferTo(outputStream);
+            } finally {
+                newFile.close();
             }
         } catch (JargonException ex) {
             String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
@@ -141,15 +172,12 @@ public class IrodsDataClient implements IRemoteDataClient {
         }
     }
 
-    private void mkdirRecurse(@NotNull String remotePath) throws IOException {
-
-    }
 
     @Override
     public void mkdir(@NotNull String remotePath) throws IOException, NotFoundException {
         if (StringUtils.isEmpty(remotePath)) return;
         Path cleanedRelativePath = cleanAndRelativize(remotePath);
-        IRODSFileFactory fileFactory = getFactory();
+        IRODSFileFactory fileFactory = getFileFactory();
         try {
             List<Path> partialPaths = new ArrayList<>();
             Path tmpPath = Paths.get("/");
@@ -164,6 +192,7 @@ public class IrodsDataClient implements IRemoteDataClient {
                 if (!newCollection.exists()) {
                     newCollection.mkdir();
                 }
+                newCollection.close();
             }
 
         } catch (JargonException ex) {
@@ -175,24 +204,67 @@ public class IrodsDataClient implements IRemoteDataClient {
     @Override
     public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException {
         Path cleanedRelativeOldPath = cleanAndRelativize(oldPath);
-        Path cleanedAbsoluteoldPathPath = Paths.get(rootDir, cleanedRelativeOldPath.toString());
-
-
-        IRODSFileFactory fileFactory = getFactory();
+        Path cleanedAbsoluteOldPath = Paths.get(rootDir, cleanedRelativeOldPath.toString());
+        Path cleanedRelativeNewPath = cleanAndRelativize(newPath);
+        Path cleanedAbsoluteNewPath = Paths.get(rootDir, cleanedRelativeNewPath.toString());
+        DataTransferOperations transferOperations = getTransferOperations();
+        IRODSFileFactory fileFactory = getFileFactory();
+        Path parentDirTarget = cleanedAbsoluteNewPath.getParent();
         try {
-            IRODSFile collection = fileFactory.instanceIRODSFile(cleanedAbsoluteoldPathPath.toString());
-            collection.
+            //Make sure parent path exists first
+            IRODSFile parent = fileFactory.instanceIRODSFile(parentDirTarget.toString());
+            if (!parent.exists()) {
+                Path relativePathtoParent = Paths.get(rootDir).relativize(parentDirTarget);
+                mkdir(relativePathtoParent.toString());
+            }
+            parent.close();
+            transferOperations.move(cleanedAbsoluteOldPath.toString(), cleanedAbsoluteNewPath.toString());
+        } catch (JargonFileOrCollAlreadyExistsException ex) {
+            String msg = Utils.getMsg("FILES_IRODS_MOVE_ERROR_DEST_EXISTS", oboTenantId, oboUsername, cleanedRelativeNewPath.toString());
+            throw new IOException(msg, ex);
         } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, system.getId());
             throw new IOException(msg, ex);
         }
     }
 
     @Override
-    public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
+    public void copy(@NotNull String sourcePath, @NotNull String destPath) throws IOException, NotFoundException {
+        Path cleanedRelativeSourcePath = cleanAndRelativize(sourcePath);
+        Path cleanedAbsoluteSourcePath = Paths.get(rootDir, cleanedRelativeSourcePath.toString());
+        Path cleanedRelativeDestPath = cleanAndRelativize(destPath);
+        Path cleanedAbsoluteDestPath = Paths.get(rootDir, cleanedRelativeDestPath.toString());
+        DataTransferOperations transferOperations = getTransferOperations();
+        IRODSFileFactory fileFactory = getFileFactory();
+        Path parentDirTarget = cleanedAbsoluteDestPath.getParent();
         try {
-            DataTransferOperations dataTransferOperations = getTransferOperations();
-            dataTransferOperations.
+            //Make sure parent path exists first
+            IRODSFile parent = fileFactory.instanceIRODSFile(parentDirTarget.toString());
+            if (!parent.exists()) {
+                Path relativePathtoParent = Paths.get(rootDir).relativize(parentDirTarget);
+                mkdir(relativePathtoParent.toString());
+            }
+            parent.close();
+
+            IRODSFile source = fileFactory.instanceIRODSFile(cleanedAbsoluteSourcePath.toString());
+            IRODSFile destination = fileFactory.instanceIRODSFile(cleanedAbsoluteDestPath.toString());
+            TransferOptions transferOptions = new TransferOptions();
+            transferOptions.setComputeAndVerifyChecksumAfterTransfer(true);
+            transferOptions.setForceOption(TransferOptions.ForceOption.USE_FORCE);
+            TransferControlBlock transferControlBlock = DefaultTransferControlBlock.instance();
+            transferControlBlock.setTransferOptions(transferOptions);
+            transferOperations.copy(
+                source,
+                destination,
+                null,
+                transferControlBlock
+            );
+        } catch (JargonFileOrCollAlreadyExistsException ex) {
+            String msg = Utils.getMsg("FILES_IRODS_MOVE_ERROR_DEST_EXISTS", oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
+            throw new IOException(msg, ex);
+        } catch (JargonException ex) {
+            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, system.getId());
+            throw new IOException(msg, ex);
         }
     }
 
@@ -201,7 +273,7 @@ public class IrodsDataClient implements IRemoteDataClient {
         if (StringUtils.isEmpty(remotePath)) return;
         Path cleanedRelativePath = cleanAndRelativize(remotePath);
         Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());
-        IRODSFileFactory fileFactory = getFactory();
+        IRODSFileFactory fileFactory = getFileFactory();
         try {
             IRODSFile collection = fileFactory.instanceIRODSFile(cleanedAbsolutePath.toString());
             for (File file: collection.listFiles()) {
@@ -218,9 +290,9 @@ public class IrodsDataClient implements IRemoteDataClient {
     public InputStream getStream(@NotNull String remotePath) throws IOException {
         Path cleanedRelativePath = cleanAndRelativize(remotePath);
         Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());
-        IRODSFileFactory fileFactory = getFactory();
+        IRODSFileFactory fileFactory = getFileFactory();
         try {
-            IRODSFileInputStream stream = fileFactory.instanceIRODSFileInputStream(cleanedAbsolutePath.toString());
+            PackingIrodsInputStream stream = new PackingIrodsInputStream(fileFactory.instanceIRODSFileInputStream(cleanedAbsolutePath.toString()));
             return stream;
         } catch (JargonException ex) {
             String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
@@ -230,7 +302,17 @@ public class IrodsDataClient implements IRemoteDataClient {
 
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
-        return null;
+        if (count > MAX_BYTES_PER_CHUNK) {
+            String msg = Utils.getMsg("FILES_MAX_BYTES_ERROR", MAX_BYTES_PER_CHUNK);
+            throw new IllegalArgumentException(msg);
+        }
+        startByte = Math.max(startByte, 0);
+        count = Math.max(count, 0);
+        byte[] bytes = new byte[(int) count];
+        try (InputStream stream = getStream(path)) {
+            stream.read(bytes, (int) startByte, (int) count);
+        };
+        return new ByteArrayInputStream(bytes);
     }
 
     @Override
@@ -248,19 +330,24 @@ public class IrodsDataClient implements IRemoteDataClient {
 
     }
 
+    /**
+     * Cleans and ensures that the path is relative
+     * @param remotePath
+     * @return
+     */
     private Path cleanAndRelativize(String remotePath) {
         remotePath = StringUtils.removeStart(remotePath, "/");
         String cleanedPath = FilenameUtils.normalize(remotePath);
         return Paths.get(cleanedPath);
     }
 
-    private IRODSFileFactory getFactory() throws IOException {
+    private IRODSFileFactory getFileFactory() throws IOException {
         IRODSAccessObjectFactory accessObjectFactory;
         IRODSFileSystem irodsFileSystem;
         IRODSAccount account;
         IRODSFileFactory fileFactory;
         try {
-            irodsFileSystem = IRODSFileSystem.instance();
+            irodsFileSystem = IRODsFileSystemSingleton.getInstance();
             account = IRODSAccount.instance(
                 system.getHost(),
                 system.getPort(),
@@ -287,7 +374,7 @@ public class IrodsDataClient implements IRemoteDataClient {
 
         IRODSFileFactory fileFactory;
         try {
-            irodsFileSystem = IRODSFileSystem.instance();
+            irodsFileSystem = IRODsFileSystemSingleton.getInstance();
             account = IRODSAccount.instance(
                 system.getHost(),
                 system.getPort(),

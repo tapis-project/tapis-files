@@ -11,9 +11,12 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+import javax.ws.rs.NotFoundException;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 @Test(groups = {"integration"})
@@ -59,8 +62,19 @@ public class ITestIrodsClient {
         client.move("/a/b/test.txt", "/new/test.txt");
         List<FileInfo> listing = client.ls("/new/test.txt");
         Assert.assertTrue(listing.size() > 0);
-        listing = client.ls("/a/b/test.txt");
-        Assert.assertTrue(listing.size() == 0);
+        Assert.assertThrows(NotFoundException.class, ()->{
+            client.ls("/a/b/test.txt");
+        });
+    }
+
+    @Test
+    public void testMoveDestinationExists() throws Exception {
+        IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
+        client.insert("/a/b/test.txt", Utils.makeFakeFile(10));
+        client.insert("/new/test.txt", Utils.makeFakeFile(10));
+        Assert.assertThrows(IOException.class, ()->{
+            client.move("/a/b/test.txt", "/new/test.txt");
+        });
     }
 
 
@@ -138,5 +152,18 @@ public class ITestIrodsClient {
         }
     }
 
-
+    @Test
+    public void testGetBytesByRange() throws Exception {
+        int fileSize = 20;
+        int byteCount = 10;
+        IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
+        byte[] input = Utils.makeFakeFile(fileSize).readAllBytes();
+        Assert.assertEquals(input.length, fileSize);
+        client.insert("/a/b/c/test.txt", new ByteArrayInputStream(input));
+        try (InputStream stream = client.getBytesByRange("/a/b/c/test.txt", 0, byteCount)) {
+            byte[] output = IOUtils.toByteArray(stream);
+            Assert.assertEquals(output.length, byteCount);
+            Assert.assertEquals(Arrays.copyOfRange(input, 0, byteCount), output);
+        }
+    }
 }
