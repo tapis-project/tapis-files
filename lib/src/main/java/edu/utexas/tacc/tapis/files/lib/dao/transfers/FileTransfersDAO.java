@@ -371,7 +371,6 @@ public class FileTransfersDAO {
      * @param newBytes The size in bytes to be added to the total size of the transfer
      */
     public void updateTransferTaskChildBytesTransferred(@NotNull TransferTaskChild task, Long newBytes) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             String stmt = FileTransfersDAOStatements.UPDATE_CHILD_TASK_BYTES_TRANSFERRED;
             QueryRunner runner = new QueryRunner();
@@ -392,16 +391,15 @@ public class FileTransfersDAO {
      * @param taskId
      * @param newBytes The size in bytes to be added to the total size of the transfer
      */
-    public TransferTaskParent updateTransferTaskParentBytesTransferred(long taskId, Long newBytes) throws DAOException {
+    public void updateTransferTaskParentBytesTransferred(long taskId, Long newBytes) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
             BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK_BYTES_TRANSFERRED;
             QueryRunner runner = new QueryRunner();
-            TransferTaskParent updatedTask = runner.query(connection, stmt, handler,
+            runner.execute(connection, stmt,
                 newBytes,
                 taskId);
-            return updatedTask;
         } catch (SQLException ex) {
             throw new DAOException(Utils.getMsg("FILES_TXFR_DAO_ERR2", "updateTransferTaskParentBytesTransferred", taskId), ex);
         }

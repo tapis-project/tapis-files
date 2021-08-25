@@ -1,12 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.irods.jargon.core.connection.AuthScheme;
 import org.irods.jargon.core.connection.IRODSAccount;
+import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.FileNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.exception.JargonFileOrCollAlreadyExistsException;
@@ -37,7 +39,9 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class IrodsDataClient implements IRemoteDataClient {
 
@@ -83,6 +87,8 @@ public class IrodsDataClient implements IRemoteDataClient {
 
     @Override
     public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
+        long count = Math.min(limit, Constants.MAX_LISTING_SIZE);
+        long startIdx = Math.max(offset, 0);
         String cleanedPath = FilenameUtils.normalize(remotePath);
         String fullPath = Paths.get("/", rootDir, cleanedPath).toString();
         Path rootDirPath = Paths.get(rootDir);
@@ -96,7 +102,9 @@ public class IrodsDataClient implements IRemoteDataClient {
                 fileInfo.setSize(collection.length());
                 fileInfo.setType("file");
                 fileInfo.setName(collection.getName());
-                fileInfo.setPath(collection.getPath());
+                Path tmpPath = Paths.get(collection.getPath());
+                Path relPath = rootDirPath.relativize(tmpPath);
+                fileInfo.setPath(relPath.toString());
                 fileInfo.setLastModified(Instant.ofEpochSecond(collection.lastModified()));
                 outListing.add(fileInfo);
                 return outListing;
@@ -121,7 +129,8 @@ public class IrodsDataClient implements IRemoteDataClient {
                 fileInfo.setLastModified(Instant.ofEpochSecond(file.lastModified()));
                 outListing.add(fileInfo);
             });
-            return outListing;
+            outListing.sort(Comparator.comparing(FileInfo::getName));
+            return outListing.stream().skip(startIdx).limit(count).collect(Collectors.toList());
         } catch (JargonException ex) {
             String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
             throw new IOException(msg, ex);
@@ -259,6 +268,9 @@ public class IrodsDataClient implements IRemoteDataClient {
                 null,
                 transferControlBlock
             );
+        } catch (DataNotFoundException ex) {
+            String msg = Utils.getMsg("FILES_IRODS_FILE_NOT_FOUND_ERROR", system.getId(), oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
+            throw new NotFoundException(msg, ex);
         } catch (JargonFileOrCollAlreadyExistsException ex) {
             String msg = Utils.getMsg("FILES_IRODS_MOVE_ERROR_DEST_EXISTS", oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
             throw new IOException(msg, ex);
@@ -270,9 +282,10 @@ public class IrodsDataClient implements IRemoteDataClient {
 
     @Override
     public void delete(@NotNull String remotePath) throws IOException {
-        if (StringUtils.isEmpty(remotePath)) return;
+        if (StringUtils.isEmpty(remotePath)) remotePath="/";
         Path cleanedRelativePath = cleanAndRelativize(remotePath);
         Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());
+        Path rootDirPath = Paths.get(rootDir);
         IRODSFileFactory fileFactory = getFileFactory();
         try {
             IRODSFile collection = fileFactory.instanceIRODSFile(cleanedAbsolutePath.toString());
@@ -281,7 +294,11 @@ public class IrodsDataClient implements IRemoteDataClient {
             } else {
                 for (File file : collection.listFiles()) {
                     IRODSFile tmp = fileFactory.instanceIRODSFile(file.getPath());
-                    tmp.delete();
+                    tmp.deleteWithForceOption();
+                }
+                //Can't delete above the rootDir
+                if (!rootDirPath.equals(cleanedAbsolutePath)) {
+                    collection.delete();
                 }
             }
         } catch (JargonException ex) {
@@ -304,6 +321,15 @@ public class IrodsDataClient implements IRemoteDataClient {
         }
     }
 
+
+    /**
+     *
+     * @param path path to file
+     * @param startByte position of first byte to return
+     * @param count Number of bytes returned
+     * @return InputStream of the chunk of the file
+     * @throws IOException error getting stream
+     */
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
         if (count > MAX_BYTES_PER_CHUNK) {
@@ -314,7 +340,14 @@ public class IrodsDataClient implements IRemoteDataClient {
         count = Math.max(count, 0);
         byte[] bytes = new byte[(int) count];
         try (InputStream stream = getStream(path)) {
-            stream.read(bytes, (int) startByte, (int) count);
+            stream.skip(startByte);
+            int counter = 0;
+            int bytesRead = stream.read(bytes);
+            if (bytesRead > 0) {
+                bytes = Arrays.copyOfRange(bytes, 0, bytesRead);
+            } else {
+                bytes = new byte[0];
+            }
         };
         return new ByteArrayInputStream(bytes);
     }
@@ -336,8 +369,8 @@ public class IrodsDataClient implements IRemoteDataClient {
 
     /**
      * Cleans and ensures that the path is relative
-     * @param remotePath
-     * @return
+     * @param remotePath path relative to rootDir
+     * @return Path object that has any leading slashes removed and cleaned.
      */
     private Path cleanAndRelativize(String remotePath) {
         remotePath = StringUtils.removeStart(remotePath, "/");

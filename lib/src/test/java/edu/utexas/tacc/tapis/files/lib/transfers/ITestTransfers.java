@@ -471,13 +471,21 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             .create(stream)
             .assertNext(k->{
                 Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
-                Assert.assertEquals(k.getBytesTransferred(), FILESIZE);
                 Assert.assertNotNull(k.getStartTime());
                 Assert.assertNotNull(k.getEndTime());
             })
             .assertNext(k->{
                 Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
-                Assert.assertEquals(k.getBytesTransferred(), FILESIZE);
+                Assert.assertNotNull(k.getStartTime());
+                Assert.assertNotNull(k.getEndTime());
+            })
+            .assertNext(k->{
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
+                Assert.assertNotNull(k.getStartTime());
+                Assert.assertNotNull(k.getEndTime());
+            })
+            .assertNext(k->{
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
                 Assert.assertNotNull(k.getStartTime());
                 Assert.assertNotNull(k.getEndTime());
             })
@@ -494,7 +502,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(parent.getStatus(), TransferTaskStatus.COMPLETED);
         Assert.assertNotNull(parent.getEndTime());
         Assert.assertNotNull(parent.getStartTime());
-        Assert.assertTrue(parent.getBytesTransferred() > 0);
+        // 2 files, so total should be 2x
+        Assert.assertEquals(parent.getBytesTransferred(), 2 * FILESIZE);
 
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b/cat/dog/");
         Assert.assertEquals(listing.size(), 2);

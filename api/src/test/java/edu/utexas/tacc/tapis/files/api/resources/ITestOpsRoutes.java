@@ -118,8 +118,21 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         testSystemS3.setRootDir("/");
         testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
+
+        TapisSystem testSystemIrods = new TapisSystem();
+        testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
+        testSystemIrods.setHost("localhost");
+        testSystemIrods.setPort(1247);
+        testSystemIrods.setRootDir("/tempZone/home/dev/");
+        testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+        Credential creds = new Credential();
+        creds.accessKey("dev");
+        creds.setPassword("dev");
+        testSystemIrods.setAuthnCredential(creds);
+
         testSystems.add(testSystemSSH);
         testSystems.add(testSystemS3);
+        testSystems.add(testSystemIrods);
 
     }
 
@@ -370,7 +383,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
         List<FileInfo> listing = doListing(testSystem.getId(), "/filestest/sample1.txt", getJwtForUser("dev", "testuser1"));
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "/filestest/sample1.txt");
+        Assert.assertEquals(listing.get(0).getPath(), "filestest/sample1.txt");
     }
 
     @Test(dataProvider = "testSystemsProvider")
@@ -399,7 +412,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
         MoveCopyRequest request = new MoveCopyRequest();
         request.setOperation(MoveCopyOperation.MOVE);
-        request.setNewPath("renamed");
+        request.setNewPath("newName");
 
         FileStringResponse response = target("/v3/files/ops/testSystem/testfile1.txt")
             .request()
@@ -407,9 +420,9 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
             .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .put(Entity.json(request), FileStringResponse.class);
 
-        List<FileInfo> listing = doListing(testSystem.getId(), "renamed", getJwtForUser("dev", "testuser1"));
+        List<FileInfo> listing = doListing(testSystem.getId(), "newName", getJwtForUser("dev", "testuser1"));
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "/renamed");
+        Assert.assertEquals(listing.get(0).getPath(), "newName");
     }
 
     @Test(dataProvider = "testSystemsProvider")

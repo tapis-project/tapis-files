@@ -264,7 +264,11 @@ public class ParentTaskTransferService {
                 List<TransferTaskChild> children = new ArrayList<>();
                 long totalBytes = 0;
                 for (FileInfo f : fileListing) {
-                    totalBytes += f.getSize();
+                    // Only include the bytes from files. Posix folders are --usually-- 4bytes but not always, so
+                    // it can make some weird totals that don't really make sense.
+                    if (!f.isDir()) {
+                        totalBytes += f.getSize();
+                    }
                     TransferTaskChild child = new TransferTaskChild(parentTask, f);
                     children.add(child);
                 }

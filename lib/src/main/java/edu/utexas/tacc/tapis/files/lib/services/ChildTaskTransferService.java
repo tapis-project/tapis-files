@@ -406,7 +406,7 @@ public class ChildTaskTransferService {
     }
 
     /**
-     * Book keeping and cleanup. Mark the child as COMPLETE.
+     * Book keeping and cleanup. Mark the child as COMPLETE. Update the parent task with the bytes sent
      *
      * @param taskChild The child transfer task
      * @return updated TransferTaskChild
@@ -416,10 +416,13 @@ public class ChildTaskTransferService {
         log.info("DOING chevron3 {}", taskChild);
         if (taskChild.isTerminal()) return taskChild;
         try {
-            taskChild.setStatus(TransferTaskStatus.COMPLETED);
-            taskChild.setEndTime(Instant.now());
-            taskChild = dao.updateTransferTaskChild(taskChild);
-            return taskChild;
+            TransferTaskChild updated = dao.getChildTaskByUUID(taskChild.getUuid());
+            updated.setStatus(TransferTaskStatus.COMPLETED);
+            updated.setEndTime(Instant.now());
+            updated = dao.updateTransferTaskChild(updated);
+            dao.updateTransferTaskParentBytesTransferred(updated.getParentTaskId(), updated.getBytesTransferred());
+            TransferTaskParent parent = dao.getTransferTaskParentById(updated.getParentTaskId());
+            return updated;
         } catch (DAOException ex) {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                 "chevronThree", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
@@ -455,7 +458,6 @@ public class ChildTaskTransferService {
                 if (incompleteCount == 0) {
                     parent.setStatus(TransferTaskStatus.COMPLETED);
                     parent.setEndTime(Instant.now());
-                    parent.setBytesTransferred(parent.getBytesTransferred() + taskChild.getBytesTransferred());
                     dao.updateTransferTaskParent(parent);
                 }
             }

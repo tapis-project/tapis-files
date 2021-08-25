@@ -69,6 +69,18 @@ public class ITestIrodsClient {
     }
 
     @Test
+    public void testMove2() throws Exception {
+        IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
+        client.insert("test.txt", Utils.makeFakeFile(10));
+        client.move("test.txt", "/newName");
+        List<FileInfo> listing = client.ls("newName");
+        Assert.assertTrue(listing.size() > 0);
+        Assert.assertThrows(NotFoundException.class, ()->{
+            client.ls("test.txt");
+        });
+    }
+
+    @Test
     public void testMoveDestinationExists() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
         client.insert("/a/b/test.txt", Utils.makeFakeFile(10));
@@ -97,6 +109,24 @@ public class ITestIrodsClient {
     }
 
     @Test
+    public void testListingNested() throws Exception {
+        IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
+        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        List<FileInfo> listing = client.ls("a/b/c/test.txt");
+        Assert.assertTrue(listing.size() > 0);
+        Assert.assertEquals(listing.get(0).getPath(), "a/b/c/test.txt");
+    }
+
+    @Test
+    public void testListingNested2() throws Exception {
+        IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
+        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        List<FileInfo> listing = client.ls("a/b/c/");
+        Assert.assertTrue(listing.size() == 1);
+        Assert.assertEquals(listing.get(0).getPath(), "a/b/c/test.txt");
+    }
+
+    @Test
     public void testDelete() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
         client.insert("/dir1/dir2/test.txt", Utils.makeFakeFile(10000));
@@ -109,6 +139,30 @@ public class ITestIrodsClient {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
         client.insert("/test.txt", Utils.makeFakeFile(10000));
         client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+
+        client.delete("/");
+        Assert.assertEquals(client.ls("/").size(), 0);
+    }
+
+    @Test
+    public void testDeleteNested2() throws Exception {
+        IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
+        client.insert("/test.txt", Utils.makeFakeFile(10000));
+        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        client.insert("/a/b/c/test2.txt", Utils.makeFakeFile(10000));
+        client.insert("/a/b/c/test3.txt", Utils.makeFakeFile(10000));
+
+        client.delete("/a/b/c/");
+        Assert.assertEquals(client.ls("/a/b/").size(), 0);
+    }
+
+    @Test
+    public void testDeleteRoot() throws Exception {
+        IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
+        client.insert("/test.txt", Utils.makeFakeFile(10000));
+        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        client.insert("/a/b/c/test2.txt", Utils.makeFakeFile(10000));
+        client.insert("/a/b/c/test3.txt", Utils.makeFakeFile(10000));
 
         client.delete("/");
         Assert.assertEquals(client.ls("/").size(), 0);
@@ -169,6 +223,12 @@ public class ITestIrodsClient {
         }
     }
 
+
+    /**
+     * This should check for the case when the startByte is greater than the length of
+     * the actual file, which *should* return an empty array
+     * @throws Exception
+     */
     @Test
     public void testGetBytesByRangeOutOfBounds() throws Exception {
         int fileSize = 20;
@@ -179,8 +239,28 @@ public class ITestIrodsClient {
         client.insert("/a/b/c/test.txt", new ByteArrayInputStream(input));
         try (InputStream stream = client.getBytesByRange("/a/b/c/test.txt", 30, byteCount)) {
             byte[] output = IOUtils.toByteArray(stream);
-            Assert.assertEquals(output.length, fileSize);
-            Assert.assertEquals(input, output);
+            Assert.assertEquals(output.length, 0);
+        }
+    }
+
+    /**
+     * This should check for the case when the startByte is greater than the length of
+     * the actual file, which *should* return an empty array
+     * @throws Exception
+     */
+    @Test
+    public void testGetBytesByRangePastEnd() throws Exception {
+        int fileSize = 100;
+        int byteCount = 200;
+        IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
+        byte[] input = Utils.makeFakeFile(fileSize).readAllBytes();
+        Assert.assertEquals(input.length, fileSize);
+        client.insert("/a/b/c/test.txt", new ByteArrayInputStream(input));
+        try (InputStream stream = client.getBytesByRange("/a/b/c/test.txt", 50, byteCount)) {
+            byte[] output = IOUtils.toByteArray(stream);
+            Assert.assertEquals(output.length, 50);
+            //Should be the last 50 bytes of the input array
+            Assert.assertEquals(output, Arrays.copyOfRange(input, 50, 100));
         }
     }
 }
