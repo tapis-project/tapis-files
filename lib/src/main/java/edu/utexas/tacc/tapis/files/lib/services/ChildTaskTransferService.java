@@ -164,13 +164,13 @@ public class ChildTaskTransferService {
         message.nack(false);
         log.error(Utils.getMsg("FILES_TXFR_SVC_ERR10", child.toString()));
 
+        // Child First
+        child.setStatus(TransferTaskStatus.FAILED);
+        child.setErrorMessage(cause.getMessage());
         //TODO: Fix this for the "optional" flag
         try {
-            // Child First
-            child.setStatus(TransferTaskStatus.FAILED);
-            child.setErrorMessage(cause.getMessage());
-            dao.updateTransferTaskChild(child);
 
+            child = dao.updateTransferTaskChild(child);
             //Now parent
             TransferTaskParent parent = dao.getTransferTaskParentById(child.getParentTaskId());
             parent.setStatus(TransferTaskStatus.FAILED);
@@ -183,12 +183,12 @@ public class ChildTaskTransferService {
             topTask.setStatus(TransferTaskStatus.FAILED);
             topTask.setErrorMessage(cause.getMessage());
             dao.updateTransferTask(topTask);
-
         } catch (DAOException ex) {
             log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
                 "doErrorChevronOne", child.getId(), child.getUuid(), ex.getMessage()), ex);
         }
-        return Mono.empty();
+        //either way, the task is set to be FAILED here, so subsequest
+        return Mono.just(child);
     }
 
     /**

@@ -786,15 +786,13 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         StepVerifier
             .create(stream)
             .assertNext(k->{
-                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.FAILED);
+            })
+            .assertNext(k->{
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.FAILED);
             })
             .thenCancel()
             .verify(Duration.ofSeconds(10));
-
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
-        log.info(listing.toString());
-        //NOT-THERE/1.txt should NOT BE THERE
-        Assert.assertEquals(listing.size(), 1);
 
     }
 
@@ -1079,15 +1077,39 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
     public void testFlux() {
-        Flux<Integer> flux = Flux.just(1, 2, 3, null, 4, 5, 6)
-            .flatMap(i-> Mono.just(i*2))
-            .onErrorResume((e)->Flux.just(42));
+        Flux<Integer> flux = Flux.just(1, 2, 3, 4, 5, 6)
+            .flatMap(i->((i % 2)==0) ? Mono.just(i / 0): Mono.just(i))
+            .onErrorContinue((e,o)-> {
+                log.info(e.getMessage(), o);
+            })
+            .flatMap(i -> Mono.just(i*i))
+            .doOnNext(i->log.info(i.toString()));
 
         StepVerifier.create(flux)
-            .expectNext(2)
-            .expectNext(4)
-            .expectNext(6)
-            .expectNext(42)
+            .expectNext(1)
+            .expectNext(9)
+            .expectNext(25)
+            .expectComplete()
+            .verify();
+    }
+
+    public void testFlux2() {
+        Flux<Integer> flux = Flux.just(1, 2, 3, 4, 5, 6)
+            .flatMap(i->((i % 2)==0) ? Mono.just(i / 0): Mono.just(i))
+            .onErrorResume((e)-> {
+                log.info(e.getMessage());
+                return Mono.just(1);
+            })
+            .flatMap(i -> Mono.just(i*i))
+            .doOnNext(i->log.info(i.toString()));
+
+        StepVerifier.create(flux)
+            .expectNext(1)
+            .expectNext(1)
+            .expectNext(9)
+            .expectNext(1)
+            .expectNext(25)
+            .expectNext(1)
             .expectComplete()
             .verify();
     }
