@@ -24,6 +24,8 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.flywaydb.core.Flyway;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
@@ -45,36 +47,36 @@ import javax.inject.Singleton;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-
 
 @Test(groups={"integration"})
-public abstract class BaseDatabaseIntegrationTest  {
+public class BaseDatabaseIntegrationTest  {
 
     private static final Logger log = LoggerFactory.getLogger(BaseDatabaseIntegrationTest.class);
     protected TapisSystem testSystemS3;
     protected TapisSystem testSystemPKI;
     protected TapisSystem testSystemSSH;
+    protected TapisSystem testSystemIrods;
+    protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairs = new ArrayList<>();
+    protected List<TapisSystem> testSystems = new ArrayList<>();
 
     protected IRemoteDataClientFactory remoteDataClientFactory;
     protected ServiceLocator locator;
 
-    protected SKClient skClient = Mockito.mock(SKClient.class);
-    protected SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
     protected ServiceClients serviceClients = Mockito.mock(ServiceClients.class);
     protected FilePermsService permsService = Mockito.mock(FilePermsService.class);
+    protected SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
 
     protected TransfersService transfersService;
     protected ChildTaskTransferService childTaskTransferService;
     protected ParentTaskTransferService parentTaskTransferService;
     protected IFileOpsService fileOpsService;
 
-    @BeforeClass
-    public void initTestFixtures() throws Exception {
+
+    public BaseDatabaseIntegrationTest() throws Exception {
         String privateKey = IOUtils.toString(
             this.getClass().getResourceAsStream("/test-machine"),
             StandardCharsets.UTF_8
@@ -126,6 +128,27 @@ public abstract class BaseDatabaseIntegrationTest  {
         testSystemPKI.setId("testSystemPKI");
         testSystemPKI.setEffectiveUserId("testuser");
         testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
+
+        testSystemIrods = new TapisSystem();
+        testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
+        testSystemIrods.setHost("localhost");
+        testSystemIrods.setPort(1247);
+        testSystemIrods.setRootDir("/tempZone/home/dev/");
+        testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+        creds = new Credential();
+        creds.accessKey("dev");
+        creds.setPassword("dev");
+        testSystemIrods.setAuthnCredential(creds);
+
+        testSystems = Arrays.asList(testSystemSSH, testSystemS3, testSystemPKI, testSystemIrods);
+
+        for (int i=0; i<testSystems.size(); i++){
+            for (int j=i+1; j<testSystems.size(); j++) {
+                Pair<TapisSystem, TapisSystem> pair = new ImmutablePair<>(testSystems.get(i), testSystems.get(j));
+                testSystemsPairs.add(pair);
+            }
+        }
+
         ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
 
 
@@ -133,7 +156,7 @@ public abstract class BaseDatabaseIntegrationTest  {
             @Override
             protected void configure() {
             bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-            bindAsContract(SystemsCache.class).in(Singleton.class);
+            bind(systemsCache).to(SystemsCache.class);
             bindAsContract(TransfersService.class).in(Singleton.class);
             bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
             bindAsContract(ParentTaskTransferService.class).in(Singleton.class);
@@ -152,6 +175,13 @@ public abstract class BaseDatabaseIntegrationTest  {
         childTaskTransferService = locator.getService(ChildTaskTransferService.class);
         parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
     }
+
+    @DataProvider
+    public Object[] testSystemsDataProvider() {
+        return testSystemsPairs.toArray();
+    }
+
+
 
     @BeforeMethod
     public void doFlywayMigrations() {

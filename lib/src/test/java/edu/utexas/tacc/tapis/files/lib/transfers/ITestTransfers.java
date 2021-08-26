@@ -17,13 +17,16 @@ import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
+import org.apache.commons.lang3.tuple.Pair;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.ITestResult;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import reactor.core.publisher.Flux;
@@ -52,13 +55,14 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     private final String oboTenant = "oboTenant";
     private final String oboUser = "oboUser";
-    private TapisSystem sourceSystem;
-    private TapisSystem destSystem;
     private String childQ;
     private String parentQ;
 
+    public ITestTransfers() throws Exception {
+        super();
+    }
 
-    @BeforeMethod
+    @BeforeTest
     public void setUpQueues() {
         this.childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(this.childQ);
@@ -66,7 +70,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.setParentQueue(this.parentQ);
     }
 
-    @AfterMethod
+    @AfterTest
     public void deleteQueues() {
         transfersService.deleteQueue(this.childQ).subscribe();
         transfersService.deleteQueue(this.parentQ).subscribe();
@@ -78,36 +82,29 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
-    @BeforeMethod
-    public void initialize() throws Exception {
-        Mockito.reset(skClient);
+    @AfterMethod
+    public void initialize() {
+        Mockito.reset(systemsCache);
         Mockito.reset(serviceClients);
-        Mockito.reset(systemsClient);
         Mockito.reset(permsService);
-        sourceSystem = testSystemSSH;
-        destSystem = testSystemS3;
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
-        InputStream in = Utils.makeFakeFile(10 * 1024);
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        fileOpsService.insert(client,"/file1.txt", in);
-        in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert(client,"/file2.txt", in);
     }
 
     @AfterMethod
+    @BeforeMethod
     public void tearDown() throws Exception {
-        Mockito.reset(skClient);
         Mockito.reset(permsService);
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
-        fileOpsService.delete(client,"/");
-        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
-        fileOpsService.delete(client,"/");
+        for (TapisSystem system: testSystems) {
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, system, "testuser");
+            fileOpsService.delete(client,"/");
+        }
     }
 
-    @Test
-    public void testNotPermitted() throws Exception {
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testNotPermitted(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
@@ -135,20 +132,22 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(task.getStatus(), TransferTaskStatus.FAILED);
 
         TransferTask topTask = transfersService.getTransferTaskByUUID(t1.getUuid());
-        Assert.assertEquals(task.getStatus(), TransferTaskStatus.FAILED);
+        Assert.assertEquals(topTask.getStatus(), TransferTaskStatus.FAILED);
 
-        transfersService.deleteQueue(childQ).subscribe();
-        transfersService.deleteQueue(parentQ).subscribe();
         Mockito.reset(permsService);
 
     }
 
 
-    @Test
-    public void testTagSaveAndReturned() throws Exception {
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testTagSaveAndReturned(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
@@ -166,11 +165,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
-    @Test
-    public void testUpdatesTransferSize() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testUpdatesTransferSize(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
@@ -196,11 +199,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test
-    public void testDoesListingAndCreatesChildTasks() throws Exception {
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testDoesListingAndCreatesChildTasks(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
@@ -240,11 +247,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test
-    public void failsTransferWhenParentFails() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(null);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void failsTransferWhenParentFails(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
@@ -276,11 +287,16 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
 
 
-    @Test
-    public void testMultipleChildren() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testMultipleChildren(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10 * 1024);
@@ -307,17 +323,22 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                 Assert.assertEquals(t.getId(), t1.getId());
             })
             .thenCancel()
-            .verify(Duration.ofSeconds(5));
+            .verify(Duration.ofSeconds(600));
         List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
         Assert.assertEquals(children.size(), 2);
+        Mockito.reset(systemsCache);
 
     }
 
-    @Test
-    public void testEmptyDirectories() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testEmptyDirectories(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -347,22 +368,21 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertTrue(listing.size() > 0);
     }
 
-    @DataProvider
-    private Object[] testSourcesProvider() {
-        return new String[] {"tapis://sourceSystem/a/", "https://google.com"};
-    }
-
     /**
      * This test is important, basically testing a simple but complete transfer. We check the entries in the database
      * as well as the files at the destination to make sure it actually completed. If this test fails, something needs to
      * be fixed.
      * @throws Exception
      */
-    @Test
-    public void testDoesTransfer() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testDoesTransfer(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -432,11 +452,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
      * be fixed.
      * @throws Exception
      */
-    @Test
-    public void testNestedDirectories() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testNestedDirectories(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -512,11 +536,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     /**
      * Tests to se if the grouping does not hang after 256 groups
      */
-    @Test(enabled=false)
-    public void testMaxGroupSize() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(testSystemS3);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testMaxGroupSize(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -565,11 +593,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
      * be fixed.
      * @throws Exception
      */
-    @Test
-    public void testHttpInputs() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testHttpInputs(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -620,12 +652,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
-    @Test
-    public void testDoesTransferAtRoot() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testDoesTransferAtRoot(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         // Double check that the files really are in the destination
@@ -680,11 +715,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.size(), 1);
     }
 
-    @Test
-    public void testTransferSingleFile() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testTransferSingleFile(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -741,11 +780,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
-    @Test(enabled = true)
-    public void testDoesTransfersWhenOneErrors() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testDoesTransfersWhenOneErrors(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -796,16 +839,20 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test()
-    public void test100Files() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void test10Files(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         //Add some files to transfer
-        for (var i=0;i<100;i++) {
+        for (var i=0;i<10;i++) {
             fileOpsService.insert(sourceClient, String.format("a/%s.txt", i), Utils.makeFakeFile(10000 * 1024));
         }
         TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -824,21 +871,25 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         tasks.subscribe();
 
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
-        stream.take(100).blockLast();
+        stream.take(Duration.ofSeconds(5)).blockLast();
 
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
-        Assert.assertEquals(listing.size(), 100);
+        Assert.assertEquals(listing.size(), 10);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
     }
 
 
     //TODO: I'm not sure why this test is failing? It has something to do with the clients
-    @Test(enabled = false)
-    public void testSameSystemForSourceAndDest() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(destSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider", enabled = false)
+    public void testSameSystemForSourceAndDest(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -864,7 +915,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         tasks.subscribe();
 
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
-        stream.take(Duration.ofSeconds(5)).blockLast();
+        stream.take(Duration.ofSeconds(10)).blockLast();
 
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         Assert.assertEquals(listing.size(), 2);
@@ -873,11 +924,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
-    @Test()
-    public void testFullPipeline() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testFullPipeline(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -942,11 +997,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
     }
 
-    @Test
-    public void testCancelSingleTransfer() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testCancelSingleTransfer(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -993,11 +1052,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertTrue(taskChild.getBytesTransferred() > 0);
     }
 
-    @Test
-    public void testCancelMultipleTransfers() throws Exception {
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
-        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    @Test(dataProvider = "testSystemsDataProvider")
+    public void testCancelMultipleTransfers(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
+        TapisSystem sourceSystem = systemsPair.getLeft();
+        TapisSystem destSystem = systemsPair.getRight();
+        log.info(sourceSystem.getId());
+        log.info(destSystem.getId());
+        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
@@ -1055,10 +1118,10 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                         Assert.assertEquals(child.getStatus(), TransferTaskStatus.CANCELLED);
                     })
                     .thenCancel()
-                    .verify(Duration.ofSeconds(60));
+                    .verify(Duration.ofSeconds(5));
             })
             .thenCancel()
-            .verify(Duration.ofSeconds(60));
+            .verify(Duration.ofSeconds(5));
     }
 
     @Test

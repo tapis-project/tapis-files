@@ -19,6 +19,10 @@ import java.util.List;
 @Test(groups={"integration"})
 public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
 
+    public ITestFileTransfersDAO() throws Exception {
+        super();
+    }
+
     private final FileTransfersDAO dao = new FileTransfersDAO();
 
     private TransferTask createTransferTask() throws DAOException {
