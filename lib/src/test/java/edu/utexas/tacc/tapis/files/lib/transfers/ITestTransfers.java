@@ -797,7 +797,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
     @Test()
-    public void test100Files() throws Exception {
+    public void test10Files() throws Exception {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
@@ -805,7 +805,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         //Add some files to transfer
-        for (var i=0;i<100;i++) {
+        for (var i=0;i<10;i++) {
             fileOpsService.insert(sourceClient, String.format("a/%s.txt", i), Utils.makeFakeFile(10000 * 1024));
         }
         TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -824,10 +824,10 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         tasks.subscribe();
 
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
-        stream.take(100).blockLast();
+        stream.take(10).blockLast();
 
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
-        Assert.assertEquals(listing.size(), 100);
+        Assert.assertEquals(listing.size(), 10);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
     }
@@ -1093,6 +1093,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             .verify();
     }
 
+    @Test(enabled = false)
     public void testFlux2() {
         Flux<Integer> flux = Flux.just(1, 2, 3, 4, 5, 6)
             .flatMap(i->((i % 2)==0) ? Mono.just(i / 0): Mono.just(i))
