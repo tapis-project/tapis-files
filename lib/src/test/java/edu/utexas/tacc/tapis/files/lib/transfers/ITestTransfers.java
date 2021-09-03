@@ -13,6 +13,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -87,12 +88,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         sourceSystem = testSystemSSH;
         destSystem = testSystemS3;
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
-        InputStream in = Utils.makeFakeFile(10 * 1024);
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        fileOpsService.insert(client,"/file1.txt", in);
-        in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert(client,"/file2.txt", in);
     }
 
     @AfterMethod
@@ -171,7 +166,12 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        InputStream in = Utils.makeFakeFile(10 * 1024);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+        fileOpsService.insert(client,"/file1.txt", in);
+        in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert(client,"/file2.txt", in);
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
         element.setDestinationURI("tapis://destSystem/");
@@ -201,7 +201,12 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        InputStream in = Utils.makeFakeFile(10 * 1024);
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+        fileOpsService.insert(client,"/file1.txt", in);
+        in = Utils.makeFakeFile(10 * 1024);
+        fileOpsService.insert(client,"/file2.txt", in);
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
         element.setDestinationURI("tapis://destSystem/");
@@ -425,6 +430,56 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         Assert.assertEquals(listing.size(), 2);
     }
+
+    @Test(enabled = false)
+    public void testTransferExecutable() throws Exception {
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
+        // Double check that the files really are in the destination
+        //wipe out the dest folder just in case
+        fileOpsService.delete(destClient, "/");
+        fileOpsService.delete(sourceClient, "/");
+
+
+        //Add some files to transfer
+        int FILESIZE = 10 * 1000 * 1024;
+        fileOpsService.insert(sourceClient, "program.exe", Utils.makeFakeFile(FILESIZE));
+        fileUtilsService.linuxOp(sourceClient, "/program.exe", FileUtilsService.NativeLinuxOperation.CHMOD, "755", false);
+
+        TransferTaskRequestElement element = new TransferTaskRequestElement();
+        element.setSourceURI("tapis://sourceSystem/program.exe");
+        element.setDestinationURI("tapis://destSystem/program.exe");
+        List<TransferTaskRequestElement> elements = new ArrayList<>();
+        elements.add(element);
+        TransferTask t1 = transfersService.createTransfer(
+            "testuser",
+            "dev",
+            "tag",
+            elements
+        );
+
+        Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
+        tasks.subscribe();
+        Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
+        StepVerifier
+            .create(stream)
+            .assertNext(k->{
+                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
+                Assert.assertNotNull(k.getStartTime());
+                Assert.assertNotNull(k.getEndTime());
+            })
+            .thenCancel()
+            .verify(Duration.ofSeconds(600));
+
+        List<FileInfo> listing = fileOpsService.ls(destClient, "program.exe");
+        Assert.assertEquals(listing.size(), 1);
+        Assert.assertTrue(listing.get(0).getNativePermissions().contains("x"));
+    }
+
 
     /**
      * This test is important, basically testing a simple but complete transfer. We check the entries in the database
@@ -990,7 +1045,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Thread.sleep(1000);
         taskChild = transfersService.getChildTaskByUUID(taskChild.getUuid());
         Assert.assertEquals(taskChild.getStatus(), TransferTaskStatus.CANCELLED);
-        Assert.assertTrue(taskChild.getBytesTransferred() > 0);
+        Assert.assertTrue(taskChild.getBytesTransferred() >= 0);
     }
 
     @Test

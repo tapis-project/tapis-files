@@ -28,7 +28,7 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
                                                  @NotNull TapisSystem system, @NotNull String username) throws IOException {
 
         if (SystemTypeEnum.LINUX.equals(system.getSystemType())) {
-            SSHConnectionHolder holder = getSSHConnection(system, username);
+            SSHConnectionHolder holder = getSSHConnection(system, system.getEffectiveUserId());
             return new SSHDataClient(oboTenant, oboUser, system, holder);
         } else if (SystemTypeEnum.S3.equals(system.getSystemType())) {
             return new S3DataClient(oboTenant, oboUser, system);

@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
@@ -72,6 +73,7 @@ public abstract class BaseDatabaseIntegrationTest  {
     protected ChildTaskTransferService childTaskTransferService;
     protected ParentTaskTransferService parentTaskTransferService;
     protected IFileOpsService fileOpsService;
+    protected FileUtilsService fileUtilsService;
 
     @BeforeClass
     public void initTestFixtures() throws Exception {
@@ -142,6 +144,7 @@ public abstract class BaseDatabaseIntegrationTest  {
             bind(serviceClients).to(ServiceClients.class);
             bind(serviceContext).to(ServiceContext.class);
             bindAsContract(RemoteDataClientFactory.class);
+            bindAsContract(FileUtilsService.class);
             bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
             bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
             }
@@ -151,6 +154,7 @@ public abstract class BaseDatabaseIntegrationTest  {
         fileOpsService = locator.getService(IFileOpsService.class);
         childTaskTransferService = locator.getService(ChildTaskTransferService.class);
         parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
+        fileUtilsService = locator.getService(FileUtilsService.class);
     }
 
     @BeforeMethod
