@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
@@ -17,6 +18,8 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -35,6 +38,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -51,16 +56,19 @@ public class ChildTaskTransferService {
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
     private final RemoteDataClientFactory remoteDataClientFactory;
     private final SystemsCache systemsCache;
+    private final FileUtilsService fileUtilsService;
     private static final Logger log = LoggerFactory.getLogger(ChildTaskTransferService.class);
 
     @Inject
     public ChildTaskTransferService(TransfersService transfersService, FileTransfersDAO dao,
+                                    FileUtilsService fileUtilsService,
                                     RemoteDataClientFactory remoteDataClientFactory,
                                     SystemsCache systemsCache) {
         this.transfersService = transfersService;
         this.dao = dao;
         this.systemsCache = systemsCache;
         this.remoteDataClientFactory = remoteDataClientFactory;
+        this.fileUtilsService = fileUtilsService;
     }
 
     /**
@@ -292,8 +300,8 @@ public class ChildTaskTransferService {
         //If we are cancelled/failed we can skip the transfer
         if (taskChild.isTerminal()) return taskChild;
 
-        TapisSystem sourceSystem;
-        TapisSystem destSystem;
+        TapisSystem sourceSystem = null;
+        TapisSystem destSystem = null;
         IRemoteDataClient sourceClient;
         IRemoteDataClient destClient;
         log.info("***** DOING chevronTwo **** {}", taskChild);
@@ -309,10 +317,8 @@ public class ChildTaskTransferService {
         }
 
         String sourcePath;
-        TransferURI destURL;
+        TransferURI destURL = taskChild.getDestinationURI();
         TransferURI sourceURL = taskChild.getSourceURI();
-
-        destURL = taskChild.getDestinationURI();
 
         if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://")) {
             sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
@@ -371,6 +377,21 @@ public class ChildTaskTransferService {
         }
 
 
+        //If its an executable file on a posix system, chmod it to be +x. For HTTP inputs, there is no sourceSystem, so we have to check that.
+        if (sourceSystem != null && Objects.equals(sourceSystem.getSystemType(), SystemTypeEnum.LINUX) && Objects.equals(destSystem.getSystemType(), SystemTypeEnum.LINUX)) {
+            List<FileInfo> itemListing = sourceClient.ls(sourcePath);
+            FileInfo item = itemListing.get(0);
+            if (!item.isDir() && item.getNativePermissions().contains("x")) {
+                try {
+                    fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700", false);
+                } catch (TapisException ex) {
+                    String msg = Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                        "chmod", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+                    log.error(msg);
+                    throw new ServiceException(msg, ex);
+                }
+            }
+        }
 
 
         //The ChildTransferTask gets updated in another thread so we look it up again here

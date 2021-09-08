@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
@@ -74,7 +75,7 @@ public class BaseDatabaseIntegrationTest  {
     protected ChildTaskTransferService childTaskTransferService;
     protected ParentTaskTransferService parentTaskTransferService;
     protected IFileOpsService fileOpsService;
-
+    protected FileUtilsService fileUtilsService;
 
     public BaseDatabaseIntegrationTest() throws Exception {
         String privateKey = IOUtils.toString(
@@ -141,16 +142,21 @@ public class BaseDatabaseIntegrationTest  {
         testSystemIrods.setAuthnCredential(creds);
 
         testSystems = Arrays.asList(testSystemSSH, testSystemS3, testSystemPKI, testSystemIrods);
+        testSystemsPairs = new ArrayList<>();
 
-        for (int i=0; i<testSystems.size(); i++){
-            for (int j=i+1; j<testSystems.size(); j++) {
+        for (int i = 0; i < testSystems.size(); i++) {
+            for (int j = i + 1; j < testSystems.size(); j++) {
                 Pair<TapisSystem, TapisSystem> pair = new ImmutablePair<>(testSystems.get(i), testSystems.get(j));
                 testSystemsPairs.add(pair);
             }
         }
 
-        ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
 
+    }
+
+    @BeforeMethod
+    public void initApplication() {
+        ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
 
         locator = ServiceLocatorUtilities.bind(new AbstractBinder() {
             @Override
@@ -165,6 +171,7 @@ public class BaseDatabaseIntegrationTest  {
             bind(serviceClients).to(ServiceClients.class);
             bind(serviceContext).to(ServiceContext.class);
             bindAsContract(RemoteDataClientFactory.class);
+            bindAsContract(FileUtilsService.class);
             bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
             bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
             }
@@ -174,6 +181,7 @@ public class BaseDatabaseIntegrationTest  {
         fileOpsService = locator.getService(IFileOpsService.class);
         childTaskTransferService = locator.getService(ChildTaskTransferService.class);
         parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
+        fileUtilsService = locator.getService(FileUtilsService.class);
     }
 
     @DataProvider

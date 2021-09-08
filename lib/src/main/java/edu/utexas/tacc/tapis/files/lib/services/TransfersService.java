@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Delivery;
@@ -27,6 +28,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
+import reactor.rabbitmq.ChannelPool;
 import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.OutboundMessage;
@@ -35,13 +37,16 @@ import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.RabbitFlux;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.ReceiverOptions;
+import reactor.rabbitmq.SendOptions;
 import reactor.rabbitmq.Sender;
 import reactor.rabbitmq.SenderOptions;
+import reactor.util.retry.RetrySpec;
 
 import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -60,9 +65,6 @@ public class TransfersService {
     private final Sender sender;
 
     private final FileTransfersDAO dao;
-    private final RemoteDataClientFactory remoteDataClientFactory;
-    private final SystemsCache systemsCache;
-    private final FilePermsService permsService;
 
     private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]{
         TransferTaskStatus.FAILED,
@@ -71,23 +73,24 @@ public class TransfersService {
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
 
     @Inject
-    public TransfersService(FileTransfersDAO dao,
-                            FilePermsService permsService,
-                            RemoteDataClientFactory remoteDataClientFactory,
-                            SystemsCache systemsCache) {
+    public TransfersService(FileTransfersDAO dao) {
         ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
         ReceiverOptions receiverOptions = new ReceiverOptions()
+            .connectionMonoConfigurator(
+                cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5)))
+            )
             .connectionFactory(connectionFactory)
             .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "receiver"));
         SenderOptions senderOptions = new SenderOptions()
+            .connectionMonoConfigurator(
+                cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5)))
+            )
             .connectionFactory(connectionFactory)
             .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "sender"));
         receiver = RabbitFlux.createReceiver(receiverOptions);
         sender = RabbitFlux.createSender(senderOptions);
+
         this.dao = dao;
-        this.remoteDataClientFactory = remoteDataClientFactory;
-        this.systemsCache = systemsCache;
-        this.permsService = permsService;
         init();
     }
 
@@ -122,24 +125,29 @@ public class TransfersService {
 
     }
 
-    public void setParentQueue(String name) {
+    public Mono<AMQP.Queue.BindOk> setParentQueue(String name) {
+
         this.PARENT_QUEUE = name;
         QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
             .durable(true)
             .autoDelete(false);
-        sender.declare(parentSpec)
-            .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
-            .subscribe();
+        return sender.declare(parentSpec)
+            .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)));
+
     }
 
-    public void setChildQueue(String name) {
+    public Mono<AMQP.Queue.BindOk> setChildQueue(String name) {
         this.CHILD_QUEUE = name;
         QueueSpecification parentSpec = QueueSpecification.queue(CHILD_QUEUE)
             .durable(true)
             .autoDelete(false);
-        sender.declare(parentSpec)
-            .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
-            .subscribe();
+        return sender.declare(parentSpec)
+            .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)));
+    }
+    public Mono<DeleteOk> deleteQueue(String qName) {
+        return sender
+            .unbind(binding(TRANSFERS_EXCHANGE, qName, qName))
+            .then(sender.delete(QueueSpecification.queue(qName)));
     }
 
     public void setControlExchange(String name) {
@@ -306,9 +314,6 @@ public class TransfersService {
         }
     }
 
-    public Mono<DeleteOk> deleteQueue(String qName) {
-        return sender.delete(QueueSpecification.queue(qName));
-    }
 
     private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException {
         try {
