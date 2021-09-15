@@ -23,6 +23,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import java.io.InputStream;
@@ -56,12 +57,14 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     public void setUpQueues() {
         this.childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(this.childQ)
+            .subscribeOn(Schedulers.boundedElastic())
             .subscribe(
                 (m)-> log.info(m.toString()),
                 (err)->log.error(err.getMessage(), err)
             );
         this.parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(this.parentQ)
+            .subscribeOn(Schedulers.boundedElastic())
             .subscribe(
                 (m)-> log.info(m.toString()),
                 (err)-> log.error(err.getMessage(), err)
@@ -70,14 +73,20 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     @AfterMethod
     public void deleteQueues() {
-        transfersService.deleteQueue(this.childQ).subscribe(
-            (m)-> log.info("Deleted queue {}", this.childQ),
-            (err)->log.error(err.getMessage(), err)
-        );
-        transfersService.deleteQueue(this.parentQ).subscribe(
-            (m)-> log.info("Deleted queue {}", this.parentQ),
-            (err)-> log.error(err.getMessage(), err)
-        );
+        log.info("Deleting Queue: {}", this.childQ);
+        transfersService.deleteQueue(this.childQ)
+            .subscribeOn(Schedulers.boundedElastic())
+            .subscribe(
+                (m)-> log.info("Deleted queue {}", this.childQ),
+                (err)->log.error(err.getMessage(), err)
+            );
+        log.info("Deleting Queue: {}", this.parentQ);
+        transfersService.deleteQueue(this.parentQ)
+            .subscribeOn(Schedulers.boundedElastic())
+            .subscribe(
+                (m)-> log.info("Deleted queue {}", this.parentQ),
+                (err)-> log.error(err.getMessage(), err)
+            );
     }
 
     @BeforeMethod
@@ -124,7 +133,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             "tag",
             elements
         );
-        Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
+        Flux
+            <TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         // Task should be FAILED after the pipeline runs
         StepVerifier
             .create(tasks)
@@ -173,6 +183,10 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
         when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+
+        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+        fileOpsService.insert(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.insert(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
@@ -392,11 +406,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
 
         //Add some files to transfer
-        int FILESIZE = 10 * 1000 * 1024;
-        InputStream in = Utils.makeFakeFile(FILESIZE);
-        fileOpsService.insert(sourceClient, "a/1.txt", in);
-        in = Utils.makeFakeFile(FILESIZE);
-        fileOpsService.insert(sourceClient, "a/2.txt", in);
+        int FILESIZE = 10 * 1024;
+        fileOpsService.insert(sourceClient, "a/1.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "a/2.txt", Utils.makeFakeFile(FILESIZE));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a/");
@@ -522,10 +534,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
-        InputStream in = Utils.makeFakeFile(FILESIZE);
-        fileOpsService.insert(sourceClient, "a/cat/dog/1.txt", in);
-        in = Utils.makeFakeFile(FILESIZE);
-        fileOpsService.insert(sourceClient, "a/cat/dog/2.txt", in);
+        fileOpsService.insert(sourceClient, "a/cat/dog/1.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "a/cat/dog/2.txt", Utils.makeFakeFile(FILESIZE));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a/");
@@ -542,30 +552,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
-        StepVerifier
-            .create(stream)
-            .assertNext(k->{
-                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
-                Assert.assertNotNull(k.getStartTime());
-                Assert.assertNotNull(k.getEndTime());
-            })
-            .assertNext(k->{
-                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
-                Assert.assertNotNull(k.getStartTime());
-                Assert.assertNotNull(k.getEndTime());
-            })
-            .assertNext(k->{
-                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
-                Assert.assertNotNull(k.getStartTime());
-                Assert.assertNotNull(k.getEndTime());
-            })
-            .assertNext(k->{
-                Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
-                Assert.assertNotNull(k.getStartTime());
-                Assert.assertNotNull(k.getEndTime());
-            })
-            .thenCancel()
-            .verify(Duration.ofSeconds(5));
+        stream.take(Duration.ofSeconds(5))
+            .blockLast();
 
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
@@ -605,8 +593,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
-        InputStream in = Utils.makeFakeFile(FILESIZE);
-        fileOpsService.insert(sourceClient, "a/1.txt", in);
+        fileOpsService.insert(sourceClient, "a/1.txt", Utils.makeFakeFile(FILESIZE));
 
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -721,12 +708,11 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
-        InputStream in = Utils.makeFakeFile(FILESIZE);
-        fileOpsService.insert(sourceClient, "file1.txt", in);
+        fileOpsService.insert(sourceClient, "file1.txt", Utils.makeFakeFile(FILESIZE));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/file1.txt");
-        element.setDestinationURI("tapis://destSystem/");
+        element.setDestinationURI("tapis://destSystem/transferred");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -762,7 +748,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(parent.getStartTime());
         Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/");
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/transferred");
         Assert.assertEquals(listing.size(), 1);
     }
 
@@ -784,13 +770,13 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
 
         //Add some files to transfer
-        int FILESIZE = 100 * 1000 * 1024;
+        int FILESIZE = 10 * 1000 * 1024;
         InputStream in = Utils.makeFakeFile(FILESIZE);
         fileOpsService.insert(sourceClient, "file1.txt", in);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/file1.txt");
-        element.setDestinationURI("tapis://destSystem/file1.txt");
+        element.setDestinationURI("tapis://destSystem/b/fileCopy.txt");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         TransferTask t1 = transfersService.createTransfer(
@@ -812,7 +798,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
                 Assert.assertNotNull(k.getEndTime());
             })
             .thenCancel()
-            .verify(Duration.ofSeconds(5));
+            .verify(Duration.ofSeconds(100));
 
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
@@ -826,7 +812,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(parent.getStartTime());
         Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "file1.txt");
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         Assert.assertEquals(listing.size(), 1);
     }
 
@@ -932,11 +918,10 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
-    //TODO: I'm not sure why this test is failing? It has something to do with the clients
-    @Test(dataProvider = "testSystemsDataProvider", enabled = true)
-    public void testSameSystemForSourceAndDest(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
-        TapisSystem sourceSystem = systemsPair.getLeft();
-        TapisSystem destSystem = systemsPair.getRight();
+    @Test(dataProvider = "testSystemsListDataProvider", enabled = true)
+    public void testSameSystemForSourceAndDest(TapisSystem testSystem) throws Exception {
+        TapisSystem sourceSystem = testSystem;
+        TapisSystem destSystem = testSystem;
         log.info(sourceSystem.getId());
         log.info(destSystem.getId());
         when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
@@ -946,9 +931,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         //Add some files to transfer
-        for (var i=0;i<2;i++) {
-            fileOpsService.insert(sourceClient, String.format("a/%s.txt", i), Utils.makeFakeFile(10000 * 1024));
-        }
+
+        fileOpsService.insert(sourceClient, "a/1.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.insert(sourceClient, "a/2.txt", Utils.makeFakeFile(10000 * 1024));
 
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -967,7 +952,16 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         tasks.subscribe();
 
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
-        stream.take(Duration.ofSeconds(10)).blockLast();
+        StepVerifier
+            .create(stream)
+            .assertNext(t-> {
+                Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+            })
+            .assertNext(t->{
+                Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED);
+            })
+            .thenCancel()
+            .verify(Duration.ofSeconds(5));
 
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         Assert.assertEquals(listing.size(), 2);
@@ -1050,61 +1044,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
     @Test(dataProvider = "testSystemsDataProvider")
-    public void testCancelSingleTransfer(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
-        TapisSystem sourceSystem = systemsPair.getLeft();
-        TapisSystem destSystem = systemsPair.getRight();
-        log.info(sourceSystem.getId());
-        log.info(destSystem.getId());
-        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-
-        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
-        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
-
-        //wipe out the dest folder just in case
-        fileOpsService.delete(destClient, "/");
-
-        //Add some files to transfer
-        int FILESIZE = 500 * 1000 * 1024;
-        InputStream in = Utils.makeFakeFile(FILESIZE);
-        fileOpsService.insert(sourceClient, "file1.txt", in);
-
-        TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://sourceSystem/file1.txt");
-        element.setDestinationURI("tapis://destSystem/file1.txt");
-        List<TransferTaskRequestElement> elements = new ArrayList<>();
-        elements.add(element);
-        Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
-        tasks.subscribe();
-
-        TransferTask t1 = transfersService.createTransfer(
-            "testuser",
-            "dev",
-            "tag",
-            elements
-        );
-
-        //Give it a sec to complete the parent task and get the child
-        Thread.sleep(200);
-        TransferTaskChild taskChild = transfersService.getAllChildrenTasks(t1).get(0);
-
-        TransferTaskChild finalTaskChild = taskChild;
-        Thread thread = new Thread( ()->{
-            try {
-                childTaskTransferService.doTransfer(finalTaskChild);
-            } catch (Exception ignored){}
-        });
-        thread.start();
-        Thread.sleep(2000);
-        transfersService.cancelTransfer(t1);
-        Thread.sleep(1000);
-        taskChild = transfersService.getChildTaskByUUID(taskChild.getUuid());
-        Assert.assertEquals(taskChild.getStatus(), TransferTaskStatus.CANCELLED);
-        Assert.assertTrue(taskChild.getBytesTransferred() >= 0);
-    }
-
-    @Test(dataProvider = "testSystemsDataProvider")
     public void testCancelMultipleTransfers(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
         TapisSystem sourceSystem = systemsPair.getLeft();
         TapisSystem destSystem = systemsPair.getRight();
@@ -1122,15 +1061,15 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 100 * 1000 * 1024;
-        fileOpsService.insert(sourceClient, "file1.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "file2.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "file3.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "file4.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "file5.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "a/file1.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "a/file2.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "a/file3.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "a/file4.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.insert(sourceClient, "a/file5.txt", Utils.makeFakeFile(FILESIZE));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://sourceSystem/");
-        element.setDestinationURI("tapis://destSystem/");
+        element.setSourceURI("tapis://sourceSystem/a/");
+        element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();

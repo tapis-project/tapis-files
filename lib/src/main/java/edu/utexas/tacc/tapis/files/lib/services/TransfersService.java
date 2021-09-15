@@ -121,12 +121,11 @@ public class TransfersService {
             .then(sender.declare(parentSpec))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
+            .subscribeOn(Schedulers.immediate())
             .subscribe();
-
     }
 
     public Mono<AMQP.Queue.BindOk> setParentQueue(String name) {
-
         this.PARENT_QUEUE = name;
         QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
             .durable(true)

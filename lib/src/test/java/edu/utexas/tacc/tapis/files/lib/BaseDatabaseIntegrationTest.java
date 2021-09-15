@@ -101,6 +101,23 @@ public class BaseDatabaseIntegrationTest  {
         testSystemSSH.setEffectiveUserId("testuser");
         testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
 
+
+        // PKI Keys system. The docker-compose file for development spins up
+        // 2 ssh containers, one for the username/passwd system, and this separate container
+        // for the PKI ssh tests.
+        creds = new Credential();
+        creds.setPublicKey(publicKey);
+        creds.setPrivateKey(privateKey);
+        testSystemPKI = new TapisSystem();
+        testSystemPKI.setSystemType(SystemTypeEnum.LINUX);
+        testSystemPKI.setAuthnCredential(creds);
+        testSystemPKI.setHost("localhost");
+        testSystemPKI.setPort(2223);
+        testSystemPKI.setRootDir("/data/home/testuser/");
+        testSystemPKI.setId("testSystemPKI");
+        testSystemPKI.setEffectiveUserId("testuser");
+        testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
+
         //S3 system
         creds = new Credential();
         creds.setAccessKey("user");
@@ -116,22 +133,10 @@ public class BaseDatabaseIntegrationTest  {
         testSystemS3.setRootDir("/");
         testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
-        // PKI Keys system
-        creds = new Credential();
-        creds.setPublicKey(publicKey);
-        creds.setPrivateKey(privateKey);
-        testSystemPKI = new TapisSystem();
-        testSystemPKI.setSystemType(SystemTypeEnum.LINUX);
-        testSystemPKI.setAuthnCredential(creds);
-        testSystemPKI.setHost("localhost");
-        testSystemPKI.setPort(2222);
-        testSystemPKI.setRootDir("/data/home/testuser/");
-        testSystemPKI.setId("testSystemPKI");
-        testSystemPKI.setEffectiveUserId("testuser");
-        testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
-
+        // IRODs system
         testSystemIrods = new TapisSystem();
         testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
+        testSystemIrods.setId("testSystemIrods");
         testSystemIrods.setHost("localhost");
         testSystemIrods.setPort(1247);
         testSystemIrods.setRootDir("/tempZone/home/dev/");
@@ -150,14 +155,19 @@ public class BaseDatabaseIntegrationTest  {
                 testSystemsPairs.add(pair);
             }
         }
+    }
 
-
+    @AfterMethod
+    public void resetServiceLocator() {
+        if (locator != null) {
+            locator.shutdown();
+        }
     }
 
     @BeforeMethod
     public void initApplication() {
         ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
-
+        locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
         locator = ServiceLocatorUtilities.bind(new AbstractBinder() {
             @Override
             protected void configure() {
@@ -172,12 +182,14 @@ public class BaseDatabaseIntegrationTest  {
             bind(serviceContext).to(ServiceContext.class);
             bindAsContract(RemoteDataClientFactory.class);
             bindAsContract(FileUtilsService.class);
-            bind(new SSHConnectionCache(1, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+            bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
             bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
             }
         });
+        log.info(locator.toString());
         remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
         transfersService = locator.getService(TransfersService.class);
+        log.info(transfersService.toString());
         fileOpsService = locator.getService(IFileOpsService.class);
         childTaskTransferService = locator.getService(ChildTaskTransferService.class);
         parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
@@ -189,6 +201,8 @@ public class BaseDatabaseIntegrationTest  {
         return testSystemsPairs.toArray();
     }
 
+    @DataProvider
+    public Object[] testSystemsListDataProvider() {return testSystems.toArray(); }
 
 
     @BeforeMethod

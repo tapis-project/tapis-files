@@ -51,7 +51,14 @@ services:
       dockerfile: ./deploy/Dockerfile.ssh-machine
     ports:
       - "2222:22"
-    
+
+  ssh-machine2:
+    container_name: ssh2
+    build:
+      context: ..
+      dockerfile: ./deploy/Dockerfile.ssh-machine
+    ports:
+      - "2223:22"
     
     
    
