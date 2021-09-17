@@ -42,6 +42,7 @@ import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -118,7 +119,8 @@ public class TransfersService {
             .then(sender.declare(parentSpec))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
-            .subscribe();
+            .retry(5)
+            .block(Duration.ofSeconds(5));
 
     }
 
@@ -129,7 +131,7 @@ public class TransfersService {
             .autoDelete(false);
         sender.declare(parentSpec)
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
-            .subscribe();
+            .block(Duration.ofSeconds(5));
     }
 
     public void setChildQueue(String name) {
@@ -139,7 +141,7 @@ public class TransfersService {
             .autoDelete(false);
         sender.declare(parentSpec)
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
-            .subscribe();
+            .block(Duration.ofSeconds(5));
     }
 
     public void setControlExchange(String name) {
