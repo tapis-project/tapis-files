@@ -44,12 +44,10 @@ public class SSHConnectionCache {
                 .build(new SSHConnectionCacheLoader());
         executorService.scheduleAtFixedRate( ()-> {
             sessionCache.asMap().forEach( (SSHConnectionCacheKey key, SSHConnectionHolder holder) -> {
-                //TODO: Should never go negative!
                 if (holder.getChannelCount() == 0) {
                     log.info("Closing SSH connecting from cache: {} for user {}", holder.getSshConnection().getHost(), holder.getSshConnection().getUsername());
-                    //Not sure what to do there?
-                    holder.getSshConnection().stop();
                     sessionCache.invalidate(key);
+                    holder.getSshConnection().stop();
                 }
             });
         }, this.timeout, this.timeout, this.timeUnit); //

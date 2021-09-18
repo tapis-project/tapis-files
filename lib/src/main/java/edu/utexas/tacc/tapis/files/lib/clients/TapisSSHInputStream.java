@@ -37,7 +37,6 @@ public class TapisSSHInputStream extends FilterInputStream {
     @Override
     public void close() throws IOException {
         super.close();
-        log.info("Closing Stream and returning sftp client");
         this.holder.returnSftpClient(sftpClient);
         sftpClient.close();
     }

@@ -57,18 +57,10 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     public void setUpQueues() {
         this.childQ = UUID.randomUUID().toString();
         transfersService.setChildQueue(this.childQ)
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe(
-                (m)-> log.info(m.toString()),
-                (err)->log.error(err.getMessage(), err)
-            );
+            .block(Duration.ofSeconds(1));
         this.parentQ = UUID.randomUUID().toString();
         transfersService.setParentQueue(this.parentQ)
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe(
-                (m)-> log.info(m.toString()),
-                (err)-> log.error(err.getMessage(), err)
-            );
+            .block(Duration.ofSeconds(1));
     }
 
     @AfterMethod

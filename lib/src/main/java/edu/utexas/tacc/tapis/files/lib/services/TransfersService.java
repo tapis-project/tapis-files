@@ -121,8 +121,9 @@ public class TransfersService {
             .then(sender.declare(parentSpec))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
-            .subscribeOn(Schedulers.immediate())
-            .subscribe();
+            .retry(5)
+            .block(Duration.ofSeconds(5));
+
     }
 
     public Mono<AMQP.Queue.BindOk> setParentQueue(String name) {
@@ -132,7 +133,6 @@ public class TransfersService {
             .autoDelete(false);
         return sender.declare(parentSpec)
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)));
-
     }
 
     public Mono<AMQP.Queue.BindOk> setChildQueue(String name) {
