@@ -126,8 +126,8 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         testSystemIrods.setRootDir("/tempZone/home/dev/");
         testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
         Credential creds = new Credential();
-        creds.accessKey("dev");
-        creds.setPassword("dev");
+        creds.setAccessKey("dev");
+        creds.setAccessSecret("dev");
         testSystemIrods.setAuthnCredential(creds);
 
         testSystems.add(testSystemSSH);

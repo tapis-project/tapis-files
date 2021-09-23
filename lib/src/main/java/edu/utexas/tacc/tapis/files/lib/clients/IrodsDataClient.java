@@ -126,7 +126,7 @@ public class IrodsDataClient implements IRemoteDataClient {
                 } catch (IOException ignored) {
                 }
 
-                fileInfo.setLastModified(Instant.ofEpochSecond(file.lastModified()));
+                fileInfo.setLastModified(Instant.ofEpochMilli(file.lastModified()));
                 outListing.add(fileInfo);
             });
             outListing.sort(Comparator.comparing(FileInfo::getName));
@@ -389,7 +389,7 @@ public class IrodsDataClient implements IRemoteDataClient {
                 system.getHost(),
                 system.getPort(),
                 system.getAuthnCredential().getAccessKey(),
-                system.getAuthnCredential().getPassword(),
+                system.getAuthnCredential().getAccessSecret(),
                 homeDir,
                 irodsZone,
                 DEFAULT_RESC,
@@ -416,7 +416,7 @@ public class IrodsDataClient implements IRemoteDataClient {
                 system.getHost(),
                 system.getPort(),
                 system.getAuthnCredential().getAccessKey(),
-                system.getAuthnCredential().getPassword(),
+                system.getAuthnCredential().getAccessSecret(),
                 homeDir,
                 irodsZone,
                 DEFAULT_RESC,

@@ -114,8 +114,8 @@ public class ITestFileOpsService {
 
         //Irods system
         creds = new Credential();
-        creds.accessKey("dev");
-        creds.setPassword("dev");
+        creds.setAccessKey("dev");
+        creds.setAccessSecret("dev");
         testSystemIrods = new TapisSystem();
         testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
         testSystemIrods.setHost("localhost");

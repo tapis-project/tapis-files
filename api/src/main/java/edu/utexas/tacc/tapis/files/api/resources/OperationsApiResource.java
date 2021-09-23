@@ -107,7 +107,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         @Context SecurityContext securityContext) {
         String opName = "listFiles";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-
+        log.debug("PATH={}", path);
         try {
             Instant start = Instant.now();
             IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);

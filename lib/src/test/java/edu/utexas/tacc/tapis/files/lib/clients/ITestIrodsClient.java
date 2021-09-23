@@ -33,8 +33,8 @@ public class ITestIrodsClient {
         system.setRootDir("/tempZone/home/dev/");
         system.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
         Credential creds = new Credential();
-        creds.accessKey("dev");
-        creds.setPassword("dev");
+        creds.setAccessKey("dev");
+        creds.setAccessSecret("dev");
         system.setAuthnCredential(creds);
     }
 
