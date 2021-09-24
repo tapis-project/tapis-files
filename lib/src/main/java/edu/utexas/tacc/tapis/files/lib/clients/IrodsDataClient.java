@@ -12,6 +12,7 @@ import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.FileNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.exception.JargonFileOrCollAlreadyExistsException;
+import org.irods.jargon.core.packinstr.DataObjInp;
 import org.irods.jargon.core.packinstr.TransferOptions;
 import org.irods.jargon.core.pub.DataTransferOperations;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
@@ -52,7 +53,7 @@ public class IrodsDataClient implements IRemoteDataClient {
     private final String irodsZone;
     private final String homeDir;
     private final String rootDir;
-    private static final String DEFAULT_RESC = "demoResc";
+    private static final String DEFAULT_RESC = "";
     private static final int MAX_BYTES_PER_CHUNK = 1000000;
 
     public IrodsDataClient(@NotNull String oboTenantId, @NotNull String oboUsername, @NotNull TapisSystem system) {
@@ -172,7 +173,11 @@ public class IrodsDataClient implements IRemoteDataClient {
                 IRODSFileOutputStream outputStream = fileFactory.instanceIRODSFileOutputStream(newFile);
             ) {
                 fileStream.transferTo(outputStream);
-            } finally {
+            } catch (JargonException ex) {
+                String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+                throw new IOException(msg, ex);
+            }
+            finally {
                 newFile.close();
             }
         } catch (JargonException ex) {
