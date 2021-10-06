@@ -21,6 +21,7 @@
         <hk2.inhabitant.version>3.0.1</hk2.inhabitant.version>
         <jetbrains.annotations.version>20.1.0</jetbrains.annotations.version>
         <apache-commons-exec.version>1.3</apache-commons-exec.version>
+        <irods-jargon.version>4.3.2.2-RELEASE</irods-jargon.version>
         <globus.version>2.1.0</globus.version>
         <skipITs>true</skipITs>
         <flyway.skip>true</flyway.skip>
