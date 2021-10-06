@@ -56,7 +56,7 @@
         </profile>
          <!-- Profile for building without using TACC repositories -->
         <profile>
-          <id>tacc-external>
+          <id>tacc-external</id>
         </profile>
     </profiles>
     <build>
