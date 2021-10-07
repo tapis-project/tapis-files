@@ -379,15 +379,22 @@ public class TransfersService {
     public Flux<AcknowledgableDelivery> streamChildMessages() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
-        Flux<AcknowledgableDelivery> childMessageStream = receiver.consumeManualAck(CHILD_QUEUE, options);
-        return childMessageStream;
+        QueueSpecification childSpec = QueueSpecification.queue(CHILD_QUEUE)
+            .durable(true)
+            .autoDelete(false);
+        return receiver.consumeManualAck(CHILD_QUEUE, options)
+            .delaySubscription(sender.declareQueue(childSpec));
     }
 
     public Flux<AcknowledgableDelivery> streamParentMessages() {
         ConsumeOptions options = new ConsumeOptions();
         options.qos(1000);
-        Flux<AcknowledgableDelivery> parentStream = receiver.consumeManualAck(PARENT_QUEUE, options);
-        return parentStream;
+        QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
+            .durable(true)
+            .autoDelete(false);
+        return receiver.consumeManualAck(PARENT_QUEUE, options)
+            .delaySubscription(sender.declareQueue(parentSpec));
+
     }
 
     private Mono<TransferControlAction> deserializeControlMessage(Delivery message) {
