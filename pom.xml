@@ -41,21 +41,12 @@
         </profile>
         <profile>
             <id>tacc</id>
-            <activation> <activeByDefault>true</activeByDefault> </activation>
+            <activation>
+              <property>
+                <name>!skipTaccProfile</name>
+              </property>
+            </activation>
             <repositories>
-                <repository>
-                    <id>dice.repository</id>
-                    <name>dice.repository</name>
-                    <url>https://raw.github.com/DICE-UNC/DICE-Maven/master/releases</url>
-                    <releases>
-                        <enabled>true</enabled>
-                    </releases>
-                    <snapshots>
-                        <enabled>false</enabled>
-                        <updatePolicy>always</updatePolicy>
-                        <checksumPolicy>warn</checksumPolicy>
-                    </snapshots>
-                </repository>
                 <repository>
                     <id>tapis-local-releases</id>
                     <name>Local repo for releases</name>
@@ -64,8 +55,23 @@
             </repositories>
         </profile>
     </profiles>
-    <build>
+    <repositories>
+      <repository>
+        <id>dice.repository</id>
+        <name>dice.repository</name>
+        <url>https://raw.github.com/DICE-UNC/DICE-Maven/master/releases</url>
+        <releases>
+          <enabled>true</enabled>
+        </releases>
+        <snapshots>
+          <enabled>false</enabled>
+          <updatePolicy>always</updatePolicy>
+          <checksumPolicy>warn</checksumPolicy>
+        </snapshots>
+      </repository>
+    </repositories>
 
+    <build>
         <resources>
             <!-- Write the project version number to the specified file. -->
             <!-- Setting the targetPath puts the file into the jar at the -->
