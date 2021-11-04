@@ -188,7 +188,7 @@ public class ITestFileOpsService {
         fileOpsService.insert(client,"/dir1/dir2/test.txt", in);
         List<FileInfo> listing = fileOpsService.ls(client,"/dir1/dir2");
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "dir1/dir2/test.txt");
+        Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
     }
 
 
@@ -200,8 +200,8 @@ public class ITestFileOpsService {
         fileOpsService.insert(client,"/dir1/dir2/test.txt", in);
         List<FileInfo> listing = fileOpsService.ls(client,"dir1/dir2/");
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "dir1/dir2/test.txt");
-        fileOpsService.delete(client,"dir1/dir2/test.txt");
+        Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
+        fileOpsService.delete(client,"/dir1/dir2/test.txt");
         Assert.assertThrows(NotFoundException.class, ()-> {
             fileOpsService.ls(client, "/dir1/dir2/test.txt");
         });

@@ -212,6 +212,7 @@ public class SSHDataClient implements ISSHDataClient {
             for (Path part: relativePath) {
                 tmpPath = tmpPath.resolve(part);
                 try {
+                  // TODO do a stat to see if dir exists rather catch/ignore exception
                     sftpClient.mkdir(tmpPath.toString());
                 } catch (SftpException ignored) {}
             }

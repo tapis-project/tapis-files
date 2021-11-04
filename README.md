@@ -6,15 +6,28 @@ In the `deploy` directory startup the necessary containers.
 
 ```docker-compose up```
 
-We need to create a test database and user for integration tests also. A dev database
-is created automatically, but the test database will get wiped out after each test run. 
+##### IRODS setup
+We need to create an irods user for testing
+Exec into the irods container
+
+```docker exec -it irods bash```
+
+Run admin commands to add the user
+
+``` 
+iinit (host=localhost, user=rods, passwd=rods)
+iadmin mkuser dev rodsuser
+iadmin moduser dev password dev
+```
 
 
 ##### Database setup
+We need to create a test database and user for integration tests also. A dev database
+is created automatically, but the test database will get wiped out after each test run.
 
 Exec into the postgres container
 
-```docker exec -it deploy_postgres_1 bash```
+```docker exec -it postgres bash```
 
 Get into a postgres shell. The default username is dev
 
@@ -44,10 +57,13 @@ mvn clean install -DskipITs=false -DAPP_ENV=test
 ```
 
 ### Run migrations
-
+Tests should run migrations, to run them manually for any DB do this:
 ```
 ╰─$ mvn -pl migrations flyway:clean flyway:migrate -Dflyway.skip=false -Dflyway.url=jdbc:postgresql://localhost:5432/dev -Dflyway.user=dev -Dflyway.password=dev -U
 ```
+### Start the service
+Start the service from the IDE, class edu.utexas.tacc.tapis.files.api.FilesApplication,
+in intellij env vars config, set SERVICE_PASSWORD
 
 ### Hit the API
 You should also be able to hit the API from postman at 

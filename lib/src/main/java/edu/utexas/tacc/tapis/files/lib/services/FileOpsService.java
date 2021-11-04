@@ -92,9 +92,11 @@ public class FileOpsService implements IFileOpsService {
             Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, path, Permission.READ);
             List<FileInfo> listing = client.ls(cleanedPath, limit, offset);
             listing.forEach(f -> {
-                String uri = String.format("%s/%s/%s", client.getOboTenant(), client.getSystemId(), f.getPath());
+                String uri = String.format("%s/%s", client.getSystemId(), f.getPath());
                 uri = StringUtils.replace(uri, "//", "/");
                 f.setUri("tapis://" + uri);
+                // Ensure there is a leading slash
+                f.setPath(StringUtils.prependIfMissing(f.getPath(), "/"));
             });
             return listing;
         } catch (IOException ex) {

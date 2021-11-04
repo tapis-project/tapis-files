@@ -259,6 +259,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
             .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .get(FileListResponse.class);
         FileInfo file = response.getResult().get(0);
+        Assert.assertEquals(file.getPath(), "/testfile1.txt");
         Assert.assertEquals(file.getName(), "testfile1.txt");
         Assert.assertEquals(file.getSize(), 10 * 1024);
         Assert.assertNotNull(file.getUri());
@@ -383,7 +384,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
         List<FileInfo> listing = doListing(testSystem.getId(), "/filestest/sample1.txt", getJwtForUser("dev", "testuser1"));
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "filestest/sample1.txt");
+        Assert.assertEquals(listing.get(0).getPath(), "/filestest/sample1.txt");
     }
 
     @Test(dataProvider = "testSystemsProvider")
@@ -422,7 +423,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
         List<FileInfo> listing = doListing(testSystem.getId(), "newName", getJwtForUser("dev", "testuser1"));
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "newName");
+        Assert.assertEquals(listing.get(0).getPath(), "/newName");
     }
 
     @Test(dataProvider = "testSystemsProvider")
