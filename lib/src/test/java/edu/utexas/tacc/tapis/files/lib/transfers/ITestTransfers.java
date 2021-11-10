@@ -86,7 +86,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         log.info("method name:" + method.getName());
     }
 
-
     @AfterMethod
     public void initialize() {
         Mockito.reset(systemsCache);
@@ -104,7 +103,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             fileOpsService.delete(client,"/");
         }
     }
-
 
     @Test(dataProvider = "testSystemsDataProvider")
     public void testNotPermitted(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
@@ -125,8 +123,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             "tag",
             elements
         );
-        Flux
-            <TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
+        Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         // Task should be FAILED after the pipeline runs
         StepVerifier
             .create(tasks)
@@ -140,10 +137,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(topTask.getStatus(), TransferTaskStatus.FAILED);
 
         Mockito.reset(permsService);
-
     }
 
-
+    // Tag is for notifications mainly
     @Test(dataProvider = "testSystemsDataProvider")
     public void testTagSaveAndReturned(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
         TapisSystem sourceSystem = systemsPair.getLeft();
@@ -293,8 +289,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(children.size(), 0);
     }
 
-
-
     @Test(dataProvider = "testSystemsDataProvider")
     public void testMultipleChildren(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
 
@@ -396,7 +390,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         //wipe out the dest folder just in case
         fileOpsService.delete(destClient, "/");
 
-
         //Add some files to transfer
         int FILESIZE = 10 * 1024;
         fileOpsService.insert(sourceClient, "a/1.txt", Utils.makeFakeFile(FILESIZE));
@@ -417,23 +410,31 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
+// StepVerify is part of reactor test framework (takes over stream and you can examine/assert it)
         StepVerifier
             .create(stream)
+// Each item as it comes out of the stream should be in the completed state, have correct # bytes, etc.
+// This is the 1st item
             .assertNext(k->{
                 Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
                 Assert.assertEquals(k.getBytesTransferred(), FILESIZE);
                 Assert.assertNotNull(k.getStartTime());
                 Assert.assertNotNull(k.getEndTime());
             })
+// This is the 2nd item
             .assertNext(k->{
                 Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
                 Assert.assertEquals(k.getBytesTransferred(), FILESIZE);
                 Assert.assertNotNull(k.getStartTime());
                 Assert.assertNotNull(k.getEndTime());
             })
+// Only 2 files are txfrd, so should be done
+// Wrap things up
             .thenCancel()
+// Give it up to 5 seconds to complete
             .verify(Duration.ofSeconds(5));
 
+// Now we should be able to get the parent and child tasks and verify them
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
         Assert.assertNotNull(t1.getStartTime());
@@ -446,6 +447,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(parent.getStartTime());
         Assert.assertTrue(parent.getBytesTransferred() > 0);
 
+// Verify that txfr happened.
         List<FileInfo> listing = fileOpsService.ls(destClient, "/b");
         Assert.assertEquals(listing.size(), 2);
     }
@@ -544,6 +546,11 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
+// Instead of using StepVerifier, block until everything is done.
+// blockLast - start listening to stream and wait for it to finish.
+// Had to do it this way because for S3 it is not known apriori how many items will come out of stream
+      // 2 types of streams for reactor, cold and hot flux. hot - never-ending, null to hot flux will end it
+      // these are all hot fluxes, next to lines set up an automatic send of a null to stop the hot stream after 5 seconds.
         stream.take(Duration.ofSeconds(5))
             .blockLast();
 
@@ -566,6 +573,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     /**
      * Tests to se if the grouping does not hang after 256 groups
+     * creates many threads, enable only as needed
      */
     @Test(dataProvider = "testSystemsDataProvider", enabled = false)
     public void testMaxGroupSize(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
@@ -809,6 +817,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
+    // Make sure that one error does not impact other txfrs.
     @Test(dataProvider = "testSystemsDataProvider")
     public void testDoesTransfersWhenOneErrors(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
         TapisSystem sourceSystem = systemsPair.getLeft();
@@ -962,6 +971,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
+    // This test follows same pattern as testDoesTransfer
     @Test(dataProvider = "testSystemsDataProvider")
     public void testFullPipeline(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
         TapisSystem sourceSystem = systemsPair.getLeft();
@@ -1035,6 +1045,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
     }
 
+    // Difficult to test cancel, need for txfrs to have started but not finished before attempting to cancel
+    // Tricky timing
     @Test(dataProvider = "testSystemsDataProvider")
     public void testCancelMultipleTransfers(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
         TapisSystem sourceSystem = systemsPair.getLeft();
@@ -1107,6 +1119,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             .verify(Duration.ofSeconds(5));
     }
 
+    // Make sure we can pick up control messages, such as the cancel control msg
     @Test
     public void testControlMessages() throws Exception {
         TransferControlAction action = new TransferControlAction();
@@ -1122,6 +1135,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         transfersService.publishControlMessage(action);
     }
 
+    // Test of general flux support to see how it works, especially error handling
+   // can run these tests with breakpoints to see what is going on.
+   // Cold flux - to stop, either reaches end of items in the stream or encounters a null
     public void testFlux() {
         Flux<Integer> flux = Flux.just(1, 2, 3, 4, 5, 6)
             .flatMap(i->((i % 2)==0) ? Mono.just(i / 0): Mono.just(i))
@@ -1139,6 +1155,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             .verify();
     }
 
+    // Investigate onErrorResume
+    // On even numbers throw error, should return 1 and keep going, i.e. on error provide fallback value
     @Test(enabled = false)
     public void testFlux2() {
         Flux<Integer> flux = Flux.just(1, 2, 3, 4, 5, 6)
@@ -1160,5 +1178,4 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             .expectComplete()
             .verify();
     }
-
 }

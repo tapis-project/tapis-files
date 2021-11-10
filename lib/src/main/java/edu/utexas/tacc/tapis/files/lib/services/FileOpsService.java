@@ -5,9 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.Constants;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
@@ -27,7 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -39,8 +36,10 @@ public class FileOpsService implements IFileOpsService {
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
     private final FilePermsService permsService;
 
-    // 0 = tenantBaseUri, 1=systemId, 2=path
-    private String TAPIS_FILES_URI_FORMAT = "tapis://{0}/{1}/{2}";
+    // TODO: 0 = tenantBaseUrl, 1=systemId, 2=path (old)
+//    private String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}/{2}";
+    // TODO: 0=systemId, 1=path, 2=tenant (proposed new)
+//    private String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}?tenant={2}";
     private static final int MAX_RECURSION = 20;
 
     @Inject
@@ -92,9 +91,9 @@ public class FileOpsService implements IFileOpsService {
             Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), cleanedPath, path, Permission.READ);
             List<FileInfo> listing = client.ls(cleanedPath, limit, offset);
             listing.forEach(f -> {
-                String uri = String.format("%s/%s", client.getSystemId(), f.getPath());
-                uri = StringUtils.replace(uri, "//", "/");
-                f.setUri("tapis://" + uri);
+                String url = String.format("%s/%s", client.getSystemId(), f.getPath());
+                url = StringUtils.replace(url, "//", "/");
+                f.setUrl("tapis://" + url);
                 // Ensure there is a leading slash
                 f.setPath(StringUtils.prependIfMissing(f.getPath(), "/"));
             });

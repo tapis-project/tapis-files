@@ -262,7 +262,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(file.getPath(), "/testfile1.txt");
         Assert.assertEquals(file.getName(), "testfile1.txt");
         Assert.assertEquals(file.getSize(), 10 * 1024);
-        Assert.assertNotNull(file.getUri());
+        Assert.assertNotNull(file.getUrl());
     }
 
     @Test(dataProvider = "testSystemsProvider")

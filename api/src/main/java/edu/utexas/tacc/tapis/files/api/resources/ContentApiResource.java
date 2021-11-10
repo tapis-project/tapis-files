@@ -63,8 +63,8 @@ public class ContentApiResource extends BaseFileOpsResource {
     public void getContents(
             @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
             @Parameter(description = "File path",required=true, example = EXAMPLE_PATH) @PathParam("path") String path,
-            @Parameter(description = "Range of bytes to send", example = "range=0,999") @HeaderParam("range") HeaderByteRange range,
-            @Parameter(description = "Zip the contents of folder?", example = "false") @QueryParam("zip") boolean zip,
+            @Parameter(description = "Optional range of bytes to send. If not specified all content will be sent.", example = "range=0,999") @HeaderParam("range") HeaderByteRange range,
+            @Parameter(description = "Zip the contents of file or folder?", example = "false") @QueryParam("zip") boolean zip,
             @Parameter(description = "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1") @Min(1) @HeaderParam("more") Long moreStartPage,
             @Context SecurityContext securityContext,
             @Suspended final AsyncResponse asyncResponse) {
