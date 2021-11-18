@@ -247,7 +247,9 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
             log.info(ze.toString());
             count++;
         }
-        Assert.assertEquals(count, 3);
+      // S3 will have 3 entries and others should have 4 (3 files + 1 dir)
+      if (system.getSystemType() == SystemTypeEnum.S3) Assert.assertEquals(count, 3);
+      else Assert.assertEquals(count, 4);
     }
 
 

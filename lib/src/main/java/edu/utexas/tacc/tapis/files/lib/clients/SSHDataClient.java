@@ -207,7 +207,6 @@ public class SSHDataClient implements ISSHDataClient {
         Path relativePath = rootDirPath.relativize(remote);
         SSHSftpClient sftpClient = connectionHolder.getSftpClient();
         try {
-
             Path tmpPath = Paths.get(rootDir);
             for (Path part: relativePath) {
                 tmpPath = tmpPath.resolve(part);

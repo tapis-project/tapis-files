@@ -36,10 +36,8 @@ public class FileOpsService implements IFileOpsService {
     private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
     private final FilePermsService permsService;
 
-    // TODO: 0 = tenantBaseUrl, 1=systemId, 2=path (old)
-//    private String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}/{2}";
-    // TODO: 0=systemId, 1=path, 2=tenant (proposed new)
-//    private String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}?tenant={2}";
+    // 0=systemId, 1=path, 2=tenant
+    private String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}?tenant={2}";
     private static final int MAX_RECURSION = 20;
 
     @Inject
@@ -233,36 +231,53 @@ public class FileOpsService implements IFileOpsService {
     }
 
     /**
-     * Genereate a streaming zip archive of a target path.
+     * Generate a streaming zip archive of a target path.
      * @param outputStream
      * @param path
      * @return
      * @throws IOException
      */
     @Override
-    public void getZip(IRemoteDataClient client, @NotNull OutputStream outputStream, @NotNull String path) throws ServiceException, ForbiddenException {
-        Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, path, Permission.READ);
-        String cleanedPath = FilenameUtils.normalize(path);
-        cleanedPath = StringUtils.removeStart(cleanedPath, "/");
-        if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
-        List<FileInfo> listing = this.lsRecursive(client, path, MAX_RECURSION);
-        try (ZipOutputStream zipStream = new ZipOutputStream(outputStream)) {
-            for (FileInfo fileInfo: listing) {
-                if (fileInfo.isDir()) continue;
-                try (InputStream inputStream = this.getStream(client, fileInfo.getPath()) ) {
-                    String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
-                    Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
-                    ZipEntry entry = new ZipEntry(pth.toString());
-                    zipStream.putNextEntry(entry);
-                    inputStream.transferTo(zipStream);
-                    zipStream.closeEntry();
-                }
+    public void getZip(IRemoteDataClient client, @NotNull OutputStream outputStream, @NotNull String path)
+            throws ServiceException, ForbiddenException
+    {
+      Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                           path, path, Permission.READ);
+      String cleanedPath = FilenameUtils.normalize(path);
+      cleanedPath = StringUtils.removeStart(cleanedPath, "/");
+      if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
+      // Step through a recursive listing up to some max depth
+      List<FileInfo> listing = this.lsRecursive(client, path, MAX_RECURSION);
+      try (ZipOutputStream zipStream = new ZipOutputStream(outputStream))
+      {
+        for (FileInfo fileInfo : listing)
+        {
+          // Always add an entry for a dir to be sure empty directories are included
+          if (fileInfo.isDir())
+          {
+            ZipEntry entry = new ZipEntry(StringUtils.appendIfMissing(fileInfo.getPath(), "/"));
+            zipStream.putNextEntry(entry);
+            zipStream.closeEntry();
+          }
+          else
+          {
+            try (InputStream inputStream = this.getStream(client, fileInfo.getPath()))
+            {
+              String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
+              Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
+              ZipEntry entry = new ZipEntry(pth.toString());
+              zipStream.putNextEntry(entry);
+              inputStream.transferTo(zipStream);
+              zipStream.closeEntry();
             }
-        } catch (IOException ex) {
-            String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "getZip",
-                                       client.getSystemId(), path, ex.getMessage());
-            log.error(msg, ex);
-            throw new ServiceException(msg, ex);
+          }
         }
+      } catch (IOException ex)
+      {
+        String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "getZip",
+                client.getSystemId(), path, ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
     }
 }

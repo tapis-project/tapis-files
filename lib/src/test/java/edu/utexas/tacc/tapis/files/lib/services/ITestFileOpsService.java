@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
@@ -294,7 +295,9 @@ public class ITestFileOpsService {
                 String fname = ze.getName();
                 count++;
             }
-            Assert.assertEquals(count, 3);
+            // S3 will have 3 entries and others should have 4 (3 files + 1 dir)
+            if (client instanceof S3DataClient) Assert.assertEquals(count, 3);
+            else Assert.assertEquals(count, 4);
         }
         file.deleteOnExit();
     }
@@ -334,6 +337,19 @@ public class ITestFileOpsService {
         List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", 5);
         // S3 doesn't really do folders?
         Assert.assertTrue(listing.size() >=4);
+
+    }
+
+    @Test(dataProvider = "testSystems")
+    public void testZeroByteInsert(TapisSystem testSystem) throws Exception {
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+        client.delete("/");
+        fileOpsService.insert(client,"/1.txt", Utils.makeFakeFile(0));
+
+        List<FileInfo> listing = fileOpsService.ls(client,"/");
+        // S3 doesn't really do folders?
+        Assert.assertTrue(listing.size() == 1);
 
     }
 

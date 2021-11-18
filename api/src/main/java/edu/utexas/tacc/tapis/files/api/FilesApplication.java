@@ -45,6 +45,24 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 
+/* TODO: Copied from Apps
+ * Main startup class for the web application. Uses Jersey and Grizzly frameworks.
+ *   Performs setup for HK2 dependency injection.
+ *   Registers packages and features for Jersey.
+ *   Gets runtime parameters from the environment.
+ *   Initializes the service:
+ *     Init service context.
+ *     DB creation or migration
+ *   Starts the Grizzly server.
+ *
+ * The path here is appended to the context root and is configured to work when invoked in a standalone
+ * container (command line) and in an IDE (such as eclipse).
+ * ApplicationPath set to "/" since each resource class includes "/v3/apps" in the
+ *     path set at the class level. See AppResource.java, PermsResource.java, etc.
+ *     This has been found to be a more robust scheme for keeping startup working for both
+ *     running in an IDE and standalone.
+ */
+// TODO (from Apps) @ApplicationPath("/")
 // The path here is appended to the context root and
 // is configured to work when invoked in a standalone 
 // container (command line) and in an IDE (eclipse).
@@ -130,7 +148,10 @@ public class FilesApplication extends BaseResourceConfig {
 		setApplicationName("files");
     }
 
-    public static void main(String[] args) throws Exception {
+  /**
+   * Embedded Grizzly HTTP server
+   */
+  public static void main(String[] args) throws Exception {
         final URI BASE_URI = URI.create("http://0.0.0.0:8080/");
         FilesApplication config = new FilesApplication();
 
@@ -146,7 +167,6 @@ public class FilesApplication extends BaseResourceConfig {
             tpc.setQueueLimit(-1).setCorePoolSize(100).setMaxPoolSize(100);
         }
 
-        server.start();
-
-    }
+      server.start();
+  }
 }
