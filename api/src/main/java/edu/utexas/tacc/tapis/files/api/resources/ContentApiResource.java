@@ -6,10 +6,6 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.jersey.server.ManagedAsync;
@@ -39,11 +35,14 @@ import java.nio.file.Paths;
 import java.util.Objects;
 
 
+/*
+ * JAX-RS REST resource for Tapis File content downloads (file or directory)
+ * jax-rs annotations map HTTP verb + endpoint to method invocation and map query parameters.
+ *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
+ */
 @Path("/v3/files/content")
 public class ContentApiResource extends BaseFileOpsResource {
 
-    private static final String EXAMPLE_SYSTEM_ID = "system123";
-    private static final String EXAMPLE_PATH = "/folderA/folderB/";
     private static final Logger log = LoggerFactory.getLogger(ContentApiResource.class);
 
     @Inject
@@ -52,23 +51,14 @@ public class ContentApiResource extends BaseFileOpsResource {
     @GET
     @ManagedAsync
     @Path("/{systemId}/{path:.+}")
-    @Operation(summary = "Retrieve a file from the files service", description = "Get file contents/serve file", tags={ "content" })
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "400", description = "Bad Request"),
-        @ApiResponse(responseCode = "401", description = "Not Authenticated"),
-        @ApiResponse(responseCode = "404", description = "Not Found"),
-        @ApiResponse(responseCode = "403", description = "Not Authorized")
-    })
-    public void getContents(
-            @Parameter(description = "System ID",required=true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
-            @Parameter(description = "File path",required=true, example = EXAMPLE_PATH) @PathParam("path") String path,
-            @Parameter(description = "Optional range of bytes to send. If not specified all content will be sent.", example = "range=0,999") @HeaderParam("range") HeaderByteRange range,
-            @Parameter(description = "Zip the contents of file or folder?", example = "false") @QueryParam("zip") boolean zip,
-            @Parameter(description = "Send 1k of UTF-8 encoded string back starting at 'page' 1, ex more=1") @Min(1) @HeaderParam("more") Long moreStartPage,
-            @Context SecurityContext securityContext,
-            @Suspended final AsyncResponse asyncResponse) {
-
+    public void getContents(@PathParam("systemId") String systemId,
+                            @PathParam("path") String path,
+                            @HeaderParam("range") HeaderByteRange range,
+                            @QueryParam("zip") boolean zip,
+                            @HeaderParam("more") @Min(1) Long moreStartPage,
+                            @Context SecurityContext securityContext,
+                            @Suspended final AsyncResponse asyncResponse)
+    {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
@@ -190,8 +180,6 @@ public class ContentApiResource extends BaseFileOpsResource {
             .build();
         asyncResponse.resume(response);
     }
-
-
 
     private String changeFileExtensionForZip(String name) {
         String filename = FilenameUtils.removeExtension(name);

@@ -32,13 +32,10 @@ import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.threadpool.ThreadPoolConfig;
-import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
-import org.glassfish.jersey.internal.inject.InjectionManager;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
-import org.glassfish.jersey.server.ApplicationHandler;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import javax.inject.Singleton;
@@ -112,7 +109,7 @@ public class FilesApplication extends ResourceConfig
     register(TransfersApiResource.class);
     register(PermissionsApiResource.class);
     register(ShareApiResource.class);
-    register(HealthApiResource.class);
+    register(FilesResource.class);
     register(OperationsApiResource.class);
     register(UtilsLinuxApiResource.class);
 

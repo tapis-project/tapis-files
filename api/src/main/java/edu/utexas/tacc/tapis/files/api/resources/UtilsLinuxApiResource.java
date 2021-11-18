@@ -11,19 +11,12 @@ import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
-import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
@@ -43,19 +36,16 @@ import java.time.Duration;
 import java.time.Instant;
 
 /*
- * JAX-RS REST api for linux utility methods.
+ * JAX-RS REST resource for Tapis file native linux operations (stat, chmod, chown, chgrp)
+ * jax-rs annotations map HTTP verb + endpoint to method invocation and map query parameters.
+ *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
+ *
  * Another option would be to have systemType as a path parameter and rename this class to UtilsApiResource.
  */
 @Path("/v3/files/utils/linux")
 public class UtilsLinuxApiResource extends BaseFileOpsResource {
 
-    private static final String EXAMPLE_SYSTEM_ID = "system123";
-    private static final String EXAMPLE_PATH = "/folderA/file1";
     private static final Logger log = LoggerFactory.getLogger(UtilsLinuxApiResource.class);
-
-    private static class FileStatInfoResponse extends TapisResponse<FileStatInfo> { }
-    private static class NativeLinuxOpResultResponse extends TapisResponse<NativeLinuxOpResult> { }
-    private static class FileStringResponse extends TapisResponse<String> { }
 
     @Inject
     IFileUtilsService fileUtilsService;
@@ -63,41 +53,11 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
     @GET
     @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Get stat information for a file or directory.",
-               description = "Get stat information for a file or directory.",
-               tags = {"file operations"})
-    @ApiResponses(value = {
-        @ApiResponse(
-            responseCode = "200",
-            content = @Content(schema = @Schema(implementation = FileStatInfoResponse.class)),
-            description = "Linux stat information for the file or directory."),
-        @ApiResponse(
-            responseCode = "400",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Bad Request"),
-        @ApiResponse(
-            responseCode = "401",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Not Authenticated"),
-        @ApiResponse(
-            responseCode = "403",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Not Authorized"),
-        @ApiResponse(
-            responseCode = "404",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Not Found"),
-        @ApiResponse(
-            responseCode = "500",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Internal Error")
-    })
-    public Response getStatInfo(
-        @Parameter(description = "System ID", required = true, example = EXAMPLE_SYSTEM_ID) @PathParam("systemId") String systemId,
-        @Parameter(description = "Path to a file or directory", example = EXAMPLE_PATH) @PathParam("path") String path,
-        @Parameter(description = "When path is a symbolic link whether to get information about the link (false) or the link target (true)",
-                   example = "true") @DefaultValue("false") @QueryParam("followLinks") boolean followLinks,
-        @Context SecurityContext securityContext) {
+    public Response getStatInfo(@PathParam("systemId") String systemId,
+                                @PathParam("path") String path,
+                                @QueryParam("followLinks") @DefaultValue("false") boolean followLinks,
+                                @Context SecurityContext securityContext)
+    {
         String opName = "getStatInfo";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
@@ -123,44 +83,12 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
 
     @POST
     @Path("/{systemId}/{path:.+}")
-    @Operation(summary = "Run a native operation",
-               description = "Run a native operation: chmod, chown or chgrp.",
-               tags = {"file operations"})
-    @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
-    @ApiResponses(value = {
-        @ApiResponse(
-            responseCode = "200",
-            content = @Content(schema = @Schema(implementation = NativeLinuxOpResultResponse.class)),
-            description = "OK"),
-        @ApiResponse(
-            responseCode = "400",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Bad Request"),
-        @ApiResponse(
-            responseCode = "401",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Not Authenticated"),
-        @ApiResponse(
-            responseCode = "403",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Not Authorized"),
-        @ApiResponse(
-            responseCode = "404",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Not Found"),
-        @ApiResponse(
-            responseCode = "500",
-            content = @Content(schema = @Schema(implementation = FileStringResponse.class)),
-            description = "Internal Error")
-    })
-    public Response runLinuxNativeOp(
-        @Parameter(description = "System ID", required = true) @PathParam("systemId") String systemId,
-        @Parameter(description = "Path to a file or directory", required = true) @PathParam("path") String path,
-        @Valid NativeLinuxOpRequest request,
-        @Parameter(description = "If path is a directory this indicates whether or not to apply the changes recursively",
-                   example = "true") @DefaultValue("false") @QueryParam("recursive") boolean recursive,
-        @Context SecurityContext securityContext) {
+    public Response runLinuxNativeOp(@PathParam("systemId") String systemId,
+                                     @PathParam("path") String path,
+                                     @Valid NativeLinuxOpRequest request,
+                                     @QueryParam("recursive") @DefaultValue("false") boolean recursive,
+                                     @Context SecurityContext securityContext)
+    {
         String opName = "runLinuxNativeOp";
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {

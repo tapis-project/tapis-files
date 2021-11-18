@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -23,6 +22,11 @@ import edu.utexas.tacc.tapis.files.api.models.ShareFileRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/*TODO
+ * JAX-RS REST resource for Tapis File share operations
+ * jax-rs annotations map HTTP verb + endpoint to method invocation and map query parameters.
+ *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
+ */
 @Path("/v3/files/share")
 public class ShareApiResource  {
 
