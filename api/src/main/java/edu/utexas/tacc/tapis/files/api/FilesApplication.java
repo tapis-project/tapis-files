@@ -113,9 +113,6 @@ public class FilesApplication extends ResourceConfig
     register(OperationsApiResource.class);
     register(UtilsLinuxApiResource.class);
 
-    //OpenAPI jazz
-//    register(OpenApiResource.class);
-
     // We specify what packages JAX-RS should recursively scan to find annotations. By setting the value to the
     // top-level directory in all projects, we can use JAX-RS annotations in any tapis class. In particular, the filter
     // classes in tapis-shared-api will be discovered whenever that project is included as a maven dependency.
