@@ -55,6 +55,15 @@ public class FilePermsService {
         }
     }
 
+  /**
+   * Update SK permissions after a file or directory move/copy
+   * @param tenantId - apiUser tenant id
+   * @param username - apiUser user id
+   * @param systemId - system id
+   * @param oldPath - old path
+   * @param newPath - new path
+   * @throws ServiceException when SK client throws a TapisClientException
+   */
     public void replacePathPrefix(String tenantId, String username, String systemId, String oldPath, String newPath) throws ServiceException {
         try {
             oldPath = StringUtils.prependIfMissing(oldPath, "/");

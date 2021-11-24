@@ -47,14 +47,24 @@ import java.util.List;
  *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
  */
 @Path("/v3/files/ops")
-public class OperationsApiResource extends BaseFileOpsResource {
-
+public class OperationsApiResource extends BaseFileOpsResource
+{
     private static final int MAX_RECURSION_DEPTH = 10;
     private static final Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
 
     @Inject
     IFileOpsService fileOpsService;
 
+  /**
+   * List files at path
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param limit - pagination limit
+   * @param offset - pagination offset
+   * @param recurse - flag indicating a recursive listing should be provided
+   * @param securityContext - user identity
+   * @return response containing list of files
+   */
     @GET
     @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
     @Produces(MediaType.APPLICATION_JSON)
@@ -90,6 +100,14 @@ public class OperationsApiResource extends BaseFileOpsResource {
         }
     }
 
+  /**
+   * Upload a file
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param fileInputStream - stream of data to place in the file
+   * @param securityContext - user identity
+   * @return response
+   */
     @POST
     @Path("/{systemId}/{path:.+}")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
@@ -113,6 +131,13 @@ public class OperationsApiResource extends BaseFileOpsResource {
         }
     }
 
+  /**
+   * Create a directory
+   * @param systemId - id of system
+   * @param mkdirRequest - request body containing a path relative to system rootDir
+   * @param securityContext - user identity
+   * @return response
+   */
     @POST
     @Path("/{systemId}")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -135,6 +160,14 @@ public class OperationsApiResource extends BaseFileOpsResource {
         }
     }
 
+  /**
+   *
+   * @param systemId - id of system
+   * @param path - source path on system
+   * @param request - request body containing operation (MOVE/COPY) and target path
+   * @param securityContext - user identity
+   * @return response
+   */
     @PUT
     @Path("/{systemId}/{path:.+}")
     @Produces(MediaType.APPLICATION_JSON)
@@ -148,9 +181,7 @@ public class OperationsApiResource extends BaseFileOpsResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-            if (client == null) {
-                throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
-            }
+            if (client == null) throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
             MoveCopyOperation operation = request.getOperation();
             if (operation.equals(MoveCopyOperation.MOVE)) {
                 fileOpsService.move(client, path, request.getNewPath());
@@ -166,6 +197,13 @@ public class OperationsApiResource extends BaseFileOpsResource {
         }
     }
 
+  /**
+   * Delete a directory
+   * @param systemId - id of system
+   * @param path - directory to delete
+   * @param securityContext - user identity
+   * @return response
+   */
     @DELETE
     @Path("/{systemId}/{path:(.*+)}")
     @Produces(MediaType.APPLICATION_JSON)

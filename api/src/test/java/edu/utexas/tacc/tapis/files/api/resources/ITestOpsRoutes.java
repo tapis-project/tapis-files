@@ -75,6 +75,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
     private TapisSystem testSystemSSH;
     private TapisSystem testSystemS3;
+    private TapisSystem testSystemIrods;
     private List<TapisSystem> testSystems = new ArrayList<>();
 
     private Credential creds;
@@ -118,8 +119,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         testSystemS3.setRootDir("/");
         testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
-
-        TapisSystem testSystemIrods = new TapisSystem();
+        testSystemIrods = new TapisSystem();
         testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
         testSystemIrods.setHost("localhost");
         testSystemIrods.setPort(1247);

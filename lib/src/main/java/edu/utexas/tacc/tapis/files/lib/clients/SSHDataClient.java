@@ -42,29 +42,14 @@ import java.util.stream.Collectors;
  * All path parameters as inputs to methods are assumed to be relative to the rootDir
  * of the system unless otherwise specified.
  */
-public class SSHDataClient implements ISSHDataClient {
+public class SSHDataClient implements ISSHDataClient
+{
+    private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
+    private static final int MAX_PERMS_INT = Integer.parseInt("777", 8);
+    // SFTP client throws IOException containing this string if a path does not exist.
+    private static final String NO_SUCH_FILE = "no such file";
 
     private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
-
-    public String getOboTenant() {
-        return oboTenant;
-    }
-
-    public String getOboUser() {
-        return oboUser;
-    }
-
-    public String getSystemId() {
-        return systemId;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getHost() {
-        return host;
-    }
 
     private final String oboTenant;
     private final String oboUser;
@@ -76,14 +61,18 @@ public class SSHDataClient implements ISSHDataClient {
     private final TapisSystem tapisSystem;
     private final SSHConnectionHolder connectionHolder;
 
-    private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
-    private static final int MAX_PERMS_INT = Integer.parseInt("777", 8);
+    public String getOboTenant() { return oboTenant; }
+    public String getOboUser() { return oboUser; }
+    public String getSystemId() { return systemId; }
+    public String getUsername() { return username; }
+    public String getHost() { return host; }
 
     // Username must start with letter/underscore, contain alphanumeric or _ or -, have at most 32 characters
     //   and may end with $
     private static final Pattern USER_REGEX = Pattern.compile("^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\\$)$");
 
-    public SSHDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem sys, SSHConnectionHolder holder) {
+    public SSHDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem sys, SSHConnectionHolder holder)
+    {
         oboTenant = oboTenant1;
         oboUser = oboUser1;
         String rdir = sys.getRootDir();
@@ -101,17 +90,6 @@ public class SSHDataClient implements ISSHDataClient {
     }
 
     /**
-     * Cleans and ensures that the path is relative
-     * @param remotePath
-     * @return
-     */
-    private Path cleanAndRelativize(String remotePath) {
-        remotePath = StringUtils.removeStart(remotePath, "/");
-        String cleanedPath = FilenameUtils.normalize(remotePath);
-        return Paths.get(cleanedPath);
-    }
-
-    /**
      * Returns the files listing output on a remotePath
      *
      * @param remotePath Always relative to rootDir
@@ -120,7 +98,8 @@ public class SSHDataClient implements ISSHDataClient {
      * @throws NotFoundException No file at target
      */
     @Override
-    public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
+    public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException
+    {
         remotePath = cleanAndRelativize(remotePath).toString();
         remotePath = StringUtils.isEmpty(remotePath) ? "/" : remotePath;
         long count = Math.min(limit, Constants.MAX_LISTING_SIZE);
@@ -129,7 +108,6 @@ public class SSHDataClient implements ISSHDataClient {
         List<FileInfo> filesList = new ArrayList<>();
         List<DirEntry> dirEntries = new ArrayList<>();
         Path absolutePath = Paths.get(rootDir, remotePath);
-        Path rootDirPath = Paths.get(rootDir);
         SSHSftpClient sftpClient = connectionHolder.getSftpClient();
         try {
             Attributes attributes = sftpClient.stat(absolutePath.toString());
@@ -141,7 +119,7 @@ public class SSHDataClient implements ISSHDataClient {
                 dirEntries.add(entry);
             }
         } catch (IOException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
+            if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
                 throw new NotFoundException(msg);
             } else {
@@ -179,6 +157,7 @@ public class SSHDataClient implements ISSHDataClient {
             fileInfo.setGroup(String.valueOf(attrs.getGroupId()));
             fileInfo.setNativePermissions(FileStatInfo.getPermsFromInt(attrs.getPermissions()));
             //Path should be relative to rootDir
+            // TODO: Add more comments as to exactly why this is needed and what is going on.
             Path tmpFilePath = Paths.get(rootDir, entry.getFilename());
             if (tmpFilePath.equals(absolutePath)) {
                 String thePath = StringUtils.removeStart(entryPath.toString(), "/");
@@ -192,7 +171,6 @@ public class SSHDataClient implements ISSHDataClient {
         filesList.sort(Comparator.comparing(FileInfo::getName));
         return filesList.stream().skip(startIdx).limit(count).collect(Collectors.toList());
     }
-
 
     /**
      * Creates a directory on a remotePath relative to rootDir
@@ -216,7 +194,7 @@ public class SSHDataClient implements ISSHDataClient {
                 } catch (SftpException ignored) {}
             }
         } catch (IOException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
+            if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
                 throw new NotFoundException(msg);
             } else {
@@ -229,66 +207,55 @@ public class SSHDataClient implements ISSHDataClient {
         }
     }
 
-
-    private void insertOrAppend(@NotNull String path, @NotNull InputStream fileStream, @NotNull Boolean append) throws IOException, NotFoundException {
-        path = FilenameUtils.normalize(path);
-        Path absolutePath = Paths.get(rootDir, path).normalize();
-        Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
-        Path parentPath = relativeRemotePath.getParent();
-        SSHSftpClient sftpClient = connectionHolder.getSftpClient();
-        try (fileStream) {
-            if (parentPath != null) this.mkdir(parentPath.toString());
-            OutputStream outputStream = sftpClient.write(absolutePath.toString());
-            fileStream.transferTo(outputStream);
-            outputStream.close();
-        } catch (IOException ex) {
-            String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "insertOrAppend", systemId, username, host, path, ex.getMessage());
-            throw new IOException(msg, ex);
-        } finally {
-            sftpClient.close();
-            connectionHolder.returnSftpClient(sftpClient);
-        }
-    }
-
-
     @Override
     public void insert(@NotNull String remotePath, @NotNull InputStream fileStream) throws IOException {
         insertOrAppend(remotePath, fileStream, false);
     }
 
-
     /**
      * Rename/move oldPath to newPath
+     * If newPath is an existing directory then oldPath will be moved into the directory newPath.
      *
      * @param oldPath current location
      * @param newPath desired location
-     * @return
      * @throws IOException       Network errors generally
-     * @throws NotFoundException No file found at target
+     * @throws NotFoundException No file found
      */
     @Override
     public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException {
-        oldPath = FilenameUtils.normalize(oldPath);
-        newPath = FilenameUtils.normalize(newPath);
-        Path absoluteOldPath = Paths.get(rootDir, oldPath);
-        Path absoluteNewPath = Paths.get(rootDir, newPath);
+        // Normalize the paths, removes .. and .
+        String oldPathN = FilenameUtils.normalize(oldPath);
+        String newPathN = FilenameUtils.normalize(newPath);
+
+        Path absoluteOldPath = Paths.get(rootDir, oldPathN);
+        Path absoluteNewPath = Paths.get(rootDir, newPathN);
         SSHSftpClient sftpClient = connectionHolder.getSftpClient();
-        try {
+        try
+        {
+            // TODO If newPath is an existing directory then append the oldPath file/dir name to the newPath
+            //  so the oldPath is moved into the target directory.
+            FileInfo fileInfo = getFileInfo(sftpClient, newPathN);
+            if (fileInfo != null && fileInfo.isDir()) {
+                absoluteNewPath = Paths.get(absoluteNewPath.toString(), absoluteOldPath.getFileName().toString());
+            }
             sftpClient.rename(absoluteOldPath.toString(), absoluteNewPath.toString());
-        } catch (IOException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
+        }
+        catch (IOException e)
+        {
+            if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, oldPath);
                 throw new NotFoundException(msg);
             } else {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "move", systemId, username, host, oldPath, newPath, e.getMessage());
                 throw new IOException(msg, e);
             }
-        }  finally {
+        }
+        finally
+        {
             sftpClient.close();
             connectionHolder.returnSftpClient(sftpClient);
         }
     }
-
 
     /**
      * @param currentPath Relative to roodDir
@@ -325,7 +292,7 @@ public class SSHDataClient implements ISSHDataClient {
             String toExecute = String.join(" ", cmd.toStrings());
             channel.execute(toExecute);
         } catch (TapisException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
+            if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, currentPath);
                 throw new NotFoundException(msg);
             } else {
@@ -338,28 +305,6 @@ public class SSHDataClient implements ISSHDataClient {
 
     }
 
-
-    private void recursiveDelete(SSHSftpClient sftpClient, String path) throws IOException {
-        path = FilenameUtils.normalize(path);
-        path = StringUtils.isEmpty(path) ? "/" : path;
-        String cleanedPath = Paths.get(rootDir, path).normalize().toString();
-        List<FileInfo> files = ls(path);
-        FileStatInfo attributes = getStatInfo(path, false);
-        for (FileInfo entry : files) {
-            if ((!entry.getName().equals(".")) && (!entry.getName().equals("..")) && (entry.isDir())) {
-                Path tmpPath = Paths.get(path, entry.getName()).normalize();
-                recursiveDelete(sftpClient, tmpPath.toString());
-            } else {
-                //The path from the file listing is relative to rootDir
-                Path tmpPath = Paths.get(rootDir, entry.getPath());
-                sftpClient.remove(tmpPath.normalize().toString());
-            }
-        }
-        if (!cleanedPath.equals(rootDir) && attributes.isDir()) {
-            sftpClient.rmdir(cleanedPath);
-        }
-    }
-
     @Override
     public void delete(@NotNull String path) throws IOException {
         path = FilenameUtils.normalize(path);
@@ -367,7 +312,7 @@ public class SSHDataClient implements ISSHDataClient {
         try  {
             recursiveDelete(sftpClient, path);
         } catch (IOException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
+            if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, path);
                 throw new NotFoundException(msg);
             } else {
@@ -390,7 +335,7 @@ public class SSHDataClient implements ISSHDataClient {
             return new TapisSSHInputStream(inputStream, connectionHolder, sftpClient);
         } catch (IOException e) {
             connectionHolder.returnSftpClient(sftpClient);
-            if (e.getMessage().toLowerCase().contains("no such file")) {
+            if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, path);
                 throw new NotFoundException(msg);
             } else {
@@ -422,7 +367,7 @@ public class SSHDataClient implements ISSHDataClient {
         } catch (TapisException e) {
             //IMPORTANT: Have to return the channel here until we implement PipedInput/PipedOutput streams.
             connectionHolder.returnExecChannel(channel);
-            if (e.getMessage().toLowerCase().contains("no such file")) {
+            if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, path);
                 throw new NotFoundException(msg);
             } else {
@@ -471,7 +416,7 @@ public class SSHDataClient implements ISSHDataClient {
             // If path is a symbolic link then stat gives info for the link target, lstat gives info for the link
             sftpAttrs = followLinks ? sftpClient.stat(absolutePathStr) : sftpClient.lstat(absolutePathStr);
         } catch (IOException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
+            if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
                 String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, remotePath);
                 throw new NotFoundException(msg);
             } else {
@@ -553,8 +498,65 @@ public class SSHDataClient implements ISSHDataClient {
         return runLinuxChangeOp(opName, newGroup, remotePath, recursive);
     }
 
+  /* **************************************************************************** */
+  /*                                Private Methods                               */
+  /* **************************************************************************** */
 
-    /**
+  /**
+   * Cleans and ensures that the path is relative
+   * @param remotePath - path to clean up
+   * @return cleaned up Path
+   */
+  private Path cleanAndRelativize(String remotePath) {
+    remotePath = StringUtils.removeStart(remotePath, "/");
+    String cleanedPath = FilenameUtils.normalize(remotePath);
+    return Paths.get(cleanedPath);
+  }
+
+  private void insertOrAppend(@NotNull String path, @NotNull InputStream fileStream, @NotNull Boolean append)
+          throws IOException, NotFoundException
+  {
+    path = FilenameUtils.normalize(path);
+    Path absolutePath = Paths.get(rootDir, path).normalize();
+    Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
+    Path parentPath = relativeRemotePath.getParent();
+    SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+    try (fileStream) {
+      if (parentPath != null) this.mkdir(parentPath.toString());
+      OutputStream outputStream = sftpClient.write(absolutePath.toString());
+      fileStream.transferTo(outputStream);
+      outputStream.close();
+    } catch (IOException ex) {
+      String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "insertOrAppend", systemId, username, host, path, ex.getMessage());
+      throw new IOException(msg, ex);
+    } finally {
+      sftpClient.close();
+      connectionHolder.returnSftpClient(sftpClient);
+    }
+  }
+
+  private void recursiveDelete(SSHSftpClient sftpClient, String path) throws IOException {
+    path = FilenameUtils.normalize(path);
+    path = StringUtils.isEmpty(path) ? "/" : path;
+    String cleanedPath = Paths.get(rootDir, path).normalize().toString();
+    List<FileInfo> files = ls(path);
+    FileStatInfo attributes = getStatInfo(path, false);
+    for (FileInfo entry : files) {
+      if ((!entry.getName().equals(".")) && (!entry.getName().equals("..")) && (entry.isDir())) {
+        Path tmpPath = Paths.get(path, entry.getName()).normalize();
+        recursiveDelete(sftpClient, tmpPath.toString());
+      } else {
+        //The path from the file listing is relative to rootDir
+        Path tmpPath = Paths.get(rootDir, entry.getPath());
+        sftpClient.remove(tmpPath.normalize().toString());
+      }
+    }
+    if (!cleanedPath.equals(rootDir) && attributes.isDir()) {
+      sftpClient.rmdir(cleanedPath);
+    }
+  }
+
+  /**
      * Use Apache's FileNameUtils to get a normalized path
      *
      * @param remotePath - path to normalize
@@ -564,10 +566,8 @@ public class SSHDataClient implements ISSHDataClient {
     private String getNormalizedPath(String remotePath) throws IllegalArgumentException {
         // FilenameUtils.normalize() is expected to protect against escaping via ../..
         String safePath = FilenameUtils.normalize(remotePath);
-        if (safePath == null) {
-           safePath = "/";
-        }
-        return safePath;
+        if (safePath == null) return "/";
+        else return safePath;
     }
 
     /**
@@ -614,6 +614,57 @@ public class SSHDataClient implements ISSHDataClient {
         }
         connectionHolder.returnExecChannel(cmdRunner);
         return new NativeLinuxOpResult(cmdStr, exitCode, String.valueOf(stdOut), String.valueOf(stdErr));
-
     }
+
+  /**
+   * Get FileInfo for specified path, return null if path not found.
+   *
+   * @param sftpClient - Client to use for performing operation
+   * @param pathStr - Path to file or directory relative to the system rootDir
+   * @return FileInfo for the path or null if path not found
+   * @throws IOException on IO error
+   */
+  private FileInfo getFileInfo(SSHSftpClient sftpClient, String pathStr) throws IOException, NotFoundException
+  {
+    FileInfo fileInfo = new FileInfo();
+    // Process the relative path string and make sure it is not empty.
+    String remotePath = cleanAndRelativize(pathStr).toString();
+    remotePath = StringUtils.isEmpty(remotePath) ? "/" : remotePath;
+    Path absolutePath = Paths.get(rootDir, remotePath);
+    try
+    {
+      // Get stat attributes and fill in FileInfo.
+      Attributes attributes = sftpClient.stat(absolutePath.toString());
+      if (attributes.isDirectory()) fileInfo.setType("dir"); else fileInfo.setType("file");
+      DirEntry entry = new DirEntry(remotePath, remotePath, attributes);
+      Path entryPath = Paths.get(entry.getFilename());
+      fileInfo.setName(entryPath.getFileName().toString());
+      fileInfo.setLastModified(attributes.getModifyTime().toInstant());
+      fileInfo.setSize(attributes.getSize());
+      fileInfo.setOwner(String.valueOf(attributes.getUserId()));
+      fileInfo.setGroup(String.valueOf(attributes.getGroupId()));
+      fileInfo.setNativePermissions(FileStatInfo.getPermsFromInt(attributes.getPermissions()));
+
+      //Try to determine the Mimetype
+      Path tmpPath = Paths.get(entry.getFilename());
+      fileInfo.setMimeType(Files.probeContentType(tmpPath));
+
+      //Path should be relative to rootDir
+      // TODO: Add more comments as to exactly why this is needed and what is going on.
+      Path tmpFilePath = Paths.get(rootDir, entry.getFilename());
+      if (tmpFilePath.equals(absolutePath)) {
+        String thePath = StringUtils.removeStart(entryPath.toString(), "/");
+        fileInfo.setPath(thePath);
+      } else {
+        fileInfo.setPath(Paths.get(remotePath, entryPath.toString()).toString());
+      }
+    }
+    catch (IOException e)
+    {
+      // If due to NotFound then return null, else re-throw the IOException
+      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) return null;
+      else throw e;
+    }
+    return fileInfo;
+  }
 }

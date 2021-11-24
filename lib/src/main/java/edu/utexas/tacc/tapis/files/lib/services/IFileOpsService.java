@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import org.jetbrains.annotations.NotNull;
+import org.jvnet.hk2.annotations.Contract;
 
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
@@ -12,6 +13,11 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.zip.ZipOutputStream;
 
+/*
+ * Interface for File Operations Service
+ * Annotate as an hk2 Contract in case we have multiple implementations
+ */
+@Contract
 public interface IFileOpsService {
 
     List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException;
