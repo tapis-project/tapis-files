@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
-import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
@@ -46,6 +45,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
+
 public class S3DataClient implements IS3DataClient {
 
     private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
@@ -66,7 +67,6 @@ public class S3DataClient implements IS3DataClient {
     private final String bucket;
     private final TapisSystem system;
     private final String rootDir;
-    private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
 
     public S3DataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem remoteSystem) throws IOException {
         oboTenant = oboTenant1;
@@ -367,11 +367,6 @@ public class S3DataClient implements IS3DataClient {
             log.error(msg);
             throw new IOException(msg, ex);
         }
-    }
-
-    @Override
-    public void download(String path) throws IOException {
-
     }
 
     @Override

@@ -99,10 +99,4 @@ public class HTTPClient implements IRemoteDataClient {
     public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
     }
-
-    @Override
-    public void download(String path) throws IOException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
-    }
-
 }

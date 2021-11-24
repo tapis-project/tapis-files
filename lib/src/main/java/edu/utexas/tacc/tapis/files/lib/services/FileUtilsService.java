@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
+import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import org.apache.commons.io.FilenameUtils;
@@ -18,6 +19,7 @@ import javax.inject.Inject;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
+import java.nio.file.Path;
 
 /*
  * Service level methods for FileUtils.
@@ -63,20 +65,13 @@ public class FileUtilsService implements IFileUtilsService {
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     try {
-      String cleanedPath = FilenameUtils.normalize(path);
-      if (cleanedPath == null)
-      {
-        String msg = Utils.getMsg("FILES_CLIENT_SSH_NULL_PATH", sshClient.getOboTenant(), sshClient.getOboUser(),
-                                  sshClient.getSystemId(), sshClient.getUsername(), sshClient.getHost(), path);
-        throw new IllegalArgumentException(msg);
-      }
-
+      Path relativePath = PathUtils.getRelativePath(path);
       // Check permissions
       Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           cleanedPath, path, Permission.READ);
+                           relativePath, Permission.READ);
 
       // Make the remoteDataClient call
-      return sshClient.getStatInfo(cleanedPath, followLinks);
+      return sshClient.getStatInfo(relativePath.toString(), followLinks);
 
     } catch (IOException ex) {
       String msg = Utils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
@@ -110,16 +105,16 @@ public class FileUtilsService implements IFileUtilsService {
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     try {
-      String cleanedPath = FilenameUtils.normalize(path);
+      Path relativePath = PathUtils.getRelativePath(path);
       // Check permissions
       Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           cleanedPath, path, Permission.MODIFY);
+                           relativePath, Permission.MODIFY);
 
       // Make the remoteDataClient call
       switch (op) {
-        case CHMOD -> nativeLinuxOpResult = sshClient.linuxChmod(cleanedPath, arg, recursive);
-        case CHOWN -> nativeLinuxOpResult = sshClient.linuxChown(cleanedPath, arg, recursive);
-        case CHGRP -> nativeLinuxOpResult = sshClient.linuxChgrp(cleanedPath, arg, recursive);
+        case CHMOD -> nativeLinuxOpResult = sshClient.linuxChmod(relativePath.toString(), arg, recursive);
+        case CHOWN -> nativeLinuxOpResult = sshClient.linuxChown(relativePath.toString(), arg, recursive);
+        case CHGRP -> nativeLinuxOpResult = sshClient.linuxChgrp(relativePath.toString(), arg, recursive);
       }
 
     } catch (IOException ex) {

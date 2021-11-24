@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
@@ -43,6 +42,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 public class IrodsDataClient implements IRemoteDataClient {
 
@@ -88,7 +89,7 @@ public class IrodsDataClient implements IRemoteDataClient {
 
     @Override
     public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
-        long count = Math.min(limit, Constants.MAX_LISTING_SIZE);
+        long count = Math.min(limit, MAX_LISTING_SIZE);
         long startIdx = Math.max(offset, 0);
         String cleanedPath = FilenameUtils.normalize(remotePath);
         String fullPath = Paths.get("/", rootDir, cleanedPath).toString();
@@ -364,11 +365,6 @@ public class IrodsDataClient implements IRemoteDataClient {
 
     @Override
     public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
-
-    }
-
-    @Override
-    public void download(String path) throws IOException {
 
     }
 

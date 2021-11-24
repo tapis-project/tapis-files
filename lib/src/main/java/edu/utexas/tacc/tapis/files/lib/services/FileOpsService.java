@@ -4,7 +4,6 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
-import edu.utexas.tacc.tapis.files.lib.utils.Constants;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import org.apache.commons.io.FilenameUtils;
@@ -31,15 +30,19 @@ import java.util.zip.ZipOutputStream;
 
 /*
  * Service level methods for File Operations.
- *   Each public method uses provided IRemoteDataClient and other service library classes to perform all top level
- *   service operations.
+ *  -  Each public method uses provided IRemoteDataClient and other service library classes to perform all top level
+ *     service operations.
+ *  - Paths provided will all be treated as relative to the system's rootDir. Paths will be normalized. Please see
+ *    PathUtils.java.
+ *
  * Annotate as an hk2 Service so that default scope for Dependency Injection is singleton
  */
 @Service
 public class FileOpsService implements IFileOpsService
 {
+    public static final int MAX_LISTING_SIZE = 1000;
+
     private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
-    private static final int MAX_LISTING_SIZE = Constants.MAX_LISTING_SIZE;
     private final FilePermsService permsService;
 
     // 0=systemId, 1=path, 2=tenant
@@ -47,9 +50,7 @@ public class FileOpsService implements IFileOpsService
     private static final int MAX_RECURSION = 20;
 
     @Inject
-    public FileOpsService(FilePermsService permsService) {
-        this.permsService = permsService;
-    }
+    public FileOpsService(FilePermsService svc) { permsService = svc; }
 
   /**
    * List files at path
@@ -81,7 +82,9 @@ public class FileOpsService implements IFileOpsService
     public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth)
             throws ServiceException, NotFoundException, ForbiddenException
     {
-      checkPermissions(client.getOboTenant(), client.getOboUser(), client.getSystemId(), path, Permission.READ);
+      Path relativePath = PathUtils.getRelativePath(path);
+      Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                           relativePath, Permission.READ);
       maxDepth = Math.min(maxDepth, MAX_RECURSION);
       List<FileInfo> listing = new ArrayList<>();
       listDirectoryRec(client, path, listing, 0, maxDepth);
@@ -106,7 +109,7 @@ public class FileOpsService implements IFileOpsService
         try {
             Path relativePath = PathUtils.getRelativePath(path);
             Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                 relativePath.toString(), path, Permission.READ);
+                                 relativePath, Permission.READ);
             List<FileInfo> listing = client.ls(relativePath.toString(), limit, offset);
             listing.forEach(f -> {
                 String url = String.format("%s/%s", client.getSystemId(), f.getPath());
@@ -133,12 +136,12 @@ public class FileOpsService implements IFileOpsService
    * @throws ForbiddenException - user not authorized
    */
     @Override
-    public void mkdir(IRemoteDataClient client, String path) throws ServiceException, ForbiddenException
+    public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException, ForbiddenException
     {
       try {
         Path relativePath = PathUtils.getRelativePath(path);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath.toString(), path, Permission.MODIFY);
+                             relativePath, Permission.MODIFY);
         client.mkdir(relativePath.toString());
       } catch (IOException ex) {
         String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdir",
@@ -157,13 +160,13 @@ public class FileOpsService implements IFileOpsService
    * @throws ForbiddenException - user not authorized
    */
     @Override
-    public void insert(IRemoteDataClient client, String path, @NotNull InputStream inputStream)
+    public void insert(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull InputStream inputStream)
             throws ServiceException, ForbiddenException
     {
         try {
             Path relativePath = PathUtils.getRelativePath(path);
             Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                 relativePath.toString(), path, Permission.MODIFY);
+                                 relativePath, Permission.MODIFY);
             client.insert(relativePath.toString(), inputStream);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "insert",
@@ -173,60 +176,86 @@ public class FileOpsService implements IFileOpsService
         }
     }
 
+  /**
+   * Move a file or directory
+   * @param client remote data client to use
+   * @param srcPath - source path on system relative to system rootDir
+   * @param dstPath - destination path on system relative to system rootDir
+   * @throws ServiceException - general error
+   * @throws NotFoundException - requested path not found
+   * @throws ForbiddenException - user not authorized
+   */
     @Override
-    public void move(IRemoteDataClient client, String path, String newPath)
+    public void move(@NotNull IRemoteDataClient client, String srcPath, String dstPath)
             throws ServiceException, NotFoundException, ForbiddenException
     {
       try {
-        Path relativePath = PathUtils.getRelativePath(path);
-        Path relativePathNew = PathUtils.getRelativePath(newPath);
+        Path relativePathSrc = PathUtils.getRelativePath(srcPath);
+        Path relativePathDst = PathUtils.getRelativePath(dstPath);
         // Check the source and destination both have MODIFY perm
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath.toString(), path, Permission.MODIFY);
+                             relativePathSrc, Permission.MODIFY);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePathNew.toString(), path, Permission.MODIFY);
-        client.move(relativePath.toString(), relativePathNew.toString());
+                             relativePathDst, Permission.MODIFY);
+        client.move(relativePathSrc.toString(), relativePathDst.toString());
         // Update permissions in the SK
         permsService.replacePathPrefix(client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                       relativePath.toString(), relativePathNew.toString());
+                                       relativePathSrc.toString(), relativePathDst.toString());
       } catch (IOException ex) {
         String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "move",
-                                  client.getSystemId(), path, ex.getMessage());
+                                  client.getSystemId(), srcPath, ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
       }
     }
 
+  /**
+   * Copy a file or directory
+   * @param client remote data client to use
+   * @param srcPath - source path on system relative to system rootDir
+   * @param dstPath - destination path on system relative to system rootDir
+   * @throws ServiceException - general error
+   * @throws NotFoundException - requested path not found
+   * @throws ForbiddenException - user not authorized
+   */
     @Override
-    public void copy(IRemoteDataClient client, String path, String newPath)
+    public void copy(@NotNull IRemoteDataClient client, String srcPath, String dstPath)
             throws ServiceException, NotFoundException, ForbiddenException
     {
       try {
-        Path relativePath = PathUtils.getRelativePath(path);
-        Path relativePathNew = PathUtils.getRelativePath(newPath);
+        Path relativePathSrc = PathUtils.getRelativePath(srcPath);
+        Path relativePathDst = PathUtils.getRelativePath(dstPath);
         // Check the source has READ and destination has MODIFY perm
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath.toString(), relativePath.toString(), Permission.READ);
+                             relativePathSrc, Permission.READ);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePathNew.toString(), relativePath.toString(), Permission.MODIFY);
-        client.copy(relativePath.toString(), relativePathNew.toString());
+                             relativePathDst, Permission.MODIFY);
+        client.copy(relativePathSrc.toString(), relativePathDst.toString());
       } catch (IOException ex) {
         String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "copy",
-                client.getSystemId(), path, ex.getMessage());
+                client.getSystemId(), srcPath, ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
       }
     }
 
 
+  /**
+   * Remove a file or directory
+   * @param client remote data client to use
+   * @param path - path on system relative to system rootDir
+   * @throws ServiceException - general error
+   * @throws NotFoundException - requested path not found
+   * @throws ForbiddenException - user not authorized
+   */
     @Override
-    public void delete(IRemoteDataClient client, @NotNull String path)
+    public void delete(@NotNull IRemoteDataClient client, @NotNull String path)
             throws ServiceException, NotFoundException, ForbiddenException
     {
       try {
         Path relativePath = PathUtils.getRelativePath(path);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath.toString(), path, Permission.MODIFY);
+                             relativePath, Permission.MODIFY);
         client.delete(relativePath.toString());
         permsService.removePathPermissionFromAllRoles(client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                                       relativePath.toString());
@@ -238,23 +267,28 @@ public class FileOpsService implements IFileOpsService
       }
     }
 
-    /**
-     * In order to have the method auto disconnect the client, we have to copy the
-     * original InputStream from the client to another InputStream or else
-     * the finally block immediately disconnects.
-     *
-     * @param path String
-     * @return InputStream
-     * @throws ServiceException
-     */
+   /**
+    * Stream content from object at path
+    *
+    * In order to have the method auto disconnect the client, we have to copy the
+    * original InputStream from the client to another InputStream or else
+    * the finally block immediately disconnects.
+    *
+    * @param client remote data client to use
+    * @param path - path on system relative to system rootDir
+    * @return InputStream
+    * @throws ServiceException - general error
+    * @throws NotFoundException - requested path not found
+    * @throws ForbiddenException - user not authorized
+    */
     @Override
-    public InputStream getStream(IRemoteDataClient client, String path)
+    public InputStream getStream(@NotNull IRemoteDataClient client, @NotNull String path)
             throws ServiceException, NotFoundException, ForbiddenException
     {
       try {
         Path relativePath = PathUtils.getRelativePath(path);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath.toString(), path, Permission.READ);
+                             relativePath, Permission.READ);
         InputStream fileStream = client.getStream(relativePath.toString());
         return fileStream;
       } catch (IOException ex) {
@@ -266,13 +300,13 @@ public class FileOpsService implements IFileOpsService
     }
 
     @Override
-    public InputStream getBytes(IRemoteDataClient client, @NotNull String path, long startByte, long count)
+    public InputStream getBytes(@NotNull IRemoteDataClient client, @NotNull String path, long startByte, long count)
             throws ServiceException, NotFoundException, ForbiddenException
     {
       try  {
         Path relativePath = PathUtils.getRelativePath(path);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath.toString(), path, Permission.READ);
+                             relativePath, Permission.READ);
         InputStream fileStream = client.getBytesByRange(path, startByte, count);
         return fileStream;
       } catch (IOException ex) {
@@ -284,14 +318,14 @@ public class FileOpsService implements IFileOpsService
     }
 
     @Override
-    public InputStream more(IRemoteDataClient client, @NotNull String path, long startPage)
+    public InputStream more(@NotNull IRemoteDataClient client, @NotNull String path, long startPage)
             throws ServiceException, NotFoundException, ForbiddenException
     {
       long startByte = (startPage - 1) * 1024;
       try  {
         Path relativePath = PathUtils.getRelativePath(path);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath.toString(), path, Permission.READ);
+                             relativePath, Permission.READ);
         InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023);
         return fileStream;
       } catch (IOException ex) {
@@ -316,7 +350,7 @@ public class FileOpsService implements IFileOpsService
     {
       Path relativePath = PathUtils.getRelativePath(path);
       Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           relativePath.toString(), path, Permission.READ);
+                           relativePath, Permission.READ);
       String cleanedPath = FilenameUtils.normalize(path);
       cleanedPath = StringUtils.removeStart(cleanedPath, "/");
       if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
@@ -359,17 +393,6 @@ public class FileOpsService implements IFileOpsService
   /*                                Private Methods                               */
   /* **************************************************************************** */
 
-  private void checkPermissions(String tenantId, String username, String systemId, String path, Permission permission)
-          throws ServiceException, ForbiddenException
-  {
-    Path relativePath = PathUtils.getRelativePath(path);
-    boolean permitted = permsService.isPermitted(tenantId, username, systemId, relativePath.toString(), permission);
-    if (!permitted) {
-      String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", tenantId, username, systemId, relativePath);
-      throw new ForbiddenException(msg);
-    }
-  }
-
   /**
    * Recursive method to build up list of files at a path
    * @param client remote data client to use
@@ -380,7 +403,7 @@ public class FileOpsService implements IFileOpsService
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    */
-  private void listDirectoryRec(IRemoteDataClient client, String basePath, List<FileInfo> listing, int depth, int maxDepth)
+  private void listDirectoryRec(@NotNull IRemoteDataClient client, String basePath, List<FileInfo> listing, int depth, int maxDepth)
           throws ServiceException, NotFoundException
   {
     List<FileInfo> currentListing = ls(client, basePath);

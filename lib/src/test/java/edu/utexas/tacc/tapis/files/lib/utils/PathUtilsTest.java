@@ -11,7 +11,105 @@ import static org.testng.Assert.*;
 @Test
 public class PathUtilsTest {
 
-    @Test
+  @Test
+  public void testRelativePaths()
+  {
+    Path emptyPath = Paths.get("");
+    Path p = PathUtils.getRelativePath(null);
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("/");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath(".");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("./");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("./.");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("/.");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("//");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("./..");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("..");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("../");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("/..");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("../..");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("./././..//.///.////./////.//////.");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("a/././..//.///.////./////.//////.");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("./a/./..//.///.////./////.//////.");
+    Assert.assertEquals(p, emptyPath);
+    p = PathUtils.getRelativePath("./a/b/./..//.///.////./////.//////.");
+    Assert.assertEquals(p, Paths.get("a"));
+    p = PathUtils.getRelativePath("a/b/c/./..//.///.////./////.//////.");
+    Assert.assertEquals(p, Paths.get("a/b"));
+    p = PathUtils.getRelativePath("a/b/c/././/.///.////./////.//////.");
+    Assert.assertEquals(p, Paths.get("a/b/c"));
+  }
+
+  @Test
+  public void testAbsolutePaths()
+  {
+    String rootDir = "/";
+    Path rootPath = Paths.get(rootDir);
+    Path p = PathUtils.getAbsolutePath(rootDir, null);
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "/");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, ".");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "./");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "./.");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "/.");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "//");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "./..");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "..");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "../");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "/..");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "../..");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "./././..//.///.////./////.//////.");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "a/././..//.///.////./////.//////.");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "./a/./..//.///.////./////.//////.");
+    Assert.assertEquals(p, rootPath);
+    p = PathUtils.getAbsolutePath(rootDir, "./a/b/./..//.///.////./////.//////.");
+    Assert.assertEquals(p, Paths.get("/a"));
+    p = PathUtils.getAbsolutePath(rootDir, "a/b/c/./..//.///.////./////.//////.");
+    Assert.assertEquals(p, Paths.get("/a/b"));
+    p = PathUtils.getAbsolutePath(rootDir, "a/b/c/././/.///.////./////.//////.");
+    Assert.assertEquals(p, Paths.get("/a/b/c"));
+    rootDir = "/a";
+    p = PathUtils.getAbsolutePath(rootDir, "b");
+    Assert.assertEquals(p, Paths.get("/a/b"));
+    p = PathUtils.getAbsolutePath(rootDir, "b/c");
+    Assert.assertEquals(p, Paths.get("/a/b/c"));
+    p = PathUtils.getAbsolutePath(rootDir, "b/.//d/../c");
+    Assert.assertEquals(p, Paths.get("/a/b/c"));
+    p = PathUtils.getAbsolutePath(rootDir, "b/.//d/e/../..////////c");
+    Assert.assertEquals(p, Paths.get("/a/b/c"));
+  }
+
+  @Test
     public void testSingleFileAbsolute() {
         Path p = PathUtils.relativizePaths("jobs/input/file1.txt",
             "jobs/input/file1.txt", "workdir/jobs/07416ca6-4b05-441f-b541-d9156355f1bd-007/file1.txt");

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotAuthorizedException;
+import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -128,18 +129,18 @@ public class Utils
    * @param oboTenant - obo tenant
    * @param oboUser - obo user
    * @param systemId - system
-   * @param pathToCheck - path to use during check
-   * @param pathToLog - path to use for log message
+   * @param pathToCheck - path to check
    * @param perm - perm to check for
    * @throws NotAuthorizedException - perm check failed
    * @throws ServiceException - other exceptions
    */
   public static void checkPermitted(FilePermsService svc, String oboTenant, String oboUser, String systemId,
-                                    String pathToCheck, String pathToLog, Permission perm)
+                                    Path pathToCheck, Permission perm)
           throws ForbiddenException, ServiceException
   {
-    if (!svc.isPermitted(oboTenant, oboUser, systemId, pathToCheck, perm)) {
-      String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToLog);
+    if (!svc.isPermitted(oboTenant, oboUser, systemId, pathToCheck.toString(), perm))
+    {
+      String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, perm);
       throw new ForbiddenException(msg);
     }
   }
