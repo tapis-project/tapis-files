@@ -12,28 +12,28 @@ import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
-public interface IRemoteDataClient {
-
+public interface IRemoteDataClient
+{
     // A remote data client always has at a minimum an associated oboUser, oboTenant and systemId
     String getOboTenant();
     String getOboUser();
     String getSystemId();
 
     // without limit/offset, just a helper method for convenience
-    List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException;
-    List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException;
+    List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException;
+    List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException;
 
     /**
      * Insert will place the entire contents of an InputStream to the location
      * at remotePath.
-     * @param remotePath
+     * @param path
      * @param fileStream
      * @throws IOException
      */
-    void insert(@NotNull String remotePath, @NotNull InputStream fileStream) throws IOException;
-    void mkdir(@NotNull  String remotePath) throws IOException, NotFoundException;
-    void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException;
-    void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException;
+    void upload(@NotNull String path, @NotNull InputStream fileStream) throws IOException;
+    void mkdir(@NotNull  String path) throws IOException, NotFoundException;
+    void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException;
+    void copy(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException;
     void delete(@NotNull String path) throws IOException;
 
     /**
@@ -43,7 +43,6 @@ public interface IRemoteDataClient {
      * @throws IOException
      */
     InputStream getStream(@NotNull String path) throws IOException;
-
 
     /**
      *

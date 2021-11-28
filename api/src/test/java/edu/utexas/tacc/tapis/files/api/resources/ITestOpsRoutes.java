@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyOperation;
@@ -66,9 +65,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
-
-    private Logger log = LoggerFactory.getLogger(ITestOpsRoutes.class);
+public class ITestOpsRoutes extends BaseDatabaseIntegrationTest
+{
+    private final Logger log = LoggerFactory.getLogger(ITestOpsRoutes.class);
     private static class FileListResponse extends TapisResponse<List<FileInfo>> {}
 
     private static class FileStringResponse extends TapisResponse<String> {}
@@ -77,8 +76,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     private TapisSystem testSystemS3;
     private TapisSystem testSystemIrods;
     private List<TapisSystem> testSystems = new ArrayList<>();
-
-    private Credential creds;
+    private List<TapisSystem> testSystemsNoS3 = new ArrayList<>();
 
     // mocking out the services
     private ServiceClients serviceClients;
@@ -88,23 +86,26 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     private SystemsCache systemsCache;
     private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
-
-
-    private ITestOpsRoutes() throws Exception {
-        //SSH system with username/password
-        Credential sshCreds = new Credential();
-        sshCreds.setAccessKey("testuser");
-        sshCreds.setPassword("password");
+  /**
+   * Private constructor
+   */
+  private ITestOpsRoutes()
+  {
+    Credential creds;
+        //SSH system with username+password
+        creds = new Credential();
+        creds.setAccessKey("testuser");
+        creds.setPassword("password");
         testSystemSSH = new TapisSystem();
         testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
-        testSystemSSH.setAuthnCredential(sshCreds);
         testSystemSSH.setHost("localhost");
         testSystemSSH.setPort(2222);
         testSystemSSH.setRootDir("/data/home/testuser/");
         testSystemSSH.setId("testSystem");
         testSystemSSH.setEffectiveUserId("testuser");
         testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
-
+        testSystemSSH.setAuthnCredential(creds);
+        // S3 system with access key+secret
         creds = new Credential();
         creds.setAccessKey("user");
         creds.setAccessSecret("password");
@@ -115,29 +116,32 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         testSystemS3.setPort(9000);
         testSystemS3.setBucketName("test");
         testSystemS3.setId("testSystem");
-        testSystemS3.setAuthnCredential(creds);
         testSystemS3.setRootDir("/");
         testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
-
+        testSystemS3.setAuthnCredential(creds);
+        // IRODS system
+        creds = new Credential();
+        creds.setAccessKey("dev");
+        creds.setAccessSecret("dev");
         testSystemIrods = new TapisSystem();
         testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
         testSystemIrods.setHost("localhost");
         testSystemIrods.setPort(1247);
         testSystemIrods.setRootDir("/tempZone/home/dev/");
         testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
-        Credential creds = new Credential();
-        creds.setAccessKey("dev");
-        creds.setAccessSecret("dev");
         testSystemIrods.setAuthnCredential(creds);
 
         testSystems.add(testSystemSSH);
         testSystems.add(testSystemS3);
         testSystems.add(testSystemIrods);
 
+    testSystemsNoS3.add(testSystemSSH);
+    testSystemsNoS3.add(testSystemIrods);
     }
 
     @Override
-    protected ResourceConfig configure() {
+    protected ResourceConfig configure()
+    {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
         forceSet(TestProperties.CONTAINER_PORT, "0");
@@ -180,7 +184,6 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     }
 
-
     /**
      * This is silly, but TestNG requires this to be an Object[]
      * @return
@@ -190,26 +193,10 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         return testSystems.toArray();
     }
 
-
-    private void assertThrowsNotFoundForTestUser1(String path) {
-        Assert.assertThrows(NotFoundException.class, ()->{
-            target("/v3/files/ops/testSystem/" + path)
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
-                .get(FileStringResponse.class);
-        });
-    }
-
-    private List<FileInfo> doListing(String systemId, String path, String userJwt) {
-        FileListResponse response = target("/v3/files/ops/" + systemId +"/" + path)
-            .request()
-            .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", userJwt)
-            .get(FileListResponse.class);
-        return response.getResult();
-    }
-
+  @DataProvider(name="testSystemsProviderNoS3")
+  public Object[] testSystemsProviderNoS3() {
+    return testSystemsNoS3.toArray();
+  }
 
     // Needed for the test client to be able to use Mutlipart/form posts;
     @Override
@@ -227,9 +214,6 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
     }
 
-
-
-
     @BeforeMethod
     @AfterMethod
     public void cleanup() throws Exception {
@@ -246,13 +230,12 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
                 log.error(ex.getMessage(), ex);
             }
         });
-
     }
 
     @Test(dataProvider = "testSystemsProvider")
     public void testGetList(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1024);
         FileListResponse response = target("/v3/files/ops/testSystem/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
@@ -268,7 +251,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "testSystemsProvider")
     public void testGetListWithObo(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1024);
         FileListResponse response = target("/v3/files/ops/testSystem/")
             .request()
             .accept(MediaType.APPLICATION_JSON)
@@ -281,48 +264,18 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(file.getSize(), 10 * 1024);
     }
 
-    private InputStream makeFakeFile(int size) {
-        byte[] b = new byte[size];
-        new Random().nextBytes(b);
-        InputStream is = new ByteArrayInputStream(b);
-        return is;
-    }
-
-    private void addTestFilesToBucket(TapisSystem system, String fileName, int fileSize) throws Exception {
-        InputStream inputStream = makeFakeFile(fileSize);
-        File tempFile = File.createTempFile("tempfile", null);
-        tempFile.deleteOnExit();
-        FileOutputStream fos = new FileOutputStream(tempFile);
-        fos.write(inputStream.readAllBytes());
-        fos.close();
-        FileDataBodyPart filePart = new FileDataBodyPart("file", tempFile);
-        FormDataMultiPart form = new FormDataMultiPart();
-        FormDataMultiPart multiPart = (FormDataMultiPart) form.bodyPart(filePart);
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        FileStringResponse response = target("/v3/files/ops/" + system.getId() + "/" + fileName)
-            .request()
-            .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
-            .post(Entity.entity(multiPart, MediaType.MULTIPART_FORM_DATA_TYPE), FileStringResponse.class);
-    }
-
-
-
-
     @Test(dataProvider = "testSystemsProvider")
     public void testGetListWithLimitAndOffset(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
 
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "testfile3.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "testfile4.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "testfile5.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "testfile6.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "testfile7.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "testfile8.txt", 10 * 1024);
-
-
+        addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile2.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile3.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile4.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile5.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile6.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile7.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile8.txt", 10 * 1024);
 
         FileListResponse response = target("/v3/files/ops/testSystem/")
             .queryParam("limit", "2")
@@ -336,11 +289,10 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.get(0).getName(), "testfile3.txt");
     }
 
-
     @Test(dataProvider = "testSystemsProvider")
     public void testGetListNoAuthz(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1024);
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
         Response response = target("/v3/files/ops/testSystem/testfile1.txt")
             .request()
@@ -353,9 +305,9 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "testSystemsProvider")
     public void testDelete(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "testfile2.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/testfile3.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "testfile2.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/testfile3.txt", 10 * 1024);
 
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/testfile3.txt")
             .request()
@@ -364,14 +316,12 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
             .delete(FileStringResponse.class);
 
         assertThrowsNotFoundForTestUser1("dir1/testfile3.txt");
-
-
     }
 
     @Test(dataProvider = "testSystemsProvider")
     public void testCopyFile(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "sample1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "sample1.txt", 10 * 1024);
         MoveCopyRequest request = new MoveCopyRequest();
         request.setOperation(MoveCopyOperation.COPY);
         request.setNewPath("/filestest/sample1.txt");
@@ -387,54 +337,113 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.get(0).getPath(), "/filestest/sample1.txt");
     }
 
-    @Test(dataProvider = "testSystemsProvider")
+  @Test(dataProvider = "testSystemsProvider")
+  public void testCopyFile2(TapisSystem testSystem) throws Exception {
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    addTestFilesToSystem(testSystem, "/dir1/sample1.txt", 10 * 1024);
+    MoveCopyRequest request = new MoveCopyRequest();
+    request.setOperation(MoveCopyOperation.COPY);
+    request.setNewPath("/dir2/sample2.txt");
+
+    FileStringResponse response = target("/v3/files/ops/testSystem/dir1/sample1.txt")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .put(Entity.json(request), FileStringResponse.class);
+
+    List<FileInfo> listing = doListing(testSystem.getId(), "/dir2/sample2.txt", getJwtForUser("dev", "testuser1"));
+    Assert.assertEquals(listing.size(), 1);
+    Assert.assertEquals(listing.get(0).getPath(), "/dir2/sample2.txt");
+  }
+
+  @Test(dataProvider = "testSystemsProviderNoS3")
+  public void testCopyFileToDir(TapisSystem testSystem) throws Exception {
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    addTestFilesToSystem(testSystem, "/dir1/sample1.txt", 10 * 1024);
+    addTestFilesToSystem(testSystem, "/dir2/sample2.txt", 10 * 1024);
+    MoveCopyRequest request = new MoveCopyRequest();
+    request.setOperation(MoveCopyOperation.COPY);
+    request.setNewPath("/dir2");
+
+    FileStringResponse response = target("/v3/files/ops/testSystem/dir1/sample1.txt")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .put(Entity.json(request), FileStringResponse.class);
+
+    List<FileInfo> listing = doListing(testSystem.getId(), "/dir2/sample1.txt", getJwtForUser("dev", "testuser1"));
+    Assert.assertEquals(listing.size(), 1);
+    Assert.assertEquals(listing.get(0).getPath(), "/dir2/sample1.txt");
+  }
+
+   @Test(dataProvider = "testSystemsProvider")
     public void testCopyFileShould404(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "sample1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "sample1.txt", 10 * 1024);
         MoveCopyRequest request = new MoveCopyRequest();
         request.setOperation(MoveCopyOperation.COPY);
         request.setNewPath("/filestest/sample1.txt");
-
-
 
         Assert.assertThrows(NotFoundException.class, ()->target("/v3/files/ops/testSystem/NOT-THERE.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .put(Entity.json(request), FileStringResponse.class) );
-
     }
 
+  @Test(dataProvider = "testSystemsProvider")
+  public void testMoveFile(TapisSystem testSystem) throws Exception {
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1024);
 
-    @Test(dataProvider = "testSystemsProvider")
-    public void testRenameFile2(TapisSystem testSystem) throws Exception {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "testfile1.txt", 10 * 1024);
-
-        MoveCopyRequest request = new MoveCopyRequest();
-        request.setOperation(MoveCopyOperation.MOVE);
-        request.setNewPath("newName");
-
-        FileStringResponse response = target("/v3/files/ops/testSystem/testfile1.txt")
+    MoveCopyRequest request = new MoveCopyRequest();
+    request.setOperation(MoveCopyOperation.MOVE);
+    request.setNewPath("testfile2.txt");
+    FileStringResponse response = target("/v3/files/ops/testSystem/testfile1.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .put(Entity.json(request), FileStringResponse.class);
 
-        List<FileInfo> listing = doListing(testSystem.getId(), "newName", getJwtForUser("dev", "testuser1"));
-        Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "/newName");
+    List<FileInfo> listing = doListing(testSystem.getId(), "testfile2.txt", getJwtForUser("dev", "testuser1"));
+    for (FileInfo fi : listing)
+    {
+      System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath());
     }
+    Assert.assertEquals(listing.size(), 1);
+    Assert.assertEquals(listing.get(0).getPath(), "/testfile2.txt");
+  }
+
+  @Test(dataProvider = "testSystemsProviderNoS3")
+  public void testMoveFileToDir(TapisSystem testSystem) throws Exception {
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1024);
+    addTestFilesToSystem(testSystem, "dir1/testfile2.txt", 10 * 1024);
+
+    MoveCopyRequest request = new MoveCopyRequest();
+    request.setOperation(MoveCopyOperation.MOVE);
+    request.setNewPath("dir1");
+
+    FileStringResponse response = target("/v3/files/ops/testSystem/testfile1.txt")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .put(Entity.json(request), FileStringResponse.class);
+
+    List<FileInfo> listing = doListing(testSystem.getId(), "dir1/testfile1.txt", getJwtForUser("dev", "testuser1"));
+    Assert.assertEquals(listing.size(), 1);
+    Assert.assertEquals(listing.get(0).getPath(), "/dir1/testfile1.txt");
+  }
 
     @Test(dataProvider = "testSystemsProvider")
-    public void testRenameManyObjects1(TapisSystem testSystem) throws Exception {
+    public void testMoveManyObjects1(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/2.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "test1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "test2.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/dir2/2.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
 
         MoveCopyRequest request = new MoveCopyRequest();
         request.setOperation(MoveCopyOperation.MOVE);
@@ -453,20 +462,20 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
 
     /**
-     * Tests of objects deeper in the tree are renamed properly.
+     * Tests of objects deeper in the tree are moved properly.
      *
      * @throws Exception
      */
     @Test(dataProvider = "testSystemsProvider")
-    public void testRenameManyObjects2(TapisSystem testSystem) throws Exception {
+    public void testMoveManyObjects2(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
 
-        addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/2.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "test1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "test2.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/dir2/2.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/dir2/dir3/dir4.txt", 10 * 1024);
 
         MoveCopyRequest request = new MoveCopyRequest();
         request.setOperation(MoveCopyOperation.MOVE);
@@ -491,12 +500,12 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
     @Test(dataProvider = "testSystemsProvider")
     public void testDeleteManyObjects(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        addTestFilesToBucket(testSystem, "test1.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "test2.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/1.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/2.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
-        addTestFilesToBucket(testSystem, "dir1/dir2/dir3/4.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "test1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "test2.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/1.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/dir2/2.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/dir2/dir3/3.txt", 10 * 1024);
+        addTestFilesToSystem(testSystem, "dir1/dir2/dir3/4.txt", 10 * 1024);
 
         FileStringResponse response = target("/v3/files/ops/testSystem/dir1/dir2/")
             .request()
@@ -540,7 +549,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(listing.getResult().get(0).getName(), "test-inserted.txt");
     }
 
-    @Test(dataProvider = "testSystemsProvider")
+    @Test(dataProvider = "testSystemsProviderNoS3")
     public void testMkdir(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
 
@@ -561,12 +570,10 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
         Assert.assertEquals(listing.getResult().size(), 1);
         Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
-        Assert.assertEquals(listing.getResult().get(0).getType(), "dir");
+        Assert.assertEquals(listing.getResult().get(0).getType(), FileInfo.FILETYPE_DIR);
     }
 
-
-
-    @Test(dataProvider = "testSystemsProvider")
+    @Test(dataProvider = "testSystemsProviderNoS3")
     public void testMkdirNoSlash(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
         MkdirRequest req = new MkdirRequest();
@@ -585,9 +592,8 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
 
         Assert.assertEquals(listing.getResult().size(), 1);
         Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
-        Assert.assertEquals(listing.getResult().get(0).getType(), "dir");
+        Assert.assertEquals(listing.getResult().get(0).getType(), FileInfo.FILETYPE_DIR);
     }
-
 
     public String[] mkdirData() {
         return new String[]{
@@ -597,17 +603,15 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         };
     }
 
-    @DataProvider(name="mkdirDataProvider")
-    public Object[] mkdirDataProvider() {
-        List<String> directories = Arrays.asList(mkdirData());
-        List<Pair<String, TapisSystem>> out = testSystems.stream().flatMap(sys -> directories.stream().map(j -> Pair.of(j, sys)))
+  @DataProvider(name="mkdirDataProviderNoS3")
+  public Object[] mkdirDataProviderNoS3() {
+    List<String> directories = Arrays.asList(mkdirData());
+    List<Pair<String, TapisSystem>> out = testSystemsNoS3.stream().flatMap(sys -> directories.stream().map(j -> Pair.of(j, sys)))
             .collect(Collectors.toList());
-        return out.toArray();
+    return out.toArray();
+  }
 
-    }
-
-
-    @Test(dataProvider = "mkdirDataProvider")
+  @Test(dataProvider = "mkdirDataProviderNoS3")
     public void testMkdirWithSlashes(Pair<String, TapisSystem> inputs) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(inputs.getRight());
 
@@ -641,7 +645,6 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         return out.toArray();
     }
 
-
     /**
      * All the funky paths should get cleaned up
      * @param inputs
@@ -661,4 +664,51 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(response.getStatus(), 400);
     }
 
+  /* **************************************************************************** */
+  /*                                Private Methods                               */
+  /* **************************************************************************** */
+
+  private InputStream makeFakeFile(int size) {
+    byte[] b = new byte[size];
+    new Random().nextBytes(b);
+    InputStream is = new ByteArrayInputStream(b);
+    return is;
+  }
+
+  private void addTestFilesToSystem(TapisSystem system, String fileName, int fileSize) throws Exception {
+    InputStream inputStream = makeFakeFile(fileSize);
+    File tempFile = File.createTempFile("tempfile", null);
+    tempFile.deleteOnExit();
+    FileOutputStream fos = new FileOutputStream(tempFile);
+    fos.write(inputStream.readAllBytes());
+    fos.close();
+    FileDataBodyPart filePart = new FileDataBodyPart("file", tempFile);
+    FormDataMultiPart form = new FormDataMultiPart();
+    FormDataMultiPart multiPart = (FormDataMultiPart) form.bodyPart(filePart);
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+    FileStringResponse response = target("/v3/files/ops/" + system.getId() + "/" + fileName)
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .post(Entity.entity(multiPart, MediaType.MULTIPART_FORM_DATA_TYPE), FileStringResponse.class);
+  }
+
+  private void assertThrowsNotFoundForTestUser1(String path) {
+    Assert.assertThrows(NotFoundException.class, ()->{
+      target("/v3/files/ops/testSystem/" + path)
+              .request()
+              .accept(MediaType.APPLICATION_JSON)
+              .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+              .get(FileStringResponse.class);
+    });
+  }
+
+  private List<FileInfo> doListing(String systemId, String path, String userJwt) {
+    FileListResponse response = target("/v3/files/ops/" + systemId +"/" + path)
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", userJwt)
+            .get(FileListResponse.class);
+    return response.getResult();
+  }
 }

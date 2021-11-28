@@ -373,7 +373,7 @@ public class ChildTaskTransferService {
                 .flatMap(window -> window.takeLast(1))
                 .flatMap((progress) -> this.updateProgress(progress, finalTaskChild))
                 .subscribe();
-            destClient.insert(destURL.getPath(), observableInputStream);
+            destClient.upload(destURL.getPath(), observableInputStream);
         }
 
 

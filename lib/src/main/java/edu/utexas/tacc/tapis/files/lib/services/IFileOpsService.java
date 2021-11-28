@@ -34,7 +34,7 @@ public interface IFileOpsService {
 
     void delete(@NotNull IRemoteDataClient client, String path) throws ServiceException, NotFoundException;
 
-    void insert(@NotNull IRemoteDataClient client, String path, InputStream in) throws ServiceException;
+    void upload(@NotNull IRemoteDataClient client, String path, InputStream in) throws ServiceException;
 
     InputStream getStream(@NotNull IRemoteDataClient client, String path) throws ServiceException, NotFoundException;
 

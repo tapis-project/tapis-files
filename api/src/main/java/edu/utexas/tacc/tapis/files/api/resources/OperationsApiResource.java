@@ -121,7 +121,7 @@ public class OperationsApiResource extends BaseFileOpsResource
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-            fileOpsService.insert(client, path, fileInputStream);
+            fileOpsService.upload(client, path, fileInputStream);
             TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
             return Response.ok(resp).build();
         } catch (ServiceException | IOException e) {

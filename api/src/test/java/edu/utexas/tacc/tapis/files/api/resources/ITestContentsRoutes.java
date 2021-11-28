@@ -19,7 +19,6 @@ import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
-import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
@@ -196,7 +195,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
     private void addTestFilesToBucket(TapisSystem system, String fileName, long fileSize) throws Exception {
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, system, "testuser");
         InputStream f1 = makeFakeFile(fileSize);
-        client.insert(fileName, f1);
+        client.upload(fileName, f1);
     }
 
 

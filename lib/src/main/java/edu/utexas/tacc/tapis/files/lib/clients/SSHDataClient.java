@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /**
- * This class is the entry point to file operations over SSH with Tapis.
+ * This class provides remoteDataClient file operations for SSH systems.
  * All path parameters as inputs to methods are assumed to be relative to the rootDir
  * of the system unless otherwise specified.
  */
@@ -85,8 +85,8 @@ public class SSHDataClient implements ISSHDataClient
         connectionHolder = holder;
     }
 
-    public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
-        return ls(remotePath, MAX_LISTING_SIZE, 0);
+    public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {
+        return ls(path, MAX_LISTING_SIZE, 0);
     }
 
     /**
@@ -147,9 +147,9 @@ public class SSHDataClient implements ISSHDataClient
             Path tmpPath = Paths.get(entry.getFilename());
             fileInfo.setMimeType(Files.probeContentType(tmpPath));
             if (attrs.isDirectory()) {
-                fileInfo.setType("dir");
+                fileInfo.setType(FileInfo.FILETYPE_DIR);
             } else {
-                fileInfo.setType("file");
+                fileInfo.setType(FileInfo.FILETYPE_FILE);
             }
             fileInfo.setOwner(String.valueOf(attrs.getUserId()));
             fileInfo.setGroup(String.valueOf(attrs.getGroupId()));
@@ -173,14 +173,14 @@ public class SSHDataClient implements ISSHDataClient
      * Create a directory using sftpClient
      * Directories in path will be created as necessary.
      *
-     * @param remotePath Normalized path relative to system's rootDir
+     * @param path Normalized path relative to system rootDir
      * @throws IOException Generally a network error
      */
     @Override
-    public void mkdir(@NotNull String remotePath) throws IOException
+    public void mkdir(@NotNull String path) throws IOException
     {
-        remotePath = FilenameUtils.normalize(remotePath);
-        Path remote = Paths.get(rootDir, remotePath);
+        path = FilenameUtils.normalize(path);
+        Path remote = Paths.get(rootDir, path);
         Path rootDirPath = Paths.get(rootDir);
         Path relativePath = rootDirPath.relativize(remote);
         SSHSftpClient sftpClient = connectionHolder.getSftpClient();
@@ -203,25 +203,25 @@ public class SSHDataClient implements ISSHDataClient
     }
 
     @Override
-    public void insert(@NotNull String remotePath, @NotNull InputStream fileStream) throws IOException
+    public void upload(@NotNull String path, @NotNull InputStream fileStream) throws IOException
     {
-      insertOrAppend(remotePath, fileStream, false);
+      insertOrAppend(path, fileStream, false);
     }
 
     /**
      * Move oldPath to newPath using sftpClient
      * If newPath is an existing directory then oldPath will be moved into the directory newPath.
      *
-     * @param oldPath current location
-     * @param newPath desired location
+     * @param srcPath current location
+     * @param dstPath desired location
      * @throws IOException Network errors generally
      * @throws NotFoundException No file found
      */
     @Override
-    public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException
+    public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
     {
-      String relOldPathStr = PathUtils.getRelativePath(oldPath).toString();
-      String relNewPathStr = PathUtils.getRelativePath(newPath).toString();
+      String relOldPathStr = PathUtils.getRelativePath(srcPath).toString();
+      String relNewPathStr = PathUtils.getRelativePath(dstPath).toString();
       Path absoluteOldPath = PathUtils.getAbsolutePath(rootDir, relOldPathStr);
       Path absoluteNewPath = PathUtils.getAbsolutePath(rootDir, relNewPathStr);
       SSHSftpClient sftpClient = connectionHolder.getSftpClient();
@@ -238,10 +238,10 @@ public class SSHDataClient implements ISSHDataClient
       catch (IOException e)
       {
         if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
-          String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, rootDir, oldPath);
+          String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, rootDir, srcPath);
           throw new NotFoundException(msg);
         } else {
-          String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "move", systemId, username, host, oldPath, newPath, e.getMessage());
+          String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "move", systemId, username, host, srcPath, dstPath, e.getMessage());
           throw new IOException(msg, e);
         }
       }
@@ -255,18 +255,18 @@ public class SSHDataClient implements ISSHDataClient
   /**
    * Copy oldPath to newPath using sshExecChannel to run linux commands
    * TODO/TBD If newPath is an existing directory then oldPath will be copied into the directory newPath?
-   *          what about cp -pR or similar?
+   *          what about cp -R or similar?
    *
-   * @param oldPath current location
-   * @param newPath desired location
+   * @param srcPath current location
+   * @param dstPath desired location
    * @throws IOException Network errors generally
    * @throws NotFoundException No file found
    */
     @Override
-    public void copy(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException
+    public void copy(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
     {
-        String relOldPathStr = PathUtils.getRelativePath(oldPath).toString();
-        String relNewPathStr = PathUtils.getRelativePath(newPath).toString();
+        String relOldPathStr = PathUtils.getRelativePath(srcPath).toString();
+        String relNewPathStr = PathUtils.getRelativePath(dstPath).toString();
         Path absoluteOldPath = PathUtils.getAbsolutePath(rootDir, relOldPathStr);
         Path absoluteNewPath = PathUtils.getAbsolutePath(rootDir, relNewPathStr);
         Path targetParentPath = absoluteNewPath.getParent();
@@ -277,13 +277,16 @@ public class SSHDataClient implements ISSHDataClient
         // Construct and run linux commands to create the target dir and do the copy
         SSHExecChannel channel = connectionHolder.getExecChannel();
         try  {
+            // Set up arguments
             Map<String, String> args = new HashMap<>();
             args.put("targetParentPath", targetParentPath.toString());
             args.put("source", absoluteOldPath.toString());
             args.put("target", absoluteNewPath.toString());
-
+            // Command to make the directory including any intermediate directories
             CommandLine cmd = new CommandLine("mkdir").addArgument("-p").addArgument("${targetParentPath}").addArgument(";");
+            // Command to do the copy
             cmd.addArgument("cp").addArgument("${source}").addArgument("${target}");
+            // Fill in arguments and execute
             cmd.setSubstitutionMap(args);
             String toExecute = String.join(" ", cmd.toStrings());
             channel.execute(toExecute);
@@ -635,7 +638,7 @@ public class SSHDataClient implements ISSHDataClient
     {
       // Get stat attributes and fill in FileInfo.
       Attributes attributes = sftpClient.stat(absolutePath.toString());
-      if (attributes.isDirectory()) fileInfo.setType("dir"); else fileInfo.setType("file");
+      if (attributes.isDirectory()) fileInfo.setType(FileInfo.FILETYPE_DIR); else fileInfo.setType(FileInfo.FILETYPE_FILE);
       DirEntry entry = new DirEntry(relativePathStr, relativePathStr, attributes);
       Path entryPath = Paths.get(entry.getFilename());
       fileInfo.setName(entryPath.getFileName().toString());

@@ -32,7 +32,7 @@ import java.util.zip.ZipOutputStream;
  * Service level methods for File Operations.
  *  -  Each public method uses provided IRemoteDataClient and other service library classes to perform all top level
  *     service operations.
- *  - Paths provided will all be treated as relative to the system's rootDir. Paths will be normalized. Please see
+ *  - Paths provided will all be treated as relative to the system rootDir. Paths will be normalized. Please see
  *    PathUtils.java.
  *
  * Annotate as an hk2 Service so that default scope for Dependency Injection is singleton
@@ -160,14 +160,14 @@ public class FileOpsService implements IFileOpsService
    * @throws ForbiddenException - user not authorized
    */
     @Override
-    public void insert(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull InputStream inputStream)
+    public void upload(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull InputStream inputStream)
             throws ServiceException, ForbiddenException
     {
         try {
             Path relativePath = PathUtils.getRelativePath(path);
             Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                  relativePath, Permission.MODIFY);
-            client.insert(relativePath.toString(), inputStream);
+            client.upload(relativePath.toString(), inputStream);
         } catch (IOException ex) {
             String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "insert",
                                       client.getSystemId(), path, ex.getMessage());
@@ -190,17 +190,17 @@ public class FileOpsService implements IFileOpsService
             throws ServiceException, NotFoundException, ForbiddenException
     {
       try {
-        Path relativePathSrc = PathUtils.getRelativePath(srcPath);
-        Path relativePathDst = PathUtils.getRelativePath(dstPath);
+        Path srcRelativePath = PathUtils.getRelativePath(srcPath);
+        Path dstRelativePath = PathUtils.getRelativePath(dstPath);
         // Check the source and destination both have MODIFY perm
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePathSrc, Permission.MODIFY);
+                             srcRelativePath, Permission.MODIFY);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePathDst, Permission.MODIFY);
-        client.move(relativePathSrc.toString(), relativePathDst.toString());
+                             dstRelativePath, Permission.MODIFY);
+        client.move(srcRelativePath.toString(), dstRelativePath.toString());
         // Update permissions in the SK
         permsService.replacePathPrefix(client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                       relativePathSrc.toString(), relativePathDst.toString());
+                                       srcRelativePath.toString(), dstRelativePath.toString());
       } catch (IOException ex) {
         String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "move",
                                   client.getSystemId(), srcPath, ex.getMessage());
@@ -238,7 +238,6 @@ public class FileOpsService implements IFileOpsService
         throw new ServiceException(msg, ex);
       }
     }
-
 
   /**
    * Remove a file or directory

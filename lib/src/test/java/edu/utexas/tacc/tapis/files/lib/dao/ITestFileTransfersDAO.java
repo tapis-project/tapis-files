@@ -98,7 +98,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         FileInfo fileInfo = new FileInfo();
         fileInfo.setPath("/a/b/c.txt");
         fileInfo.setSize(1000);
-        fileInfo.setType("file");
+        fileInfo.setType(FileInfo.FILETYPE_FILE);
 
         TransferTaskChild child = new TransferTaskChild(parent, fileInfo);
         child = dao.insertChildTask(child);
@@ -123,7 +123,7 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         TransferTaskParent parent = t1.getParentTasks().get(0);
         FileInfo fileInfo = new FileInfo();
         fileInfo.setPath("/a/b/c.txt");
-        fileInfo.setType("file");
+        fileInfo.setType(FileInfo.FILETYPE_FILE);
         fileInfo.setSize(1000);
 
         //create 3 children on the first parent

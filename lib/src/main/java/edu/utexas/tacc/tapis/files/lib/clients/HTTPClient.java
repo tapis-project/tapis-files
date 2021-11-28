@@ -35,32 +35,32 @@ public class HTTPClient implements IRemoteDataClient {
     }
 
     @Override
-    public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
+    public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "ls"));
     }
 
     @Override
-    public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
+    public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "ls") );
     }
 
     @Override
-    public void insert(@NotNull String remotePath, @NotNull InputStream fileStream) throws IOException {
+    public void upload(@NotNull String path, @NotNull InputStream fileStream) throws IOException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "insert") );
     }
 
     @Override
-    public void mkdir(@NotNull String remotePath) throws IOException, NotFoundException {
+    public void mkdir(@NotNull String path) throws IOException, NotFoundException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "mkdir") );
     }
 
     @Override
-    public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException {
+    public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "move") );
     }
 
     @Override
-    public void copy(@NotNull String currentPath, @NotNull String newPath) throws IOException, NotFoundException {
+    public void copy(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "copy") );
     }
 

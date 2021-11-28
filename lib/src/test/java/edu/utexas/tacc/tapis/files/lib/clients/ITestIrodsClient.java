@@ -7,7 +7,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.IOUtils;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -16,7 +15,6 @@ import javax.ws.rs.NotFoundException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -48,7 +46,7 @@ public class ITestIrodsClient {
     @Test
     public void testCopy() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/a/b/test.txt", Utils.makeFakeFile(10));
+        client.upload("/a/b/test.txt", Utils.makeFakeFile(10));
         client.copy("/a/b/test.txt", "/new/test.txt");
         List<FileInfo> listing = client.ls("/new/test.txt");
         Assert.assertTrue(listing.size() > 0);
@@ -59,7 +57,7 @@ public class ITestIrodsClient {
     @Test
     public void testMove() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/a/b/test.txt", Utils.makeFakeFile(10));
+        client.upload("/a/b/test.txt", Utils.makeFakeFile(10));
         client.move("/a/b/test.txt", "/new/test.txt");
         List<FileInfo> listing = client.ls("/new/test.txt");
         Assert.assertTrue(listing.size() > 0);
@@ -71,7 +69,7 @@ public class ITestIrodsClient {
     @Test
     public void testMove2() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("test.txt", Utils.makeFakeFile(10));
+        client.upload("test.txt", Utils.makeFakeFile(10));
         client.move("test.txt", "/newName");
         List<FileInfo> listing = client.ls("newName");
         Assert.assertTrue(listing.size() > 0);
@@ -83,8 +81,8 @@ public class ITestIrodsClient {
     @Test
     public void testMoveDestinationExists() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/a/b/test.txt", Utils.makeFakeFile(10));
-        client.insert("/new/test.txt", Utils.makeFakeFile(10));
+        client.upload("/a/b/test.txt", Utils.makeFakeFile(10));
+        client.upload("/new/test.txt", Utils.makeFakeFile(10));
         Assert.assertThrows(IOException.class, ()->{
             client.move("/a/b/test.txt", "/new/test.txt");
         });
@@ -103,7 +101,7 @@ public class ITestIrodsClient {
     @Test
     public void testListing() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test.txt", Utils.makeFakeFile(10000));
         List<FileInfo> listing = client.ls("a");
         Assert.assertTrue(listing.size() > 0);
     }
@@ -111,7 +109,7 @@ public class ITestIrodsClient {
     @Test
     public void testListingNested() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test.txt", Utils.makeFakeFile(10000));
         List<FileInfo> listing = client.ls("a/b/c/test.txt");
         Assert.assertTrue(listing.size() > 0);
         Assert.assertEquals(listing.get(0).getPath(), "a/b/c/test.txt");
@@ -120,7 +118,7 @@ public class ITestIrodsClient {
     @Test
     public void testListingNested2() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test.txt", Utils.makeFakeFile(10000));
         List<FileInfo> listing = client.ls("a/b/c/");
         Assert.assertTrue(listing.size() == 1);
         Assert.assertEquals(listing.get(0).getPath(), "a/b/c/test.txt");
@@ -129,7 +127,7 @@ public class ITestIrodsClient {
     @Test
     public void testDelete() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/dir1/dir2/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/dir1/dir2/test.txt", Utils.makeFakeFile(10000));
         client.delete("/dir1/dir2/test.txt");
         Assert.assertEquals(client.ls("/dir1/dir2/").size(), 0);
     }
@@ -137,8 +135,8 @@ public class ITestIrodsClient {
     @Test
     public void testDeleteNested() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/test.txt", Utils.makeFakeFile(10000));
-        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test.txt", Utils.makeFakeFile(10000));
 
         client.delete("/");
         Assert.assertEquals(client.ls("/").size(), 0);
@@ -147,10 +145,10 @@ public class ITestIrodsClient {
     @Test
     public void testDeleteNested2() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/test.txt", Utils.makeFakeFile(10000));
-        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
-        client.insert("/a/b/c/test2.txt", Utils.makeFakeFile(10000));
-        client.insert("/a/b/c/test3.txt", Utils.makeFakeFile(10000));
+        client.upload("/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test2.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test3.txt", Utils.makeFakeFile(10000));
 
         client.delete("/a/b/c/");
         Assert.assertEquals(client.ls("/a/b/").size(), 0);
@@ -159,10 +157,10 @@ public class ITestIrodsClient {
     @Test
     public void testDeleteRoot() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/test.txt", Utils.makeFakeFile(10000));
-        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(10000));
-        client.insert("/a/b/c/test2.txt", Utils.makeFakeFile(10000));
-        client.insert("/a/b/c/test3.txt", Utils.makeFakeFile(10000));
+        client.upload("/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test2.txt", Utils.makeFakeFile(10000));
+        client.upload("/a/b/c/test3.txt", Utils.makeFakeFile(10000));
 
         client.delete("/");
         Assert.assertEquals(client.ls("/").size(), 0);
@@ -172,7 +170,7 @@ public class ITestIrodsClient {
     public void testInsert() throws Exception {
         int fileSize = 2000000;
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/a/b/c/test.txt", Utils.makeFakeFile(fileSize));
+        client.upload("/a/b/c/test.txt", Utils.makeFakeFile(fileSize));
 
         List<FileInfo> listing = client.ls("/a/b/c/");
         Assert.assertEquals(listing.size(), 1);
@@ -184,7 +182,7 @@ public class ITestIrodsClient {
     @Test
     public void testInsertAtRoot() throws Exception {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
-        client.insert("/test.txt", Utils.makeFakeFile(10000));
+        client.upload("/test.txt", Utils.makeFakeFile(10000));
 
         List<FileInfo> listing = client.ls("/");
         Assert.assertEquals(listing.size(), 1);
@@ -200,7 +198,7 @@ public class ITestIrodsClient {
         byte[] input = Utils.makeFakeFile(fileSize).readAllBytes();
         //sanity check...
         Assert.assertEquals(input.length, fileSize);
-        client.insert("/a/b/c/test.txt", new ByteArrayInputStream(input));
+        client.upload("/a/b/c/test.txt", new ByteArrayInputStream(input));
         try (InputStream stream = client.getStream("/a/b/c/test.txt")) {
             byte[] output = IOUtils.toByteArray(stream);
             Assert.assertEquals(output.length, fileSize);
@@ -215,7 +213,7 @@ public class ITestIrodsClient {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
         byte[] input = Utils.makeFakeFile(fileSize).readAllBytes();
         Assert.assertEquals(input.length, fileSize);
-        client.insert("/a/b/c/test.txt", new ByteArrayInputStream(input));
+        client.upload("/a/b/c/test.txt", new ByteArrayInputStream(input));
         try (InputStream stream = client.getBytesByRange("/a/b/c/test.txt", 0, byteCount)) {
             byte[] output = IOUtils.toByteArray(stream);
             Assert.assertEquals(output.length, byteCount);
@@ -236,7 +234,7 @@ public class ITestIrodsClient {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
         byte[] input = Utils.makeFakeFile(fileSize).readAllBytes();
         Assert.assertEquals(input.length, fileSize);
-        client.insert("/a/b/c/test.txt", new ByteArrayInputStream(input));
+        client.upload("/a/b/c/test.txt", new ByteArrayInputStream(input));
         try (InputStream stream = client.getBytesByRange("/a/b/c/test.txt", 30, byteCount)) {
             byte[] output = IOUtils.toByteArray(stream);
             Assert.assertEquals(output.length, 0);
@@ -255,7 +253,7 @@ public class ITestIrodsClient {
         IrodsDataClient client = new IrodsDataClient("dev", "dev", system);
         byte[] input = Utils.makeFakeFile(fileSize).readAllBytes();
         Assert.assertEquals(input.length, fileSize);
-        client.insert("/a/b/c/test.txt", new ByteArrayInputStream(input));
+        client.upload("/a/b/c/test.txt", new ByteArrayInputStream(input));
         try (InputStream stream = client.getBytesByRange("/a/b/c/test.txt", 50, byteCount)) {
             byte[] output = IOUtils.toByteArray(stream);
             Assert.assertEquals(output.length, 50);

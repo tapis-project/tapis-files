@@ -62,6 +62,8 @@ public class PathUtils
   {
     // If rootDir is null or empty use "/"
     String rdir = StringUtils.isBlank(rootDir) ? "/" : rootDir;
+    // Make sure rootDir starts with a /
+    rdir = StringUtils.prependIfMissing(rdir, "/");
     // First get normalized relative path
     Path relativePath = getRelativePath(path);
     // Return constructed absolute path
@@ -70,29 +72,31 @@ public class PathUtils
 
   /**
    * All paths are assumed to be relative to rootDir
-   * @param srcBase The BASE path of the source of the transfer
-   * @param srcPath The path to the actual file being transferred
-   * @param destBase The BASE path of the destination of the transfer
+   * @param srcBaseStr The BASE path of the source of the transfer
+   * @param srcPathStr The path to the actual file being transferred
+   * @param destBaseStr The BASE path of the destination of the transfer
    * @return Path
    */
-  public static Path relativizePaths(String srcBase, String srcPath, String destBase) {
-
+  public static Path relativizePaths(String srcBaseStr, String srcPathStr, String destBaseStr)
+  {
     // Make them look like absolute paths either way
-    srcPath = StringUtils.prependIfMissing(srcPath, "/");
-    srcBase = StringUtils.prependIfMissing(srcBase, "/");
-    destBase = StringUtils.prependIfMissing(destBase, "/");
+    srcPathStr = StringUtils.prependIfMissing(srcPathStr, "/");
+    srcBaseStr = StringUtils.prependIfMissing(srcBaseStr, "/");
+    destBaseStr = StringUtils.prependIfMissing(destBaseStr, "/");
 
-    Path sourcePath = Paths.get(srcPath);
-    Path sourceBase = Paths.get(srcBase);
-
+    Path srcPath = Paths.get(srcPathStr);
+    Path srcBase = Paths.get(srcBaseStr);
 
     // This happens if the source path is absolute, i.e. the transfer is for
     // a single file like a/b/c/file.txt
-    if (sourceBase.equals(sourcePath) && destBase.endsWith("/")) {
-      Path p = Paths.get(destBase, sourcePath.getFileName().toString());
+    if (srcBase.equals(srcPath) && destBaseStr.endsWith("/"))
+    {
+      Path p = Paths.get(destBaseStr, srcPath.getFileName().toString());
       return p;
-    } else {
-      Path p = Paths.get(destBase, sourceBase.relativize(sourcePath).toString());
+    }
+    else
+    {
+      Path p = Paths.get(destBaseStr, srcBase.relativize(srcPath).toString());
       return p;
     }
   }

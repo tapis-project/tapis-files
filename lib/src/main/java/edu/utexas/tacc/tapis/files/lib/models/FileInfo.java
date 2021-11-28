@@ -12,8 +12,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
-public class FileInfo   {
-
+/**
+ * Class representing a file or directory on a Tapis System
+ */
+public class FileInfo
+{
+    public static final String FILETYPE_FILE = "file";
+    public static final String FILETYPE_DIR = "dir";
     public enum Permission {READ, MODIFY}
 
     @JsonProperty("lastModified")
@@ -37,22 +42,26 @@ public class FileInfo   {
 
   public FileInfo() {}
 
-  public FileInfo(S3Object listing) {
-    Path tmpPath = Paths.get(listing.key());
-    this.name = tmpPath.getFileName().toString();
-    this.lastModified = listing.lastModified();
-    this.size = listing.size();
-    this.path = StringUtils.removeStart(listing.key(), "/");
+  /**
+   * Constructor to create a FileInfo instance from an S3 object
+   * @param s3Object - S3 object
+   */
+  public FileInfo(S3Object s3Object)
+  {
+    Path tmpPath = Paths.get(s3Object.key());
+    name = tmpPath.getFileName().toString();
+    lastModified = s3Object.lastModified();
+    size = s3Object.size();
+    path = StringUtils.removeStart(s3Object.key(), "/");
     try {
-      this.mimeType = Files.probeContentType(tmpPath);
+      mimeType = Files.probeContentType(tmpPath);
     } catch (IOException ex) {
-      this.mimeType = null;
+      mimeType = null;
     }
-    if (listing.key().endsWith("/")) {
-      this.type = "dir";
-    } else {
-      this.type = "file";
-    }
+    // If it ends with a / then it is considered a "directory" else it is a file
+//    if (s3Object.key().endsWith("/")) type = "dir"; else type = "file";
+    // S3 objects are always files
+    type = FILETYPE_FILE;
   }
 
     public String getUrl() {
@@ -93,13 +102,9 @@ public class FileInfo   {
 
     @JsonIgnore
     public boolean isDir() {
-        return this.type.equals("dir");
+        return type.equals(FILETYPE_DIR);
     }
 
-    /**
-     * Get lastModified
-     * @return lastModified
-     **/
     @JsonProperty("lastModified")
     public Instant getLastModified() {
         return lastModified;
@@ -111,10 +116,6 @@ public class FileInfo   {
         lastModified = Instant.parse(s);
     }
 
-    /**
-     * Get name
-     * @return name
-     **/
     @JsonProperty("name")
     public String getName() {
         return name;
@@ -123,19 +124,11 @@ public class FileInfo   {
         name = s;
     }
 
-
-    /**
-     * Get path
-     * @return path
-     **/
     @JsonProperty("path")
     public String getPath() { return path; }
     public void setPath(String s) { path = s; }
 
-    /**
-     * size in kB
-     * @return size
-     **/
+    // Size in kB
     @JsonProperty("size")
     public long getSize() {
         return size;
@@ -147,17 +140,16 @@ public class FileInfo   {
         size = l;
     }
 
-
     @Override
     public boolean equals(java.lang.Object o)
     {
         if (this == o) { return true; }
         if (o == null || getClass() != o.getClass()) { return false; }
         FileInfo fileInfo = (FileInfo) o;
-        return Objects.equals(this.lastModified, fileInfo.lastModified) &&
-                Objects.equals(this.name, fileInfo.name) &&
-                Objects.equals(this.path, fileInfo.path) &&
-                Objects.equals(this.size, fileInfo.size);
+        return Objects.equals(lastModified, fileInfo.lastModified) &&
+                Objects.equals(name, fileInfo.name) &&
+                Objects.equals(path, fileInfo.path) &&
+                Objects.equals(size, fileInfo.size);
     }
 
     @Override
@@ -167,23 +159,21 @@ public class FileInfo   {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("class FileInfo {\n");
-
-        sb.append("    lastModified: ").append(toIndentedString(lastModified)).append("\n");
-        sb.append("    name: ").append(toIndentedString(name)).append("\n");
-        sb.append("    path: ").append(toIndentedString(path)).append("\n");
-        sb.append("    size: ").append(toIndentedString(size)).append("\n");
-        sb.append("}");
-        return sb.toString();
+      return "class FileInfo {\n" +
+             "    lastModified: " + toIndentedString(lastModified) + "\n" +
+             "    name: " + toIndentedString(name) + "\n" +
+             "    path: " + toIndentedString(path) + "\n" +
+             "    size: " + toIndentedString(size) + "\n" +
+             "}";
     }
 
     /**
      * Convert the given object to string with each line indented by 4 spaces
      * (except the first line).
      */
-    private String toIndentedString(java.lang.Object o) {
-        if (o == null) return "null";
-        return o.toString().replace("\n", "\n    ");
+    private String toIndentedString(java.lang.Object o)
+    {
+      if (o == null) return "null";
+      return o.toString().replace("\n", "\n    ");
     }
 }

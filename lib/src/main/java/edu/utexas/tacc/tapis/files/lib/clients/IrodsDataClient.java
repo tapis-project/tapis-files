@@ -83,15 +83,15 @@ public class IrodsDataClient implements IRemoteDataClient {
     }
 
     @Override
-    public List<FileInfo> ls(@NotNull String remotePath) throws IOException, NotFoundException {
-        return this.ls(remotePath, 1000, 0);
+    public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {
+        return this.ls(path, 1000, 0);
     }
 
     @Override
-    public List<FileInfo> ls(@NotNull String remotePath, long limit, long offset) throws IOException, NotFoundException {
+    public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException {
         long count = Math.min(limit, MAX_LISTING_SIZE);
         long startIdx = Math.max(offset, 0);
-        String cleanedPath = FilenameUtils.normalize(remotePath);
+        String cleanedPath = FilenameUtils.normalize(path);
         String fullPath = Paths.get("/", rootDir, cleanedPath).toString();
         Path rootDirPath = Paths.get(rootDir);
         IRODSFileFactory fileFactory = getFileFactory();
@@ -102,7 +102,7 @@ public class IrodsDataClient implements IRemoteDataClient {
                 List<FileInfo> outListing = new ArrayList<>();
                 FileInfo fileInfo = new FileInfo();
                 fileInfo.setSize(collection.length());
-                fileInfo.setType("file");
+                fileInfo.setType(FileInfo.FILETYPE_FILE);
                 fileInfo.setName(collection.getName());
                 Path tmpPath = Paths.get(collection.getPath());
                 Path relPath = rootDirPath.relativize(tmpPath);
@@ -121,7 +121,7 @@ public class IrodsDataClient implements IRemoteDataClient {
                 FileInfo fileInfo = new FileInfo();
                 fileInfo.setPath(relPath.toString());
                 fileInfo.setName(file.getName());
-                fileInfo.setType(file.isDirectory() ? "dir" : "file");
+                fileInfo.setType(file.isDirectory() ? FileInfo.FILETYPE_DIR : FileInfo.FILETYPE_FILE);
                 fileInfo.setSize(file.length());
                 try {
                     fileInfo.setMimeType(Files.probeContentType(tmpPath));
@@ -148,13 +148,13 @@ public class IrodsDataClient implements IRemoteDataClient {
 
     /**
      *
-     * @param remotePath Always relative to rootDir
+     * @param path Always relative to rootDir
      * @param fileStream InputStream to send to irods
      * @throws IOException if auth failed or insert failed
      */
     @Override
-    public void insert(@NotNull String remotePath, @NotNull InputStream fileStream) throws IOException {
-        Path cleanedPath = cleanAndRelativize(remotePath);
+    public void upload(@NotNull String path, @NotNull InputStream fileStream) throws IOException {
+        Path cleanedPath = cleanAndRelativize(path);
         Path fullPath = Paths.get("/", rootDir, cleanedPath.toString());
         Path parentDir = fullPath.getParent();
         IRODSFileFactory fileFactory = getFileFactory();
@@ -189,9 +189,9 @@ public class IrodsDataClient implements IRemoteDataClient {
 
 
     @Override
-    public void mkdir(@NotNull String remotePath) throws IOException, NotFoundException {
-        if (StringUtils.isEmpty(remotePath)) return;
-        Path cleanedRelativePath = cleanAndRelativize(remotePath);
+    public void mkdir(@NotNull String path) throws IOException, NotFoundException {
+        if (StringUtils.isEmpty(path)) return;
+        Path cleanedRelativePath = cleanAndRelativize(path);
         IRODSFileFactory fileFactory = getFileFactory();
         try {
             List<Path> partialPaths = new ArrayList<>();
@@ -217,10 +217,10 @@ public class IrodsDataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException {
-        Path cleanedRelativeOldPath = cleanAndRelativize(oldPath);
+    public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException {
+        Path cleanedRelativeOldPath = cleanAndRelativize(srcPath);
         Path cleanedAbsoluteOldPath = Paths.get(rootDir, cleanedRelativeOldPath.toString());
-        Path cleanedRelativeNewPath = cleanAndRelativize(newPath);
+        Path cleanedRelativeNewPath = cleanAndRelativize(dstPath);
         Path cleanedAbsoluteNewPath = Paths.get(rootDir, cleanedRelativeNewPath.toString());
         DataTransferOperations transferOperations = getTransferOperations();
         IRODSFileFactory fileFactory = getFileFactory();
@@ -244,10 +244,10 @@ public class IrodsDataClient implements IRemoteDataClient {
     }
 
     @Override
-    public void copy(@NotNull String sourcePath, @NotNull String destPath) throws IOException, NotFoundException {
-        Path cleanedRelativeSourcePath = cleanAndRelativize(sourcePath);
+    public void copy(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException {
+        Path cleanedRelativeSourcePath = cleanAndRelativize(srcPath);
         Path cleanedAbsoluteSourcePath = Paths.get(rootDir, cleanedRelativeSourcePath.toString());
-        Path cleanedRelativeDestPath = cleanAndRelativize(destPath);
+        Path cleanedRelativeDestPath = cleanAndRelativize(dstPath);
         Path cleanedAbsoluteDestPath = Paths.get(rootDir, cleanedRelativeDestPath.toString());
         DataTransferOperations transferOperations = getTransferOperations();
         IRODSFileFactory fileFactory = getFileFactory();

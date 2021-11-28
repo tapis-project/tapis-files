@@ -173,8 +173,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
-        fileOpsService.insert(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
-        fileOpsService.insert(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.upload(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.upload(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
@@ -210,8 +210,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
-        fileOpsService.insert(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
-        fileOpsService.insert(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.upload(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.upload(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/");
@@ -301,8 +301,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
-        fileOpsService.insert(sourceClient,"a/1.txt", Utils.makeFakeFile(10 * 1024));
-        fileOpsService.insert(sourceClient,"a/2.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.upload(sourceClient,"a/1.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.upload(sourceClient,"a/2.txt", Utils.makeFakeFile(10 * 1024));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a");
@@ -343,8 +343,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
 
-        fileOpsService.insert(sourceClient,"a/1.txt", Utils.makeFakeFile(10 * 1024));
-        fileOpsService.insert(sourceClient,"a/2.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.upload(sourceClient,"a/1.txt", Utils.makeFakeFile(10 * 1024));
+        fileOpsService.upload(sourceClient,"a/2.txt", Utils.makeFakeFile(10 * 1024));
         fileOpsService.mkdir(sourceClient, "a/b/c/d/");
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -392,8 +392,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 10 * 1024;
-        fileOpsService.insert(sourceClient, "a/1.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "a/2.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/1.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/2.txt", Utils.makeFakeFile(FILESIZE));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a/");
@@ -469,7 +469,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
-        fileOpsService.insert(sourceClient, "program.exe", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "program.exe", Utils.makeFakeFile(FILESIZE));
         fileUtilsService.linuxOp(sourceClient, "/program.exe", FileUtilsService.NativeLinuxOperation.CHMOD, "755", false);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -528,8 +528,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
-        fileOpsService.insert(sourceClient, "a/cat/dog/1.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "a/cat/dog/2.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/cat/dog/1.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/cat/dog/2.txt", Utils.makeFakeFile(FILESIZE));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a/");
@@ -593,7 +593,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
-        fileOpsService.insert(sourceClient, "a/1.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/1.txt", Utils.makeFakeFile(FILESIZE));
 
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -708,7 +708,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
-        fileOpsService.insert(sourceClient, "file1.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "file1.txt", Utils.makeFakeFile(FILESIZE));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/file1.txt");
@@ -772,7 +772,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
         InputStream in = Utils.makeFakeFile(FILESIZE);
-        fileOpsService.insert(sourceClient, "file1.txt", in);
+        fileOpsService.upload(sourceClient, "file1.txt", in);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/file1.txt");
@@ -836,7 +836,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         InputStream in = Utils.makeFakeFile(10 * 1024);
-        fileOpsService.insert(sourceClient,"a/1.txt", in);
+        fileOpsService.upload(sourceClient,"a/1.txt", in);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a/");
@@ -855,7 +855,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
             FileInfo fileInfo = new FileInfo();
             fileInfo.setPath(path);
             fileInfo.setSize(10 * 1024);
-            fileInfo.setType("file");
+            fileInfo.setType(FileInfo.FILETYPE_FILE);
             TransferTaskChild child = new TransferTaskChild(parent, fileInfo);
             child = transfersService.createTransferTaskChild(child);
             transfersService.publishChildMessage(child);
@@ -892,7 +892,7 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         //Add some files to transfer
         for (var i=0;i<10;i++) {
-            fileOpsService.insert(sourceClient, String.format("a/%s.txt", i), Utils.makeFakeFile(10000 * 1024));
+            fileOpsService.upload(sourceClient, String.format("a/%s.txt", i), Utils.makeFakeFile(10000 * 1024));
         }
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a/");
@@ -933,8 +933,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         //Add some files to transfer
 
-        fileOpsService.insert(sourceClient, "a/1.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert(sourceClient, "a/2.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient, "a/1.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient, "a/2.txt", Utils.makeFakeFile(10000 * 1024));
 
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -985,14 +985,14 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
         IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
         IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
         //Add some files to transfer
-        fileOpsService.insert(sourceClient,"/a/1.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert(sourceClient,"/a/2.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert(sourceClient,"/a/3.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert(sourceClient,"/a/4.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert(sourceClient,"/a/5.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert(sourceClient,"/a/6.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert(sourceClient,"/a/7.txt", Utils.makeFakeFile(10000 * 1024));
-        fileOpsService.insert(sourceClient,"/a/8.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient,"/a/1.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient,"/a/2.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient,"/a/3.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient,"/a/4.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient,"/a/5.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient,"/a/6.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient,"/a/7.txt", Utils.makeFakeFile(10000 * 1024));
+        fileOpsService.upload(sourceClient,"/a/8.txt", Utils.makeFakeFile(10000 * 1024));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a/");
@@ -1065,11 +1065,11 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         //Add some files to transfer
         int FILESIZE = 100 * 1000 * 1024;
-        fileOpsService.insert(sourceClient, "a/file1.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "a/file2.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "a/file3.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "a/file4.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.insert(sourceClient, "a/file5.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/file1.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/file2.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/file3.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/file4.txt", Utils.makeFakeFile(FILESIZE));
+        fileOpsService.upload(sourceClient, "a/file5.txt", Utils.makeFakeFile(FILESIZE));
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/a/");
