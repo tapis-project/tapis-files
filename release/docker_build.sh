@@ -55,7 +55,7 @@ fi
 # cp Dockerfile $BUILD_DIR
 
 # Move to the build directory
-# cd $BUILD_DIR || exit
+cd $BUILD_DIR || exit
 
 # Set variables used for build
 VER=$(cat classes/tapis.version)
@@ -82,6 +82,7 @@ echo "  ENV=        ${ENV}"
 echo "  VER=        ${VER}"
 echo "  GIT_BRANCH_LBL= ${GIT_BRANCH_LBL}"
 echo "  GIT_COMMIT_LBL= ${GIT_COMMIT_LBL}"
+
 # Move to the top level directory to build docker images
 cd .. || exit
 docker build -f ./deploy/Dockerfile \
