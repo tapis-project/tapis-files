@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  * jax-rs annotations map HTTP verb + endpoint to method invocation and map query parameters.
  *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
  */
-@Path("/v3/files/share")
+//@Path("/v3/files/share")
 public class ShareApiResource  {
 
     private static final Logger log = LoggerFactory.getLogger(ShareApiResource.class);
