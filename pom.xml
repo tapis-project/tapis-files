@@ -15,7 +15,7 @@
 
     <artifactId>tapis-files</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.1-SNAPSHOT</version>
+    <version>1.0.1</version>
 
     <properties>
       <!-- Most properties set in parent tapis-bom   -->
