@@ -3,7 +3,7 @@
 # This is the job run in Jenkins as part of job in TapisJava->3_ManualBuildDeploy
 # Environment name must be passed in as first argument
 # Existing docker login is used for push
-# Docker image is created with a unique tag: tapis/<SVC_NAME>-<ENV>-<VER>-<COMMIT>-<YYYYmmddHHMM>
+# Docker image is created with a unique tag: tapis/tapis-<SVC_NAME>-<ENV>-<VER>-<COMMIT>-<YYYYmmddHHMM>
 #   - other tags are created and updated as appropriate
 #
 # Env var TAPIS_DEPLOY_MANUAL may be set to "true" to indicate it is a manual deployment and the
@@ -14,7 +14,8 @@ PrgName=$(basename "$0")
 USAGE="Usage: $PrgName { dev staging prod } [ -push ]"
 
 SVC_NAME="files"
-SVC_NAME_W="${SVC_NAME}-workers"
+SVC_NAME2="tapis-${SVC_NAME}"
+SVC_NAME2_W="${SVC_NAME2}-workers"
 REPO="tapis"
 
 BUILD_DIR=../api/target
@@ -61,14 +62,14 @@ cd $BUILD_DIR || exit
 VER=$(cat classes/tapis.version)
 GIT_BRANCH_LBL=$(awk '{print $1}' classes/git.info)
 GIT_COMMIT_LBL=$(awk '{print $2}' classes/git.info)
-TAG_UNIQ="${REPO}/${SVC_NAME}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
-TAGW_UNIQ="${REPO}/${SVC_NAME_W}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
-TAG_ENV="${REPO}/${SVC_NAME}:${ENV}"
-TAGW_ENV="${REPO}/${SVC_NAME_W}:${ENV}"
-TAG_LATEST="${REPO}/${SVC_NAME}:latest"
-TAGW_LATEST="${REPO}/${SVC_NAME_W}:latest"
-TAG_LOCAL="${REPO}/${SVC_NAME}:dev_local"
-TAGW_LOCAL="${REPO}/${SVC_NAME_W}:dev_local"
+TAG_UNIQ="${REPO}/${SVC_NAME2}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
+TAGW_UNIQ="${REPO}/${SVC_NAME2_W}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
+TAG_ENV="${REPO}/${SVC_NAME2}:${ENV}"
+TAGW_ENV="${REPO}/${SVC_NAME2_W}:${ENV}"
+TAG_LATEST="${REPO}/${SVC_NAME2}:latest"
+TAGW_LATEST="${REPO}/${SVC_NAME2_W}:latest"
+TAG_LOCAL="${REPO}/${SVC_NAME2}:dev_local"
+TAGW_LOCAL="${REPO}/${SVC_NAME2_W}:dev_local"
 
 # If branch name is UNKNOWN or empty as might be the case in a jenkins job then
 #   set it to GIT_BRANCH. Jenkins jobs should have this set in the env.
