@@ -64,10 +64,12 @@ echo
 echo "Build version: $VER"
 echo
 
-set -xv
 # Running with network=host exposes ports directly. Only works for linux
-docker run -e TAPIS_SERVICE_PASSWORD="${TAPIS_SERVICE_PASSWORD}" \
-           -e TAPIS_TENANT_SVC_BASEURL="$BASE_URL" \
-           -e TAPIS_SITE_ID="$TAPIS_SITE_ID" \
-           -d --rm --network="host" "${TAG}"
+#docker run -e TAPIS_SERVICE_PASSWORD="${TAPIS_SERVICE_PASSWORD}" \
+#           -e TAPIS_TENANT_SVC_BASEURL="$BASE_URL" \
+#           -e TAPIS_SITE_ID="$TAPIS_SITE_ID" \
+#           -d --rm --network="host" "${TAG}"
+# docker run -e TAPIS_SERVICE_PASSWORD="${TAPIS_SERVICE_PASSWORD}" -d --rm --network="host" "${TAG}"
+set -xv
+docker run -e TAPIS_SERVICE_PASSWORD="${TAPIS_SERVICE_PASSWORD}" --rm --network="host" "${TAG}"
 cd "$RUN_DIR"
