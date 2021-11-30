@@ -10,12 +10,23 @@
       <groupId>edu.utexas.tacc.tapis</groupId>
       <artifactId>tapis-bom</artifactId>
       <version>[2.0,3.0)</version>
+      <!-- Set empty relative path to avoid maven warning and-->
+      <!--   ensure parent is found in local repository if that-->
+      <!--   is the only place it exists.-->
       <relativePath/>
     </parent>
 
     <artifactId>tapis-files</artifactId>
-    <packaging>pom</packaging>
     <version>1.0.1</version>
+    <packaging>pom</packaging>
+
+    <name>TACC Tapis Files Parent POM</name>
+    <description>Parent POM file for TAPIS Files service</description>
+
+    <scm>
+        <connection>scm:git:https://github.com/tapis-project/tapis-apps.git</connection>
+        <url>https://github.com/tapis-project/tapis-apps</url>
+    </scm>
 
     <properties>
       <!-- Most properties set in parent tapis-bom   -->
@@ -122,6 +133,13 @@
     </resources>
 
         <plugins>
+            <!--  gitflow-maven-plugin supports various git workflow steps, such as gitflow:release-start-->
+            <!--    gitflow:release-finish, gitflow:feature-start, gitflow:feature-finish-->
+            <!-- For configuration see parent pom tapis-bom.xml -->
+            <plugin>
+                <groupId>com.amashchenko.maven.plugin</groupId>
+                <artifactId>gitflow-maven-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
