@@ -89,6 +89,15 @@ cd ${PRG_PATH}/.. || exit
 docker build -f ./deploy/Dockerfile \
    --label VER="${VER}" --label GIT_COMMIT="${GIT_COMMIT_LBL}" --label GIT_BRANCH="${GIT_BRANCH_LBL}" \
     -t "${TAG_UNIQ}" .
+RET_CODE=$?
+if [ $RET_CODE -ne 0 ]; then
+  echo "======================================================================"
+  echo "Docker build for tapis-files failed. Exit code: $RET_CODE"
+  echo "Exiting ..."
+  echo "======================================================================"
+  exit $RET_CODE
+fi
+
 echo "Building local image using primary tag: $TAGW_UNIQ"
 docker build -f ./deploy/Dockerfile.workers \
    --label VER="${VER}" --label GIT_COMMIT="${GIT_COMMIT_LBL}" --label GIT_BRANCH="${GIT_BRANCH_LBL}" \
@@ -109,6 +118,17 @@ if [ "x$2" = "x-push" ]; then
   echo "Pushing images to docker hub."
   # NOTE: Use current login. Jenkins job does login
   docker push "$TAG_UNIQ"
+  RET_CODE=$?
+  if [ $RET_CODE -ne 0 ]; then
+    echo "======================================================================"
+    echo "Docker push for $TAG_UNIQ failed. Exit code: $RET_CODE"
+    echo "Exiting ..."
+    echo "======================================================================"
+    exit $RET_CODE
+  fi
+  echo "********** Pushed image: $TAG_UNIQ"
+
+  set -xv
   docker push "$TAGW_UNIQ"
   if [ "x$TAPIS_DEPLOY_MANUAL" = "xtrue" ]; then
     echo "Creating ENV image tag: $TAG_ENV"
