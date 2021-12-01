@@ -26,68 +26,62 @@ import java.util.concurrent.TimeUnit;
  */
 public class SSHConnectionCache
 {
-    private static final Logger log = LoggerFactory.getLogger(SSHConnectionCache.class);
-    private static LoadingCache<SSHConnectionCacheKey, SSHConnectionHolder> sessionCache;
-    private  final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-    private final TimeUnit timeUnit;
-    private final long timeout;
+  private static final Logger log = LoggerFactory.getLogger(SSHConnectionCache.class);
+  private static LoadingCache<SSHConnectionCacheKey, SSHConnectionHolder> sessionCache;
 
-    /**
-     *
-     * @param timeout Timeout of when to preform maintenance
-     * @param timeUnit TimeUnit of timeout
-     */
-    public SSHConnectionCache(long timeout, TimeUnit timeUnit)
-    {
-        this.timeUnit = timeUnit;
-        this.timeout = timeout;
-        sessionCache = CacheBuilder.newBuilder().recordStats().build(new SSHConnectionCacheLoader());
-        executorService.scheduleAtFixedRate( ()-> {
-            sessionCache.asMap().forEach( (SSHConnectionCacheKey key, SSHConnectionHolder holder) -> {
-                if (holder.getChannelCount() == 0) {
-                    log.debug("Closing SSH connecting from cache: {} for user {}", holder.getSshConnection().getHost(), holder.getSshConnection().getUsername());
-                    sessionCache.invalidate(key);
-                    holder.getSshConnection().stop();
-                }
-            });
-        }, this.timeout, this.timeout, this.timeUnit);
-    }
-
-    /**
-     *
-     * @return stats for the cache
-     */
-    public CacheStats getCacheStats() {
-        return sessionCache.stats();
-    }
-
-    /**
-     *
-     * @return
-     */
-    public LoadingCache<SSHConnectionCacheKey, SSHConnectionHolder> getCache() {
-        return sessionCache;
-    }
-
-    /**
-     *
-     * @param system System object
-     * @param oboUser API username
-     * @return will return a SSH connection, either directly from the cache (if it exists), or
-     * create one and return it from the cache.
-     * @throws IOException
-     */
-    public SSHConnectionHolder getConnection(TapisSystem system, String oboUser) throws IOException
-    {
-        SSHConnectionCacheKey key = new SSHConnectionCacheKey(system, oboUser);
-        try { return sessionCache.get(key); }
-        catch (ExecutionException ex)
-        {
-          String msg = Utils.getMsg("FILES_CLIENT_SSH_CONN_ERR", system.getTenant(), oboUser, system.getId(), oboUser,
-                                    system.getHost(), ex.getMessage());
-            log.error(msg, ex);
-            throw new IOException("Could not get or create SSH session");
+  /**
+   * Constructor for the cache
+   * @param timeout Timeout of when to preform maintenance
+   * @param timeUnit TimeUnit of timeout
+   */
+  public SSHConnectionCache(long timeout, TimeUnit timeUnit)
+  {
+    sessionCache = CacheBuilder.newBuilder().recordStats().build(new SSHConnectionCacheLoader());
+    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    executorService.scheduleAtFixedRate( ()-> {
+      sessionCache.asMap().forEach( (SSHConnectionCacheKey key, SSHConnectionHolder holder) -> {
+        if (holder.getChannelCount() == 0) {
+          log.debug("Closing SSH connecting from cache: {} for user {}", holder.getSshConnection().getHost(), holder.getSshConnection().getUsername());
+          sessionCache.invalidate(key);
+          holder.getSshConnection().stop();
         }
-    }
+      });
+    }, timeout, timeout, timeUnit);
+  }
 
+  /**
+   * Return the cache stats
+   * @return stats for the cache
+   */
+  public CacheStats getCacheStats() {
+    return sessionCache.stats();
+  }
+
+  /**
+   * Return the internal google cache
+   * @return the internal google cache
+   */
+  public LoadingCache<SSHConnectionCacheKey, SSHConnectionHolder> getCache() {
+    return sessionCache;
+  }
+
+  /**
+   * Get a connection from the cache.
+   * @param system System object
+   * @param oboUser API username
+   * @return an SSH connection, either from the cache (if it exists), or create one and return it from the cache.
+   * @throws IOException on error
+   */
+  public SSHConnectionHolder getConnection(TapisSystem system, String oboUser) throws IOException
+  {
+    SSHConnectionCacheKey key = new SSHConnectionCacheKey(system, oboUser);
+    try { return sessionCache.get(key); }
+    catch (ExecutionException ex)
+    {
+      String msg = Utils.getMsg("FILES_CLIENT_SSH_CONN_ERR", system.getTenant(), oboUser, system.getId(), oboUser,
+              system.getHost(), ex.getMessage());
+      log.error(msg, ex);
+      throw new IOException("Could not get or create SSH session");
+    }
+  }
 }
