@@ -48,8 +48,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 @Service
-public class ChildTaskTransferService {
-
+public class ChildTaskTransferService
+{
     private static final int MAX_RETRIES = 5;
     private final TransfersService transfersService;
     private final FileTransfersDAO dao;

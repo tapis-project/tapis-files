@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -35,15 +34,14 @@ import reactor.util.retry.Retry;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class ParentTaskTransferService {
-
+public class ParentTaskTransferService
+{
     private static final int MAX_RETRIES = 5;
     private final TransfersService transfersService;
     private final FileTransfersDAO dao;
@@ -123,7 +121,6 @@ public class ParentTaskTransferService {
                     );
             });
     }
-
 
     /**
      * This method handles exceptions/errors if the parent task failed.

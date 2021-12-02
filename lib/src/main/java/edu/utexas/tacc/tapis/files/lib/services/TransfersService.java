@@ -91,50 +91,42 @@ public class TransfersService
 
     public Mono<AMQP.Queue.BindOk> setParentQueue(String name)
     {
-        PARENT_QUEUE = name;
-        QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
-            .durable(true)
-            .autoDelete(false);
-        return sender.declare(parentSpec)
-            .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)));
+      PARENT_QUEUE = name;
+      QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE).durable(true).autoDelete(false);
+      return sender.declare(parentSpec).then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)));
     }
 
     public Mono<AMQP.Queue.BindOk> setChildQueue(String name)
     {
-        CHILD_QUEUE = name;
-        QueueSpecification parentSpec = QueueSpecification.queue(CHILD_QUEUE)
-            .durable(true)
-            .autoDelete(false);
-        return sender.declare(parentSpec)
-            .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)));
+      CHILD_QUEUE = name;
+      QueueSpecification parentSpec = QueueSpecification.queue(CHILD_QUEUE).durable(true).autoDelete(false);
+      return sender.declare(parentSpec).then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)));
     }
 
     public Mono<DeleteOk> deleteQueue(String qName)
     {
-        return sender
-            .unbind(binding(TRANSFERS_EXCHANGE, qName, qName))
-            .then(sender.delete(QueueSpecification.queue(qName)));
+      return sender.unbind(binding(TRANSFERS_EXCHANGE, qName, qName)).then(sender.delete(QueueSpecification.queue(qName)));
     }
 
     public void setControlExchange(String name)
     {
-        CONTROL_EXCHANGE = name;
-        init();
+      CONTROL_EXCHANGE = name;
+      init();
     }
 
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskUuid)
             throws ServiceException
     {
-        try
-        {
-            TransferTask task = dao.getTransferTaskByUUID(transferTaskUuid);
-            return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
-        }
-        catch (DAOException ex)
-        {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR2", tenantId, username,
-                "isPermitted", transferTaskUuid, ex.getMessage()), ex);
-        }
+      try
+      {
+        TransferTask task = dao.getTransferTaskByUUID(transferTaskUuid);
+        return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
+      }
+      catch (DAOException ex)
+      {
+        throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR2", tenantId, username,
+                                                "isPermitted", transferTaskUuid, ex.getMessage()), ex);
+      }
     }
 
     public TransferTask getTransferTaskDetails(UUID uuid) throws ServiceException
@@ -152,8 +144,6 @@ public class TransfersService
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR3",
                 "getTransferTaskDetails", uuid, ex.getMessage()), ex);
         }
-
-
     }
 
     public TransferTaskChild getChildTaskByUUID(UUID uuid) throws ServiceException {
@@ -263,7 +253,9 @@ public class TransfersService
       }
     }
 
-    public TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException {
+    // TODO/TBD: Is this method only for testing?
+    public TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException
+    {
         try { return dao.insertChildTask(task); }
         catch (DAOException ex)
         {
