@@ -10,14 +10,17 @@ https://tapis-project.github.io/live-docs
 
 ## 1.0.2 - 202?-??-??
 
-Incremental improvements and bug fixes.
+Incremental improvements.
 
 ### New features:
+- None
+
+### Updates:
 - Add debug logging of cache key loads.
-- b
+- Update S3 client to mostly operate on single objects.
 
 ### Bug fixes:
-- Fix ?
+- None.
 
 ## 1.0.1 - 2021-12-01
 
