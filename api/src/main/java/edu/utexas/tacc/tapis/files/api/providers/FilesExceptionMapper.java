@@ -22,28 +22,26 @@ public class FilesExceptionMapper implements ExceptionMapper<Exception>
   {
     TapisResponse<String> resp = TapisResponse.createErrorResponse(exception.getMessage());
 
-    if (exception instanceof NotFoundException) {
-      return Response.status(Response.Status.NOT_FOUND)
-              .type(MediaType.APPLICATION_JSON)
-              .entity(resp).build();
-    } else if (exception instanceof NotAuthorizedException || exception instanceof ForbiddenException) {
-      return Response.status(Response.Status.FORBIDDEN)
-              .type(MediaType.APPLICATION_JSON)
-              .entity(resp).build();
-    } else if (exception instanceof BadRequestException) {
-      return Response.status(Response.Status.BAD_REQUEST)
-              .type(MediaType.APPLICATION_JSON)
-              .entity(resp).build();
-    } else if (exception instanceof WebApplicationException) {
-      log.error("??????????????UNCAUGHT_EXCEPTION", exception);
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-              .type(MediaType.APPLICATION_JSON)
-              .entity(resp).build();
-    } else {
+    if (exception instanceof NotFoundException)
+    {
+      return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON).entity(resp).build();
+    }
+    else if (exception instanceof NotAuthorizedException || exception instanceof ForbiddenException)
+    {
+      return Response.status(Response.Status.FORBIDDEN).type(MediaType.APPLICATION_JSON).entity(resp).build();
+    }
+    else if (exception instanceof BadRequestException)
+    {
+      return Response.status(Response.Status.BAD_REQUEST).type(MediaType.APPLICATION_JSON).entity(resp).build();
+    }
+    else if (exception instanceof WebApplicationException)
+    {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(resp).build();
+    }
+    else
+    {
       log.error("UNCAUGHT_EXCEPTION", exception);
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-              .type(MediaType.APPLICATION_JSON)
-              .entity(resp).build();
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).type(MediaType.APPLICATION_JSON).entity(resp).build();
     }
   }
 }

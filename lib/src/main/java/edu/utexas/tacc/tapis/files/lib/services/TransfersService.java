@@ -6,8 +6,6 @@ import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Delivery;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -28,7 +26,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.ChannelPool;
 import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.OutboundMessage;
@@ -37,7 +34,6 @@ import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.RabbitFlux;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.ReceiverOptions;
-import reactor.rabbitmq.SendOptions;
 import reactor.rabbitmq.Sender;
 import reactor.rabbitmq.SenderOptions;
 import reactor.util.retry.RetrySpec;
@@ -54,80 +50,48 @@ import java.util.UUID;
 import static reactor.rabbitmq.BindingSpecification.binding;
 
 @Service
-public class TransfersService {
-    private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
-    private final String TRANSFERS_EXCHANGE = "tapis.files";
-    private String PARENT_QUEUE = "tapis.files.transfers.parent";
-    private String CHILD_QUEUE = "tapis.files.transfers.child";
-    private String CONTROL_EXCHANGE = "tapis.files.transfers.control";
-    private static final int MAX_RETRIES = 5;
-    private final Receiver receiver;
-    private final Sender sender;
+public class TransfersService
+{
+  private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
+  private final String TRANSFERS_EXCHANGE = "tapis.files";
+  private String PARENT_QUEUE = "tapis.files.transfers.parent";
+  private String CHILD_QUEUE = "tapis.files.transfers.child";
+  private String CONTROL_EXCHANGE = "tapis.files.transfers.control";
+  private static final int MAX_RETRIES = 5;
+  private final Receiver receiver;
+  private final Sender sender;
 
-    private final FileTransfersDAO dao;
+  private final FileTransfersDAO dao;
 
-    private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]{
-        TransferTaskStatus.FAILED,
-        TransferTaskStatus.CANCELLED,
-        TransferTaskStatus.COMPLETED};
-    private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
+  private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]
+        { TransferTaskStatus.FAILED, TransferTaskStatus.CANCELLED, TransferTaskStatus.COMPLETED};
+  private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
 
-    @Inject
-    public TransfersService(FileTransfersDAO dao) {
-        ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
-        ReceiverOptions receiverOptions = new ReceiverOptions()
-            .connectionMonoConfigurator(
-                cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5)))
-            )
+  @Inject
+  public TransfersService(FileTransfersDAO dao1)
+  {
+    ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
+    ReceiverOptions receiverOptions = new ReceiverOptions()
+            .connectionMonoConfigurator( cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5))) )
             .connectionFactory(connectionFactory)
             .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "receiver"));
-        SenderOptions senderOptions = new SenderOptions()
-            .connectionMonoConfigurator(
-                cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5)))
-            )
+    SenderOptions senderOptions = new SenderOptions()
+            .connectionMonoConfigurator( cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5))) )
             .connectionFactory(connectionFactory)
             .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "sender"));
-        receiver = RabbitFlux.createReceiver(receiverOptions);
-        sender = RabbitFlux.createSender(senderOptions);
+    receiver = RabbitFlux.createReceiver(receiverOptions);
+    sender = RabbitFlux.createSender(senderOptions);
+    dao = dao1;
+    init();
+  }
 
-        this.dao = dao;
-        init();
-    }
+  // ************************************************************************
+  // *********************** Public Methods *********************************
+  // ************************************************************************
 
-    private void init() {
-
-        // Initialize the exchanges and queues
-        ExchangeSpecification controlExSpec = ExchangeSpecification.exchange(CONTROL_EXCHANGE)
-            .type("fanout")
-            .durable(true)
-            .autoDelete(false);
-
-        ExchangeSpecification transferExSpec = ExchangeSpecification.exchange(TRANSFERS_EXCHANGE)
-            .type("direct")
-            .durable(true)
-            .autoDelete(false);
-
-        QueueSpecification childSpec = QueueSpecification.queue(CHILD_QUEUE)
-            .durable(true)
-            .autoDelete(false);
-
-        QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
-            .durable(true)
-            .autoDelete(false);
-
-        sender.declare(controlExSpec)
-            .then(sender.declare(transferExSpec))
-            .then(sender.declare(childSpec))
-            .then(sender.declare(parentSpec))
-            .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
-            .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
-            .retry(5)
-            .block(Duration.ofSeconds(5));
-
-    }
-
-    public Mono<AMQP.Queue.BindOk> setParentQueue(String name) {
-        this.PARENT_QUEUE = name;
+    public Mono<AMQP.Queue.BindOk> setParentQueue(String name)
+    {
+        PARENT_QUEUE = name;
         QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
             .durable(true)
             .autoDelete(false);
@@ -135,37 +99,46 @@ public class TransfersService {
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)));
     }
 
-    public Mono<AMQP.Queue.BindOk> setChildQueue(String name) {
-        this.CHILD_QUEUE = name;
+    public Mono<AMQP.Queue.BindOk> setChildQueue(String name)
+    {
+        CHILD_QUEUE = name;
         QueueSpecification parentSpec = QueueSpecification.queue(CHILD_QUEUE)
             .durable(true)
             .autoDelete(false);
         return sender.declare(parentSpec)
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)));
     }
-    public Mono<DeleteOk> deleteQueue(String qName) {
+
+    public Mono<DeleteOk> deleteQueue(String qName)
+    {
         return sender
             .unbind(binding(TRANSFERS_EXCHANGE, qName, qName))
             .then(sender.delete(QueueSpecification.queue(qName)));
     }
 
-    public void setControlExchange(String name) {
-        this.CONTROL_EXCHANGE = name;
+    public void setControlExchange(String name)
+    {
+        CONTROL_EXCHANGE = name;
         init();
     }
 
-    public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskUuid) throws ServiceException {
-        try {
+    public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskUuid)
+            throws ServiceException
+    {
+        try
+        {
             TransferTask task = dao.getTransferTaskByUUID(transferTaskUuid);
             return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
-        } catch (DAOException ex) {
+        }
+        catch (DAOException ex)
+        {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR2", tenantId, username,
                 "isPermitted", transferTaskUuid, ex.getMessage()), ex);
         }
     }
 
-    public TransferTask getTransferTaskDetails(UUID uuid) throws ServiceException {
-
+    public TransferTask getTransferTaskDetails(UUID uuid) throws ServiceException
+    {
         try {
             TransferTask task = dao.getTransferTaskByUUID(uuid);
             List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
@@ -257,9 +230,9 @@ public class TransfersService {
         }
     }
 
-
     /**
-     * Creates the top level TransferTask and the associated TransferTaskParents that were requested in the elements List.
+     * Creates the top level TransferTask and the associated TransferTaskParents that were requested in the
+     * elements List.
      *
      * @param username Obo username
      * @param tenantId tenantId
@@ -268,71 +241,67 @@ public class TransfersService {
      * @return TransferTask The TransferTask that has been saved to the DB
      * @throws ServiceException Saving to DB fails
      */
-    public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId, String tag, List<TransferTaskRequestElement> elements) throws ServiceException {
-
-        TransferTask task = new TransferTask();
-        task.setTenantId(tenantId);
-        task.setUsername(username);
-        task.setStatus(TransferTaskStatus.ACCEPTED);
-        task.setTag(tag);
-
-        try {
-            TransferTask newTask = dao.createTransferTask(task, elements);
-
-            for (TransferTaskParent parent : newTask.getParentTasks()) {
-                this.publishParentTaskMessage(parent);
-            }
-            return newTask;
-        } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR6", tenantId, username, "createTransfer", tag,
-                ex.getMessage()), ex);
-        }
+    public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId, String tag,
+                                       List<TransferTaskRequestElement> elements)
+            throws ServiceException
+    {
+      TransferTask task = new TransferTask();
+      task.setTenantId(tenantId);
+      task.setUsername(username);
+      task.setStatus(TransferTaskStatus.ACCEPTED);
+      task.setTag(tag);
+      try
+      {
+        TransferTask newTask = dao.createTransferTask(task, elements);
+        for (TransferTaskParent parent : newTask.getParentTasks()) { publishParentTaskMessage(parent); }
+        return newTask;
+      }
+      catch (DAOException ex)
+      {
+        throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR6", tenantId, username, "createTransfer", tag,
+                                                ex.getMessage()), ex);
+      }
     }
 
     public TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException {
-        try {
-            return dao.insertChildTask(task);
-        } catch (DAOException ex) {
+        try { return dao.insertChildTask(task); }
+        catch (DAOException ex)
+        {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
                 "createTransferTaskChild", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
-    public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException {
-        try {
+    public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException
+    {
+        try
+        {
             dao.cancelTransfer(task);
             TransferControlAction action = new TransferControlAction();
             action.setAction(TransferControlAction.ControlAction.CANCEL);
             action.setCreated(Instant.now());
             action.setTenantId(task.getTenantId());
             action.setTaskId(task.getId());
-            this.publishControlMessage(action);
-        } catch (DAOException ex) {
+            publishControlMessage(action);
+        }
+        catch (DAOException ex)
+        {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
                 "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
-
-    private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException {
-        try {
-            String m = mapper.writeValueAsString(task);
-            OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, PARENT_QUEUE, m.getBytes());
-            sender.sendWithPublishConfirms(Mono.just(message)).subscribe();
-        } catch (Exception e) {
-            log.info(e.getMessage());
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                "publishParentTaskMessage", task.getId(), task.getUuid(), e.getMessage()), e);
-        }
-    }
-
-    public void publishControlMessage(@NotNull TransferControlAction action) throws ServiceException {
-        try {
+    public void publishControlMessage(@NotNull TransferControlAction action) throws ServiceException
+    {
+        try
+        {
             String m = mapper.writeValueAsString(action);
             OutboundMessage message = new OutboundMessage(CONTROL_EXCHANGE, "#", m.getBytes());
             Flux<OutboundMessageResult> confirms = sender.sendWithPublishConfirms(Mono.just(message));
             confirms.subscribe();
-        } catch ( JsonProcessingException e) {
+        }
+        catch ( JsonProcessingException e)
+        {
             log.info(e.getMessage());
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR_PUBLISH_MESSAGE"));
         }
@@ -343,7 +312,8 @@ public class TransfersService {
      *
      * @param children A list of TransferTaskChild
      */
-    public void publishBulkChildMessages(List<TransferTaskChild> children) {
+    public void publishBulkChildMessages(List<TransferTaskChild> children)
+    {
         Flux<OutboundMessageResult> messages = sender.sendWithPublishConfirms(
             Flux.fromIterable(children)
                 .flatMap(task -> {
@@ -358,13 +328,17 @@ public class TransfersService {
         messages.subscribe();
     }
 
-    public void publishChildMessage(TransferTaskChild childTask) throws ServiceException {
-        try {
+    public void publishChildMessage(TransferTaskChild childTask) throws ServiceException
+    {
+        try
+        {
             String m = mapper.writeValueAsString(childTask);
             OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
 
             sender.send(Mono.just(message)).subscribe();
-        } catch (JsonProcessingException ex) {
+        }
+        catch (JsonProcessingException ex)
+        {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", childTask.getTenantId(), childTask.getUsername(),
                 "publishChildMessage", childTask.getId(), childTask.getUuid(), ex.getMessage()), ex);
         }
@@ -397,15 +371,6 @@ public class TransfersService {
 
     }
 
-    private Mono<TransferControlAction> deserializeControlMessage(Delivery message) {
-        try {
-            TransferControlAction controlMessage = mapper.readValue(message.getBody(), TransferControlAction.class);
-            return Mono.just(controlMessage);
-        } catch (IOException ex) {
-            return Mono.empty();
-        }
-    }
-
     /**
      * Stream the messages coming off of the CONTROL_QUEUE
      *
@@ -427,4 +392,68 @@ public class TransfersService {
                 .then(sender.bind(binding(CONTROL_EXCHANGE, "#", queueName)))
             ).flatMap(this::deserializeControlMessage);
     }
+
+  // ************************************************************************
+  // *********************** Private Methods ********************************
+  // ************************************************************************
+
+  /**
+   * Initialize the RabbitMQ exchanges and queues.
+   */
+  private void init()
+  {
+    // Initialize the exchanges and queues
+    ExchangeSpecification controlExSpec = ExchangeSpecification.exchange(CONTROL_EXCHANGE)
+            .type("fanout")
+            .durable(true)
+            .autoDelete(false);
+
+    ExchangeSpecification transferExSpec = ExchangeSpecification.exchange(TRANSFERS_EXCHANGE)
+            .type("direct")
+            .durable(true)
+            .autoDelete(false);
+
+    QueueSpecification childSpec = QueueSpecification.queue(CHILD_QUEUE)
+            .durable(true)
+            .autoDelete(false);
+
+    QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
+            .durable(true)
+            .autoDelete(false);
+
+    sender.declare(controlExSpec)
+            .then(sender.declare(transferExSpec))
+            .then(sender.declare(childSpec))
+            .then(sender.declare(parentSpec))
+            .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
+            .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
+            .retry(5)
+            .block(Duration.ofSeconds(5));
+  }
+
+  private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException
+  {
+    try
+    {
+      String m = mapper.writeValueAsString(task);
+      OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, PARENT_QUEUE, m.getBytes());
+      sender.sendWithPublishConfirms(Mono.just(message)).subscribe();
+    }
+    catch (Exception e)
+    {
+      log.info(e.getMessage());
+      throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+              "publishParentTaskMessage", task.getId(), task.getUuid(), e.getMessage()), e);
+    }
+  }
+
+  private Mono<TransferControlAction> deserializeControlMessage(Delivery message)
+  {
+    try
+    {
+      TransferControlAction controlMessage = mapper.readValue(message.getBody(), TransferControlAction.class);
+      return Mono.just(controlMessage);
+    }
+    catch (IOException ex) { return Mono.empty(); }
+  }
 }

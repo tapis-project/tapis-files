@@ -38,154 +38,154 @@ import java.util.UUID;
 @Path("/v3/files/transfers")
 public class  TransfersApiResource
 {
-    private static final Logger log = LoggerFactory.getLogger(TransfersApiResource.class);
+  private static final Logger log = LoggerFactory.getLogger(TransfersApiResource.class);
 
-    @Inject
-    TransfersService transfersService;
+  @Inject
+  TransfersService transfersService;
 
-    @Inject
-    SystemsCache systemsCache;
+  @Inject
+  SystemsCache systemsCache;
 
-    private void isPermitted(TransferTask task, AuthenticatedUser user) throws NotAuthorizedException {
-        if (!task.getUsername().equals(user.getOboUser())) throw new NotAuthorizedException("");
-        if (!task.getTenantId().equals(user.getOboTenantId())) throw new NotAuthorizedException("");
-    }
+  // ************************************************************************
+  // *********************** Public Methods *********************************
+  // ************************************************************************
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getRecentTransferTasks(@QueryParam("limit") @DefaultValue("1000") @Max(1000) int limit,
-                                           @QueryParam("offset") @DefaultValue("0") @Min(0) int offset,
-                                           @Context SecurityContext securityContext)
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getRecentTransferTasks(@QueryParam("limit") @DefaultValue("1000") @Max(1000) int limit,
+                                         @QueryParam("offset") @DefaultValue("0") @Min(0) int offset,
+                                         @Context SecurityContext securityContext)
+  {
+    String opName = "getRecentTransferTasks";
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    try
     {
-        String opName = "getRecentTransferTasks";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        try {
-            List<TransferTask> tasks = transfersService.getRecentTransfers(user.getTenantId(), user.getName(), limit, offset);
-            TapisResponse<List<TransferTask>> resp = TapisResponse.createSuccessResponse(tasks);
-            return Response.ok(resp).build();
-        } catch (ServiceException e) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
+      List<TransferTask> tasks = transfersService.getRecentTransfers(user.getTenantId(), user.getName(), limit, offset);
+      TapisResponse<List<TransferTask>> resp = TapisResponse.createSuccessResponse(tasks);
+      return Response.ok(resp).build();
     }
-
-
-    @GET
-    @Path("/{transferTaskId}/")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getTransferTask(@PathParam("transferTaskId") @ValidUUID String transferTaskId,
-                                    @Context SecurityContext securityContext)
+    catch (ServiceException e)
     {
-        String opName = "getTransferTask";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-
-        try {
-            UUID transferTaskUUID = UUID.fromString(transferTaskId);
-            TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
-            if (task == null) {
-                throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
-            }
-            isPermitted(task, user);
-            TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
-            return Response.ok(resp).build();
-        } catch (ServiceException e) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
+      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
     }
+  }
 
-    @GET
-    @Path("/{transferTaskId}/details/")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getTransferTaskDetails(@PathParam("transferTaskId") @ValidUUID String transferTaskId,
-                                           @Context SecurityContext securityContext)
+  @GET
+  @Path("/{transferTaskId}/")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getTransferTask(@PathParam("transferTaskId") @ValidUUID String transferTaskId,
+                                  @Context SecurityContext securityContext)
+  {
+    String opName = "getTransferTask";
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    try
     {
-        String opName = "getTransferTaskHistory";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        try {
-            UUID transferTaskUUID = UUID.fromString(transferTaskId);
-            TransferTask task = transfersService.getTransferTaskDetails(transferTaskUUID);
-            if (task == null) {
-                throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
-            }
-            isPermitted(task, user);
-            TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
-            return Response.ok(resp).build();
-        } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
-            log.error(msg, ex);
-            throw new WebApplicationException(msg, ex);
-        }
+      UUID transferTaskUUID = UUID.fromString(transferTaskId);
+      TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
+      if (task == null) throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
+      isPermitted(task, user);
+      TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
+      return Response.ok(resp).build();
     }
-
-    @DELETE
-    @Path("/{transferTaskId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response cancelTransferTask(@PathParam("transferTaskId") @ValidUUID String transferTaskId,
-                                       @Context SecurityContext securityContext)
+    catch (ServiceException e)
     {
-        String opName = "cancelTransferTask";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-
-        try {
-            UUID transferTaskUUID = UUID.fromString(transferTaskId);
-            TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
-            if (task == null) {
-                throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
-            }
-            isPermitted(task, user);
-            transfersService.cancelTransfer(task);
-            TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);
-            resp.setMessage("Transfer deleted.");
-            return Response.ok(resp).build();
-        } catch (ServiceException e) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
+      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
     }
+  }
 
-
-    @POST
-    @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response createTransferTask(@Valid TransferTaskRequest transferTaskRequest,
-                                       @Context SecurityContext securityContext)
+  @GET
+  @Path("/{transferTaskId}/details/")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getTransferTaskDetails(@PathParam("transferTaskId") @ValidUUID String transferTaskId,
+                                         @Context SecurityContext securityContext)
+  {
+    String opName = "getTransferTaskHistory";
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    try
     {
-        log.info("TRANSFER CREATING");
-        log.info(transferTaskRequest.toString());
-
-        String opName = "createTransferTask";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        // Make sure source and destination systems exist and are enabled
-        Response response = validateSystems(transferTaskRequest, user);
-        if (response != null) return response;
-
-        try {
-            // Create the txfr task
-            TransferTask task = transfersService.createTransfer(
-                    user.getOboUser(),
-                    user.getOboTenantId(),
-                    transferTaskRequest.getTag(),
-                    transferTaskRequest.getElements()
-            );
-            TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
-            resp.setMessage("Transfer created.");
-            log.info("TRANSFER SAVED");
-            log.info(task.toString());
-            return Response.ok(resp).build();
-        } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
-            log.error(msg, ex);
-            throw new WebApplicationException(msg, ex);
-        }
+      UUID transferTaskUUID = UUID.fromString(transferTaskId);
+      TransferTask task = transfersService.getTransferTaskDetails(transferTaskUUID);
+      if (task == null) throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
+      isPermitted(task, user);
+      TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
+      return Response.ok(resp).build();
     }
+    catch (ServiceException ex)
+    {
+      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
+    }
+  }
 
-  // ======================================================================
-  // ============= Private methods ========================================
-  // ======================================================================
+  @DELETE
+  @Path("/{transferTaskId}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response cancelTransferTask(@PathParam("transferTaskId") @ValidUUID String transferTaskId,
+                                     @Context SecurityContext securityContext)
+  {
+    String opName = "cancelTransferTask";
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    try
+    {
+      UUID transferTaskUUID = UUID.fromString(transferTaskId);
+      TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
+      if (task == null) throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
+      isPermitted(task, user);
+      transfersService.cancelTransfer(task);
+      TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);
+      resp.setMessage("Transfer deleted.");
+      return Response.ok(resp).build();
+    }
+    catch (ServiceException e)
+    {
+      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+  }
+
+  @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response createTransferTask(@Valid TransferTaskRequest transferTaskRequest,
+                                     @Context SecurityContext securityContext)
+  {
+    log.info("TRANSFER CREATING");
+    log.info(transferTaskRequest.toString());
+
+    String opName = "createTransferTask";
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Make sure source and destination systems exist and are enabled
+    Response response = validateSystems(transferTaskRequest, user);
+    if (response != null) return response;
+    try
+    {
+      // Create the txfr task
+      TransferTask task = transfersService.createTransfer(user.getOboUser(), user.getOboTenantId(),
+                                                          transferTaskRequest.getTag(),
+                                                          transferTaskRequest.getElements());
+      TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
+      resp.setMessage("Transfer created.");
+      log.info("TRANSFER SAVED");
+      log.info(task.toString());
+      return Response.ok(resp).build();
+    }
+    catch (ServiceException ex)
+    {
+      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
+    }
+  }
+
+  // ************************************************************************
+  // *********************** Private Methods ********************************
+  // ************************************************************************
 
   /**
    * Check that all source and destination systems referenced in a TransferRequest exist and are enabled.
@@ -221,18 +221,30 @@ public class  TransfersApiResource
     return null;
   }
 
+  /**
+   * Make sure system exists and is enabled
+   * @param sysId system to check
+   * @param authUser - AuthenticatedUser, contains user info needed to fetch systems
+   * @param errMessages - List where error message are being collected
+   */
   private void validateSystemForTxfr(String sysId, AuthenticatedUser authUser, List<String> errMessages)
   {
     TapisSystem system = null;
-    try {
+    try
+    {
       system = systemsCache.getSystem(authUser.getOboTenantId(), sysId, authUser.getOboUser());
-    } catch (ServiceException se) {
+    }
+    catch (ServiceException se)
+    {
       // Unable to locate system
       errMessages.add(Utils.getMsg("FILES_TXFR_SYS_MISSING",sysId));
     }
-    try {
+    try
+    {
       if (system != null) Utils.checkEnabled(authUser, system);
-    } catch (BadRequestException bre) {
+    }
+    catch (BadRequestException bre)
+    {
       // System not enabled.
       errMessages.add(Utils.getMsg("FILES_TXFR_SYS_DISABLED",sysId));
     }
@@ -241,11 +253,24 @@ public class  TransfersApiResource
   /**
    * Construct message containing list of errors
    */
-  private static String getListOfErrors(AuthenticatedUser user, String txfrTaskTag, List<String> msgList) {
+  private static String getListOfErrors(AuthenticatedUser user, String txfrTaskTag, List<String> msgList)
+  {
     var sb = new StringBuilder(Utils.getMsgAuth("FILES_TXFR_ERRORLIST", user, txfrTaskTag));
     sb.append(System.lineSeparator());
     if (msgList == null || msgList.isEmpty()) return sb.toString();
     for (String msg : msgList) { sb.append("  ").append(msg).append(System.lineSeparator()); }
     return sb.toString();
+  }
+
+  /**
+   * Check that user has permission to access and act on the task
+   * @param task - task to check
+   * @param user - user trying to act on the task
+   * @throws NotAuthorizedException if not authorized
+   */
+  private void isPermitted(TransferTask task, AuthenticatedUser user) throws NotAuthorizedException
+  {
+    if (!task.getUsername().equals(user.getOboUser())) throw new NotAuthorizedException("");
+    if (!task.getTenantId().equals(user.getOboTenantId())) throw new NotAuthorizedException("");
   }
 }

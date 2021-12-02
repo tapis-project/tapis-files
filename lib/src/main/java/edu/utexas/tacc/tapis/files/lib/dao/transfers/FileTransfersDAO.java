@@ -664,19 +664,17 @@ public class FileTransfersDAO {
         return task;
     }
 
-    public void cancelTransfer(@NotNull TransferTask task) throws DAOException {
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+    public void cancelTransfer(@NotNull TransferTask task) throws DAOException
+    {
+        try (Connection connection = HikariConnectionPool.getConnection())
+        {
             String stmt = FileTransfersDAOStatements.CANCEL_TRANSFER_TASK_AND_CHILDREN;
             QueryRunner runner = new QueryRunner();
 
-            runner.execute(
-                connection,
-                stmt,
-                task.getId(),
-                task.getId(),
-                task.getId()
-            );
-        } catch (SQLException ex) {
+            runner.execute(connection, stmt, task.getId(), task.getId(), task.getId());
+        }
+        catch (SQLException ex)
+        {
             throw new DAOException(Utils.getMsg("FILES_TXFR_DAO_ERR4", task.getTenantId(), task.getUsername(),
                 "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
