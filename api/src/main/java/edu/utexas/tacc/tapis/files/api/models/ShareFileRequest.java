@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.api.models;
 
 import java.util.Objects;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.swagger.v3.oas.annotations.media.Schema;
 import javax.validation.constraints.*;
 
 public class ShareFileRequest {
@@ -22,7 +21,6 @@ public class ShareFileRequest {
    * @return username
    **/
   @JsonProperty("username")
-  @Schema(required = true, description = "The user with which to share")
   @NotNull
   public String getUsername() {
     return username;
@@ -44,7 +42,6 @@ public class ShareFileRequest {
    * @return expiresIn
    **/
   @JsonProperty("expiresIn")
-  @Schema(required = true, description = "Time in seconds of expiration. minimum=1, maximum=604800 (1 week)")
   @NotNull
   @Min(1) @Max(604800)  public Integer getExpiresIn() {
     return expiresIn;

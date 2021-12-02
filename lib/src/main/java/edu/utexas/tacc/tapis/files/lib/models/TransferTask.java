@@ -2,8 +2,6 @@ package edu.utexas.tacc.tapis.files.lib.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.swagger.annotations.ApiModelProperty;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -18,11 +16,8 @@ public class TransferTask {
     protected String tenantId;
     protected String tag;
     protected UUID uuid;
-    @Schema(type="string", format = "date-time")
     protected Instant created;
-    @Schema(type="string", format = "date-time")
     protected Instant startTime;
-    @Schema(type="string", format = "date-time")
     protected Instant endTime;
     protected TransferTaskStatus status;
     protected List<TransferTaskParent> parentTasks;
@@ -104,7 +99,6 @@ public class TransferTask {
         this.tag = tag;
     }
 
-    @Schema(type="string", format = "date-time")
     public Instant getCreated() {
         return created;
     }
@@ -127,7 +121,6 @@ public class TransferTask {
         this.uuid = uuid;
     }
 
-    @Schema(type="string", format = "date-time")
     public Instant getStartTime() {
         return startTime;
     }
@@ -141,7 +134,6 @@ public class TransferTask {
         if (startTime != null) this.startTime = Instant.parse(startTime);
     }
 
-    @Schema(type="string", format = "date-time")
     public Instant getEndTime() {
         return endTime;
     }

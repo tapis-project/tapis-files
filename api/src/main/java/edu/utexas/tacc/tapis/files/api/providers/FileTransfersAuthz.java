@@ -31,7 +31,6 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
 
-
         //TODO:
 
         user = (AuthenticatedUser) requestContext.getSecurityContext().getUserPrincipal();
@@ -52,10 +51,5 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
             log.error(msg, ex);
             throw new IOException(msg, ex);
         }
-
-
-
-
-
     }
 }

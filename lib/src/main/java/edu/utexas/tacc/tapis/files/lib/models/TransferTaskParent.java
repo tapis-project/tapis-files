@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.lib.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -26,11 +25,8 @@ public class TransferTaskParent {
     protected int taskId;
     protected TransferTaskStatus status;
 
-    @Schema(type="string", format = "date-time")
     protected Instant created;
-    @Schema(type="string", format = "date-time")
     protected Instant startTime;
-    @Schema(type="string", format = "date-time")
     protected Instant endTime;
     protected List<TransferTaskChild> children;
     protected String errorMessage;
@@ -59,7 +55,6 @@ public class TransferTaskParent {
      * @return uuid
      **/
     @JsonProperty("uuid")
-    @Schema(description = "Unique ID of the task.")
     public UUID getUuid() {
         return uuid;
     }
@@ -71,7 +66,6 @@ public class TransferTaskParent {
         this.id = id;
     }
 
-    @Schema(type="string", format = "date-time")
     public Instant getCreated() {
         return created;
     }
@@ -86,7 +80,6 @@ public class TransferTaskParent {
     }
 
 
-    @Schema(type="string", format = "date-time")
     public Instant getStartTime() {
         return startTime;
     }
@@ -100,7 +93,6 @@ public class TransferTaskParent {
         if (startTime != null) this.startTime = Instant.parse(startTime);
     }
 
-    @Schema(type="string", format = "date-time")
     public Instant getEndTime() {
         return endTime;
     }
@@ -193,7 +185,6 @@ public class TransferTaskParent {
      * @return status
      **/
     @JsonProperty("status")
-    @Schema(example = "PENDING", description = "The status of the task, such as ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED")
     public TransferTaskStatus getStatus() {
         return status;
     }

@@ -11,7 +11,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-
 /**
  * Annotation for doing authz for files. Place it on a method like such:
  * @GET
@@ -25,8 +24,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Priority(Priorities.AUTHORIZATION)
-public @interface FilePermissionsAuthorization {
-
-    Permission permRequired() default Permission.READ;
-
+public @interface FilePermissionsAuthorization
+{
+  Permission permRequired() default Permission.READ;
 }

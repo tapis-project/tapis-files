@@ -1,7 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-
 import javax.validation.constraints.NotNull;
 
 public class MoveCopyRequest {
@@ -9,8 +7,6 @@ public class MoveCopyRequest {
     private MoveCopyOperation operation;
     private String newPath;
 
-
-    @Schema(required = true)
     @NotNull
     public MoveCopyOperation getOperation() {
         return operation;
@@ -20,7 +16,6 @@ public class MoveCopyRequest {
         this.operation = operation;
     }
 
-    @Schema(required = true, description = "Paths must be absolute, ../.. is not allowed")
     @NotNull
     public String getNewPath() {
         return newPath;
