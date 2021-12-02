@@ -83,10 +83,11 @@ public class FileTransfersDAO {
     }
 
     // TODO: There should be some way to not duplicate this code...
-    private static class TransferTaskParentRowProcessor extends BasicRowProcessor {
-
+    private static class TransferTaskParentRowProcessor extends BasicRowProcessor
+    {
         @Override
-        public TransferTaskParent toBean(ResultSet rs, Class type) throws SQLException {
+        public TransferTaskParent toBean(ResultSet rs, Class type) throws SQLException
+        {
             TransferTaskParent task = new TransferTaskParent();
             task.setId(rs.getInt("id"));
             task.setTaskId(rs.getInt("task_id"));
@@ -97,6 +98,7 @@ public class FileTransfersDAO {
             task.setCreated(rs.getTimestamp("created").toInstant());
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
+            task.setOptional(rs.getBoolean("optional"));
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             task.setErrorMessage(rs.getString("error_message"));
@@ -153,10 +155,10 @@ public class FileTransfersDAO {
 
     /**
      * Create a transfer task and all the associated TransferTaskParent objects.
-     * @param task
-     * @param elements
+     * @param task Transfer task
+     * @param elements all top level transfer request elements
      * @return Transfer task
-     * @throws DAOException
+     * @throws DAOException on error
      */
     public TransferTask createTransferTask(TransferTask task, List<TransferTaskRequestElement> elements)
             throws DAOException
@@ -164,32 +166,39 @@ public class FileTransfersDAO {
       try (Connection connection = HikariConnectionPool.getConnection())
       {
         connection.setAutoCommit(false);
-        try (PreparedStatement statement = connection.prepareStatement(FileTransfersDAOStatements.INSERT_TASK, Statement.RETURN_GENERATED_KEYS);
-             PreparedStatement insertParentStatement = connection.prepareStatement(FileTransfersDAOStatements.INSERT_PARENT_TASK))
+        try (PreparedStatement insertTaskStmnt =
+                     connection.prepareStatement(FileTransfersDAOStatements.INSERT_TASK, Statement.RETURN_GENERATED_KEYS);
+             PreparedStatement insertParentTaskStmnt =
+                     connection.prepareStatement(FileTransfersDAOStatements.INSERT_PARENT_TASK))
         {
-          statement.setString(1, task.getTenantId());
-          statement.setString(2, task.getUsername());
-          statement.setString(3, TransferTaskStatus.ACCEPTED.name());
-          statement.setString(4, task.getTag());
-          statement.execute();
+          // Create the transfer task
+          insertTaskStmnt.setString(1, task.getTenantId());
+          insertTaskStmnt.setString(2, task.getUsername());
+          insertTaskStmnt.setString(3, TransferTaskStatus.ACCEPTED.name());
+          insertTaskStmnt.setString(4, task.getTag());
+          insertTaskStmnt.execute();
 
-          ResultSet rs = statement.getGeneratedKeys();
+          ResultSet rs = insertTaskStmnt.getGeneratedKeys();
           int taskId = 0;
           if (rs.next()) taskId = rs.getInt(1);
 
+          // For each transfer task request element create a parent task
           for (TransferTaskRequestElement element : elements)
           {
-            insertParentStatement.setString(1, task.getTenantId());
-            insertParentStatement.setInt(2, taskId);
-            insertParentStatement.setString(3, task.getUsername());
-            insertParentStatement.setString(4, element.getSourceURI().toString());
-            insertParentStatement.setString(5, element.getDestinationURI().toString());
-            insertParentStatement.setString(6, TransferTaskStatus.ACCEPTED.name());
-            insertParentStatement.setBoolean(7, element.isOptional());
-            insertParentStatement.addBatch();
+            insertParentTaskStmnt.setString(1, task.getTenantId());
+            insertParentTaskStmnt.setInt(2, taskId);
+            insertParentTaskStmnt.setString(3, task.getUsername());
+            insertParentTaskStmnt.setString(4, element.getSourceURI().toString());
+            insertParentTaskStmnt.setString(5, element.getDestinationURI().toString());
+            insertParentTaskStmnt.setString(6, TransferTaskStatus.ACCEPTED.name());
+            insertParentTaskStmnt.setBoolean(7, element.isOptional());
+            insertParentTaskStmnt.addBatch();
           }
-          insertParentStatement.executeBatch();
+          insertParentTaskStmnt.executeBatch();
           connection.commit();
+          // Primary task has been inserted into transfer_tasks table and
+          //   all parent tasks have been inserted into transfer_tasks_parent table
+          // Now create a fully populated TransferTask object and return it.
           TransferTask newTask = getTransferTaskByID(taskId);
           List<TransferTaskParent> parents = getAllParentsForTaskByID(newTask.getId());
           newTask.setParentTasks(parents);
@@ -490,7 +499,8 @@ public class FileTransfersDAO {
                 task.getUsername(),
                 task.getSourceURI().toString(),
                 task.getDestinationURI().toString(),
-                task.getStatus().name()
+                task.getStatus().name(),
+                task.isOptional()
                 );
             return insertedTask;
         } catch (SQLException ex) {
@@ -681,9 +691,8 @@ public class FileTransfersDAO {
         }
         catch (SQLException ex)
         {
-            throw new DAOException(Utils.getMsg("FILES_TXFR_DAO_ERR4", task.getTenantId(), task.getUsername(),
+             throw new DAOException(Utils.getMsg("FILES_TXFR_DAO_ERR4", task.getTenantId(), task.getUsername(),
                 "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
     }
-
 }

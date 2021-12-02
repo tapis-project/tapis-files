@@ -122,49 +122,51 @@ public class ParentTaskTransferService
             });
     }
 
-    /**
-     * This method handles exceptions/errors if the parent task failed.
-     *
-     * @param m      message from rabbitmq
-     * @param e      Throwable
-     * @param parent TransferTaskParent
-     * @return Mono TransferTaskParent
-     */
-    private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent) {
-        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
-        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", e));
-        m.nack(false);
+  /**
+   * This method handles exceptions/errors if the parent task failed.
+   *
+   * @param m      message from rabbitmq
+   * @param e      Throwable
+   * @param parent TransferTaskParent
+   * @return Mono TransferTaskParent
+   */
+  private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent)
+  {
+    log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
+    log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", e));
+    m.nack(false);
 
-        //TODO: UPDATE this when the Optional stuff gets integrated
-        try {
-            TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
-            if (task == null) {
-                return Mono.empty();
-            }
-            task.setStatus(TransferTaskStatus.FAILED);
-            task.setEndTime(Instant.now());
-            task.setErrorMessage(e.getMessage());
-            dao.updateTransferTask(task);
-        } catch (DAOException ex) {
-            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR8", parent.getTaskId(), parent.getUuid()));
-        }
-
-        parent.setStatus(TransferTaskStatus.FAILED);
-        parent.setEndTime(Instant.now());
-        parent.setErrorMessage(e.getMessage());
-        try {
-            parent = dao.updateTransferTaskParent(parent);
-            // This should really never happen, it means that the parent with that ID
-            // was not even in the database.
-            if (parent == null) {
-                return Mono.empty();
-            }
-            return Mono.just(parent);
-        } catch (DAOException ex) {
-            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR9", parent.getTaskId(), parent.getUuid()));
-        }
-        return Mono.empty();
+    //TODO: UPDATE this when the Optional stuff gets integrated
+    try
+    {
+      TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
+      if (task == null) return Mono.empty();
+      // If txfr was not optional then mark it as failed.
+      if (!parent.isOptional()) task.setStatus(TransferTaskStatus.FAILED);
+      task.setEndTime(Instant.now());
+      task.setErrorMessage(e.getMessage());
+      dao.updateTransferTask(task);
+    } catch (DAOException ex) {
+      log.error(Utils.getMsg("FILES_TXFR_SVC_ERR8", parent.getTaskId(), parent.getUuid()));
     }
+
+    parent.setStatus(TransferTaskStatus.FAILED);
+    parent.setEndTime(Instant.now());
+    parent.setErrorMessage(e.getMessage());
+    try
+    {
+      parent = dao.updateTransferTaskParent(parent);
+      // This should really never happen, it means that the parent with that ID
+      // was not even in the database.
+      if (parent == null) return Mono.empty();
+      return Mono.just(parent);
+    }
+    catch (DAOException ex)
+    {
+      log.error(Utils.getMsg("FILES_TXFR_SVC_ERR9", parent.getTaskId(), parent.getUuid()));
+    }
+    return Mono.empty();
+  }
 
     /**
      * This method checks the permissions on both the source and destination of the transfer.
@@ -173,31 +175,26 @@ public class ParentTaskTransferService
      * @return boolean is/is not permitted.
      * @throws ServiceException When api calls for permissions fail
      */
-    private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException {
-        // For http inputs no need to do any permission checking on the source
-        boolean isHttpSource = parentTask.getSourceURI().getProtocol().equalsIgnoreCase("http");
-        String tenantId = parentTask.getTenantId();
-        String username = parentTask.getUsername();
+    private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException
+    {
+      // For http inputs no need to do any permission checking on the source
+      boolean isHttpSource = parentTask.getSourceURI().getProtocol().equalsIgnoreCase("http");
+      String tenantId = parentTask.getTenantId();
+      String username = parentTask.getUsername();
 
-        String srcSystemId = parentTask.getSourceURI().getSystemId();
-        String srcPath = parentTask.getSourceURI().getPath();
-        String destSystemId = parentTask.getDestinationURI().getSystemId();
-        String destPath = parentTask.getDestinationURI().getPath();
+      String srcSystemId = parentTask.getSourceURI().getSystemId();
+      String srcPath = parentTask.getSourceURI().getPath();
+      String destSystemId = parentTask.getDestinationURI().getSystemId();
+      String destPath = parentTask.getDestinationURI().getPath();
 
-        // If we have a tapis:// link, have to do the source perms check
-        if (!isHttpSource) {
-            boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
-            if (!sourcePerms) {
-                return false;
-            }
-        }
-        boolean destPerms = permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
-        if (!destPerms) {
-            return false;
-        }
-        return true;
+      // If we have a tapis:// link, have to do the source perms check
+      if (!isHttpSource)
+      {
+        boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
+        if (!sourcePerms) return false;
+      }
+      return permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
     }
-
 
     /**
      * We prepare a "bill of materials" for the total transfer task. This includes doing a recursive listing and

@@ -3,7 +3,6 @@ package edu.utexas.tacc.tapis.files.lib.models;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -12,224 +11,211 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 
-public class TransferTaskParent {
+public class TransferTaskParent
+{
+  protected int id;
+  protected String tenantId;
+  protected String username;
+  protected TransferURI sourceURI;
+  protected TransferURI destinationURI;
+  protected UUID uuid;
+  protected long totalBytes;
+  protected long bytesTransferred;
+  protected int taskId;
+  protected TransferTaskStatus status;
+  protected boolean optional;
 
-    protected int id;
-    protected String tenantId;
-    protected String username;
-    protected TransferURI sourceURI;
-    protected TransferURI destinationURI;
-    protected UUID uuid;
-    protected long totalBytes;
-    protected long bytesTransferred;
-    protected int taskId;
-    protected TransferTaskStatus status;
+  protected Instant created;
+  protected Instant startTime;
+  protected Instant endTime;
+  protected List<TransferTaskChild> children;
+  protected String errorMessage;
 
-    protected Instant created;
-    protected Instant startTime;
-    protected Instant endTime;
-    protected List<TransferTaskChild> children;
-    protected String errorMessage;
+  public TransferTaskParent(){}
 
-    public TransferTaskParent(){}
+  public TransferTaskParent(String tenantId1, String username1, String srcURI1, String dstURI1, boolean optional1)
+  {
+    tenantId = tenantId1;
+    username = username1;
+    sourceURI = new TransferURI(srcURI1);
+    destinationURI = new TransferURI(dstURI1);
+    status = TransferTaskStatus.ACCEPTED;
+    optional = optional1;
+    uuid = UUID.randomUUID();
+  }
 
-    public TransferTaskParent(String tenantId, String username, String sourceURI, String destinationURI) {
-        this.tenantId = tenantId;
-        this.username = username;
-        this.sourceURI = new TransferURI(sourceURI);
-        this.destinationURI = new TransferURI(destinationURI);
-        this.status = TransferTaskStatus.ACCEPTED;
-        this.uuid = UUID.randomUUID();
-    }
+  public String getErrorMessage() {
+    return errorMessage;
+  }
+  public void setErrorMessage(String errorMessage) {
+    this.errorMessage = errorMessage;
+  }
 
-    public String getErrorMessage() {
-        return errorMessage;
-    }
+  /**
+   * Unique ID of the task.
+   * @return uuid
+   **/
+  @JsonProperty("uuid")
+  public UUID getUuid() {
+    return uuid;
+  }
+  public void setUuid(UUID uuid) {
+    this.uuid = uuid;
+  }
 
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
+  public void setId(int id) {
+    this.id = id;
+  }
 
-    /**
-     * Unique ID of the task.
-     * @return uuid
-     **/
-    @JsonProperty("uuid")
-    public UUID getUuid() {
-        return uuid;
-    }
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
-    }
+  public Instant getCreated() {
+    return created;
+  }
 
-    public void setId(int id) {
-        this.id = id;
-    }
+  public void setCreated(Instant created) {
+    this.created = created;
+  }
 
-    public Instant getCreated() {
-        return created;
-    }
+  @JsonProperty("created")
+  public void setCreated(String created) {
+    this.created = Instant.parse(created);
+  }
 
-    public void setCreated(Instant created) {
-        this.created = created;
-    }
+  public Instant getStartTime() {
+    return startTime;
+  }
 
-    @JsonProperty("created")
-    public void setCreated(String created) {
-        this.created = Instant.parse(created);
-    }
+  public void setStartTime(Instant startTime) {
+    this.startTime = startTime;
+  }
 
+  @JsonProperty("startTime")
+  public void setStartTime(String startTime) {
+    if (startTime != null) this.startTime = Instant.parse(startTime);
+  }
 
-    public Instant getStartTime() {
-        return startTime;
-    }
+  public Instant getEndTime() {
+    return endTime;
+  }
 
-    public void setStartTime(Instant startTime) {
-        this.startTime = startTime;
-    }
+  public void setEndTime(Instant endTime) {
+    this.endTime = endTime;
+  }
 
-    @JsonProperty("startTime")
-    public void setStartTime(String startTime) {
-        if (startTime != null) this.startTime = Instant.parse(startTime);
-    }
+  @JsonProperty("endTime")
+  public void setEndTime(String s) { if (s != null) endTime = Instant.parse(s); }
+  public TransferURI getSourceURI() {
+    return sourceURI;
+  }
 
-    public Instant getEndTime() {
-        return endTime;
-    }
+  public void setSourceURI(String s) {
+    sourceURI = new TransferURI(s);
+  }
+  public void setSourceURI(TransferURI t) {
+    sourceURI = t;
+  }
 
-    public void setEndTime(Instant endTime) {
-        this.endTime = endTime;
-    }
+  public TransferURI getDestinationURI() {
+    return destinationURI;
+  }
+  public void setDestinationURI(String s) {
+    destinationURI = new TransferURI(s);
+  }
+  public void setDestinationURI(TransferURI t) {
+    destinationURI = t;
+  }
 
-    @JsonProperty("endTime")
-    public void setEndTime(String endTime) {
+  public int getTaskId() {
+    return taskId;
+  }
+  public void setTaskId(int i) {
+    taskId = i;
+  }
 
-        if (endTime != null) this.endTime = Instant.parse(endTime);
-    }
-    public TransferURI getSourceURI() {
-        return sourceURI;
-    }
+  public int getId() {
+    return id;
+  }
 
-    public void setSourceURI(String sourceURI) {
-        this.sourceURI = new TransferURI(sourceURI);
-    }
-    public void setSourceURI(TransferURI sourceURI) {
-        this.sourceURI = sourceURI;
-    }
+  public long getTotalBytes() {
+    return totalBytes;
+  }
+  public void setTotalBytes(long l) {
+    totalBytes = l;
+  }
 
-    public TransferURI getDestinationURI() {
-        return destinationURI;
-    }
+  public long getBytesTransferred() {
+    return bytesTransferred;
+  }
+  public void setBytesTransferred(long l) {
+    bytesTransferred = l;
+  }
 
-    public void setDestinationURI(String destinationURI) {
-        this.destinationURI = new TransferURI(destinationURI);
-    }
-    public void setDestinationURI(TransferURI destinationURI) {
-        this.destinationURI = destinationURI;
-    }
+  public String getTenantId() {
+    return tenantId;
+  }
+  public void setTenantId(String s) { tenantId = s; }
 
-    public int getTaskId() {
-        return taskId;
-    }
+  public String getUsername() {
+    return username;
+  }
+  public void setUsername(String s) { username = s; }
 
-    public void setTaskId(int taskId) {
-        this.taskId = taskId;
-    }
+  public boolean isOptional() { return optional; }
+  public void setOptional(boolean b) { optional = b; }
 
-    public int getId() {
-        return id;
-    }
+  public List<TransferTaskChild> getChildren() {
+    return children;
+  }
+  public void setChildren(List<TransferTaskChild> tlist) {
+    children = tlist;
+  }
 
-    public long getTotalBytes() {
-        return totalBytes;
-    }
+  /**
+   * The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+   * @return status
+   **/
+  @JsonProperty("status")
+  public TransferTaskStatus getStatus() {
+    return status;
+  }
+  public void setStatus(TransferTaskStatus tts) {
+    status = tts;
+  }
+  public void setStatus(String s) {
+    status = TransferTaskStatus.valueOf(s);
+  }
 
-    public void setTotalBytes(long totalBytes) {
-        this.totalBytes = totalBytes;
-    }
+  // Support for equals
+  @Override
+  public boolean equals(java.lang.Object o)
+  {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TransferTaskParent transferTask = (TransferTaskParent) o;
+    return Objects.equals(this.uuid, transferTask.uuid) &&
+            Objects.equals(this.created, transferTask.created) &&
+            Objects.equals(this.status, transferTask.status);
+  }
 
-    public long getBytesTransferred() {
-        return bytesTransferred;
-    }
+  @Override
+  public int hashCode() {
+    return  Objects.hash(uuid, created, status);
+  }
 
-    public void setBytesTransferred(long bytesTransferred) {
-        this.bytesTransferred = bytesTransferred;
-    }
+  @JsonIgnore
+  public boolean isTerminal()
+  {
+    Set<TransferTaskStatus> terminalStates = new HashSet<>();
+    terminalStates.add(TransferTaskStatus.COMPLETED);
+    terminalStates.add(TransferTaskStatus.FAILED);
+    terminalStates.add(TransferTaskStatus.CANCELLED);
+    terminalStates.add(TransferTaskStatus.PAUSED);
+    return terminalStates.contains(this.status);
+  }
 
-    public String getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(String tenantId) {
-        this.tenantId = tenantId;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public List<TransferTaskChild> getChildren() {
-        return children;
-    }
-
-    public void setChildren(List<TransferTaskChild> children) {
-        this.children = children;
-    }
-
-    /**
-     * The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED
-     * @return status
-     **/
-    @JsonProperty("status")
-    public TransferTaskStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(TransferTaskStatus status) {
-        this.status = status;
-    }
-
-    public void setStatus(String status) {
-        this.status = TransferTaskStatus.valueOf(status);
-    }
-
-
-    @Override
-    public boolean equals(java.lang.Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        TransferTaskParent transferTask = (TransferTaskParent) o;
-        return Objects.equals(this.uuid, transferTask.uuid) &&
-                Objects.equals(this.created, transferTask.created) &&
-                Objects.equals(this.status, transferTask.status);
-    }
-
-    @Override
-    public int hashCode() {
-        return  Objects.hash(uuid, created, status);
-    }
-
-    @JsonIgnore
-    public boolean isTerminal() {
-        Set<TransferTaskStatus> terminalStates = new HashSet<>();
-        terminalStates.add(TransferTaskStatus.COMPLETED);
-        terminalStates.add(TransferTaskStatus.FAILED);
-        terminalStates.add(TransferTaskStatus.CANCELLED);
-        terminalStates.add(TransferTaskStatus.PAUSED);
-        return terminalStates.contains(this.status);
-    }
-
-    @Override
-    public String toString() {
-        return new StringJoiner(", ", TransferTaskParent.class.getSimpleName() + "[", "]")
+  @Override
+  public String toString()
+  {
+    return new StringJoiner(", ", TransferTaskParent.class.getSimpleName() + "[", "]")
             .add("id=" + id)
             .add("taskId=" + taskId)
             .add("tenantId='" + tenantId + "'")
@@ -240,10 +226,10 @@ public class TransferTaskParent {
             .add("totalBytes=" + totalBytes)
             .add("bytesTransferred=" + bytesTransferred)
             .add("status='" + status + "'")
+            .add("optional=" + optional)
             .add("created=" + created)
             .add("startTime=" + startTime)
             .add("endTime=" + endTime)
             .toString();
-    }
-
+  }
 }

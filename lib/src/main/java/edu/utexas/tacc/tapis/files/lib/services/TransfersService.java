@@ -221,8 +221,8 @@ public class TransfersService
     }
 
     /**
-     * Creates the top level TransferTask and the associated TransferTaskParents that were requested in the
-     * elements List.
+     * Creates the top level TransferTask in table transfer_tasks
+     * and from the provided elements list the associated TransferTaskParents in the table transfer_tasks_parent
      *
      * @param username Obo username
      * @param tenantId tenantId
