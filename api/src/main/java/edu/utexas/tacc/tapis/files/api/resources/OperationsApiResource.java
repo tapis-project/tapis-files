@@ -177,24 +177,27 @@ public class OperationsApiResource extends BaseFileOpsResource
                              @Valid MoveCopyRequest request,
                              @Context SecurityContext securityContext)
     {
-        String opName = "moveCopy";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        try {
-            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-            if (client == null) throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
-            MoveCopyOperation operation = request.getOperation();
-            if (operation.equals(MoveCopyOperation.MOVE)) {
-                fileOpsService.move(client, path, request.getNewPath());
-            } else if (operation.equals(MoveCopyOperation.COPY)) {
-                fileOpsService.copy(client, path, request.getNewPath());
-            }
-            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
-            return Response.ok(resp).build();
-        } catch (ServiceException | IOException e) {
-            String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
+      String opName = "moveCopy";
+      AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+      try
+      {
+        // Get a remoteDataClient for the given TapisSystem
+        IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
+        if (client == null) throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
+        // Perform the operation
+        MoveCopyOperation operation = request.getOperation();
+        if (operation.equals(MoveCopyOperation.MOVE)) fileOpsService.move(client, path, request.getNewPath());
+        else if (operation.equals(MoveCopyOperation.COPY)) fileOpsService.copy(client, path, request.getNewPath());
+        // Return response
+        TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
+        return Response.ok(resp).build();
+      }
+      catch (ServiceException | IOException e)
+      {
+        String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
+        log.error(msg, e);
+        throw new WebApplicationException(msg, e);
+      }
     }
 
   /**

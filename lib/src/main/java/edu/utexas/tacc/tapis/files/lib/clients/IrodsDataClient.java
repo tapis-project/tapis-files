@@ -110,7 +110,6 @@ public class IrodsDataClient implements IRemoteDataClient {
                 fileInfo.setLastModified(Instant.ofEpochSecond(collection.lastModified()));
                 outListing.add(fileInfo);
                 return outListing;
-
             }
             List<File> listing = Arrays.asList(collection.listFiles());
             collection.close();
@@ -189,7 +188,7 @@ public class IrodsDataClient implements IRemoteDataClient {
 
 
     @Override
-    public void mkdir(@NotNull String path) throws IOException, NotFoundException {
+    public void mkdir(@NotNull String path) throws IOException {
         if (StringUtils.isEmpty(path)) return;
         Path cleanedRelativePath = cleanAndRelativize(path);
         IRODSFileFactory fileFactory = getFileFactory();
@@ -313,7 +312,43 @@ public class IrodsDataClient implements IRemoteDataClient {
         }
     }
 
-    @Override
+  @Override
+  public FileInfo getFileInfo(@NotNull String path) throws IOException
+  {
+    FileInfo fileInfo = null;
+    if (StringUtils.isEmpty(path)) path="/";
+    Path cleanedRelativePath = cleanAndRelativize(path);
+    Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());
+    Path rootDirPath = Paths.get(rootDir);
+    IRODSFileFactory fileFactory = getFileFactory();
+    try
+    {
+      IRODSFile collection = fileFactory.instanceIRODSFile(cleanedAbsolutePath.toString());
+      fileInfo = new FileInfo();
+      fileInfo.setSize(collection.length());
+      fileInfo.setName(collection.getName());
+      Path tmpPath = Paths.get(collection.getPath());
+      Path relPath = rootDirPath.relativize(tmpPath);
+      fileInfo.setPath(relPath.toString());
+      fileInfo.setLastModified(Instant.ofEpochSecond(collection.lastModified()));
+      if (collection.isFile()) fileInfo.setType(FileInfo.FILETYPE_FILE);
+      else fileInfo.setType(FileInfo.FILETYPE_DIR);
+    }
+    catch (JargonException ex)
+    {
+      String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+      throw new IOException(msg, ex);
+    }
+    catch (Exception ex)
+    {
+      // If it is a not found exception return null, else it is not a jargon exception so re-throw it
+      if (ex.getCause() instanceof FileNotFoundException) fileInfo = null;
+      else throw ex;
+    }
+    return fileInfo;
+  }
+
+   @Override
     public InputStream getStream(@NotNull String remotePath) throws IOException {
         Path cleanedRelativePath = cleanAndRelativize(remotePath);
         Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());

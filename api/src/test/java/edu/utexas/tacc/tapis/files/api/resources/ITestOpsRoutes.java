@@ -435,7 +435,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertEquals(listing.get(0).getPath(), "/dir1/testfile1.txt");
   }
 
-    @Test(dataProvider = "testSystemsProvider")
+    @Test(dataProvider = "testSystemsProviderNoS3")
     public void testMoveManyObjects1(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
         addTestFilesToSystem(testSystem, "test1.txt", 10 * 1024);
@@ -460,13 +460,12 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest
         Assert.assertTrue(doListing(testSystem.getId(), "/renamed", getJwtForUser("dev", "testuser1")).size() > 0);
     }
 
-
     /**
      * Tests of objects deeper in the tree are moved properly.
      *
      * @throws Exception
      */
-    @Test(dataProvider = "testSystemsProvider")
+    @Test(dataProvider = "testSystemsProviderNoS3")
     public void testMoveManyObjects2(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
 
@@ -497,7 +496,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest
 
 
 
-    @Test(dataProvider = "testSystemsProvider")
+    @Test(dataProvider = "testSystemsProviderNoS3")
     public void testDeleteManyObjects(TapisSystem testSystem) throws Exception {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
         addTestFilesToSystem(testSystem, "test1.txt", 10 * 1024);

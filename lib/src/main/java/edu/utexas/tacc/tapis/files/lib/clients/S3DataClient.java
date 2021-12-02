@@ -23,7 +23,6 @@ import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -254,20 +253,16 @@ public class S3DataClient implements IS3DataClient
    * @param srcPath current location relative to system rootDir
    * @param dstPath desired location relative to system rootDir
    * @throws IOException Network errors generally
-   * @throws NotFoundException Current path not found
+   * @throws NotFoundException Source path not found
    */
   @Override
   public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
   {
     String srcAbsolutePath = PathUtils.getAbsolutePath(rootDir, srcPath).toString();
-// TODO/TBD: Instead of moving a list move a single object
-//    GetObjectRequest req = GetObjectRequest.builder().bucket(bucket).key(srcAbsolutePath).build();
-//    S3Object obj = (client.getObject(req)).response.;
-//    GetObjectResponse resp = client.getObject(req).response();
-//    resp.
-
-    Stream<S3Object> response = listWithIterator(srcAbsolutePath, null);
-    response.forEach(object -> {
+    // Make sure the source object exists
+    doesExist(srcAbsolutePath);
+    Stream<S3Object> response = listWithIterator(srcAbsolutePath, 1);
+    response.limit(1).forEach(object -> {
       String srcKey = null, dstKey = null;
       try {
         srcKey = object.key();
@@ -283,12 +278,12 @@ public class S3DataClient implements IS3DataClient
   }
 
     /**
-     * Copy all S3 objects matching a path prefix from one path to another
+     * Copy an S3 object from one key to another
      *
      * @param srcPath current location relative to system rootDir
      * @param dstPath desired location relative to system rootDir
      * @throws IOException Network errors generally
-     * @throws NotFoundException Current path not found
+     * @throws NotFoundException Source path not found
      */
     @Override
     public void copy(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
@@ -296,8 +291,8 @@ public class S3DataClient implements IS3DataClient
       String srcAbsolutePath = PathUtils.getAbsolutePath(rootDir, srcPath).toString();
       // Make sure the source object exists
       doesExist(srcAbsolutePath);
-      Stream<S3Object> response = listWithIterator(srcAbsolutePath, null);
-      response.forEach(object -> {
+      Stream<S3Object> response = listWithIterator(srcAbsolutePath, 1);
+      response.limit(1).forEach(object -> {
         String srcKey = null, dstKey = null;
         try {
           srcKey = object.key();
@@ -312,22 +307,22 @@ public class S3DataClient implements IS3DataClient
       });
     }
 
-  /**
-   * Delete an S3 object
-   * @param path - Path to file relative to the system rootDir
-   * @throws IOException
-   * @throws NotFoundException
-   */
     @Override
     public void delete(@NotNull String path) throws IOException, NotFoundException
     {
       try
       {
         String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
-        listWithIterator(absolutePath, null).forEach(object -> {
-          try { deleteObject(object.key()); }
-          catch (S3Exception ex) { }
-        });
+        // If rootDir is given then remove all objects with a matching prefix.
+        // else remove a single object
+        if (rootDir.equals(absolutePath))
+        {
+          listWithIterator(absolutePath, null).forEach(object -> deleteObject(object.key()));
+        }
+        else
+        {
+          listWithIterator(absolutePath, 1).forEach(object -> deleteObject(object.key()));
+        }
       }
       catch (NoSuchKeyException ex) { throw new NotFoundException(); }
       catch (S3Exception ex) {
@@ -338,14 +333,28 @@ public class S3DataClient implements IS3DataClient
       }
     }
 
-    /**
-     * Returns the entire contents of an object as an InputStream
-     *
-     * @param path - Path to object relative to the system rootDir
-     * @return Stream of data from object
-     * @throws IOException
-     * @throws NotFoundException
-     */
+  @Override
+  public FileInfo getFileInfo(@NotNull String path) throws IOException
+  {
+    FileInfo fileInfo = null;
+    try
+    {
+      String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
+      Stream<S3Object> response = listWithIterator(absolutePath, 1);
+      List<FileInfo> files = new ArrayList<>();
+      response.limit(1).forEach((S3Object x) -> files.add(new FileInfo(x)));
+      if (!files.isEmpty()) fileInfo = files.get(0);
+    }
+    catch (NoSuchKeyException ex) { fileInfo = null; }
+    catch (S3Exception ex)
+    {
+      String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "delete", system.getId(), bucket,
+                                path, ex.getMessage());
+      throw new IOException(msg, ex);
+    }
+    return fileInfo;
+  }
+
     @Override
     public InputStream getStream(@NotNull String path) throws IOException, NotFoundException {
         String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
@@ -383,14 +392,14 @@ public class S3DataClient implements IS3DataClient
     }
 
     @Override
-    public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException
+    public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte)
     {
       String msg = Utils.getMsg("FILES_CLIENT_S3_NO_SUPPORT", oboTenant, oboUser, "putBytesByRange", system.getId(), bucket, path);
       throw new NotImplementedException(msg);
     }
 
     @Override
-    public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException
+    public void append(@NotNull String path, @NotNull InputStream byteStream)
     {
       String msg = Utils.getMsg("FILES_CLIENT_S3_NO_SUPPORT", oboTenant, oboUser, "append", system.getId(), bucket, path);
       throw new NotImplementedException(msg);

@@ -50,7 +50,7 @@ public class HTTPClient implements IRemoteDataClient {
     }
 
     @Override
-    public void mkdir(@NotNull String path) throws IOException, NotFoundException {
+    public void mkdir(@NotNull String path) throws IOException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "mkdir") );
     }
 
@@ -65,9 +65,15 @@ public class HTTPClient implements IRemoteDataClient {
     }
 
     @Override
-    public void delete(@NotNull String path) throws IOException {
+    public void delete(@NotNull String path) throws IOException, NotFoundException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "delete") );
     }
+
+  @Override
+  public FileInfo getFileInfo(@NotNull String path) throws NotFoundException
+  {
+    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "getFileInfo") );
+  }
 
     @Override
     public InputStream getStream(@NotNull String path) throws IOException {

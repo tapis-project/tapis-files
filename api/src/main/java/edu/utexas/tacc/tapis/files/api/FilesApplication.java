@@ -44,7 +44,6 @@ import java.net.URI;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
-
 /*
  * Main startup class for the web application. Uses Jersey and Grizzly frameworks.
  *   Performs setup for HK2 dependency injection.
@@ -72,8 +71,6 @@ public class FilesApplication extends ResourceConfig
   public static String getSiteId() {return siteId;}
   private static String siteAdminTenantId;
   public static String getSiteAdminTenantId() {return siteAdminTenantId;}
-
-  private IRuntimeConfig runtimeConfig;
 
   public FilesApplication()
   {
@@ -123,7 +120,7 @@ public class FilesApplication extends ResourceConfig
 
     // Perform remaining init steps in try block so we can print a fatal error message if something goes wrong.
     try {
-      runtimeConfig = RuntimeSettings.get();
+      IRuntimeConfig runtimeConfig = RuntimeSettings.get();
       siteId = runtimeConfig.getSiteId();
 
       String url = runtimeConfig.getTenantsServiceURL();
@@ -138,23 +135,24 @@ public class FilesApplication extends ResourceConfig
 
       // Initialize bindings for HK2 dependency injection
       //For dependency injection into the Resource classes for testing.
-      register(new AbstractBinder() {
-            @Override
-            protected void configure() {
-                bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-                bindAsContract(FileTransfersDAO.class);
-                bindAsContract(TransfersService.class);
-                bindAsContract(SystemsCache.class).in(Singleton.class);
-                bindAsContract(FilePermsService.class).in(Singleton.class);
-                bindAsContract(FilePermsCache.class).in(Singleton.class);
-                bind(tenantManager).to(TenantManager.class);
-                bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
-                bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
-                bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
-                bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-                bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
-          }
-        });
+      register(new AbstractBinder()
+      {
+        @Override
+        protected void configure() {
+          bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+          bindAsContract(FileTransfersDAO.class);
+          bindAsContract(TransfersService.class);
+          bindAsContract(SystemsCache.class).in(Singleton.class);
+          bindAsContract(FilePermsService.class).in(Singleton.class);
+          bindAsContract(FilePermsCache.class).in(Singleton.class);
+          bind(tenantManager).to(TenantManager.class);
+          bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
+          bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
+          bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
+          bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+          bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
+        }
+      });
     } catch (Exception e) {
       // This is a fatal error
       System.out.println("**** FAILURE TO INITIALIZE: Tapis Files Service ****");

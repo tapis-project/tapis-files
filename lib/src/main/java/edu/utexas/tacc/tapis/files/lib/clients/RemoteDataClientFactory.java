@@ -25,8 +25,9 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
 
     @Override
     public IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
-                                                 @NotNull TapisSystem system, @NotNull String username) throws IOException {
-
+                                                 @NotNull TapisSystem system, @NotNull String username)
+            throws IOException
+    {
         if (SystemTypeEnum.LINUX.equals(system.getSystemType())) {
             SSHConnectionHolder holder = getSSHConnection(system, system.getEffectiveUserId());
             return new SSHDataClient(oboTenant, oboUser, system, holder);
@@ -36,7 +37,7 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory {
             return new IrodsDataClient(oboTenant, oboUser, system);
         } else {
             throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_INVALID", oboTenant, oboUser, system.getId(),
-                system.getSystemType()));
+                                               system.getSystemType()));
         }
     }
 

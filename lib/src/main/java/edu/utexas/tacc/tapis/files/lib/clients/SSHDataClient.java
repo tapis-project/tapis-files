@@ -310,7 +310,7 @@ public class SSHDataClient implements ISSHDataClient
      * @throws IOException Generally a network error
      */
     @Override
-    public void delete(@NotNull String path) throws IOException
+    public void delete(@NotNull String path) throws IOException, NotFoundException
     {
       String relativePathStr = PathUtils.getRelativePath(path).toString();
       SSHSftpClient sftpClient = connectionHolder.getSftpClient();
@@ -330,7 +330,25 @@ public class SSHDataClient implements ISSHDataClient
       }
     }
 
-    /**
+  /**
+   * Get info for file/dir or object
+   *
+   * @param path - Path to file or directory relative to the system rootDir
+   * @throws IOException Generally a network error
+   */
+  @Override
+  public FileInfo getFileInfo(@NotNull String path) throws IOException, NotFoundException
+  {
+    SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+    try  { return getFileInfo(sftpClient, path); }
+    finally
+    {
+      sftpClient.close();
+      connectionHolder.returnSftpClient(sftpClient);
+    }
+  }
+
+  /**
      * Stream data from file using sftpClient
      *
      * @param path - Path to file or directory relative to the system rootDir

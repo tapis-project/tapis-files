@@ -137,7 +137,16 @@ public class ITestFileOpsService
         };
     }
 
-    @BeforeSuite
+  @DataProvider(name="testSystemsNoS3")
+  public Object[] testSystemsNoS3DataProvider () {
+    return new TapisSystem[]{
+            testSystemSSH,
+            testSystemIrods,
+            testSystemPKI
+    };
+  }
+
+  @BeforeSuite
     public void doBeforeSuite() {
         ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
         ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
@@ -208,7 +217,7 @@ public class ITestFileOpsService
         });
     }
 
-    @Test(dataProvider = "testSystems")
+    @Test(dataProvider = "testSystemsNoS3")
     public void testInsertAndDeleteNested(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");

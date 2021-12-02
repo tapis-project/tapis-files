@@ -33,21 +33,26 @@ public abstract class BaseFileOpsResource {
     private static final Logger log = LoggerFactory.getLogger(BaseFileOpsResource.class);
     private IRuntimeConfig settings = RuntimeSettings.get();
 
-    protected IRemoteDataClient getClientForUserAndSystem(AuthenticatedUser authUser, TapisSystem system, String effectiveUserId) throws IOException {
-        IRemoteDataClient client =
-                remoteDataClientFactory.getRemoteDataClient(authUser.getOboTenantId(), authUser.getOboUser(), system, effectiveUserId);
-        return client;
+    protected IRemoteDataClient getClientForUserAndSystem(AuthenticatedUser authUser, TapisSystem system,
+                                                          String effUserId)
+            throws IOException
+    {
+      IRemoteDataClient client =
+          remoteDataClientFactory.getRemoteDataClient(authUser.getOboTenantId(), authUser.getOboUser(), system, effUserId);
+      return client;
     }
 
-    protected IRemoteDataClient checkSystemAndGetClient(String systemId, AuthenticatedUser user, String path) throws NotFoundException, BadRequestException, IOException {
-        try {
-            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
-            return client;
-        } catch (ServiceException ex) {
-            throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId, path, ex.getMessage()));
-        }
+    protected IRemoteDataClient checkSystemAndGetClient(String systemId, AuthenticatedUser user, String path)
+            throws NotFoundException, BadRequestException, IOException
+    {
+      TapisSystem system;
+      try { system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser()); }
+      catch (ServiceException ex)
+      {
+        throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId, path, ex.getMessage()));
+      }
+      Utils.checkEnabled(user, system);
+      String effUser = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+      return getClientForUserAndSystem(user, system, effUser);
     }
 }

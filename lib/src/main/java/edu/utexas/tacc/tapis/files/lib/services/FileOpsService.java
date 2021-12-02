@@ -178,6 +178,7 @@ public class FileOpsService implements IFileOpsService
 
   /**
    * Move a file or directory
+   *
    * @param client remote data client to use
    * @param srcPath - source path on system relative to system rootDir
    * @param dstPath - destination path on system relative to system rootDir
@@ -197,6 +198,24 @@ public class FileOpsService implements IFileOpsService
                              srcRelativePath, Permission.MODIFY);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                              dstRelativePath, Permission.MODIFY);
+        // Get file info here so we can do some basic checks independent of the system type
+        FileInfo srcFileInfo = client.getFileInfo(srcPath);
+        // Make sure srcPath exists
+        if (srcFileInfo == null)
+        {
+          String msg = Utils.getMsg("FILES_PATH_NOT_FOUND", client.getOboTenant(), client.getOboUser(),
+                                    client.getSystemId(), srcPath);
+          throw new NotFoundException(msg);
+        }
+        // If srcPath and dstPath are the same then throw an exception.
+        if (srcRelativePath.equals(dstRelativePath))
+        {
+          String msg = Utils.getMsg("FILES_SRC_DST_SAME", client.getOboTenant(), client.getOboUser(),
+                                    client.getSystemId(), srcPath);
+          throw new NotFoundException(msg);
+        }
+
+        // Perform the operation
         client.move(srcRelativePath.toString(), dstRelativePath.toString());
         // Update permissions in the SK
         permsService.replacePathPrefix(client.getOboTenant(), client.getOboUser(), client.getSystemId(),
@@ -223,14 +242,33 @@ public class FileOpsService implements IFileOpsService
             throws ServiceException, NotFoundException, ForbiddenException
     {
       try {
-        Path relativePathSrc = PathUtils.getRelativePath(srcPath);
-        Path relativePathDst = PathUtils.getRelativePath(dstPath);
+        Path srcRelativePath = PathUtils.getRelativePath(srcPath);
+        Path dstRelativePath = PathUtils.getRelativePath(dstPath);
         // Check the source has READ and destination has MODIFY perm
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePathSrc, Permission.READ);
+                             srcRelativePath, Permission.READ);
         Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePathDst, Permission.MODIFY);
-        client.copy(relativePathSrc.toString(), relativePathDst.toString());
+                             dstRelativePath, Permission.MODIFY);
+
+        // Get file info here so we can do some basic checks independent of the system type
+        FileInfo srcFileInfo = client.getFileInfo(srcPath);
+        // Make sure srcPath exists
+        if (srcFileInfo == null)
+        {
+          String msg = Utils.getMsg("FILES_PATH_NOT_FOUND", client.getOboTenant(), client.getOboUser(),
+                  client.getSystemId(), srcPath);
+          throw new NotFoundException(msg);
+        }
+        // If srcPath and dstPath are the same then throw an exception.
+        if (srcRelativePath.equals(dstRelativePath))
+        {
+          String msg = Utils.getMsg("FILES_SRC_DST_SAME", client.getOboTenant(), client.getOboUser(),
+                  client.getSystemId(), srcPath);
+          throw new NotFoundException(msg);
+        }
+
+        // Perform the operation
+        client.copy(srcRelativePath.toString(), dstRelativePath.toString());
       } catch (IOException ex) {
         String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "copy",
                 client.getSystemId(), srcPath, ex.getMessage());
