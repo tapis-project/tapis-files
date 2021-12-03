@@ -62,7 +62,9 @@ public class BaseDatabaseIntegrationTest  {
     protected TapisSystem testSystemSSH;
     protected TapisSystem testSystemIrods;
     protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairs = new ArrayList<>();
+    protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairsNoS3 = new ArrayList<>();
     protected List<TapisSystem> testSystems = new ArrayList<>();
+    protected List<TapisSystem> testSystemsNoS3 = new ArrayList<>();
 
     protected IRemoteDataClientFactory remoteDataClientFactory;
     protected ServiceLocator locator;
@@ -148,13 +150,25 @@ public class BaseDatabaseIntegrationTest  {
 
         testSystems = Arrays.asList(testSystemSSH, testSystemS3, testSystemPKI, testSystemIrods);
         testSystemsPairs = new ArrayList<>();
-
-        for (int i = 0; i < testSystems.size(); i++) {
-            for (int j = i + 1; j < testSystems.size(); j++) {
+        for (int i = 0; i < testSystems.size(); i++)
+        {
+            for (int j = i + 1; j < testSystems.size(); j++)
+            {
                 Pair<TapisSystem, TapisSystem> pair = new ImmutablePair<>(testSystems.get(i), testSystems.get(j));
                 testSystemsPairs.add(pair);
             }
         }
+
+      testSystemsNoS3 = Arrays.asList(testSystemSSH, testSystemPKI, testSystemIrods);
+      testSystemsPairsNoS3 = new ArrayList<>();
+      for (int i = 0; i < testSystemsNoS3.size(); i++)
+      {
+        for (int j = i + 1; j < testSystemsNoS3.size(); j++)
+        {
+          Pair<TapisSystem, TapisSystem> pair = new ImmutablePair<>(testSystemsNoS3.get(i), testSystemsNoS3.get(j));
+          testSystemsPairsNoS3.add(pair);
+        }
+      }
     }
 
     @AfterMethod
@@ -196,14 +210,14 @@ public class BaseDatabaseIntegrationTest  {
         fileUtilsService = locator.getService(FileUtilsService.class);
     }
 
-    @DataProvider
-    public Object[] testSystemsDataProvider() {
-        return testSystemsPairs.toArray();
-    }
+  @DataProvider
+  public Object[] testSystemsDataProvider() { return testSystemsPairs.toArray(); }
 
-    @DataProvider
-    public Object[] testSystemsListDataProvider() {return testSystems.toArray(); }
+  @DataProvider
+  public Object[] testSystemsDataProviderNoS3() { return testSystemsPairsNoS3.toArray(); }
 
+  @DataProvider
+  public Object[] testSystemsListDataProvider() {return testSystems.toArray(); }
 
     @BeforeMethod
     public void doFlywayMigrations() {

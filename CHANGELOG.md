@@ -18,6 +18,7 @@ Incremental improvements.
 ### Updates:
 - Add debug logging of cache key loads.
 - Update S3 client to mostly operate on single objects.
+- Additional tests.
 
 ### Bug fixes:
 - None.

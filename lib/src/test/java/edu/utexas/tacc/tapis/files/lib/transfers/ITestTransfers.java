@@ -40,7 +40,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestTransfers extends BaseDatabaseIntegrationTest {
+public class ITestTransfers extends BaseDatabaseIntegrationTest
+{
 
     private static final Logger log = LoggerFactory.getLogger(ITestTransfers.class);
 
@@ -161,7 +162,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
         Assert.assertEquals(t1.getTag(), "testTag");
     }
-
 
     @Test(dataProvider = "testSystemsDataProvider")
     public void testUpdatesTransferSize(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
@@ -329,7 +329,8 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
 
     }
 
-    @Test(dataProvider = "testSystemsDataProvider")
+    // Test all system pairs except those involving S3 since S3 does not support directories
+    @Test(dataProvider = "testSystemsDataProviderNoS3")
     public void testEmptyDirectories(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
         TapisSystem sourceSystem = systemsPair.getLeft();
         TapisSystem destSystem = systemsPair.getRight();
@@ -502,13 +503,13 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
-  /**
+  /*
    * This test is important, basically testing a simple but complete transfer. We check the entries in the database
    * as well as the files at the destination to make sure it actually completed. If this test fails, something needs to
    * be fixed.
-   * @throws Exception
+   * NOTE: Test all system pairs except those involving S3 since S3 does not support directories
    */
-  @Test(dataProvider = "testSystemsDataProvider")
+  @Test(dataProvider = "testSystemsDataProviderNoS3")
   public void testNestedDirectories(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
