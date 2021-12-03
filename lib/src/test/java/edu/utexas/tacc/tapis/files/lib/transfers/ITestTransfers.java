@@ -502,75 +502,69 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest {
     }
 
 
-    /**
-     * This test is important, basically testing a simple but complete transfer. We check the entries in the database
-     * as well as the files at the destination to make sure it actually completed. If this test fails, something needs to
-     * be fixed.
-     * @throws Exception
-     */
-    @Test(dataProvider = "testSystemsDataProvider")
-    public void testNestedDirectories(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception {
-        TapisSystem sourceSystem = systemsPair.getLeft();
-        TapisSystem destSystem = systemsPair.getRight();
-        log.info(sourceSystem.getId());
-        log.info(destSystem.getId());
-        when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+  /**
+   * This test is important, basically testing a simple but complete transfer. We check the entries in the database
+   * as well as the files at the destination to make sure it actually completed. If this test fails, something needs to
+   * be fixed.
+   * @throws Exception
+   */
+  @Test(dataProvider = "testSystemsDataProvider")
+  public void testNestedDirectories(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
+  {
+    TapisSystem sourceSystem = systemsPair.getLeft();
+    TapisSystem destSystem = systemsPair.getRight();
+    log.info("Src System: " + sourceSystem.getId());
+    log.info("Dst System:" + destSystem.getId());
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-        IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
-        IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
-        // Double check that the files really are in the destination
-        //wipe out the dest folder just in case
-        fileOpsService.delete(destClient, "/");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sourceSystem, "testuser");
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, destSystem, "testuser");
+    // Double check that the files really are in the destination
+    //wipe out the dest folder just in case
+    fileOpsService.delete(destClient, "/");
 
+    //Add some files to transfer
+    int FILESIZE = 10 * 1000 * 1024;
+    fileOpsService.upload(sourceClient, "a/cat/dog/1.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(sourceClient, "a/cat/dog/2.txt", Utils.makeFakeFile(FILESIZE));
 
-        //Add some files to transfer
-        int FILESIZE = 10 * 1000 * 1024;
-        fileOpsService.upload(sourceClient, "a/cat/dog/1.txt", Utils.makeFakeFile(FILESIZE));
-        fileOpsService.upload(sourceClient, "a/cat/dog/2.txt", Utils.makeFakeFile(FILESIZE));
+    TransferTaskRequestElement element = new TransferTaskRequestElement();
+    element.setSourceURI("tapis://sourceSystem/a/");
+    element.setDestinationURI("tapis://destSystem/b/");
+    List<TransferTaskRequestElement> elements = new ArrayList<>();
+    elements.add(element);
+    TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
 
-        TransferTaskRequestElement element = new TransferTaskRequestElement();
-        element.setSourceURI("tapis://sourceSystem/a/");
-        element.setDestinationURI("tapis://destSystem/b/");
-        List<TransferTaskRequestElement> elements = new ArrayList<>();
-        elements.add(element);
-        TransferTask t1 = transfersService.createTransfer(
-            "testuser",
-            "dev",
-            "tag",
-            elements
-        );
-
-        Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
-        tasks.subscribe();
-        Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
+    Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
+    tasks.subscribe();
+    Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
 // Instead of using StepVerifier, block until everything is done.
 // blockLast - start listening to stream and wait for it to finish.
 // Had to do it this way because for S3 it is not known apriori how many items will come out of stream
-      // 2 types of streams for reactor, cold and hot flux. hot - never-ending, null to hot flux will end it
-      // these are all hot fluxes, next to lines set up an automatic send of a null to stop the hot stream after 5 seconds.
-        stream.take(Duration.ofSeconds(5))
-            .blockLast();
+    // 2 types of streams for reactor, cold and hot flux. hot - never-ending, null to hot flux will end it
+    // these are all hot fluxes, next to lines set up an automatic send of a null to stop the hot stream after 5 seconds.
+    stream.take(Duration.ofSeconds(5)).blockLast();
 
-        t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
-        Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
-        Assert.assertNotNull(t1.getStartTime());
-        Assert.assertNotNull(t1.getEndTime());
+    t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
+    Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
+    Assert.assertNotNull(t1.getStartTime());
+    Assert.assertNotNull(t1.getEndTime());
 
-        //Check for parent Task properties too
-        TransferTaskParent parent = t1.getParentTasks().get(0);
-        Assert.assertEquals(parent.getStatus(), TransferTaskStatus.COMPLETED);
-        Assert.assertNotNull(parent.getEndTime());
-        Assert.assertNotNull(parent.getStartTime());
-        // 2 files, so total should be 2x
-        Assert.assertEquals(parent.getBytesTransferred(), 2 * FILESIZE);
+    //Check for parent Task properties too
+    TransferTaskParent parent = t1.getParentTasks().get(0);
+    Assert.assertEquals(parent.getStatus(), TransferTaskStatus.COMPLETED);
+    Assert.assertNotNull(parent.getEndTime());
+    Assert.assertNotNull(parent.getStartTime());
+    // 2 files, so total should be 2x
+    Assert.assertEquals(parent.getBytesTransferred(), 2 * FILESIZE);
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/b/cat/dog/");
-        Assert.assertEquals(listing.size(), 2);
-    }
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/b/cat/dog/");
+    Assert.assertEquals(listing.size(), 2);
+  }
 
-    /**
+  /**
      * Tests to se if the grouping does not hang after 256 groups
      * creates many threads, enable only as needed
      */
