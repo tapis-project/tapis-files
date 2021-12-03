@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
@@ -168,35 +167,55 @@ public class ChildTaskTransferService
      * @param child   the Child task that failed
      * @return Mono with the updated TransferTaskChild
      */
-    private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable cause, TransferTaskChild child) {
-        message.nack(false);
-        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR10", child.toString()));
+    private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable cause, TransferTaskChild child)
+    {
+      message.nack(false);
+      log.error(Utils.getMsg("FILES_TXFR_SVC_ERR10", child.toString()));
 
-        // Child First
+      // First update child task, mark FAILED_OPT or FAILED and set error message
+      if (child.isOptional())
+        child.setStatus(TransferTaskStatus.FAILED_OPT);
+      else
         child.setStatus(TransferTaskStatus.FAILED);
-        child.setErrorMessage(cause.getMessage());
-        //TODO: Fix this for the "optional" flag
-        try {
-
-            child = dao.updateTransferTaskChild(child);
-            //Now parent
-            TransferTaskParent parent = dao.getTransferTaskParentById(child.getParentTaskId());
+      child.setErrorMessage(cause.getMessage());
+      try
+      {
+        child = dao.updateTransferTaskChild(child);
+        // This should really never happen, it means that the child with that ID was not in the database.
+        if (child == null) return Mono.empty();
+        // If child is required update parent
+        if (!child.isOptional())
+        {
+          TransferTaskParent parent = dao.getTransferTaskParentById(child.getParentTaskId());
+          // This also not happen, it means that the parent with that ID was not in the database.
+          if (parent == null) return Mono.empty();
+          // Mark FAILED_OPT or FAILED and set error message
+          if (parent.isOptional())
+            parent.setStatus(TransferTaskStatus.FAILED_OPT);
+          else
             parent.setStatus(TransferTaskStatus.FAILED);
-            parent.setEndTime(Instant.now());
-            parent.setErrorMessage(cause.getMessage());
-            dao.updateTransferTaskParent(parent);
-
-            //Finally the top level task
+          parent.setEndTime(Instant.now());
+          parent.setErrorMessage(cause.getMessage());
+          dao.updateTransferTaskParent(parent);
+          // If parent is required update top level task to FAILED and set error message
+          if (!parent.isOptional())
+          {
             TransferTask topTask = dao.getTransferTaskByID(child.getTaskId());
+            // Again, should not happen, it means that the top task was not in the database.
+            if (topTask == null) return Mono.empty();
             topTask.setStatus(TransferTaskStatus.FAILED);
             topTask.setErrorMessage(cause.getMessage());
             dao.updateTransferTask(topTask);
-        } catch (DAOException ex) {
-            log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
-                "doErrorChevronOne", child.getId(), child.getUuid(), ex.getMessage()), ex);
+          }
         }
-        //either way, the task is set to be FAILED here, so subsequest
-        return Mono.just(child);
+      }
+      catch (DAOException ex)
+      {
+        log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
+                "doChildErrorChevronOne", child.getId(), child.getUuid(), ex.getMessage()), ex);
+      }
+
+      return Mono.just(child);
     }
 
     /**

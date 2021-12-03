@@ -1,21 +1,15 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 
 import javax.validation.constraints.NotNull;
-import java.net.URI;
-import java.net.URL;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 
-public class TransferTaskChild extends TransferTaskParent {
-
+public class TransferTaskChild extends TransferTaskParent
+{
     private int parentTaskId;
     private int retries;
     private boolean isDir;
@@ -92,9 +86,7 @@ public class TransferTaskChild extends TransferTaskParent {
     }
 
     @Override
-    public int hashCode() {
-       return Long.hashCode(id);
-    }
+    public int hashCode() { return Long.hashCode(id); }
 
     @Override
     public String toString() {

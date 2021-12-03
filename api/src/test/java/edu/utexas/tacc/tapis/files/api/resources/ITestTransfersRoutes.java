@@ -27,8 +27,6 @@ import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.TestProperties;
 import org.mockito.Mockito;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
@@ -47,14 +45,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
-
-    private final Logger log = LoggerFactory.getLogger(ITestTransfersRoutes.class);
+public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest
+{
     private final TapisSystem testSystem;
     private final Credential creds;
 
-    private static class TransferTaskResponse extends TapisResponse<TransferTask> {
-    }
+    private static class TransferTaskResponse extends TapisResponse<TransferTask> { }
 
     // mocking out the services
     private ServiceClients serviceClients;
@@ -67,8 +63,8 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
     private SystemsCache systemsCache;
     private final Map<String, Tenant> tenantMap = new HashMap<>();
 
-
-    private ITestTransfersRoutes() throws Exception {
+    private ITestTransfersRoutes()
+    {
         //List<String> creds = new ArrayList<>();
         creds = new Credential();
         creds.setAccessKey("user");
@@ -91,7 +87,8 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
     }
 
     @Override
-    protected ResourceConfig configure() {
+    protected ResourceConfig configure()
+    {
         enable(TestProperties.LOG_TRAFFIC);
         enable(TestProperties.DUMP_ENTITY);
         forceSet(TestProperties.CONTAINER_PORT, "0");
@@ -145,48 +142,10 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
     }
 
-
-    /**
-     * Helper method to create transfer tasks
-     *
-     * @return
-     */
-    private TransferTask createTransferTask() {
-        TransferTaskRequest request = new TransferTaskRequest();
-        request.setTag("testTag");
-        TransferTaskRequestElement element1 = new TransferTaskRequestElement();
-        element1.setSourceURI("tapis://test.edu/sourceSystem/sourcePath");
-        element1.setDestinationURI("tapis://tests.edu/destSystem/destinationPath");
-        List<TransferTaskRequestElement> elements = new ArrayList<>();
-        elements.add(element1);
-        request.setElements(elements);
-
-
-        TransferTaskResponse createTaskResponse = target("/v3/files/transfers")
-            .request()
-            .accept(MediaType.APPLICATION_JSON)
-            .header("content-type", MediaType.APPLICATION_JSON)
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
-            .post(Entity.json(request), TransferTaskResponse.class);
-        return createTaskResponse.getResult();
-    }
-
-    private TransferTask getTransferTask(String taskUUID) {
-        TransferTaskResponse getTaskResponse = target("/v3/files/transfers/" + taskUUID)
-            .request()
-            .accept(MediaType.APPLICATION_JSON)
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
-            .get(TransferTaskResponse.class);
-
-        TransferTask task = getTaskResponse.getResult();
-        return task;
-
-    }
-
     @Test
-    public void postTransferTask() throws Exception {
+    public void postTransferTask()
+    {
         TransferTask newTask = createTransferTask();
-
         Assert.assertNotNull(newTask.getUuid());
         Assert.assertNotNull(newTask.getCreated());
         Assert.assertEquals(newTask.getParentTasks().size(), 1);
@@ -196,17 +155,17 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
     }
 
     @Test
-    public void getTransferById() throws Exception {
-
+    public void getTransferById()
+    {
         TransferTask t = createTransferTask();
-
         TransferTask task = getTransferTask(t.getUuid().toString());
         Assert.assertNotNull(task.getUuid());
         Assert.assertNotNull(task.getCreated());
     }
 
     @Test
-    public void testGetTransferDetails() throws Exception {
+    public void testGetTransferDetails()
+    {
 
         TransferTask t = createTransferTask();
 
@@ -222,13 +181,12 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(task.getParentTasks().size(), 1);
     }
 
-
     /**
      * This request should throw a 400 as the ValidUUID validator will fail
      */
     @Test
-    public void getTransfer400() {
-
+    public void getTransfer400()
+    {
         Response response = target("/v3/files/transfers/INVALID")
             .request()
             .accept(MediaType.APPLICATION_JSON)
@@ -244,7 +202,8 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
      * Valid UUID but not found should be 404
      */
     @Test
-    public void getTransfer404() {
+    public void getTransfer404()
+    {
         String uuid = UUID.randomUUID().toString();
         Response response = target("/v3/files/transfers/" + uuid)
             .request()
@@ -258,7 +217,8 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
     }
 
     @Test
-    public void deleteTransfer() throws Exception {
+    public void deleteTransfer()
+    {
         TransferTask t = createTransferTask();
         Response resp = target("/v3/files/transfers/" + t.getUuid().toString())
             .request()
@@ -269,20 +229,53 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest {
         TransferTask task = getTransferTask(t.getUuid().toString());
         Assert.assertEquals(task.getStatus(), TransferTaskStatus.CANCELLED);
         Assert.assertEquals(resp.getStatus(), 200);
-
     }
 
     @Test
-    public void deleteTransfer404() throws Exception {
+    public void deleteTransfer404()
+    {
         Response resp = target("/v3/files/transfers/" + UUID.randomUUID())
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .delete();
-
         Assert.assertEquals(resp.getStatus(), 404);
-
     }
 
+  /* **************************************************************************** */
+  /*                                Private Methods                               */
+  /* **************************************************************************** */
 
+  /*
+   * Helper method to create transfer tasks
+   */
+  private TransferTask createTransferTask()
+  {
+    TransferTaskRequest request = new TransferTaskRequest();
+    request.setTag("testTag");
+    TransferTaskRequestElement element1 = new TransferTaskRequestElement();
+    element1.setSourceURI("tapis://test.edu/sourceSystem/sourcePath");
+    element1.setDestinationURI("tapis://tests.edu/destSystem/destinationPath");
+    List<TransferTaskRequestElement> elements = new ArrayList<>();
+    elements.add(element1);
+    request.setElements(elements);
+
+    TransferTaskResponse createTaskResponse = target("/v3/files/transfers")
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("content-type", MediaType.APPLICATION_JSON)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .post(Entity.json(request), TransferTaskResponse.class);
+    return createTaskResponse.getResult();
+  }
+
+  private TransferTask getTransferTask(String taskUUID)
+  {
+    TransferTaskResponse getTaskResponse = target("/v3/files/transfers/" + taskUUID)
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .get(TransferTaskResponse.class);
+    return getTaskResponse.getResult();
+  }
 }

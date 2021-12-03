@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -26,9 +25,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.ConsumeOptions;
-import reactor.rabbitmq.OutboundMessage;
-import reactor.rabbitmq.OutboundMessageResult;
 import reactor.util.retry.Retry;
 
 import javax.inject.Inject;
@@ -89,37 +85,25 @@ public class ParentTaskTransferService
         }
     }
 
-
-
-    public Flux<TransferTaskParent> runPipeline() {
-        return transfersService.streamParentMessages()
-            .groupBy(m -> {
-                try {
-                    return groupByTenant(m);
-                } catch (ServiceException ex) {
-                    return Mono.empty();
-                }
-            })
-            .flatMap(group -> {
-                Scheduler scheduler = Schedulers.newBoundedElastic(5, 10, "ParentPool:" + group.key());
-                return group
-                    .flatMap(m ->
-                        deserializeParentMessage(m)
-                            .flatMap(t1 -> Mono.fromCallable(() -> doParentChevronOne(t1))
-                                .publishOn(scheduler)
-                                .retryWhen(
-                                    Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
-                                        .maxBackoff(Duration.ofMinutes(60))
-                                        .filter(e -> e.getClass() == IOException.class)
-                                )
-                                .onErrorResume(e -> doErrorParentChevronOne(m, e, t1))
-                            )
-                            .flatMap(t2 -> {
-                                m.ack();
-                                return Mono.just(t2);
-                            })
-                    );
-            });
+    public Flux<TransferTaskParent> runPipeline()
+    {
+      return transfersService.streamParentMessages()
+        .groupBy(m -> { try { return groupByTenant(m); } catch (ServiceException ex) { return Mono.empty(); } } )
+        .flatMap(group ->
+        {
+          Scheduler scheduler = Schedulers.newBoundedElastic(5, 10, "ParentPool:" + group.key());
+          return group.flatMap(m ->
+                                deserializeParentMessage(m)
+                                   .flatMap(t1 -> Mono.fromCallable(() -> doParentChevronOne(t1))
+                                                      .publishOn(scheduler)
+                                                      .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
+                                                                      .maxBackoff(Duration.ofMinutes(60))
+                                                                      .filter(e -> e.getClass() == IOException.class))
+                                                      .onErrorResume(e -> doErrorParentChevronOne(m, e, t1)))
+                                   .flatMap(t2 -> { m.ack(); return Mono.just(t2); })
+          );
+        }
+      );
     }
 
   /**
@@ -136,36 +120,39 @@ public class ParentTaskTransferService
     log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", e));
     m.nack(false);
 
-    //TODO: UPDATE this when the Optional stuff gets integrated
-    try
-    {
-      TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
-      if (task == null) return Mono.empty();
-      // If txfr was not optional then mark it as failed.
-      if (!parent.isOptional()) task.setStatus(TransferTaskStatus.FAILED);
-      task.setEndTime(Instant.now());
-      task.setErrorMessage(e.getMessage());
-      dao.updateTransferTask(task);
-    } catch (DAOException ex) {
-      log.error(Utils.getMsg("FILES_TXFR_SVC_ERR8", parent.getTaskId(), parent.getUuid()));
-    }
-
-    parent.setStatus(TransferTaskStatus.FAILED);
+    // First update parent task, mark FAILED_OPT or FAILED
+    if (parent.isOptional())
+      parent.setStatus(TransferTaskStatus.FAILED_OPT);
+    else
+      parent.setStatus(TransferTaskStatus.FAILED);
     parent.setEndTime(Instant.now());
     parent.setErrorMessage(e.getMessage());
     try
     {
       parent = dao.updateTransferTaskParent(parent);
-      // This should really never happen, it means that the parent with that ID
-      // was not even in the database.
+      // This should really never happen, it means that the parent with that ID was not in the database.
       if (parent == null) return Mono.empty();
-      return Mono.just(parent);
+
+      // Now update the top level task
+      TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
+      // This should also not happen, it means that the top task was not in the database.
+      if (task == null) return Mono.empty();
+      // If parent is required mark top level FAILED and set error message.
+      if (!parent.isOptional())
+      {
+        task.setStatus(TransferTaskStatus.FAILED);
+        task.setEndTime(Instant.now());
+        task.setErrorMessage(e.getMessage());
+        dao.updateTransferTask(task);
+      }
     }
     catch (DAOException ex)
     {
-      log.error(Utils.getMsg("FILES_TXFR_SVC_ERR9", parent.getTaskId(), parent.getUuid()));
+      log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", parent.getTenantId(), parent.getUsername(),
+                             "doParentErrorChevronOne", parent.getId(), parent.getUuid(), ex.getMessage()), ex);
     }
-    return Mono.empty();
+
+    return Mono.just(parent);
   }
 
     /**

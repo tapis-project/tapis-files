@@ -207,6 +207,7 @@ public class TransferTaskParent
     Set<TransferTaskStatus> terminalStates = new HashSet<>();
     terminalStates.add(TransferTaskStatus.COMPLETED);
     terminalStates.add(TransferTaskStatus.FAILED);
+    terminalStates.add(TransferTaskStatus.FAILED_OPT);
     terminalStates.add(TransferTaskStatus.CANCELLED);
     terminalStates.add(TransferTaskStatus.PAUSED);
     return terminalStates.contains(this.status);

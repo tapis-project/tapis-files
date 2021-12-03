@@ -17,15 +17,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Test(groups={"integration"})
-public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
-
+public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest
+{
     public ITestFileTransfersDAO() throws Exception {
         super();
     }
 
     private final FileTransfersDAO dao = new FileTransfersDAO();
 
-    private TransferTask createTransferTask() throws DAOException {
+    private TransferTask createTransferTask() throws DAOException
+    {
         TransferTask task = new TransferTask();
         task.setTag("testTag");
         task.setTenantId("testTenant");
@@ -46,9 +47,9 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
        return task;
     }
 
-
     @Test
-    public void testCreateTransfer() throws DAOException {
+    public void testCreateTransfer() throws DAOException
+    {
         TransferTask task = createTransferTask();
         Assert.assertTrue(task.getId() > 0);
         Assert.assertEquals(task.getParentTasks().size(), 2);
@@ -57,16 +58,17 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(parent.getTaskId(), task.getId());
     }
 
-
     @Test
-    public void testGetTaskByUUID() throws DAOException {
+    public void testGetTaskByUUID() throws DAOException
+    {
         TransferTask t = createTransferTask();
         TransferTask newTask = dao.getTransferTaskByUUID(t.getUuid());
         Assert.assertEquals(newTask.getId(), t.getId());
     }
 
     @Test
-    public void testGetTransferParent() throws DAOException {
+    public void testGetTransferParent() throws DAOException
+    {
         TransferTask t = createTransferTask();
         TransferTaskParent parent = t.getParentTasks().get(0);
         TransferTaskParent newParent;
@@ -75,15 +77,16 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
     }
 
     @Test
-    public void testGetAllParentsForTask() throws DAOException {
-
+    public void testGetAllParentsForTask() throws DAOException
+    {
         TransferTask t = createTransferTask();
         List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(t.getId());
         Assert.assertEquals(parents.size(), 2);
     }
 
     @Test
-    public void testGetAllForUser() throws DAOException {
+    public void testGetAllForUser() throws DAOException
+    {
         TransferTask t1 = createTransferTask();
         TransferTask t2 = createTransferTask();
 
@@ -92,7 +95,8 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
     }
 
     @Test
-    public void testUpdateChild() throws Exception {
+    public void testUpdateChild() throws Exception
+    {
         TransferTask t1 = createTransferTask();
         TransferTaskParent parent = t1.getParentTasks().get(0);
         FileInfo fileInfo = new FileInfo();
@@ -115,10 +119,9 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(child.getEndTime());
     }
 
-
     @Test
-    public void testGetHistory() throws Exception {
-
+    public void testGetHistory() throws Exception
+    {
         TransferTask t1 = createTransferTask();
         TransferTaskParent parent = t1.getParentTasks().get(0);
         FileInfo fileInfo = new FileInfo();
@@ -136,10 +139,5 @@ public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(task.getParentTasks());
         Assert.assertNotNull(task.getParentTasks().get(0).getChildren());
         Assert.assertEquals(task.getParentTasks().get(0).getChildren().size(), 3);
-
     }
-
-
-
-
 }

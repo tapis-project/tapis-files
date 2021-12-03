@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-public class TransferTask {
-
+public class TransferTask
+{
     protected int id;
     protected String username;
     protected String tenantId;
@@ -27,153 +27,66 @@ public class TransferTask {
     protected int completeTransfers;
     protected String errorMessage;
 
-    public String getErrorMessage() {
-        return errorMessage;
-    }
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String s) { errorMessage = s; }
 
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
+    public long getEstimatedTotalBytes() { return estimatedTotalBytes; }
+    public void setEstimatedTotalBytes(long l) { estimatedTotalBytes = l; }
 
-    public long getEstimatedTotalBytes() {
-        return estimatedTotalBytes;
-    }
+    public long getTotalBytesTransferred() { return totalBytesTransferred; }
+    public void setTotalBytesTransferred(long l) { totalBytesTransferred = l; }
 
-    public void setEstimatedTotalBytes(long estimatedTotalBytes) {
-        this.estimatedTotalBytes = estimatedTotalBytes;
-    }
+    public int getTotalTransfers() { return totalTransfers; }
+    public void setTotalTransfers(int i) { totalTransfers = i; }
 
-    public long getTotalBytesTransferred() {
-        return totalBytesTransferred;
-    }
+    public int getCompleteTransfers() { return completeTransfers; }
+    public void setCompleteTransfers(int i) { completeTransfers = i; }
 
-    public void setTotalBytesTransferred(long totalBytesTransferred) {
-        this.totalBytesTransferred = totalBytesTransferred;
-    }
+    public int getId() { return id; }
+    public void setId(int i) { id = i; }
 
-    public int getTotalTransfers() {
-        return totalTransfers;
-    }
+    public String getUsername() { return username; }
+    public void setUsername(String s) { username = s; }
 
-    public void setTotalTransfers(int totalTransfers) {
-        this.totalTransfers = totalTransfers;
-    }
+    public String getTenantId() { return tenantId; }
+    public void setTenantId(String s) { tenantId = s; }
 
-    public int getCompleteTransfers() {
-        return completeTransfers;
-    }
+    public String getTag() { return tag; }
+    public void setTag(String s) { tag = s; }
 
-    public void setCompleteTransfers(int completeTransfers) {
-        this.completeTransfers = completeTransfers;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(String tenantId) {
-        this.tenantId = tenantId;
-    }
-
-    public String getTag() {
-        return tag;
-    }
-
-    public void setTag(String tag) {
-        this.tag = tag;
-    }
-
-    public Instant getCreated() {
-        return created;
-    }
-
-    public void setCreated(Instant created) {
-        this.created = created;
-    }
-
+    public Instant getCreated() { return created;}
+    public void setCreated(Instant c1) { created = c1; }
     @JsonProperty("created")
-    public void setCreated(String created) {
-        if (created != null) this.created = Instant.parse(created);
-    }
+    public void setCreated(String c1) { if (c1 != null) created = Instant.parse(c1); }
 
+    public UUID getUuid() { return uuid; }
+    public void setUuid(UUID u) { uuid = u; }
 
-    public UUID getUuid() {
-        return uuid;
-    }
-
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
-    }
-
-    public Instant getStartTime() {
-        return startTime;
-    }
-
-    public void setStartTime(Instant startTime) {
-        this.startTime = startTime;
-    }
-
+    public Instant getStartTime() { return startTime; }
+    public void setStartTime(Instant start) { startTime = start; }
     @JsonProperty("startTime")
-    public void setStartTime(String startTime) {
-        if (startTime != null) this.startTime = Instant.parse(startTime);
-    }
+    public void setStartTime(String s) { if (s != null) startTime = Instant.parse(s); }
 
-    public Instant getEndTime() {
-        return endTime;
-    }
-
-    public void setEndTime(Instant endTime) {
-        this.endTime = endTime;
-    }
-
+    public Instant getEndTime() { return endTime; }
+    public void setEndTime(Instant et) { endTime = et; }
     @JsonProperty("endTime")
-    public void setEndTime(String endTime) {
-        if (endTime != null) this.endTime = Instant.parse(endTime);
-    }
+    public void setEndTime(String et) { if (et != null) endTime = Instant.parse(et); }
 
-    public TransferTaskStatus getStatus() {
-        return status;
-    }
+    public TransferTaskStatus getStatus() { return status; }
+    public void setStatus(String s) { status = TransferTaskStatus.valueOf(s); }
+    public void setStatus(TransferTaskStatus tts) { status = tts; }
 
-    public void setStatus(String status) {
-        this.status = TransferTaskStatus.valueOf(status);
-    }
-    public void setStatus(TransferTaskStatus status) {
-        this.status = status;
-    }
-
-
-    public List<TransferTaskParent> getParentTasks() {
-        return parentTasks;
-    }
-
-    public void setParentTasks(List<TransferTaskParent> parentTasks) {
-        this.parentTasks = parentTasks;
-    }
+    public List<TransferTaskParent> getParentTasks() { return parentTasks; }
+    public void setParentTasks(List<TransferTaskParent> pt) { parentTasks = pt; }
 
     @JsonIgnore
-    public boolean isTerminal() {
+    public boolean isTerminal()
+    {
         Set<TransferTaskStatus> terminalStates = new HashSet<>();
         terminalStates.add(TransferTaskStatus.COMPLETED);
         terminalStates.add(TransferTaskStatus.FAILED);
         terminalStates.add(TransferTaskStatus.CANCELLED);
         terminalStates.add(TransferTaskStatus.PAUSED);
-        return terminalStates.contains(this.status);
+        return terminalStates.contains(status);
     }
 }

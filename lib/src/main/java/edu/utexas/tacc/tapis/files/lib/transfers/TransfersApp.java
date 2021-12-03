@@ -18,30 +18,25 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
-import edu.utexas.tacc.tapis.files.lib.providers.ServiceJWTCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
-import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
-import org.glassfish.hk2.api.Immediate;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.rabbitmq.AcknowledgableDelivery;
 
 import javax.inject.Singleton;
 import java.util.concurrent.TimeUnit;
 
-public class TransfersApp {
-
+public class TransfersApp
+{
     private static Logger log = LoggerFactory.getLogger(TransfersApp.class);
 
-    public static void main(String[] args) throws Exception {
-
+    public static void main(String[] args)
+    {
         log.info("Starting transfers application.");
-
         ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
         ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
             @Override
@@ -75,7 +70,6 @@ public class TransfersApp {
 
         Flux<TransferTaskChild> childTaskFlux = childTaskTransferService.runPipeline();
         childTaskFlux.subscribe();
-
     }
 
     private static void logSuccess(TransferTask t) {
@@ -85,6 +79,4 @@ public class TransfersApp {
     private static void logError(Throwable t) {
         log.error(t.getMessage(), t);
     }
-
-
 }
