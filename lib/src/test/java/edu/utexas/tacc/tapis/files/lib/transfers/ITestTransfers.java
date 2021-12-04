@@ -741,6 +741,19 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest
     // TODO: Test for optional parentTask - transfer should not fail if the the parentTask fails
     //        This always times out. How to get one of the element tasks to fail and still have the
     //        top level transfer task succeed?
+    //     Is this just a test setup issue? Once the timeout happens the top level task is in state IN_PROGRESS.
+    //       is it just an artifact of the way the test is constructed and executed?
+    //     The parentTask has the correct state, FAILED_OPT
+    //   so how does the top level task state get updated when run with this test framework?
+    //  could be a bug or a test setup/execution issue.
+
+    // NOTE: Final update fo TransferTask happens in step 4 of childTaskService
+    // TODO BUT: it seems the chevron steps in ChildTraskTransferService are not getting called by this test.
+    //   breakpoints are not getting hit.
+    //   ParentTaskTransferService.doChevronOne is getting called.
+    //   so issue is probably with the with the test(?)
+    //     todo - see what happens with one of these tests that succeeds. are the child svc steps called?
+
     // NOTE: Leave out S3 system just to save time.
     @Test(dataProvider = "testSystemsDataProviderNoS3", enabled = false)
     public void testTransferOptionalNoFail(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
@@ -769,18 +782,22 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest
       Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
       tasks.subscribe();
       Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
-// StepVerify is part of reactor test framework (takes over stream and you can examine/assert it)
-      StepVerifier
-        .create(stream)
-// Each item as it comes out of the stream should be in the FAILED state
-// This is the 1st item
-        .assertNext(k->{ Assert.assertEquals(k.getStatus(), TransferTaskStatus.FAILED); })
-// Wrap things up
-        .thenCancel()
-// Wait for it to complete
-        .verify(Duration.ofSeconds(5));
+      // Give it time to finish then check the task status
+      stream.take(Duration.ofSeconds(5)).blockLast();
 
-// Now we should be able to get the transfer task and it should not have failed
+// TODO - Any need to verify the stream?
+//// StepVerify is part of reactor test framework (takes over stream and you can examine/assert it)
+//      StepVerifier
+//        .create(stream)
+//// Each item as it comes out of the stream should be in the FAILED state
+//// This is the 1st item
+//        .assertNext(k->{ Assert.assertEquals(k.getStatus(), TransferTaskStatus.FAILED); })
+//// Wrap things up
+//        .thenCancel()
+//// Wait for it to complete
+//        .verify(Duration.ofSeconds(5));
+
+      // Now we should be able to get the transfer task and it should not have failed
       t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
       Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
     }

@@ -210,7 +210,7 @@ public class TransferTaskParent
     terminalStates.add(TransferTaskStatus.FAILED_OPT);
     terminalStates.add(TransferTaskStatus.CANCELLED);
     terminalStates.add(TransferTaskStatus.PAUSED);
-    return terminalStates.contains(this.status);
+    return terminalStates.contains(status);
   }
 
   @Override

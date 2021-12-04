@@ -32,51 +32,46 @@ import java.util.concurrent.TimeUnit;
 
 public class TransfersApp
 {
-    private static Logger log = LoggerFactory.getLogger(TransfersApp.class);
+  private static final Logger log = LoggerFactory.getLogger(TransfersApp.class);
 
-    public static void main(String[] args)
-    {
-        log.info("Starting transfers application.");
-        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
-        ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
-            @Override
-            protected void configure() {
-                bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-                bindAsContract(RemoteDataClientFactory.class);
-                bindAsContract(SystemsCache.class).in(Singleton.class);
-                bindAsContract(FileTransfersDAO.class);
-                bindAsContract(TransfersService.class).in(Singleton.class);
-                bindAsContract(FilePermsService.class).in(Singleton.class);
-                bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
-                bindAsContract(ParentTaskTransferService.class).in(Singleton.class);
-                bindAsContract(FilePermsCache.class).in(Singleton.class);
-                bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-                bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
-                bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
-                bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-            }
-        });
+  public static void main(String[] args)
+  {
+    log.info("Starting transfers application.");
+    ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
+    ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
+      @Override
+      protected void configure() {
+        bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+        bindAsContract(RemoteDataClientFactory.class);
+        bindAsContract(SystemsCache.class).in(Singleton.class);
+        bindAsContract(FileTransfersDAO.class);
+        bindAsContract(TransfersService.class).in(Singleton.class);
+        bindAsContract(FilePermsService.class).in(Singleton.class);
+        bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
+        bindAsContract(ParentTaskTransferService.class).in(Singleton.class);
+        bindAsContract(FilePermsCache.class).in(Singleton.class);
+        bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
+        bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
+        bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
+        bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+      }
+    });
 
-        // TODO
-        // Need to init the tenant manager for some reason.
-        TenantManager tenantManager = locator.getService(TenantManager.class);
-        tenantManager.getTenants();
-        ServiceContext serviceContext = locator.getService(ServiceContext.class);
+    // TODO
+    // Need to init the tenant manager for some reason.
+    TenantManager tenantManager = locator.getService(TenantManager.class);
+    tenantManager.getTenants();
+    ServiceContext serviceContext = locator.getService(ServiceContext.class);
 
-        ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
-        ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
-        Flux<TransferTaskParent> parentTaskFlux = parentTaskTransferService.runPipeline();
-        parentTaskFlux.subscribe();
+    ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
+    ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
+    Flux<TransferTaskParent> parentTaskFlux = parentTaskTransferService.runPipeline();
+    parentTaskFlux.subscribe();
 
-        Flux<TransferTaskChild> childTaskFlux = childTaskTransferService.runPipeline();
-        childTaskFlux.subscribe();
-    }
+    Flux<TransferTaskChild> childTaskFlux = childTaskTransferService.runPipeline();
+    childTaskFlux.subscribe();
+  }
 
-    private static void logSuccess(TransferTask t) {
-        log.info(t.toString());
-    }
-
-    private static void logError(Throwable t) {
-        log.error(t.getMessage(), t);
-    }
+  private static void logSuccess(TransferTask t) { log.info(t.toString()); }
+  private static void logError(Throwable t) { log.error(t.getMessage(), t); }
 }

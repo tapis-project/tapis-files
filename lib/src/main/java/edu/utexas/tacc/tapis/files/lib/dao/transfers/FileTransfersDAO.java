@@ -600,7 +600,8 @@ public class FileTransfersDAO {
         }
     }
 
-    public long getIncompleteChildrenCount(@NotNull long taskId) throws DAOException {
+    public long getIncompleteChildrenCount(@NotNull long taskId) throws DAOException
+    {
         ScalarHandler<Long> scalarHandler = new ScalarHandler<>();
         QueryRunner runner = new QueryRunner();
         String query = FileTransfersDAOStatements.GET_CHILD_TASK_INCOMPLETE_COUNT;

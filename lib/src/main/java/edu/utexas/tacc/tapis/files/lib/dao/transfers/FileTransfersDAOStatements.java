@@ -120,13 +120,13 @@ public class FileTransfersDAOStatements {
     public static final String GET_CHILD_TASK_INCOMPLETE_COUNT =
         "SELECT count(id) from transfer_tasks_child " +
             "WHERE task_id = ? " +
-            "AND status != 'COMPLETED' ";
+            "AND status != 'COMPLETED' AND STATUS != 'FAILED_OPT' ";
 
     //language=SQL
     public static final String GET_CHILD_TASK_INCOMPLETE_COUNT_FOR_PARENT =
         "SELECT count(id) from transfer_tasks_child " +
             "WHERE parent_task_id = ? " +
-            "AND status != 'COMPLETED' ";
+            "AND status != 'COMPLETED' AND STATUS != 'FAILED_OPT' ";
 
 
     //language=SQL

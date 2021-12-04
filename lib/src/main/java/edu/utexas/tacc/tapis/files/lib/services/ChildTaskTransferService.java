@@ -470,43 +470,52 @@ public class ChildTaskTransferService
     }
 
     /**
-     * In this step, we check to see if there are unfinished children for both thw
-     * top level TransferTask and the TransferTaskParent. If there all children
-     * that belong to a parent are COMPLETED, then we can mark the parent as COMPLETED. Similarly
-     * for the top TransferTask, if ALL children have completed, the entire transfer is done.
+     * In this step, we check to see if there are any unfinished children for either the top level TransferTask
+     *   or the TransferTaskParent.
+     * If all children that belong to a parent are COMPLETED, then we can mark the parent as COMPLETED.
+     * Similarly for the top TransferTask, if ALL children have completed, the entire transfer is done.
      *
      * @param taskChild TransferTaskChild instance
      * @return updated child
      * @throws ServiceException If the updates to the records in the DB failed
      */
-    private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        try {
-            TransferTask task = dao.getTransferTaskByID(taskChild.getTaskId());
-            TransferTaskParent parent = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-            // Check to see if all the children are complete. If so, update the parent task
-            if (!task.getStatus().equals(TransferTaskStatus.COMPLETED)) {
-                long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getTaskId());
-                if (incompleteCount == 0) {
-                    task.setStatus(TransferTaskStatus.COMPLETED);
-                    task.setEndTime(Instant.now());
-                    dao.updateTransferTask(task);
-                }
-            }
+    private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException
+    {
+      try
+      {
+        TransferTask topTask = dao.getTransferTaskByID(taskChild.getTaskId());
+        TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
 
-            if (!parent.getStatus().equals(TransferTaskStatus.COMPLETED)) {
-                long incompleteCount = dao.getIncompleteChildrenCountForParent(taskChild.getParentTaskId());
-                if (incompleteCount == 0) {
-                    parent.setStatus(TransferTaskStatus.COMPLETED);
-                    parent.setEndTime(Instant.now());
-                    dao.updateTransferTaskParent(parent);
-                }
-            }
-
-            return taskChild;
-        } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronFour", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+        // Check to see if all the children of a top task are complete. If so, update the top task.
+        if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED))
+        {
+          long incompleteCount = dao.getIncompleteChildrenCount(taskChild.getTaskId());
+          if (incompleteCount == 0)
+          {
+            topTask.setStatus(TransferTaskStatus.COMPLETED);
+            topTask.setEndTime(Instant.now());
+            dao.updateTransferTask(topTask);
+          }
         }
+
+        // Check to see if all children of a parent task are complete. If so, update the parent task.
+        if (!parentTask.getStatus().equals(TransferTaskStatus.COMPLETED))
+        {
+          long incompleteCount = dao.getIncompleteChildrenCountForParent(taskChild.getParentTaskId());
+          if (incompleteCount == 0)
+          {
+            parentTask.setStatus(TransferTaskStatus.COMPLETED);
+            parentTask.setEndTime(Instant.now());
+            dao.updateTransferTaskParent(parentTask);
+          }
+        }
+        return taskChild;
+      }
+      catch (DAOException ex)
+      {
+        throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                "chevronFour", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+      }
     }
 
     /**
