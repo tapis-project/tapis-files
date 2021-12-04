@@ -37,10 +37,10 @@ test-output
 *.ids
 *.iml
 *.eml
-*.ids
 *.imp
 *.ipr
 *.iws
+.run/
 
 # Eclipse metadata files
 .project
@@ -60,4 +60,3 @@ Icon
 # Files that might appear on external disk
 .Spotlight-V100
 .Trashes
-
