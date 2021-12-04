@@ -99,12 +99,12 @@ public class ParentTaskTransferService
           Scheduler scheduler = Schedulers.newBoundedElastic(5, 10, "ParentPool:" + group.key());
           return group.flatMap(m ->
             deserializeParentMessage(m)
-              .flatMap(t1 -> Mono.fromCallable(() -> doParentChevronOne(t1))
+              .flatMap(t1 -> Mono.fromCallable(() -> doParentStepOne(t1))
                                  .publishOn(scheduler)
                                  .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
                                                  .maxBackoff(Duration.ofMinutes(60))
                                                  .filter(e -> e.getClass() == IOException.class) )
-                                 .onErrorResume(e -> doErrorParentChevronOne(m, e, t1) ) )
+                                 .onErrorResume(e -> doErrorParentStepOne(m, e, t1) ) )
               .flatMap(t2 -> { m.ack(); return Mono.just(t2); }) );
           } );
   }
@@ -117,7 +117,7 @@ public class ParentTaskTransferService
    * @param parent TransferTaskParent
    * @return Mono TransferTaskParent
    */
-  private Mono<TransferTaskParent> doErrorParentChevronOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent)
+  private Mono<TransferTaskParent> doErrorParentStepOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent)
   {
     log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
     log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", e));
@@ -152,7 +152,7 @@ public class ParentTaskTransferService
     catch (DAOException ex)
     {
       log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", parent.getTenantId(), parent.getUsername(),
-                             "doParentErrorChevronOne", parent.getId(), parent.getUuid(), ex.getMessage()), ex);
+                             "doParentErrorStepOne", parent.getId(), parent.getUuid(), ex.getMessage()), ex);
     }
 
     return Mono.just(parent);
@@ -196,9 +196,9 @@ public class ParentTaskTransferService
      * @throws ForbiddenException when permission denied
      * @throws ServiceException When a listing or DAO error occurs
      */
-    private TransferTaskParent doParentChevronOne(TransferTaskParent parentTask) throws ServiceException, ForbiddenException
+    private TransferTaskParent doParentStepOne(TransferTaskParent parentTask) throws ServiceException, ForbiddenException
     {
-      log.debug("***** DOING doParentChevronOne ****");
+      log.debug("***** DOING doParentStepOne ****");
       log.debug(parentTask.toString());
       TapisSystem sourceSystem;
       IRemoteDataClient sourceClient;
@@ -231,7 +231,7 @@ public class ParentTaskTransferService
       catch (DAOException ex)
       {
         throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-                "doParentChevronOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage()), ex);
+                "doParentStepOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage()), ex);
       }
 
       // Process the source URI
@@ -291,7 +291,7 @@ public class ParentTaskTransferService
       catch (DAOException | TapisException | IOException e)
       {
         throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-                "doParentChevronOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage()), e);
+                "doParentStepOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage()), e);
       }
       return parentTask;
     }

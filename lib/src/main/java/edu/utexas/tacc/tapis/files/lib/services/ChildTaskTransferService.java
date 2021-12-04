@@ -118,12 +118,12 @@ public class ChildTaskTransferService
                         //We need the message in scope so we can ack/nack it later
                         m -> deserializeChildMessage(m)
                             .publishOn(scheduler)
-                            .flatMap(t1 -> Mono.fromCallable(() -> chevronOne(t1))
+                            .flatMap(t1 -> Mono.fromCallable(() -> stepOne(t1))
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
                                         .maxBackoff(Duration.ofSeconds(10))
                                         .scheduler(scheduler)
-                                ).onErrorResume(e -> doErrorChevronOne(m, e, t1))
+                                ).onErrorResume(e -> doErrorStepOne(m, e, t1))
                             )
                             .flatMap(t2 -> Mono.fromCallable(() -> doTransfer(t2))
                                 .retryWhen(
@@ -133,27 +133,27 @@ public class ChildTaskTransferService
                                         .doBeforeRetry(signal-> log.error("RETRY", signal.failure()))
                                         .filter(e -> e.getClass().equals(IOException.class))
                                 )
-                                .onErrorResume(e -> doErrorChevronOne(m, e, t2))
+                                .onErrorResume(e -> doErrorStepOne(m, e, t2))
                             )
-                            .flatMap(t3 -> Mono.fromCallable(() -> chevronThree(t3))
+                            .flatMap(t3 -> Mono.fromCallable(() -> stepThree(t3))
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
                                         .maxBackoff(Duration.ofSeconds(10))
                                         .scheduler(scheduler)
-                                ).onErrorResume(e -> doErrorChevronOne(m, e, t3))
+                                ).onErrorResume(e -> doErrorStepOne(m, e, t3))
                             )
-                            .flatMap(t4 -> Mono.fromCallable(() -> chevronFour(t4))
+                            .flatMap(t4 -> Mono.fromCallable(() -> stepFour(t4))
                                 .retryWhen(
                                     Retry.backoff(MAX_RETRIES, Duration.ofMillis(10))
                                         .maxBackoff(Duration.ofSeconds(10))
                                         .scheduler(scheduler)
-                                ).onErrorResume(e -> doErrorChevronOne(m, e, t4))
+                                ).onErrorResume(e -> doErrorStepOne(m, e, t4))
                             )
                             .flatMap(t5 -> {
                                 m.ack();
                                 return Mono.just(t5);
                             })
-                            .flatMap(t6 -> Mono.fromCallable(() -> chevronFive(t6)))
+                            .flatMap(t6 -> Mono.fromCallable(() -> stepFive(t6)))
                     );
             });
     }
@@ -167,7 +167,7 @@ public class ChildTaskTransferService
      * @param child   the Child task that failed
      * @return Mono with the updated TransferTaskChild
      */
-    private Mono<TransferTaskChild> doErrorChevronOne(AcknowledgableDelivery message, Throwable cause, TransferTaskChild child)
+    private Mono<TransferTaskChild> doErrorStepOne(AcknowledgableDelivery message, Throwable cause, TransferTaskChild child)
     {
       message.nack(false);
       log.error(Utils.getMsg("FILES_TXFR_SVC_ERR10", child.toString()));
@@ -212,7 +212,7 @@ public class ChildTaskTransferService
       catch (DAOException ex)
       {
         log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
-                "doChildErrorChevronOne", child.getId(), child.getUuid(), ex.getMessage()), ex);
+                "doChildErrorStepOne", child.getId(), child.getUuid(), ex.getMessage()), ex);
       }
 
       return Mono.just(child);
@@ -224,8 +224,8 @@ public class ChildTaskTransferService
      * @param taskChild The child transfer task
      * @return Updated TransferTaskChild
      */
-    private TransferTaskChild chevronOne(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        log.info("***** DOING chevronOne ****");
+    private TransferTaskChild stepOne(@NotNull TransferTaskChild taskChild) throws ServiceException {
+        log.info("***** DOING stepOne ****");
         try {
             // Make sure it hasn't been cancelled already
             taskChild = dao.getTransferTaskChild(taskChild.getUuid());
@@ -246,7 +246,7 @@ public class ChildTaskTransferService
             return taskChild;
         } catch (DAOException ex) {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronOne", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+                "stepOne", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
 
     }
@@ -266,14 +266,14 @@ public class ChildTaskTransferService
 
     public TransferTaskChild doTransfer(TransferTaskChild taskChild) throws ServiceException, IOException {
 
-        //We are going to run the meat of the transfer, chevron2 in a separate Future which we can cancel.
+        //We are going to run the meat of the transfer, step2 in a separate Future which we can cancel.
         //This just sets up the future, we first subscribe to the control messages and then start the future
         //which is a blocking call.
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<TransferTaskChild> future = executorService.submit(new Callable<TransferTaskChild>() {
             @Override
             public TransferTaskChild call() throws IOException, ServiceException {
-                return chevronTwo(taskChild);
+                return stepTwo(taskChild);
             }
         });
 
@@ -300,7 +300,7 @@ public class ChildTaskTransferService
         } catch (CancellationException ex) {
             return cancelTransferChild(taskChild);
         } catch (Exception ex) {
-            // Returning a null here tells the Flux to stop consuming downstream of chevron2
+            // Returning a null here tells the Flux to stop consuming downstream of step2
             return null;
         } finally {
             executorService.shutdown();
@@ -314,7 +314,7 @@ public class ChildTaskTransferService
      * @return update child task
      * @throws ServiceException If the DAO updates failed or a transfer failed in flight
      */
-    private TransferTaskChild chevronTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException {
+    private TransferTaskChild stepTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException {
 
         //If we are cancelled/failed we can skip the transfer
         if (taskChild.isTerminal()) return taskChild;
@@ -323,7 +323,7 @@ public class ChildTaskTransferService
         TapisSystem destSystem = null;
         IRemoteDataClient sourceClient;
         IRemoteDataClient destClient;
-        log.info("***** DOING chevronTwo **** {}", taskChild);
+        log.info("***** DOING stepTwo **** {}", taskChild);
 
         //Step 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
         try {
@@ -332,7 +332,7 @@ public class ChildTaskTransferService
             taskChild = dao.updateTransferTaskChild(taskChild);
         } catch (DAOException ex) {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronTwoA", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+                "stepTwoA", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
 
         String sourcePath;
@@ -368,7 +368,7 @@ public class ChildTaskTransferService
                 destSystem, taskChild.getUsername());
         } catch (IOException | ServiceException ex) {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronTwoB", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+                "stepTwoB", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
 
 
@@ -451,9 +451,9 @@ public class ChildTaskTransferService
      * @param taskChild The child transfer task
      * @return updated TransferTaskChild
      */
-    private TransferTaskChild chevronThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
+    private TransferTaskChild stepThree(@NotNull TransferTaskChild taskChild) throws ServiceException {
         // If it cancelled/failed somehow, just push it through unchanged.
-        log.info("DOING chevron3 {}", taskChild);
+        log.info("DOING step3 {}", taskChild);
         if (taskChild.isTerminal()) return taskChild;
         try {
             TransferTaskChild updated = dao.getChildTaskByUUID(taskChild.getUuid());
@@ -465,7 +465,7 @@ public class ChildTaskTransferService
             return updated;
         } catch (DAOException ex) {
             throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronThree", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+                "stepThree", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -479,7 +479,7 @@ public class ChildTaskTransferService
      * @return updated child
      * @throws ServiceException If the updates to the records in the DB failed
      */
-    private TransferTaskChild chevronFour(@NotNull TransferTaskChild taskChild) throws ServiceException
+    private TransferTaskChild stepFour(@NotNull TransferTaskChild taskChild) throws ServiceException
     {
       try
       {
@@ -514,7 +514,7 @@ public class ChildTaskTransferService
       catch (DAOException ex)
       {
         throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                "chevronFour", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+                "stepFour", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
       }
     }
 
@@ -523,8 +523,8 @@ public class ChildTaskTransferService
      * @return Updated child task
      * @throws ServiceException if we can't update the record in the DB
      */
-    private TransferTaskChild chevronFive(@NotNull TransferTaskChild taskChild) {
-        log.info("***** DOING chevronFive **** {}", taskChild);
+    private TransferTaskChild stepFive(@NotNull TransferTaskChild taskChild) {
+        log.info("***** DOING stepFive **** {}", taskChild);
 
         return taskChild;
     }

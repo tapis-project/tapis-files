@@ -748,9 +748,9 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest
     //  could be a bug or a test setup/execution issue.
 
     // NOTE: Final update fo TransferTask happens in step 4 of childTaskService
-    // TODO BUT: it seems the chevron steps in ChildTraskTransferService are not getting called by this test.
+    // TODO BUT: it seems the step steps in ChildTraskTransferService are not getting called by this test.
     //   breakpoints are not getting hit.
-    //   ParentTaskTransferService.doChevronOne is getting called.
+    //   ParentTaskTransferService.doStepOne is getting called.
     //   so issue is probably with the with the test(?)
     //     todo - see what happens with one of these tests that succeeds. are the child svc steps called?
 
