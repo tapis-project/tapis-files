@@ -79,15 +79,10 @@ public class BaseDatabaseIntegrationTest  {
     protected IFileOpsService fileOpsService;
     protected FileUtilsService fileUtilsService;
 
-    public BaseDatabaseIntegrationTest() throws Exception {
-        String privateKey = IOUtils.toString(
-            this.getClass().getResourceAsStream("/test-machine"),
-            StandardCharsets.UTF_8
-        );
-        String publicKey = IOUtils.toString(
-            this.getClass().getResourceAsStream("/test-machine.pub"),
-            StandardCharsets.UTF_8
-        );
+  public BaseDatabaseIntegrationTest() throws Exception
+  {
+    String privateKey = IOUtils.toString(this.getClass().getResourceAsStream("/test-machine"),StandardCharsets.UTF_8);
+    String publicKey = IOUtils.toString(this.getClass().getResourceAsStream("/test-machine.pub"),StandardCharsets.UTF_8);
 
         //SSH system with username/password
         Credential creds = new Credential();

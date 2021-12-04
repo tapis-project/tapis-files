@@ -122,12 +122,12 @@ public class ParentTaskTransferService
     if (parentTask.isTerminal()) return parentTask;
 
     // Check permission
-    boolean isPermitted = checkPermissionsForParent(parentTask);
-    if (!isPermitted) throw new ForbiddenException();
+    if (!isPermitted(parentTask)) throw new ForbiddenException();
 
     // Update the top level task first, if it is not already updated with the startTime
     try
     {
+      // Update top level task status, start time
       TransferTask task = dao.getTransferTaskByID(parentTask.getTaskId());
       if (task.isTerminal()) return parentTask;
       if (task.getStartTime() == null)
@@ -136,12 +136,10 @@ public class ParentTaskTransferService
         task.setStatus(TransferTaskStatus.IN_PROGRESS);
         dao.updateTransferTask(task);
       }
-
       //update parent task status, start time
       parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
       parentTask.setStartTime(Instant.now());
       parentTask = dao.updateTransferTaskParent(parentTask);
-
     }
     catch (DAOException ex)
     {
@@ -156,7 +154,9 @@ public class ParentTaskTransferService
       if (sourceURI.toString().startsWith("tapis://"))
       {
         // Handle the special scheme tapis://
+        // We get a listing from srcSystem so there can be multiple child tasks
         sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURI.getSystemId(), parentTask.getUsername());
+        // If srcSystem not enabled throw an exception
         if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
         {
           String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", parentTask.getTenantId(),
@@ -166,11 +166,13 @@ public class ParentTaskTransferService
         sourceClient = remoteDataClientFactory.getRemoteDataClient(parentTask.getTenantId(), parentTask.getUsername(),
                 sourceSystem, parentTask.getUsername());
 
+        // Get a listing of all files / objects to be transferred
         //TODO: Retries will break this, should delete anything in the DB if it is a retry?
-        List<FileInfo> fileListing;
-        fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 10);
+        List<FileInfo> fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 10);
+        // Create child tasks for each file or object to be transferred.
         List<TransferTaskChild> children = new ArrayList<>();
         long totalBytes = 0;
+        // TODO: Is it possible for there to be no children? Do we need to simply update top level task to complete if so?
         for (FileInfo f : fileListing)
         {
           // Only include the bytes from files. Posix folders are --usually-- 4bytes but not always, so
@@ -179,6 +181,7 @@ public class ParentTaskTransferService
           TransferTaskChild child = new TransferTaskChild(parentTask, f);
           children.add(child);
         }
+        // Update parent task status and totalBytes to be transferred
         parentTask.setTotalBytes(totalBytes);
         parentTask.setStatus(TransferTaskStatus.STAGED);
         parentTask = dao.updateTransferTaskParent(parentTask);
@@ -189,6 +192,7 @@ public class ParentTaskTransferService
       else if (sourceURI.toString().startsWith("http://") || sourceURI.toString().startsWith("https://"))
       {
         // Handle scheme http://
+        // Create a single child task and update parent task status
         TransferTaskChild task = new TransferTaskChild();
         task.setSourceURI(parentTask.getSourceURI());
         task.setParentTaskId(parentTask.getId());
@@ -213,6 +217,7 @@ public class ParentTaskTransferService
 
   /**
    * This method handles exceptions/errors if the parent task failed.
+   * A parent task may have no children, so we also need to check for completion of top level task.
    *
    * @param m      message from rabbitmq
    * @param e      Throwable
@@ -242,8 +247,14 @@ public class ParentTaskTransferService
       TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
       // This should also not happen, it means that the top task was not in the database.
       if (task == null) return Mono.empty();
-      // If parent is required mark top level FAILED and set error message.
-      if (!parent.isOptional())
+
+      // If parent is optional we need to check to see if top task status should be updated
+      // else parent is required so update top level task to FAILED
+      if (parent.isOptional())
+      {
+        checkForComplete(task.getId());
+      }
+      else
       {
         task.setStatus(TransferTaskStatus.FAILED);
         task.setEndTime(Instant.now());
@@ -266,7 +277,7 @@ public class ParentTaskTransferService
    * @return boolean is/is not permitted.
    * @throws ServiceException When api calls for permissions fail
    */
-  private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException
+  private boolean isPermitted(TransferTaskParent parentTask) throws ServiceException
   {
     // For http inputs no need to do any permission checking on the source
     boolean isHttpSource = parentTask.getSourceURI().getProtocol().equalsIgnoreCase("http");
@@ -314,6 +325,28 @@ public class ParentTaskTransferService
       String msg = Utils.getMsg("FILES_TXFR_SVC_ERR11", ex.getMessage());
       log.error(msg);
       throw new ServiceException(msg, ex);
+    }
+  }
+
+  /**
+   * Check to see if the top level TransferTask should be marked as finished.
+   * If yes then update status.
+   *
+   * @param topTaskId Id of top level TransferTask
+   */
+  private void checkForComplete(int topTaskId) throws DAOException
+  {
+    TransferTask topTask = dao.getTransferTaskByID(topTaskId);
+    // Check to see if all the children of a top task are complete. If so, update the top task.
+    if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED))
+    {
+      long incompleteCount = dao.getIncompleteChildrenCount(topTaskId);
+      if (incompleteCount == 0)
+      {
+        topTask.setStatus(TransferTaskStatus.COMPLETED);
+        topTask.setEndTime(Instant.now());
+        dao.updateTransferTask(topTask);
+      }
     }
   }
 }

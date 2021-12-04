@@ -738,24 +738,19 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest
         Assert.assertEquals(listing.size(), 1);
     }
 
-    // TODO: Test for optional parentTask - transfer should not fail if the the parentTask fails
-    //        This always times out. How to get one of the element tasks to fail and still have the
-    //        top level transfer task succeed?
-    //     Is this just a test setup issue? Once the timeout happens the top level task is in state IN_PROGRESS.
-    //       is it just an artifact of the way the test is constructed and executed?
-    //     The parentTask has the correct state, FAILED_OPT
-    //   so how does the top level task state get updated when run with this test framework?
-    //  could be a bug or a test setup/execution issue.
-
-    // NOTE: Final update fo TransferTask happens in step 4 of childTaskService
-    // TODO BUT: it seems the step steps in ChildTraskTransferService are not getting called by this test.
-    //   breakpoints are not getting hit.
-    //   ParentTaskTransferService.doStepOne is getting called.
-    //   so issue is probably with the with the test(?)
-    //     todo - see what happens with one of these tests that succeeds. are the child svc steps called?
-
-    // NOTE: Leave out S3 system just to save time.
-    @Test(dataProvider = "testSystemsDataProviderNoS3", enabled = false)
+  /**
+   * Test for optional parentTask - transfer should not fail if the parentTask fails
+   * Note that this test involves a special case where the parent has no children because
+   *   the single element in the txfr request is for a path that does not exist.
+   *   So when ParentTaskTransferService attempts to list the path in order to create child tasks it throws an error
+   *   and the txfr fails without creating any child tasks.
+   * NOTE: Final update fo TransferTask happens in ChildTaskTransferService stepFour() or doErrorStepOne()
+   *       or in ParentTaskTransferService doErrorParentStepOne
+   * NOTE: Leave out S3 system just to save time.
+   * @param systemsPair system pairs for testing
+   * @throws Exception on error
+   */
+    @Test(dataProvider = "testSystemsDataProviderNoS3", enabled = true)
     public void testTransferOptionalNoFail(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
     {
       TapisSystem sourceSystem = systemsPair.getLeft();
@@ -784,19 +779,6 @@ public class ITestTransfers extends BaseDatabaseIntegrationTest
       Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
       // Give it time to finish then check the task status
       stream.take(Duration.ofSeconds(5)).blockLast();
-
-// TODO - Any need to verify the stream?
-//// StepVerify is part of reactor test framework (takes over stream and you can examine/assert it)
-//      StepVerifier
-//        .create(stream)
-//// Each item as it comes out of the stream should be in the FAILED state
-//// This is the 1st item
-//        .assertNext(k->{ Assert.assertEquals(k.getStatus(), TransferTaskStatus.FAILED); })
-//// Wrap things up
-//        .thenCancel()
-//// Wait for it to complete
-//        .verify(Duration.ofSeconds(5));
-
       // Now we should be able to get the transfer task and it should not have failed
       t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
       Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
