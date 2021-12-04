@@ -48,6 +48,10 @@ public class ParentTaskTransferService
     private final IFileOpsService fileOpsService;
     private static final Logger log = LoggerFactory.getLogger(ParentTaskTransferService.class);
 
+  /* *********************************************************************** */
+  /*            Constructors                                                 */
+  /* *********************************************************************** */
+
     @Inject
     public ParentTaskTransferService(TransfersService transfersService,
                                      FileTransfersDAO dao,
@@ -63,27 +67,9 @@ public class ParentTaskTransferService
         this.permsService = permsService;
     }
 
-    private Mono<TransferTaskParent> deserializeParentMessage(AcknowledgableDelivery message) {
-        try {
-            TransferTaskParent parent = mapper.readValue(message.getBody(), TransferTaskParent.class);
-            return Mono.just(parent);
-        } catch (IOException ex) {
-            // DO NOT requeue the message if it fails here!
-            message.nack(false);
-            return Mono.empty();
-        }
-    }
-
-    private String groupByTenant(AcknowledgableDelivery message) throws ServiceException {
-        try {
-            return mapper.readValue(message.getBody(), TransferTaskParent.class).getTenantId();
-        } catch (IOException ex) {
-            message.nack(false);
-            String msg = Utils.getMsg("FILES_TXFR_SVC_ERR11", ex.getMessage());
-            log.error(msg);
-            throw new ServiceException(msg, ex);
-        }
-    }
+  /* *********************************************************************** */
+  /*                      Public Methods                                     */
+  /* *********************************************************************** */
 
   /**
    * Run a full transfer pipeline for a parent task
@@ -107,6 +93,122 @@ public class ParentTaskTransferService
                                  .onErrorResume(e -> doErrorParentStepOne(m, e, t1) ) )
               .flatMap(t2 -> { m.ack(); return Mono.just(t2); }) );
           } );
+  }
+
+  /* *********************************************************************** */
+  /*            Private Methods                                              */
+  /* *********************************************************************** */
+
+  /**
+   * The one and only step for a ParentTask
+   *
+   * We prepare a "bill of materials" for the total transfer task. This includes doing a recursive listing and
+   * inserting the records into the DB, then publishing all of the messages to rabbitmq. After that, the child task workers
+   * will pick them up and begin the actual transferring of bytes.
+   *
+   * @param parentTask TransferTaskParent
+   * @return Updated task
+   * @throws ForbiddenException when permission denied
+   * @throws ServiceException When a listing or DAO error occurs
+   */
+  private TransferTaskParent doParentStepOne(TransferTaskParent parentTask) throws ServiceException, ForbiddenException
+  {
+    log.debug("***** DOING doParentStepOne ****");
+    log.debug(parentTask.toString());
+    TapisSystem sourceSystem;
+    IRemoteDataClient sourceClient;
+
+    // If already in a terminal state then return
+    if (parentTask.isTerminal()) return parentTask;
+
+    // Check permission
+    boolean isPermitted = checkPermissionsForParent(parentTask);
+    if (!isPermitted) throw new ForbiddenException();
+
+    // Update the top level task first, if it is not already updated with the startTime
+    try
+    {
+      TransferTask task = dao.getTransferTaskByID(parentTask.getTaskId());
+      if (task.isTerminal()) return parentTask;
+      if (task.getStartTime() == null)
+      {
+        task.setStartTime(Instant.now());
+        task.setStatus(TransferTaskStatus.IN_PROGRESS);
+        dao.updateTransferTask(task);
+      }
+
+      //update parent task status, start time
+      parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
+      parentTask.setStartTime(Instant.now());
+      parentTask = dao.updateTransferTaskParent(parentTask);
+
+    }
+    catch (DAOException ex)
+    {
+      throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+              "doParentStepOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage()), ex);
+    }
+
+    // Process the source URI
+    try
+    {
+      TransferURI sourceURI = parentTask.getSourceURI();
+      if (sourceURI.toString().startsWith("tapis://"))
+      {
+        // Handle the special scheme tapis://
+        sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURI.getSystemId(), parentTask.getUsername());
+        if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
+        {
+          String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", parentTask.getTenantId(),
+                  parentTask.getUsername(), parentTask.getId(), parentTask.getUuid(), sourceSystem.getId());
+          throw new ServiceException(msg);
+        }
+        sourceClient = remoteDataClientFactory.getRemoteDataClient(parentTask.getTenantId(), parentTask.getUsername(),
+                sourceSystem, parentTask.getUsername());
+
+        //TODO: Retries will break this, should delete anything in the DB if it is a retry?
+        List<FileInfo> fileListing;
+        fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 10);
+        List<TransferTaskChild> children = new ArrayList<>();
+        long totalBytes = 0;
+        for (FileInfo f : fileListing)
+        {
+          // Only include the bytes from files. Posix folders are --usually-- 4bytes but not always, so
+          // it can make some weird totals that don't really make sense.
+          if (!f.isDir()) totalBytes += f.getSize();
+          TransferTaskChild child = new TransferTaskChild(parentTask, f);
+          children.add(child);
+        }
+        parentTask.setTotalBytes(totalBytes);
+        parentTask.setStatus(TransferTaskStatus.STAGED);
+        parentTask = dao.updateTransferTaskParent(parentTask);
+        dao.bulkInsertChildTasks(children);
+        children = dao.getAllChildren(parentTask);
+        transfersService.publishBulkChildMessages(children);
+      }
+      else if (sourceURI.toString().startsWith("http://") || sourceURI.toString().startsWith("https://"))
+      {
+        // Handle scheme http://
+        TransferTaskChild task = new TransferTaskChild();
+        task.setSourceURI(parentTask.getSourceURI());
+        task.setParentTaskId(parentTask.getId());
+        task.setTaskId(parentTask.getTaskId());
+        task.setDestinationURI(parentTask.getDestinationURI());
+        task.setStatus(TransferTaskStatus.ACCEPTED);
+        task.setTenantId(parentTask.getTenantId());
+        task.setUsername(parentTask.getUsername());
+        task = dao.insertChildTask(task);
+        transfersService.publishChildMessage(task);
+        parentTask.setStatus(TransferTaskStatus.STAGED);
+        parentTask = dao.updateTransferTaskParent(parentTask);
+      }
+    }
+    catch (DAOException | TapisException | IOException e)
+    {
+      throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+              "doParentStepOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage()), e);
+    }
+    return parentTask;
   }
 
   /**
@@ -152,147 +254,66 @@ public class ParentTaskTransferService
     catch (DAOException ex)
     {
       log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", parent.getTenantId(), parent.getUsername(),
-                             "doParentErrorStepOne", parent.getId(), parent.getUuid(), ex.getMessage()), ex);
+              "doParentErrorStepOne", parent.getId(), parent.getUuid(), ex.getMessage()), ex);
     }
-
     return Mono.just(parent);
   }
 
-    /**
-     * This method checks the permissions on both the source and destination of the transfer.
-     *
-     * @param parentTask the TransferTaskParent
-     * @return boolean is/is not permitted.
-     * @throws ServiceException When api calls for permissions fail
-     */
-    private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException
+  /**
+   * This method checks the permissions on both the source and destination of the transfer.
+   *
+   * @param parentTask the TransferTaskParent
+   * @return boolean is/is not permitted.
+   * @throws ServiceException When api calls for permissions fail
+   */
+  private boolean checkPermissionsForParent(TransferTaskParent parentTask) throws ServiceException
+  {
+    // For http inputs no need to do any permission checking on the source
+    boolean isHttpSource = parentTask.getSourceURI().getProtocol().equalsIgnoreCase("http");
+    String tenantId = parentTask.getTenantId();
+    String username = parentTask.getUsername();
+
+    String srcSystemId = parentTask.getSourceURI().getSystemId();
+    String srcPath = parentTask.getSourceURI().getPath();
+    String destSystemId = parentTask.getDestinationURI().getSystemId();
+    String destPath = parentTask.getDestinationURI().getPath();
+
+    // If we have a tapis:// link, have to do the source perms check
+    if (!isHttpSource)
     {
-      // For http inputs no need to do any permission checking on the source
-      boolean isHttpSource = parentTask.getSourceURI().getProtocol().equalsIgnoreCase("http");
-      String tenantId = parentTask.getTenantId();
-      String username = parentTask.getUsername();
-
-      String srcSystemId = parentTask.getSourceURI().getSystemId();
-      String srcPath = parentTask.getSourceURI().getPath();
-      String destSystemId = parentTask.getDestinationURI().getSystemId();
-      String destPath = parentTask.getDestinationURI().getPath();
-
-      // If we have a tapis:// link, have to do the source perms check
-      if (!isHttpSource)
-      {
-        boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
-        if (!sourcePerms) return false;
-      }
-      return permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
+      boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
+      if (!sourcePerms) return false;
     }
+    return permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
+  }
 
-    /**
-     * We prepare a "bill of materials" for the total transfer task. This includes doing a recursive listing and
-     * inserting the records into the DB, then publishing all of the messages to rabbitmq. After that, the child task workers
-     * will pick them up and begin the actual transferring of bytes.
-     *
-     * @param parentTask TransferTaskParent
-     * @return Updated task
-     * @throws ForbiddenException when permission denied
-     * @throws ServiceException When a listing or DAO error occurs
-     */
-    private TransferTaskParent doParentStepOne(TransferTaskParent parentTask) throws ServiceException, ForbiddenException
+  private Mono<TransferTaskParent> deserializeParentMessage(AcknowledgableDelivery message)
+  {
+    try
     {
-      log.debug("***** DOING doParentStepOne ****");
-      log.debug(parentTask.toString());
-      TapisSystem sourceSystem;
-      IRemoteDataClient sourceClient;
-
-      // If already in a terminal state then return
-      if (parentTask.isTerminal()) return parentTask;
-
-      // Check permission
-      boolean isPermitted = checkPermissionsForParent(parentTask);
-      if (!isPermitted) throw new ForbiddenException();
-
-      // Update the top level task first, if it is not already updated with the startTime
-      try
-      {
-        TransferTask task = dao.getTransferTaskByID(parentTask.getTaskId());
-        if (task.isTerminal()) return parentTask;
-        if (task.getStartTime() == null)
-        {
-          task.setStartTime(Instant.now());
-          task.setStatus(TransferTaskStatus.IN_PROGRESS);
-          dao.updateTransferTask(task);
-        }
-
-        //update parent task status, start time
-        parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
-        parentTask.setStartTime(Instant.now());
-        parentTask = dao.updateTransferTaskParent(parentTask);
-
-      }
-      catch (DAOException ex)
-      {
-        throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-                "doParentStepOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage()), ex);
-      }
-
-      // Process the source URI
-      try
-      {
-        TransferURI sourceURI = parentTask.getSourceURI();
-        if (sourceURI.toString().startsWith("tapis://"))
-        {
-          // Handle the special scheme tapis://
-          sourceSystem = systemsCache.getSystem(parentTask.getTenantId(), sourceURI.getSystemId(), parentTask.getUsername());
-          if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
-          {
-            String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", parentTask.getTenantId(),
-                    parentTask.getUsername(), parentTask.getId(), parentTask.getUuid(), sourceSystem.getId());
-            throw new ServiceException(msg);
-          }
-          sourceClient = remoteDataClientFactory.getRemoteDataClient(parentTask.getTenantId(), parentTask.getUsername(),
-                                                                     sourceSystem, parentTask.getUsername());
-
-          //TODO: Retries will break this, should delete anything in the DB if it is a retry?
-          List<FileInfo> fileListing;
-          fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 10);
-          List<TransferTaskChild> children = new ArrayList<>();
-          long totalBytes = 0;
-          for (FileInfo f : fileListing)
-          {
-            // Only include the bytes from files. Posix folders are --usually-- 4bytes but not always, so
-            // it can make some weird totals that don't really make sense.
-            if (!f.isDir()) totalBytes += f.getSize();
-            TransferTaskChild child = new TransferTaskChild(parentTask, f);
-            children.add(child);
-          }
-          parentTask.setTotalBytes(totalBytes);
-          parentTask.setStatus(TransferTaskStatus.STAGED);
-          parentTask = dao.updateTransferTaskParent(parentTask);
-          dao.bulkInsertChildTasks(children);
-          children = dao.getAllChildren(parentTask);
-          transfersService.publishBulkChildMessages(children);
-        }
-        else if (sourceURI.toString().startsWith("http://") || sourceURI.toString().startsWith("https://"))
-        {
-          // Handle scheme http://
-          TransferTaskChild task = new TransferTaskChild();
-          task.setSourceURI(parentTask.getSourceURI());
-          task.setParentTaskId(parentTask.getId());
-          task.setTaskId(parentTask.getTaskId());
-          task.setDestinationURI(parentTask.getDestinationURI());
-          task.setStatus(TransferTaskStatus.ACCEPTED);
-          task.setTenantId(parentTask.getTenantId());
-          task.setUsername(parentTask.getUsername());
-          task = dao.insertChildTask(task);
-          transfersService.publishChildMessage(task);
-          parentTask.setStatus(TransferTaskStatus.STAGED);
-          parentTask = dao.updateTransferTaskParent(parentTask);
-        }
-      }
-      catch (DAOException | TapisException | IOException e)
-      {
-        throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-                "doParentStepOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage()), e);
-      }
-      return parentTask;
+      TransferTaskParent parent = mapper.readValue(message.getBody(), TransferTaskParent.class);
+      return Mono.just(parent);
     }
+    catch (IOException ex)
+    {
+      // DO NOT requeue the message if it fails here!
+      message.nack(false);
+      return Mono.empty();
+    }
+  }
+
+  private String groupByTenant(AcknowledgableDelivery message) throws ServiceException
+  {
+    try
+    {
+      return mapper.readValue(message.getBody(), TransferTaskParent.class).getTenantId();
+    }
+    catch (IOException ex)
+    {
+      message.nack(false);
+      String msg = Utils.getMsg("FILES_TXFR_SVC_ERR11", ex.getMessage());
+      log.error(msg);
+      throw new ServiceException(msg, ex);
+    }
+  }
 }
