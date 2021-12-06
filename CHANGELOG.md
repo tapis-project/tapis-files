@@ -8,6 +8,19 @@ https://tapis.readthedocs.io/en/latest/technical/files.html
 You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
+## 1.0.3 - 202?-??-??
+
+TBD
+
+### New features:
+- TBD
+
+### Updates:
+- 
+
+### Bug fixes:
+- None.
+
 ## 1.0.2 - 2021-12-06
 
 Incremental improvements, support optional flag for file transfers.
