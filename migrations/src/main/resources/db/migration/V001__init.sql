@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS transfer_tasks_child
   bytes_transferred  BIGINT                   NOT NULL default 0,
   total_bytes        BIGINT                   NOT NULL default 0,
   retries            INT                      NOT NULL default 0,
+  is_dir             boolean                  NOT NULL default false,
   start_time         TIMESTAMP WITH TIME ZONE,
   end_time           TIMESTAMP WITH TIME ZONE,
   error_message      VARCHAR,

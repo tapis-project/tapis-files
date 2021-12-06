@@ -8,12 +8,12 @@ https://tapis.readthedocs.io/en/latest/technical/files.html
 You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
-## 1.0.2 - 2021-??-??
+## 1.0.2 - 2021-12-06
 
-Incremental improvements.
+Incremental improvements, support optional flag for file transfers.
 
 ### New features:
-- None
+- Support optional flag for file transfers.
 
 ### Updates:
 - Add debug logging of cache key loads.
