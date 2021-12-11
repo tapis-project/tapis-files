@@ -75,23 +75,22 @@ public class HTTPClient implements IRemoteDataClient {
     throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "getFileInfo") );
   }
 
-    @Override
-    public InputStream getStream(@NotNull String path) throws IOException {
-        OkHttpClient client = new OkHttpClient.Builder().build();
-        Request request = new Request.Builder()
-            .url(path)
-            .build();
-
-        Response response = client.newCall(request).execute();
-        if (!response.isSuccessful()) {
-            String msg = Utils.getMsg("FILES_CLIENT_HTTP_ERR", oboTenant, oboUser, srcDstURIs, path, response);
-            log.error(msg);
-            throw new IOException(msg);
-        }
-        return response.body().byteStream();
+  @Override
+  public InputStream getStream(@NotNull String path) throws IOException
+  {
+    OkHttpClient client = new OkHttpClient.Builder().build();
+    Request request = new Request.Builder().url(path).build();
+    Response response = client.newCall(request).execute();
+    if (!response.isSuccessful())
+    {
+      String msg = Utils.getMsg("FILES_CLIENT_HTTP_ERR", oboTenant, oboUser, srcDstURIs, path, response);
+      log.error(msg);
+      throw new IOException(msg);
     }
+    return response.body().byteStream();
+  }
 
-    @Override
+   @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
         throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
     }

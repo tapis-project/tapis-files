@@ -1,11 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
@@ -28,6 +31,8 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static edu.utexas.tacc.tapis.shared.TapisConstants.APPS_SERVICE;
+
 /*
  * Service level methods for File Operations.
  *  -  Each public method uses provided IRemoteDataClient and other service library classes to perform all top level
@@ -45,12 +50,21 @@ public class FileOpsService implements IFileOpsService
     private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
     private final FilePermsService permsService;
 
+    private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
     // 0=systemId, 1=path, 2=tenant
     private final String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}?tenant={2}";
     private static final int MAX_RECURSION = 20;
 
     @Inject
     public FileOpsService(FilePermsService svc) { permsService = svc; }
+
+  // We must be running on a specific site and this will never change
+  // These are initialized in method initService()
+  private static String siteId;
+  private static String siteAdminTenantId;
+  public static String getSiteId() {return siteId;}
+  public static String getServiceTenantId() {return siteAdminTenantId;}
+  public static String getServiceUserId() {return SERVICE_NAME;}
 
   /**
    * List files at path
@@ -425,6 +439,22 @@ public class FileOpsService implements IFileOpsService
         throw new ServiceException(msg, ex);
       }
     }
+  /**
+   * Initialize the service:
+   *   init service context
+   *   migrate DB
+   */
+  public void initService(String siteId1, String siteAdminTenantId1, String svcPassword) throws TapisException, TapisClientException
+  {
+    // Initialize service context and site info
+    siteId = siteId1;
+    siteAdminTenantId = siteAdminTenantId1;
+//  TODO
+//    serviceContext.initServiceJWT(siteId, APPS_SERVICE, svcPassword);
+//    // Make sure DB is present and updated to latest version using flyway
+//    dao.migrateDB();
+  }
+
 
   /* **************************************************************************** */
   /*                                Private Methods                               */

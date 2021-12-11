@@ -222,7 +222,8 @@ public class TransfersService
 
     /**
      * Creates the top level TransferTask in table transfer_tasks
-     * and from the provided elements list the associated TransferTaskParents in the table transfer_tasks_parent
+     * Creates the associated TransferTaskParents in the table transfer_tasks_parent
+     *   using the provided elements list creates the
      *
      * @param username Obo username
      * @param tenantId tenantId
@@ -253,7 +254,7 @@ public class TransfersService
       }
     }
 
-    // TODO/TBD: Is this method only for testing?
+    // TODO/TBD: Is this method only for testing? Can it be made package-private?
     public TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException
     {
         try { return dao.insertChildTask(task); }

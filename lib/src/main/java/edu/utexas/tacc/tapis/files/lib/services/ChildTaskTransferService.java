@@ -62,17 +62,18 @@ public class ChildTaskTransferService
   /*            Constructors                                                 */
   /* *********************************************************************** */
 
-    @Inject
-    public ChildTaskTransferService(TransfersService transfersService, FileTransfersDAO dao,
-                                    FileUtilsService fileUtilsService,
-                                    RemoteDataClientFactory remoteDataClientFactory,
-                                    SystemsCache systemsCache) {
-        this.transfersService = transfersService;
-        this.dao = dao;
-        this.systemsCache = systemsCache;
-        this.remoteDataClientFactory = remoteDataClientFactory;
-        this.fileUtilsService = fileUtilsService;
-    }
+  @Inject
+  public ChildTaskTransferService(TransfersService transfersService1, FileTransfersDAO dao1,
+                                  FileUtilsService fileUtilsService1,
+                                  RemoteDataClientFactory remoteDataClientFactory1,
+                                  SystemsCache systemsCache1)
+  {
+    transfersService = transfersService1;
+    dao = dao1;
+    systemsCache = systemsCache1;
+    remoteDataClientFactory = remoteDataClientFactory1;
+    fileUtilsService = fileUtilsService1;
+  }
 
   /* *********************************************************************** */
   /*                      Public Methods                                     */
@@ -91,7 +92,7 @@ public class ChildTaskTransferService
         return transfersService.streamChildMessages()
             .groupBy((m)-> {
                 try {
-                    return this.childTaskGrouper(m);
+                    return childTaskGrouper(m);
                 } catch (IOException ex) {
                     return Mono.empty();
                 }
@@ -195,6 +196,7 @@ public class ChildTaskTransferService
 
   /**
    * Perform the transfer, this is the meat of the operation.
+   * TODO: Support a GLOBUS type point to point transfer
    *
    * @param taskChild the incoming child task
    * @return update child task
@@ -276,19 +278,25 @@ public class ChildTaskTransferService
       return taskChild;
     }
 
+    // TODO/TBD: Handle a GLOBUS type point to point txfr where we are not in control of the stream.
+    //       We will need to initiate the transfer, get the externalTransferId, update the child/parent task
+    //         with the externalTransferId (or will this be done in the synchronous call?).
+    //       Then monitor the transfer and update the progress.
+    // TODO/TBD: Or, maybe the txfr will be initiated synchronously and all we will need to do here is
+    //           use the externalTransferId to monitor the progress and update the status.
+
     //SubStep 4: Stream the file contents to dest. While the InputStream is open,
     // we put a tap on it and send events that get grouped into 100 ms intervals. Progress
     // on the child tasks are updated during the reading of the source input stream.
     try (InputStream sourceStream = sourceClient.getStream(sourcePath);
          ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream) )
     {
-      // Observe the progress event stream, just get the last event from
-      // the past 1 second.
+      // Observe the progress event stream, just get the last event from the past 1 second.
       final TransferTaskChild finalTaskChild = taskChild;
       observableInputStream.getEventStream()
               .window(Duration.ofMillis(100))
               .flatMap(window -> window.takeLast(1))
-              .flatMap((progress) -> this.updateProgress(progress, finalTaskChild))
+              .flatMap((progress) -> updateProgress(progress, finalTaskChild))
               .subscribe();
       destClient.upload(destURL.getPath(), observableInputStream);
     }
@@ -392,7 +400,7 @@ public class ChildTaskTransferService
 
   /**
    * Error handler for any of the steps.
-   * TODO: Since FAILED_OPT is now supported we also need to check here if
+   * Since FAILED_OPT is now supported we also need to check here if
    *       top task / parent task are done and update status (as is done in stepFour).
    * @param msg Message from rabbitmq
    * @param cause   Exception that was thrown
@@ -406,9 +414,13 @@ public class ChildTaskTransferService
 
     // First update child task, mark FAILED_OPT or FAILED and set error message
     if (child.isOptional())
+    {
       child.setStatus(TransferTaskStatus.FAILED_OPT);
+    }
     else
+    {
       child.setStatus(TransferTaskStatus.FAILED);
+    }
     child.setErrorMessage(cause.getMessage());
     try
     {
@@ -430,9 +442,13 @@ public class ChildTaskTransferService
         // Mark FAILED_OPT or FAILED and set error message
         // NOTE: We can have a child which is required but the parent is optional
         if (parent.isOptional())
+        {
           parent.setStatus(TransferTaskStatus.FAILED_OPT);
+        }
         else
+        {
           parent.setStatus(TransferTaskStatus.FAILED);
+        }
         parent.setEndTime(Instant.now());
         parent.setErrorMessage(cause.getMessage());
         dao.updateTransferTaskParent(parent);

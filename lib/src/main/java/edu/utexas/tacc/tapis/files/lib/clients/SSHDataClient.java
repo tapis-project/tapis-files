@@ -349,34 +349,41 @@ public class SSHDataClient implements ISSHDataClient
   }
 
   /**
-     * Stream data from file using sftpClient
-     *
-     * @param path - Path to file or directory relative to the system rootDir
-     * @return data stream
-     * @throws IOException Generally a network error
-     * @throws NotFoundException No file at target
-     */
-    @Override
-    public InputStream getStream(@NotNull String path) throws IOException
+   * Stream data from file using sftpClient
+   *
+   * @param path - Path to file or directory relative to the system rootDir
+   * @return data stream
+   * @throws IOException Generally a network error
+   * @throws NotFoundException No file at target
+   */
+  @Override
+  public InputStream getStream(@NotNull String path) throws IOException
+  {
+    Path absPath = PathUtils.getAbsolutePath(rootDir, path);
+    SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+    try
     {
-      Path absPath = PathUtils.getAbsolutePath(rootDir, path);
-      SSHSftpClient sftpClient = connectionHolder.getSftpClient();
-      try {
-        InputStream inputStream = sftpClient.read(absPath.toString());
-        //TapisSSHInputStream closes the sftp connection after reading completes
-        return new TapisSSHInputStream(inputStream, connectionHolder, sftpClient);
-      } catch (IOException e) {
-        connectionHolder.returnSftpClient(sftpClient);
-        if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
-          String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, rootDir, path);
-          throw new NotFoundException(msg);
-        } else {
-          String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "getStream", systemId, username, host, path, e.getMessage());
-          log.error(msg, e);
-          throw new IOException(msg, e);
-        }
+      InputStream inputStream = sftpClient.read(absPath.toString());
+      // TapisSSHInputStream closes the sftp connection after reading completes
+      return new TapisSSHInputStream(inputStream, connectionHolder, sftpClient);
+    }
+    catch (IOException e)
+    {
+      connectionHolder.returnSftpClient(sftpClient);
+      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
+      {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, username, host, rootDir, path);
+        throw new NotFoundException(msg);
+      }
+      else
+      {
+        String msg = Utils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "getStream", systemId, username, host,
+                                  path, e.getMessage());
+        log.error(msg, e);
+        throw new IOException(msg, e);
       }
     }
+  }
 
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {

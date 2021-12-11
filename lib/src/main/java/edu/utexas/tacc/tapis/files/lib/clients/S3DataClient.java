@@ -354,24 +354,29 @@ public class S3DataClient implements IS3DataClient
     return fileInfo;
   }
 
-    @Override
-    public InputStream getStream(@NotNull String path) throws IOException, NotFoundException
+  @Override
+  public InputStream getStream(@NotNull String path) throws IOException, NotFoundException
+  {
+    // Determine the absolute path and the corresponding object key.
+    String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
+    String objKey = StringUtils.removeStart(absolutePath, "/");
+    try
     {
-        // Determine the absolute path and the corresponding object key.
-        String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
-        String objKey = StringUtils.removeStart(absolutePath, "/");
-        try {
-            GetObjectRequest req = GetObjectRequest.builder().bucket(bucket).key(objKey).build();
-            return client.getObject(req, ResponseTransformer.toInputStream());
-        } catch (NoSuchKeyException ex) {
-            throw new NotFoundException();
-        } catch (S3Exception ex) {
-            String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "getStream", system.getId(), bucket,
-                                      path, ex.getMessage());
-            log.error(msg);
-            throw new IOException(msg, ex);
-        }
+      GetObjectRequest req = GetObjectRequest.builder().bucket(bucket).key(objKey).build();
+      return client.getObject(req, ResponseTransformer.toInputStream());
     }
+    catch (NoSuchKeyException ex)
+    {
+      throw new NotFoundException();
+    }
+    catch (S3Exception ex)
+    {
+      String msg = Utils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "getStream", system.getId(), bucket,
+                                path, ex.getMessage());
+      log.error(msg);
+      throw new IOException(msg, ex);
+    }
+  }
 
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count)

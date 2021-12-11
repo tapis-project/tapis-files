@@ -102,9 +102,9 @@ public class ParentTaskTransferService
   /**
    * The one and only step for a ParentTask
    *
-   * We prepare a "bill of materials" for the total transfer task. This includes doing a recursive listing and
-   * inserting the records into the DB, then publishing all of the messages to rabbitmq. After that, the child task workers
-   * will pick them up and begin the actual transferring of bytes.
+   * We prepare a "bill of materials" for the total transfer task.
+   * This includes doing a recursive listing and inserting the records into the DB, then publishing all the messages to
+   * rabbitmq. After that, the child task workers will pick them up and begin the actual transferring of bytes.
    *
    * @param parentTask TransferTaskParent
    * @return Updated task

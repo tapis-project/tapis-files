@@ -32,10 +32,13 @@ import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
 import org.glassfish.grizzly.nio.transport.TCPNIOTransport;
 import org.glassfish.grizzly.threadpool.ThreadPoolConfig;
+import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
+import org.glassfish.jersey.internal.inject.InjectionManager;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
+import org.glassfish.jersey.server.ApplicationHandler;
 import org.glassfish.jersey.server.ResourceConfig;
 
 import javax.inject.Singleton;
@@ -47,7 +50,7 @@ import java.util.concurrent.TimeUnit;
 /*
  * Main startup class for the web application. Uses Jersey and Grizzly frameworks.
  *   Performs setup for HK2 dependency injection.
- *   Registers packages and features for Jersey.
+ *   Register packages and features for Jersey.
  *   Gets runtime parameters from the environment.
  *   Initializes the service:
  *     Init service context.
@@ -74,7 +77,6 @@ public class FilesApplication extends ResourceConfig
 
   public FilesApplication()
   {
-    super();
     // Log our existence.
     // Output version information on startup
     System.out.println("**** Starting Files Service. Version: " + TapisUtils.getTapisFullVersion() + " ****");
@@ -94,6 +96,9 @@ public class FilesApplication extends ResourceConfig
     // can't be implemented in a generic mapper
     register(FilesExceptionMapper.class);
     register(ValidationExceptionMapper.class);
+
+    // Register service class for calling init method during application startup
+    register(FileOpsService.class);
 
     // AuthZ filters
     register(FilePermissionsAuthz.class);
@@ -120,7 +125,10 @@ public class FilesApplication extends ResourceConfig
 
     // Perform remaining init steps in try block so we can print a fatal error message if something goes wrong.
     try {
+      // Get runtime parameters
       IRuntimeConfig runtimeConfig = RuntimeSettings.get();
+
+      // Set site on which we are running. This is a required runtime parameter.
       siteId = runtimeConfig.getSiteId();
 
       String url = runtimeConfig.getTenantsServiceURL();
@@ -129,6 +137,7 @@ public class FilesApplication extends ResourceConfig
       // Set admin tenant also, needed when building a client for calling other services (such as SK) as ourselves.
       siteAdminTenantId = tenantManager.getSiteAdminTenantId(siteId);
 
+      // Initialize security filter used when processing a request.
       JWTValidateRequestFilter.setSiteId(siteId);
       JWTValidateRequestFilter.setService(TapisConstants.SERVICE_NAME_FILES);
       SSHConnection.setLocalNodeName(runtimeConfig.getHostName());
@@ -164,7 +173,8 @@ public class FilesApplication extends ResourceConfig
   /**
    * Embedded Grizzly HTTP server
    */
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) throws Exception
+  {
     // If TAPIS_SERVICE_PORT set in env then use it.
     // Useful for starting service locally on a busy system where 8080 may not be available.
     String servicePort = System.getenv("TAPIS_SERVICE_PORT");
@@ -177,23 +187,20 @@ public class FilesApplication extends ResourceConfig
     FilesApplication config = new FilesApplication();
 
     // TODO/TBD - adapt from Apps to Files
-    //  Initialize the service
+    // Initialize the service
     // In order to instantiate our service class using HK2 we need to create an application handler
     //   which allows us to get an injection manager which is used to get a locator.
     //   The locator is used get classes that have been registered using AbstractBinder.
     // NOTE: As of Jersey 2.26 dependency injection was abstracted out to make it easier to use DI frameworks
     //       other than HK2, although finding docs and examples on how to do so seems difficult.
-//    ApplicationHandler handler = new ApplicationHandler(config);
-//    InjectionManager im = handler.getInjectionManager();
-//    ServiceLocator locator = im.getInstance(ServiceLocator.class);
-//    AppsServiceImpl svcImpl = locator.getService(AppsServiceImpl.class);
-//
-//    // Call the main service init method
-//    svcImpl.initService(siteId, siteAdminTenantId, RuntimeParameters.getInstance().getServicePassword());
-//    // Create and start the server
-//    final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(baseUri, config, false);
-//    server.start();
+    ApplicationHandler handler = new ApplicationHandler(config);
+    InjectionManager im = handler.getInjectionManager();
+    ServiceLocator locator = im.getInstance(ServiceLocator.class);
+    FileOpsService svcImpl = locator.getService(FileOpsService.class);
 
+    // Call the main service init method
+    svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
+    // Create and start the server
     final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(baseUri, config, false);
     Collection<NetworkListener> listeners = server.getListeners();
     for (NetworkListener listener : listeners)

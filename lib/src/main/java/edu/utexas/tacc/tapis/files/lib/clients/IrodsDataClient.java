@@ -348,19 +348,22 @@ public class IrodsDataClient implements IRemoteDataClient {
     return fileInfo;
   }
 
-   @Override
-    public InputStream getStream(@NotNull String remotePath) throws IOException {
-        Path cleanedRelativePath = cleanAndRelativize(remotePath);
-        Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());
-        IRODSFileFactory fileFactory = getFileFactory();
-        try {
-            InputStream stream = new PackingIrodsInputStream(fileFactory.instanceIRODSFileInputStream(cleanedAbsolutePath.toString()));
-            return stream;
-        } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
-            throw new IOException(msg, ex);
-        }
+  @Override
+  public InputStream getStream(@NotNull String remotePath) throws IOException
+  {
+    Path cleanedRelativePath = cleanAndRelativize(remotePath);
+    Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());
+    IRODSFileFactory fileFactory = getFileFactory();
+    try
+    {
+      return new PackingIrodsInputStream(fileFactory.instanceIRODSFileInputStream(cleanedAbsolutePath.toString()));
     }
+    catch (JargonException ex)
+    {
+      String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+      throw new IOException(msg, ex);
+    }
+  }
 
 
     /**
