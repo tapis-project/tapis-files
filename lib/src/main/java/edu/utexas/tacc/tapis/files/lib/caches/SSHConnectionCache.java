@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.caches;
 
 import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -23,6 +22,11 @@ import java.util.concurrent.TimeUnit;
  * A single threaded ScheduledExecutorService is used to periodically do the maintenance
  *
  * The cache key is a combination of systemId, tenant and username
+ *
+ * https://github.com/google/guava/wiki/CachesExplained
+ *
+ * NOTE: If performance or reliability becomes an issue may want to consider using Caffeine or Ehcache.
+ *       Caffeine is the successor to Google's guava cache and is supposed to be close to a drop in replacement.
  */
 public class SSHConnectionCache
 {
@@ -31,45 +35,49 @@ public class SSHConnectionCache
 
   /**
    * Constructor for the cache
+   * NOTE: Can add recordStats() to the CacheBuilder if we want to monitor stats
+   * @param maxSize maximum size
    * @param timeout Timeout of when to preform maintenance
    * @param timeUnit TimeUnit of timeout
    */
-  public SSHConnectionCache(long timeout, TimeUnit timeUnit)
+  public SSHConnectionCache(long maxSize, long timeout, TimeUnit timeUnit)
   {
-    sessionCache = CacheBuilder.newBuilder().recordStats().build(new SSHConnectionCacheLoader());
+    // Create a cache that uses SSHConnectionCacheLoader to create new entries.
+    // Set max size and have the cache expire entries using timeout values
+    // Note that we use expireAfterWrite instead of expireAfterAccess because of the concern that a user's
+    //   credentials will change. If we used expireAfterAccess and a system+user is accessed frequently we might
+    //   never pick up the new credentials.
+    sessionCache = CacheBuilder.newBuilder().maximumSize(maxSize).expireAfterWrite(timeout, timeUnit)
+                               .removalListener(new SSHConnectionStop())
+                               .build(new SSHConnectionCacheLoader());
+    // Start a thread to signal the cache to clean up. The cache itself does not have a thread. Instead, it performs
+    //   small amounts of maintenance during read/write.
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-    executorService.scheduleAtFixedRate( ()-> {
-      sessionCache.asMap().forEach( (SSHConnectionCacheKey key, SSHConnectionHolder holder) -> {
-        if (holder.getChannelCount() == 0) {
-          log.debug("Closing SSH connecting from cache: {} for user {}", holder.getSshConnection().getHost(), holder.getSshConnection().getUsername());
-          sessionCache.invalidate(key);
-          holder.getSshConnection().stop();
-        }
-      });
-    }, timeout, timeout, timeUnit);
-  }
-
-  /**
-   * Return the cache stats
-   * @return stats for the cache
-   */
-  public CacheStats getCacheStats() {
-    return sessionCache.stats();
-  }
-
-  /**
-   * Return the internal google cache
-   * @return the internal google cache
-   */
-  public LoadingCache<SSHConnectionCacheKey, SSHConnectionHolder> getCache() {
-    return sessionCache;
+    executorService.scheduleAtFixedRate(() -> sessionCache.cleanUp(), timeout, timeout, timeUnit);
+//    executorService.scheduleAtFixedRate(
+//            ()-> sessionCache.asMap().forEach((SSHConnectionCacheKey key, SSHConnectionHolder holder) ->
+//            {
+//
+//              // TODO/TBD: Move closing to a RemovalListener
+//              if (holder.getChannelCount() == 0)
+//              {
+//                log.debug("Closing SSH connecting from cache: {} for user {}", holder.getSshConnection().getHost(),
+//                          holder.getSshConnection().getUsername());
+//                sessionCache.invalidate(key);
+//        // TODO/TBD: See github issue https://github.com/tapis-project/tapis-files/issues/39
+//        //  seems that there may be a race condition. The stop sets the session to null but the
+//        //  cached connection is still available? See SSHConnectionHolder
+//                holder.getSshConnection().stop();
+//              }
+//            }
+//            ), timeout, timeout, timeUnit);
   }
 
   /**
    * Get a connection from the cache.
    * @param system System object
    * @param oboUser API username
-   * @return an SSH connection, either from the cache (if it exists), or create one and return it from the cache.
+   * @return an SSH connection.
    * @throws IOException on error
    */
   public SSHConnectionHolder getConnection(TapisSystem system, String oboUser) throws IOException

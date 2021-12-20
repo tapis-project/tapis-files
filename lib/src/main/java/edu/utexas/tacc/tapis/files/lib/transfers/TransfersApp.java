@@ -32,6 +32,10 @@ import java.util.concurrent.TimeUnit;
 
 public class TransfersApp
 {
+  // SSHConnection cache settings
+  public static final long CACHE_MAX_SIZE = 100;
+  public static final long CACHE_TIMEOUT_MINUTES = 5;
+
   private static final Logger log = LoggerFactory.getLogger(TransfersApp.class);
 
   public static void main(String[] args)
@@ -41,7 +45,7 @@ public class TransfersApp
     ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
       @Override
       protected void configure() {
-        bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+        bind(new SSHConnectionCache(CACHE_MAX_SIZE, CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
         bindAsContract(RemoteDataClientFactory.class);
         bindAsContract(SystemsCache.class).in(Singleton.class);
         bindAsContract(FileTransfersDAO.class);

@@ -191,7 +191,7 @@ public class BaseDatabaseIntegrationTest
         bind(serviceContext).to(ServiceContext.class);
         bindAsContract(RemoteDataClientFactory.class);
         bindAsContract(FileUtilsService.class);
-        bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+        bind(new SSHConnectionCache(20, 5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
         bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
       }
     });

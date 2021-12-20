@@ -61,6 +61,11 @@ public class ContentApiResource extends BaseFileOpsResource {
     {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
+          // TODO/TBD move most of this logic and setup of client to the service layer.
+          // TODO/TBD: replace checkSystemAndGetClient with getSystem
+          //             or move fetch of system to svc layer also?
+          getSystem(systemId, user, path);
+
             IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
             if (zip) {
                sendZip(asyncResponse, client, path, user, systemId);

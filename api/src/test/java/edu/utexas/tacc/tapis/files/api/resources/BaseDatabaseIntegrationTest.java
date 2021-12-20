@@ -26,7 +26,11 @@ import java.util.Map;
 
 
 @Test(groups={"integration"})
-public abstract class BaseDatabaseIntegrationTest extends JerseyTestNg.ContainerPerClassTest {
+public abstract class BaseDatabaseIntegrationTest extends JerseyTestNg.ContainerPerClassTest
+{
+  // SSHConnection cache settings
+  public static final long CACHE_MAX_SIZE = 20;
+  public static final long CACHE_TIMEOUT_MINUTES = 1;
 
     public String getJwtForUser(String tenantId, String username) {
         Map<String, Object> claims = new HashMap<>();

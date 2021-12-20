@@ -14,36 +14,48 @@ import java.io.IOException;
 
 @Service
 @Named
-public class RemoteDataClientFactory implements IRemoteDataClientFactory {
-    private final SSHConnectionCache sshConnectionCache;
+public class RemoteDataClientFactory implements IRemoteDataClientFactory
+{
+  private final SSHConnectionCache sshConnectionCache;
 
-    @Inject
-    public RemoteDataClientFactory(SSHConnectionCache sshConnectionCache){
-        this.sshConnectionCache = sshConnectionCache;
-    }
+  @Inject
+  public RemoteDataClientFactory(SSHConnectionCache cache1)
+  {
+    sshConnectionCache = cache1;
+  }
 
-
-    @Override
-    public IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
-                                                 @NotNull TapisSystem system, @NotNull String username)
-            throws IOException
+  /**
+   * Return a remote data client from the cache
+   *   given api tenant+user, system and user is accessing system.
+   * @param oboTenant - api tenant
+   * @param oboUser - api user
+   * @param system - Tapis System
+   * @param username - User who is accessing system
+   * @return Remote data client
+   * @throws IOException on error
+   */
+  @Override
+  public IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
+                                               @NotNull TapisSystem system, @NotNull String username)
+          throws IOException
+  {
+    if (SystemTypeEnum.LINUX.equals(system.getSystemType()))
     {
-        if (SystemTypeEnum.LINUX.equals(system.getSystemType())) {
-            SSHConnectionHolder holder = getSSHConnection(system, system.getEffectiveUserId());
-            return new SSHDataClient(oboTenant, oboUser, system, holder);
-        } else if (SystemTypeEnum.S3.equals(system.getSystemType())) {
-            return new S3DataClient(oboTenant, oboUser, system);
-        } else if (SystemTypeEnum.IRODS.equals(system.getSystemType())) {
-            return new IrodsDataClient(oboTenant, oboUser, system);
-        } else {
-            throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_INVALID", oboTenant, oboUser, system.getId(),
-                                               system.getSystemType()));
-        }
+      SSHConnectionHolder holder = sshConnectionCache.getConnection(system, system.getEffectiveUserId());
+      return new SSHDataClient(oboTenant, oboUser, system, holder);
     }
-
-    private SSHConnectionHolder getSSHConnection(TapisSystem system, String username) throws IOException {
-        SSHConnectionHolder holder = sshConnectionCache.getConnection(system, username);
-        return holder;
+    else if (SystemTypeEnum.S3.equals(system.getSystemType()))
+    {
+      return new S3DataClient(oboTenant, oboUser, system);
     }
-
+    else if (SystemTypeEnum.IRODS.equals(system.getSystemType()))
+    {
+      return new IrodsDataClient(oboTenant, oboUser, system);
+    }
+    else
+    {
+      throw new IOException(Utils.getMsg("FILES_CLIENT_PROTOCOL_INVALID", oboTenant, oboUser, system.getId(),
+              system.getSystemType()));
+    }
+  }
 }

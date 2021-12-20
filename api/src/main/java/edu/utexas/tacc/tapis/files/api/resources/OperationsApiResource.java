@@ -80,6 +80,10 @@ public class OperationsApiResource extends BaseFileOpsResource
         log.debug("PATH={}", path);
         try {
             Instant start = Instant.now();
+          // TODO/TBD move setup of client to the service layer.
+          // TODO/TBD: replace checkSystemAndGetClient with getSystem
+          //             or move fetch of system to svc layer also?
+          //       would need to do this for all apiResource calls.
             IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
             List<FileInfo> listing;
             if (recurse) {

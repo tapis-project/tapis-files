@@ -69,6 +69,10 @@ import java.util.concurrent.TimeUnit;
 @ApplicationPath("/")
 public class FilesApplication extends ResourceConfig
 {
+  // SSHConnection cache settings
+  public static final long SSHCACHE_MAX_SIZE = 100;
+  public static final long SSHCACHE_TIMEOUT_MINUTES = 5;
+
   // We must be running on a specific site and this will never change
   private static String siteId;
   public static String getSiteId() {return siteId;}
@@ -148,7 +152,7 @@ public class FilesApplication extends ResourceConfig
       {
         @Override
         protected void configure() {
-          bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+          bind(new SSHConnectionCache(SSHCACHE_MAX_SIZE, SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);

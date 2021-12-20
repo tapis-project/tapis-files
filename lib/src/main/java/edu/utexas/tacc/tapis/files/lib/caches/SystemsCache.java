@@ -28,9 +28,9 @@ public class SystemsCache
   private final ServiceClients serviceClients;
 
   @Inject
-  public SystemsCache(ServiceClients serviceClients)
+  public SystemsCache(ServiceClients svcClients)
   {
-    this.serviceClients = serviceClients;
+    serviceClients = svcClients;
     IRuntimeConfig config = RuntimeSettings.get();
     cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).build(new SystemLoader());
   }
@@ -40,9 +40,10 @@ public class SystemsCache
   {
     try {
       SystemCacheKey key = new SystemCacheKey(tenantId, systemId, username);
-      TapisSystem system = cache.get(key);
-      return system;
-    } catch (ExecutionException ex) {
+      return cache.get(key);
+    }
+    catch (ExecutionException ex)
+    {
       String msg = Utils.getMsg("FILES_CACHE_ERR", "Systems", tenantId, systemId, username, ex.getMessage());
       throw new ServiceException(msg, ex);
     }
