@@ -20,6 +20,11 @@ public class HTTPClient implements IRemoteDataClient {
 
     private static final Logger log = LoggerFactory.getLogger(HTTPClient.class);
 
+  @Override
+  public void reserve() {}
+  @Override
+  public void release() {}
+
     public String getOboTenant() { return oboTenant; }
     public String getOboUser() { return oboUser; }
     // Since no system use srcDstURIs instead

@@ -62,6 +62,11 @@ public class SSHDataClient implements ISSHDataClient
     private final TapisSystem tapisSystem;
     private final SSHConnectionHolder connectionHolder;
 
+  @Override
+  public void reserve() {throw new RuntimeException("TODO: client.reserve");}
+  @Override
+  public void release() {throw new RuntimeException("TODO: client.release");}
+
     public String getOboTenant() { return oboTenant; }
     public String getOboUser() { return oboUser; }
     public String getSystemId() { return systemId; }

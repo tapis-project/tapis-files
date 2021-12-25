@@ -1,15 +1,21 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
+import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.Utils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -21,6 +27,8 @@ import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -30,8 +38,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import static edu.utexas.tacc.tapis.shared.TapisConstants.APPS_SERVICE;
 
 /*
  * Service level methods for File Operations.
@@ -45,18 +51,24 @@ import static edu.utexas.tacc.tapis.shared.TapisConstants.APPS_SERVICE;
 @Service
 public class FileOpsService implements IFileOpsService
 {
-    public static final int MAX_LISTING_SIZE = 1000;
+  public static final int MAX_LISTING_SIZE = 1000;
 
-    private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
-    private final FilePermsService permsService;
+  private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
+  private final FilePermsService permsService;
 
-    private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
-    // 0=systemId, 1=path, 2=tenant
-    private final String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}?tenant={2}";
-    private static final int MAX_RECURSION = 20;
+  private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
+  // 0=systemId, 1=path, 2=tenant
+  private final String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}?tenant={2}";
+  private static final int MAX_RECURSION = 20;
 
-    @Inject
-    public FileOpsService(FilePermsService svc) { permsService = svc; }
+  @Inject
+  public FileOpsService(FilePermsService svc) { permsService = svc; }
+
+  @Inject
+  SystemsCache systemsCache;
+
+  @Inject
+  RemoteDataClientFactory remoteDataClientFactory;
 
   // We must be running on a specific site and this will never change
   // These are initialized in method initService()
@@ -66,6 +78,52 @@ public class FileOpsService implements IFileOpsService
   public static String getServiceTenantId() {return siteAdminTenantId;}
   public static String getServiceUserId() {return SERVICE_NAME;}
 
+  /**
+   * Initialize the service:
+   *   init service context
+   *   migrate DB
+   */
+  public void initService(String siteId1, String siteAdminTenantId1, String svcPassword) throws TapisException, TapisClientException
+  {
+    // Initialize service context and site info
+    siteId = siteId1;
+    siteAdminTenantId = siteAdminTenantId1;
+//  TODO
+//    serviceContext.initServiceJWT(siteId, APPS_SERVICE, svcPassword);
+//    // Make sure DB is present and updated to latest version using flyway
+//    dao.migrateDB();
+  }
+
+  /**
+   * Check to see if a Tapis System exists and is enabled
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param systemId - System to check
+   * @throws NotFoundException
+   * @throws ServiceException
+   * @throws IOException
+   */
+  public TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull String systemId) throws NotFoundException
+  {
+    // Check for the system
+    TapisSystem sys;
+    try
+    {
+      sys = systemsCache.getSystem(rUser.getOboTenantId(), systemId, rUser.getOboUserId());
+      if (sys.getEnabled() == null || !sys.getEnabled())
+      {
+        throw new NotFoundException(Utils.getMsgAuthR("FILES_SYS_NOTENABLED", rUser, systemId));
+      }
+    }
+    catch (ServiceException ex)
+    {
+      throw new NotFoundException(Utils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
+    }
+    return sys;
+  }
+
+  // ----------------------------------------------------------------------------------------------------
+  // ------------- Support for FileOps
+  // ----------------------------------------------------------------------------------------------------
   /**
    * List files at path
    * @param client remote data client to use
@@ -318,147 +376,352 @@ public class FileOpsService implements IFileOpsService
       }
     }
 
-   /**
-    * Stream content from object at path
-    *
-    * In order to have the method auto disconnect the client, we have to copy the
-    * original InputStream from the client to another InputStream or else
-    * the finally block immediately disconnects.
-    *
-    * @param client remote data client to use
-    * @param path - path on system relative to system rootDir
-    * @return InputStream
-    * @throws ServiceException - general error
-    * @throws NotFoundException - requested path not found
-    * @throws ForbiddenException - user not authorized
-    */
-    @Override
-    public InputStream getStream(@NotNull IRemoteDataClient client, @NotNull String path)
-            throws ServiceException, NotFoundException, ForbiddenException
-    {
-      try {
-        Path relativePath = PathUtils.getRelativePath(path);
-        Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath, Permission.READ);
-        InputStream fileStream = client.getStream(relativePath.toString());
-        return fileStream;
-      } catch (IOException ex) {
-        String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "getContents",
-                client.getSystemId(), path, ex.getMessage());
-        log.error(msg, ex);
-        throw new ServiceException(msg, ex);
-      }
-    }
 
-    @Override
-    public InputStream getBytes(@NotNull IRemoteDataClient client, @NotNull String path, long startByte, long count)
-            throws ServiceException, NotFoundException, ForbiddenException
-    {
-      try  {
-        Path relativePath = PathUtils.getRelativePath(path);
-        Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath, Permission.READ);
-        InputStream fileStream = client.getBytesByRange(path, startByte, count);
-        return fileStream;
-      } catch (IOException ex) {
-        String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "getBytes",
-                client.getSystemId(), path, ex.getMessage());
-        log.error(msg, ex);
-        throw new ServiceException(msg, ex);
-      }
-    }
+  // ----------------------------------------------------------------------------------------------------
+  // ------------- Support for GetContent
+  // ----------------------------------------------------------------------------------------------------
 
-    @Override
-    public InputStream more(@NotNull IRemoteDataClient client, @NotNull String path, long startPage)
-            throws ServiceException, NotFoundException, ForbiddenException
-    {
-      long startByte = (startPage - 1) * 1024;
-      try  {
-        Path relativePath = PathUtils.getRelativePath(path);
-        Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath, Permission.READ);
-        InputStream fileStream = client.getBytesByRange(path, startByte, startByte + 1023);
-        return fileStream;
-      } catch (IOException ex) {
-        String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "more",
-                client.getSystemId(), path, ex.getMessage());
-        log.error(msg, ex);
-        throw new ServiceException(msg, ex);
-      }
-    }
-
-    /**
-     * Generate a streaming zip archive of a target path.
-     *
-     * @param outputStream Stream receiving zip contents
-     * @param path - path on system relative to system rootDir
-     * @throws ServiceException general service error
-     * @throws ForbiddenException user not authorized
-     */
-    @Override
-    public void getZip(@NotNull IRemoteDataClient client, @NotNull OutputStream outputStream, @NotNull String path)
-            throws ServiceException, ForbiddenException
-    {
-      Path relativePath = PathUtils.getRelativePath(path);
-      Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           relativePath, Permission.READ);
-      String cleanedPath = FilenameUtils.normalize(path);
-      cleanedPath = StringUtils.removeStart(cleanedPath, "/");
-      if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
-      // Step through a recursive listing up to some max depth
-      List<FileInfo> listing = lsRecursive(client, path, MAX_RECURSION);
-      try (ZipOutputStream zipStream = new ZipOutputStream(outputStream))
-      {
-        for (FileInfo fileInfo : listing)
-        {
-          // Always add an entry for a dir to be sure empty directories are included
-          if (fileInfo.isDir())
-          {
-            ZipEntry entry = new ZipEntry(StringUtils.appendIfMissing(fileInfo.getPath(), "/"));
-            zipStream.putNextEntry(entry);
-            zipStream.closeEntry();
-          }
-          else
-          {
-            try (InputStream inputStream = this.getStream(client, fileInfo.getPath()))
-            {
-              String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
-              Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
-              ZipEntry entry = new ZipEntry(pth.toString());
-              zipStream.putNextEntry(entry);
-              inputStream.transferTo(zipStream);
-              zipStream.closeEntry();
-            }
-          }
-        }
-      } catch (IOException ex)
-      {
-        String msg = Utils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "getZip",
-                client.getSystemId(), path, ex.getMessage());
-        log.error(msg, ex);
-        throw new ServiceException(msg, ex);
-      }
-    }
   /**
-   * Initialize the service:
-   *   init service context
-   *   migrate DB
+   * Create StreamingOutput for downloading a zipped up directory
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param path - path to download
+   * @throws NotFoundException System or path not found
    */
-  public void initService(String siteId1, String siteAdminTenantId1, String svcPassword) throws TapisException, TapisClientException
+  public StreamingOutput getZipStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+          throws WebApplicationException
   {
-    // Initialize service context and site info
-    siteId = siteId1;
-    siteAdminTenantId = siteAdminTenantId1;
-//  TODO
-//    serviceContext.initServiceJWT(siteId, APPS_SERVICE, svcPassword);
-//    // Make sure DB is present and updated to latest version using flyway
-//    dao.migrateDB();
+    StreamingOutput outStream = output -> {
+      try
+      {
+        getZip(rUser, output, sys, path);
+      }
+      catch (NotFoundException ex)
+      {
+        throw ex;
+      }
+      catch (Exception e)
+      {
+        throw new WebApplicationException(Utils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+      }
+    };
+    return outStream;
   }
 
+  /**
+   * Create StreamingOutput for downloading a range of bytes
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param path - file to download
+   * @param range - optional range for bytes to send
+   * @throws NotFoundException System or path not found
+   */
+  public StreamingOutput getByteRangeStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
+                                            @NotNull String path, @NotNull HeaderByteRange range)
+          throws WebApplicationException
+  {
+    StreamingOutput outStream = output -> {
+    InputStream stream = null;
+    try
+    {
+      stream = getByteRange(rUser, sys, path, range.getMin(), range.getMax());
+      stream.transferTo(output);
+    }
+    catch (NotFoundException ex)
+    {
+      throw ex;
+    }
+    catch (Exception e)
+    {
+      throw new WebApplicationException(Utils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+    }
+    finally
+    {
+      IOUtils.closeQuietly(stream);
+    }
+    };
+    return outStream;
+  }
+
+  /**
+   * Create StreamingOutput for downloading paginated blocks of bytes
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param path - file to download
+   * @param startPage - Send 1k of UTF-8 encoded string back starting at specified block,
+                        e.g. more=2 to start at 2nd block
+   * @throws NotFoundException System or path not found
+   */
+  public StreamingOutput getPagedStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
+                                        @NotNull String path, @NotNull Long startPage)
+          throws WebApplicationException
+  {
+    StreamingOutput outStream = output -> {
+      InputStream stream = null;
+      try
+      {
+        stream = getPaginatedBytes(rUser, sys, path, startPage);
+        stream.transferTo(output);
+      }
+      catch (NotFoundException ex)
+      {
+        throw ex;
+      }
+      catch (Exception e)
+      {
+        throw new WebApplicationException(Utils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+      }
+      finally
+      {
+        IOUtils.closeQuietly(stream);
+      }
+    };
+    return outStream;
+  }
+
+  /**
+   * Create StreamingOutput for downloading a file
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param path - file to download
+   * @throws NotFoundException System or path not found
+   */
+  public StreamingOutput getFullStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+          throws WebApplicationException
+  {
+    StreamingOutput outStream = output -> {
+      InputStream stream = null;
+      try
+      {
+        stream = getAllBytes(rUser, sys, path);
+        stream.transferTo(output);
+      }
+      catch (Exception e)
+      {
+        throw new WebApplicationException(Utils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+      }
+      finally
+      {
+        IOUtils.closeQuietly(stream);
+      }
+    };
+    return outStream;
+  }
 
   /* **************************************************************************** */
   /*                                Private Methods                               */
   /* **************************************************************************** */
+
+  /**
+   * Create a response and use it to start a zipped stream
+   */
+//  private void sendZip(String path, AsyncResponse asyncResponse)
+//          throws NotFoundException, ServiceException, IOException
+//  {
+//    java.nio.file.Path filepath = Paths.get(path);
+//    String filename = filepath.getFileName().toString();
+//    StreamingOutput outStream = output ->
+//    {
+////      try {
+////      getZip(client, output, path);
+////      getZip(output, path);
+////      } catch (Exception e) {
+////        throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
+////      }
+//    };
+//    String newName = FilenameUtils.removeExtension(filename) + ".zip";
+//    String disposition = String.format("attachment; filename=%s", newName);
+//    Response resp =  Response.ok(outStream, MediaType.APPLICATION_OCTET_STREAM)
+//            .header("content-disposition", disposition)
+//            .build();
+//    asyncResponse.resume(resp);
+//  }
+
+  /**
+   * Stream all content from object at path
+   *
+   * In order to have the method auto disconnect the client, we have to copy the
+   * original InputStream from the client to another InputStream or else
+   * the finally block immediately disconnects.
+   *
+   * @param path - path on system relative to system rootDir
+   * @return InputStream
+   * @throws ServiceException - general error
+   * @throws NotFoundException - requested path not found
+   * @throws ForbiddenException - user not authorized
+   */
+  private InputStream getAllBytes(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+          throws ServiceException, NotFoundException, ForbiddenException
+  {
+    String apiTenant = rUser.getOboTenantId();
+    String apiUser = rUser.getOboUserId();
+    String sysId = sys.getId();
+    Path relativePath = PathUtils.getRelativePath(path);
+    // Make sure user has permission for this path
+    Utils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+    // Get a remoteDataClient to stream contents
+    IRemoteDataClient client = null;
+    try
+    {
+      // Get a remoteDataClient to stream contents
+      client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
+      client.reserve();
+      return client.getStream(relativePath.toString());
+    }
+    catch (IOException ex)
+    {
+      String msg = Utils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getStream", sysId, path, ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+    finally
+    {
+      if (client != null) client.release();
+    }
+  }
+
+  /**
+   * Generate a stream for a range of bytes.
+   *
+   * @param path - path on system relative to system rootDir
+   * @throws ServiceException general service error
+   * @throws ForbiddenException user not authorized
+   */
+  private InputStream getByteRange(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                                   long startByte, long count)
+          throws ServiceException, IOException, NotFoundException, ForbiddenException
+  {
+    String apiTenant = rUser.getOboTenantId();
+    String apiUser = rUser.getOboUserId();
+    String sysId = sys.getId();
+    Path relativePath = PathUtils.getRelativePath(path);
+    // Make sure user has permission for this path
+    Utils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+    IRemoteDataClient client = null;
+    try
+    {
+      // Get a remoteDataClient to stream contents
+      client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
+      client.reserve();
+      return client.getBytesByRange(path, startByte, count);
+    }
+    catch (IOException ex)
+    {
+      String msg = Utils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getBytes", sysId, path, ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+    finally
+    {
+      if (client != null) client.release();
+    }
+  }
+
+  /**
+   * Stream content from object at path with support for pagination
+   *
+   * @param path - path on system relative to system rootDir
+   * @return InputStream
+   * @throws ServiceException - general error
+   * @throws NotFoundException - requested path not found
+   * @throws ForbiddenException - user not authorized
+   */
+  private InputStream getPaginatedBytes(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
+                                        @NotNull String path, long startPAge)
+          throws ServiceException, NotFoundException, ForbiddenException
+  {
+    long startByte = (startPAge - 1) * 1024;
+    String apiTenant = rUser.getOboTenantId();
+    String apiUser = rUser.getOboUserId();
+    String sysId = sys.getId();
+    Path relativePath = PathUtils.getRelativePath(path);
+    // Make sure user has permission for this path
+    Utils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+    IRemoteDataClient client = null;
+    try
+    {
+      // Get a remoteDataClient to stream contents
+      client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
+      client.reserve();
+      return client.getBytesByRange(path, startByte, startByte + 1023);
+    }
+    catch (IOException ex)
+    {
+      String msg = Utils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getPaginatedBytes", sysId, path, ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+    finally
+    {
+      if (client != null) client.release();
+    }
+  }
+
+  /**
+   * Generate a streaming zip archive of a target path.
+   *
+   * @param outputStream Stream receiving zip contents
+   * @param path - path on system relative to system rootDir
+   * @throws ServiceException general service error
+   * @throws ForbiddenException user not authorized
+   */
+  private void getZip(@NotNull ResourceRequestUser rUser, @NotNull OutputStream outputStream, @NotNull TapisSystem sys,
+                      @NotNull String path)
+          throws ServiceException, IOException, ForbiddenException
+  {
+    String apiTenant = rUser.getOboTenantId();
+    String apiUser = rUser.getOboUserId();
+    String sysId = sys.getId();
+    Path relativePath = PathUtils.getRelativePath(path);
+    // Make sure user has permission for this path
+    Utils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+
+    String cleanedPath = FilenameUtils.normalize(path);
+    cleanedPath = StringUtils.removeStart(cleanedPath, "/");
+    if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
+
+    IRemoteDataClient client = null;
+    try (ZipOutputStream zipStream = new ZipOutputStream(outputStream))
+    {
+      // Get a remoteDataClient to do the listing and stream contents
+      client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
+      client.reserve();
+      // Step through a recursive listing up to some max depth
+      List<FileInfo> listing = lsRecursive(client, path, MAX_RECURSION);
+      for (FileInfo fileInfo : listing)
+      {
+        // Always add an entry for a dir to be sure empty directories are included
+        if (fileInfo.isDir())
+        {
+          ZipEntry entry = new ZipEntry(StringUtils.appendIfMissing(fileInfo.getPath(), "/"));
+          zipStream.putNextEntry(entry);
+          zipStream.closeEntry();
+        }
+        else
+        {
+          try (InputStream inputStream = getAllBytes(rUser, sys, fileInfo.getPath()))
+          {
+            String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
+            Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
+            ZipEntry entry = new ZipEntry(pth.toString());
+            zipStream.putNextEntry(entry);
+            inputStream.transferTo(zipStream);
+            zipStream.closeEntry();
+          }
+        }
+      }
+    }
+    catch (IOException ex)
+    {
+      String msg = Utils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getZip", sysId, path, ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+    finally
+    {
+      if (client != null) client.release();
+    }
+  }
 
   /**
    * Recursive method to build up list of files at a path

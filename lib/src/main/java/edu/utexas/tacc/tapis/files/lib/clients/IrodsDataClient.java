@@ -67,7 +67,12 @@ public class IrodsDataClient implements IRemoteDataClient {
         this.homeDir = Paths.get("/",irodsZone, "home", oboUsername).toString();
     }
 
-    @Override
+  @Override
+  public void reserve() {}
+  @Override
+  public void release() {}
+
+  @Override
     public String getOboTenant() {
         return oboTenantId;
     }

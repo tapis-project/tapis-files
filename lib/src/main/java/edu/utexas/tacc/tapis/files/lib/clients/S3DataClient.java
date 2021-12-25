@@ -52,14 +52,19 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
  * Note that in Tapis the difference between a key and an absolute path is the path starts with "/"
  *   and the key does not.
  */
-public class S3DataClient implements IS3DataClient
+public class S3DataClient implements IRemoteDataClient
 {
     private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
+
+  @Override
+  public void reserve() {}
+  @Override
+  public void release() {}
 
     public String getOboTenant() { return oboTenant; }
     public String getOboUser() { return oboUser; }
     public String getSystemId() { return system.getId(); }
-    public String getBucket() { return bucket; }
+//    public String getBucket() { return bucket; }
 
     private final String oboTenant;
     private final String oboUser;
@@ -141,17 +146,17 @@ public class S3DataClient implements IS3DataClient
       return endpoint;
     }
 
-  /**
-   * Create a bucket
-   * @param name - name of bucket
-   */
-  @Override
-  public void makeBucket(String name)
-  {
-    CreateBucketRequest req = CreateBucketRequest.builder().bucket(name).build();
-    client.createBucket(req);
-  }
-
+//  /**
+//   * Create a bucket
+//   * @param name - name of bucket
+//   */
+//  @Override
+//  public void makeBucket(String name)
+//  {
+//    CreateBucketRequest req = CreateBucketRequest.builder().bucket(name).build();
+//    client.createBucket(req);
+//  }
+//
   /**
    * Return all S3 objects matching a path prefix using default max limit and 0 offset
    *

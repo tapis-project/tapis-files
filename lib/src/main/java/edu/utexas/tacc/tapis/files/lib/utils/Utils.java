@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +68,26 @@ public class Utils
     newParms[1] = authUser.getName();
     newParms[2] = authUser.getOboTenantId();
     newParms[3] = authUser.getOboUser();
+    System.arraycopy(parms, 0, newParms, 4, parms.length);
+    return getMsg(key, newParms);
+  }
+
+  /**
+   * Get a localized message using the specified key and parameters. Locale is null.
+   * Fill in first 4 parameters with user and tenant info from AuthenticatedUser
+   * If there is a problem an error is logged and a special message is constructed with as much info as can be provided.
+   * @param key message key
+   * @param parms message parameters
+   * @return localized message
+   */
+  public static String getMsgAuthR(String key, ResourceRequestUser authUser, Object... parms)
+  {
+    // Construct new array of parms. This appears to be most straightforward approach to modify and pass on varargs.
+    var newParms = new Object[4 + parms.length];
+    newParms[0] = authUser.getJwtTenantId();
+    newParms[1] = authUser.getJwtUserId();
+    newParms[2] = authUser.getOboTenantId();
+    newParms[3] = authUser.getOboUserId();
     System.arraycopy(parms, 0, newParms, 4, parms.length);
     return getMsg(key, newParms);
   }
