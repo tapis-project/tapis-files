@@ -3,7 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -59,7 +59,7 @@ public class PermissionsApiResource
             TapisResponse<String> response = TapisResponse.createSuccessResponse("Permission revoked.");
             return Response.ok(response).build();
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
+            String msg = LibUtils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
@@ -81,14 +81,14 @@ public class PermissionsApiResource
         String username;
         try {
             system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
+            LibUtils.checkEnabled(user, system);
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILES_SYSOPS_ERR", user, systemId, "getSystem", ex.getMessage());
+            String msg = LibUtils.getMsgAuth("FILES_SYSOPS_ERR", user, systemId, "getSystem", ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
         if (system == null) {
-            throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
+            throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
         }
 
         if (queryUsername == null) {
@@ -108,7 +108,7 @@ public class PermissionsApiResource
             TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(filePermission);
             return response;
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
+            String msg = LibUtils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
@@ -138,7 +138,7 @@ public class PermissionsApiResource
             TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(filePermission);
             return response;
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
+            String msg = LibUtils.getMsgAuth("FILES_PERM_ERR", user, systemId, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }

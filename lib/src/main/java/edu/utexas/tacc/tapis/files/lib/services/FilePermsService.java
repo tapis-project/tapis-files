@@ -6,10 +6,9 @@ import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import org.apache.commons.lang3.StringUtils;
@@ -50,7 +49,7 @@ public class FilePermsService {
             String permSpec = String.format(PERMSPEC, tenantId, perm, systemId, path);
             skClient.grantUserPermission(tenantId, username, permSpec);
         } catch (TapisClientException ex) {
-            String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, path, ex.getMessage());
+            String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, path, ex.getMessage());
             throw new ServiceException(msg, ex);
         }
     }
@@ -72,7 +71,7 @@ public class FilePermsService {
             int modified = skClient.replacePathPrefix(tenantId, "files", null, systemId, systemId, oldPath, newPath);
             log.debug(String.valueOf(modified));
         } catch (TapisClientException ex) {
-            String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, oldPath, ex.getMessage());
+            String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, oldPath, ex.getMessage());
             throw new ServiceException(msg, ex);
         }
     }
@@ -99,7 +98,7 @@ public class FilePermsService {
             permSpec = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
             skClient.revokeUserPermission(tenantId, username, permSpec);
         } catch (TapisClientException ex) {
-            String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
+            String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
             throw new ServiceException(msg, ex);
         }
     }
@@ -122,7 +121,7 @@ public class FilePermsService {
                 skClient.removePermissionFromAllRoles(tenantId, permSpec2);
             }
         } catch (TapisClientException ex) {
-            String msg = Utils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
+            String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
             throw new ServiceException(msg, ex);
         }
     }

@@ -17,7 +17,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -124,7 +124,7 @@ public class TransfersService
       }
       catch (DAOException ex)
       {
-        throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR2", tenantId, username,
+        throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR2", tenantId, username,
                                                 "isPermitted", transferTaskUuid, ex.getMessage()), ex);
       }
     }
@@ -141,7 +141,7 @@ public class TransfersService
             }
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR3",
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR3",
                 "getTransferTaskDetails", uuid, ex.getMessage()), ex);
         }
     }
@@ -150,7 +150,7 @@ public class TransfersService
         try {
             return dao.getChildTaskByUUID(uuid);
         } catch (DAOException e) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", null, null,
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", null, null,
                 "getChildTaskByUUID", null, uuid, e.getMessage()), e);
         }
     }
@@ -159,7 +159,7 @@ public class TransfersService
         try {
             return dao.getAllChildren(task);
         } catch (DAOException e) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
                 "getAllChildrenTasks", task.getId(), task.getUuid(), e.getMessage()), e);
         }
     }
@@ -170,7 +170,7 @@ public class TransfersService
         try {
             return dao.getRecentTransfersForUser(tenantId, username, limit, offset);
         } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR5", tenantId, username,
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR5", tenantId, username,
                 "getRecentTransfers", ex.getMessage()), ex);
         }
     }
@@ -179,14 +179,14 @@ public class TransfersService
         try {
             TransferTask task = dao.getTransferTaskByUUID(taskUUID);
             if (task == null) {
-                throw new NotFoundException(Utils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskByUUID", taskUUID));
+                throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskByUUID", taskUUID));
             }
             List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
             task.setParentTasks(parents);
 
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR3",
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR3",
                 "getTransferTaskByUUID", taskUUID, ex.getMessage()), ex);
         }
     }
@@ -195,14 +195,14 @@ public class TransfersService
         try {
             TransferTask task = dao.getTransferTaskByID(id);
             if (task == null) {
-                throw new NotFoundException(Utils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskById", id));
+                throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskById", id));
             }
             List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
             task.setParentTasks(parents);
 
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR4",
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR4",
                 "getTransferTaskById", id, ex.getMessage()), ex);
         }
     }
@@ -211,11 +211,11 @@ public class TransfersService
         try {
             TransferTaskParent task = dao.getTransferTaskParentByUUID(taskUUID);
             if (task == null) {
-                throw new NotFoundException(Utils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskParentByUUID", taskUUID));
+                throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskParentByUUID", taskUUID));
             }
             return task;
         } catch (DAOException ex) {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskParentByUUID", taskUUID,
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskParentByUUID", taskUUID,
                 ex.getMessage()), ex);
         }
     }
@@ -249,7 +249,7 @@ public class TransfersService
       }
       catch (DAOException ex)
       {
-        throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR6", tenantId, username, "createTransfer", tag,
+        throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR6", tenantId, username, "createTransfer", tag,
                                                 ex.getMessage()), ex);
       }
     }
@@ -260,7 +260,7 @@ public class TransfersService
         try { return dao.insertChildTask(task); }
         catch (DAOException ex)
         {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
                 "createTransferTaskChild", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
     }
@@ -279,7 +279,7 @@ public class TransfersService
         }
         catch (DAOException ex)
         {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
                 "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
     }
@@ -296,7 +296,7 @@ public class TransfersService
         catch ( JsonProcessingException e)
         {
             log.info(e.getMessage());
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR_PUBLISH_MESSAGE"));
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR_PUBLISH_MESSAGE"));
         }
     }
 
@@ -332,7 +332,7 @@ public class TransfersService
         }
         catch (JsonProcessingException ex)
         {
-            throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", childTask.getTenantId(), childTask.getUsername(),
+            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", childTask.getTenantId(), childTask.getUsername(),
                 "publishChildMessage", childTask.getId(), childTask.getUuid(), ex.getMessage()), ex);
         }
     }
@@ -435,7 +435,7 @@ public class TransfersService
     catch (Exception e)
     {
       log.info(e.getMessage());
-      throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
               "publishParentTaskMessage", task.getId(), task.getUuid(), e.getMessage()), e);
     }
   }

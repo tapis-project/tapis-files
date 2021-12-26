@@ -1,17 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.*;
-
-import edu.utexas.tacc.tapis.files.lib.models.SharedFileObject;
-import edu.utexas.tacc.tapis.files.api.models.ShareFileRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -57,8 +57,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestContentsRoutes extends BaseDatabaseIntegrationTest {
-
+public class ITestContentsRoutes extends BaseDatabaseIntegrationTest
+{
     private final Logger log = LoggerFactory.getLogger(ITestContentsRoutes.class);
     private final String oboTenant = "oboTenant";
     private final String oboUser = "oboUser";

@@ -3,7 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
@@ -66,7 +66,7 @@ public class  TransfersApiResource
     }
     catch (ServiceException e)
     {
-      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
+      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
@@ -84,14 +84,14 @@ public class  TransfersApiResource
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
-      if (task == null) throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
+      if (task == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
       isPermitted(task, user);
       TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
       return Response.ok(resp).build();
     }
     catch (ServiceException e)
     {
-      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
+      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
@@ -109,14 +109,14 @@ public class  TransfersApiResource
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskDetails(transferTaskUUID);
-      if (task == null) throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
+      if (task == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
       isPermitted(task, user);
       TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
       return Response.ok(resp).build();
     }
     catch (ServiceException ex)
     {
-      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
+      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
     }
@@ -134,7 +134,7 @@ public class  TransfersApiResource
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
-      if (task == null) throw new NotFoundException(Utils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
+      if (task == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
       isPermitted(task, user);
       transfersService.cancelTransfer(task);
       TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);
@@ -143,7 +143,7 @@ public class  TransfersApiResource
     }
     catch (ServiceException e)
     {
-      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
+      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
@@ -177,7 +177,7 @@ public class  TransfersApiResource
     }
     catch (ServiceException ex)
     {
-      String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
+      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
     }
@@ -237,16 +237,16 @@ public class  TransfersApiResource
     catch (ServiceException se)
     {
       // Unable to locate system
-      errMessages.add(Utils.getMsg("FILES_TXFR_SYS_MISSING",sysId));
+      errMessages.add(LibUtils.getMsg("FILES_TXFR_SYS_MISSING",sysId));
     }
     try
     {
-      if (system != null) Utils.checkEnabled(authUser, system);
+      if (system != null) LibUtils.checkEnabled(authUser, system);
     }
     catch (BadRequestException bre)
     {
       // System not enabled.
-      errMessages.add(Utils.getMsg("FILES_TXFR_SYS_DISABLED",sysId));
+      errMessages.add(LibUtils.getMsg("FILES_TXFR_SYS_DISABLED",sysId));
     }
   }
 
@@ -255,7 +255,7 @@ public class  TransfersApiResource
    */
   private static String getListOfErrors(AuthenticatedUser user, String txfrTaskTag, List<String> msgList)
   {
-    var sb = new StringBuilder(Utils.getMsgAuth("FILES_TXFR_ERRORLIST", user, txfrTaskTag));
+    var sb = new StringBuilder(LibUtils.getMsgAuth("FILES_TXFR_ERRORLIST", user, txfrTaskTag));
     sb.append(System.lineSeparator());
     if (msgList == null || msgList.isEmpty()) return sb.toString();
     for (String msg : msgList) { sb.append("  ").append(msg).append(System.lineSeparator()); }

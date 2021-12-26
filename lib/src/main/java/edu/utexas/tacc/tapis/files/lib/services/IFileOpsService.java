@@ -13,7 +13,6 @@ import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
@@ -67,15 +66,4 @@ public interface IFileOpsService
 
   StreamingOutput getFullStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
           throws WebApplicationException;
-
-//  // TODO/TBD: move these out of api resource and into private svc impl methods.
-//  InputStream getStream(@NotNull IRemoteDataClient client, String path) throws ServiceException, NotFoundException;
-//
-//  InputStream getBytes(@NotNull IRemoteDataClient client, String path, long startByte, long endByte)
-//          throws ServiceException, NotFoundException;
-//
-//  void getZip(@NotNull IRemoteDataClient client, OutputStream outputStream, String path) throws ServiceException;
-//
-//  InputStream more(@NotNull IRemoteDataClient client, String path, long startPAge)
-//          throws ServiceException, NotFoundException;
 }

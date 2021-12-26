@@ -2,7 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
@@ -41,43 +41,43 @@ public class HTTPClient implements IRemoteDataClient {
 
     @Override
     public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "ls"));
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "ls"));
     }
 
     @Override
     public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "ls") );
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "ls") );
     }
 
     @Override
     public void upload(@NotNull String path, @NotNull InputStream fileStream) throws IOException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "insert") );
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "insert") );
     }
 
     @Override
     public void mkdir(@NotNull String path) throws IOException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "mkdir") );
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "mkdir") );
     }
 
     @Override
     public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "move") );
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "move") );
     }
 
     @Override
     public void copy(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "copy") );
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "copy") );
     }
 
     @Override
     public void delete(@NotNull String path) throws IOException, NotFoundException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "delete") );
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "delete") );
     }
 
   @Override
   public FileInfo getFileInfo(@NotNull String path) throws NotFoundException
   {
-    throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "getFileInfo") );
+    throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "getFileInfo") );
   }
 
   @Override
@@ -88,7 +88,7 @@ public class HTTPClient implements IRemoteDataClient {
     Response response = client.newCall(request).execute();
     if (!response.isSuccessful())
     {
-      String msg = Utils.getMsg("FILES_CLIENT_HTTP_ERR", oboTenant, oboUser, srcDstURIs, path, response);
+      String msg = LibUtils.getMsg("FILES_CLIENT_HTTP_ERR", oboTenant, oboUser, srcDstURIs, path, response);
       log.error(msg);
       throw new IOException(msg);
     }
@@ -97,16 +97,16 @@ public class HTTPClient implements IRemoteDataClient {
 
    @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
     }
 
     @Override
     public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
     }
 
     @Override
     public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
-        throw new NotImplementedException(Utils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
+        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
     }
 }

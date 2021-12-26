@@ -2,7 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.caches;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.LoadingCache;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,7 +86,7 @@ public class SSHConnectionCache
     try { return sessionCache.get(key); }
     catch (ExecutionException ex)
     {
-      String msg = Utils.getMsg("FILES_CLIENT_SSH_CONN_ERR", system.getTenant(), oboUser, system.getId(), oboUser,
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_CONN_ERR", system.getTenant(), oboUser, system.getId(), oboUser,
               system.getHost(), ex.getMessage());
       log.error(msg, ex);
       throw new IOException("Could not get or create SSH session");

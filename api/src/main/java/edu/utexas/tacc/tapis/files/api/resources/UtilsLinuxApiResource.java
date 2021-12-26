@@ -6,7 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -63,19 +63,19 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
         try {
             Instant start = Instant.now();
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
+            LibUtils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
 
             // Make the service call
             FileStatInfo fileStatInfo = fileUtilsService.getStatInfo(client, path, followLinks);
 
-            String msg = Utils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+            String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
             log.debug(msg);
             TapisResponse<FileStatInfo> resp = TapisResponse.createSuccessResponse("ok", fileStatInfo);
             return Response.status(Status.OK).entity(resp).build();
         } catch (ServiceException | IOException e) {
-            String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
+            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }
@@ -93,10 +93,10 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
         AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
         try {
             TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            Utils.checkEnabled(user, system);
+            LibUtils.checkEnabled(user, system);
             String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
             IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
-            if (client == null) throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
+            if (client == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
 
             // Make the service call
             NativeLinuxOpResult nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(),
@@ -105,7 +105,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource {
             TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse("ok", nativeLinuxOpResult);
             return Response.ok(resp).build();
         } catch (TapisException | ServiceException | IOException e) {
-            String msg = Utils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
+            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
             log.error(msg, e);
             throw new WebApplicationException(msg, e);
         }

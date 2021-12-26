@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.slf4j.Logger;
@@ -29,7 +29,7 @@ public class IRODsFileSystemSingleton {
             try {
                 return IRODSFileSystem.instance();
             } catch (JargonException ex) {
-                String msg = Utils.getMsg("FILES_IRODS_SESSION_ERROR");
+                String msg = LibUtils.getMsg("FILES_IRODS_SESSION_ERROR");
                 throw new IOException(msg, ex);
             }
         }

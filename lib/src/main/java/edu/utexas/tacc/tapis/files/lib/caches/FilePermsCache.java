@@ -6,7 +6,7 @@ import com.google.common.cache.LoadingCache;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
@@ -60,7 +60,7 @@ public class FilePermsCache
       FilePermCacheKey key = new FilePermCacheKey(tenantId, systemId, path, username, perm);
       return cache.get(key);
     } catch (ExecutionException ex) {
-      String msg = Utils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, systemId, username, ex.getMessage());
+      String msg = LibUtils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, systemId, username, ex.getMessage());
       throw new ServiceException(msg, ex);
     }
   }
@@ -84,7 +84,7 @@ public class FilePermsCache
       if (cache.get(key)) return Permission.READ;
       return null;
     } catch (ExecutionException ex) {
-      String msg = Utils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, systemId, username, ex.getMessage());
+      String msg = LibUtils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, systemId, username, ex.getMessage());
       throw new ServiceException(msg, ex);
     }
   }
@@ -103,7 +103,7 @@ public class FilePermsCache
     {
       SKClient skClient = getSKClient(key.getTenantId(), key.getUsername());
       String permSpec = String.format(PERMSPEC, key.getTenantId(), key.getPerm(), key.getSystemId(), key.getPath());
-      log.debug(Utils.getMsg("FILES_CACHE_PERM_LOAD", key.getTenantId(), key.getSystemId(), key.getUsername(),
+      log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOAD", key.getTenantId(), key.getSystemId(), key.getUsername(),
                              key.getPath()));
       return skClient.isPermitted(key.getTenantId(), key.getUsername(), permSpec);
     }

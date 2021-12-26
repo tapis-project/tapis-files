@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -11,14 +11,12 @@ import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.FileNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.exception.JargonFileOrCollAlreadyExistsException;
-import org.irods.jargon.core.packinstr.DataObjInp;
 import org.irods.jargon.core.packinstr.TransferOptions;
 import org.irods.jargon.core.pub.DataTransferOperations;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.pub.io.IRODSFileFactory;
-import org.irods.jargon.core.pub.io.IRODSFileInputStream;
 import org.irods.jargon.core.pub.io.IRODSFileOutputStream;
 import org.irods.jargon.core.pub.io.PackingIrodsInputStream;
 import org.irods.jargon.core.transfer.DefaultTransferControlBlock;
@@ -28,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.NotFoundException;
-import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -138,7 +135,7 @@ public class IrodsDataClient implements IRemoteDataClient {
             outListing.sort(Comparator.comparing(FileInfo::getName));
             return outListing.stream().skip(startIdx).limit(count).collect(Collectors.toList());
         } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
             throw new IOException(msg, ex);
         } catch (Exception ex) {
             if (ex.getCause() instanceof FileNotFoundException) {
@@ -179,14 +176,14 @@ public class IrodsDataClient implements IRemoteDataClient {
             ) {
                 fileStream.transferTo(outputStream);
             } catch (JargonException ex) {
-                String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+                String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
                 throw new IOException(msg, ex);
             }
             finally {
                 newFile.close();
             }
         } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
             throw new IOException(msg, ex);
         }
     }
@@ -215,7 +212,7 @@ public class IrodsDataClient implements IRemoteDataClient {
             }
 
         } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
             throw new IOException(msg, ex);
         }
     }
@@ -239,10 +236,10 @@ public class IrodsDataClient implements IRemoteDataClient {
             parent.close();
             transferOperations.move(cleanedAbsoluteOldPath.toString(), cleanedAbsoluteNewPath.toString());
         } catch (JargonFileOrCollAlreadyExistsException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_MOVE_ERROR_DEST_EXISTS", oboTenantId, oboUsername, cleanedRelativeNewPath.toString());
+            String msg = LibUtils.getMsg("FILES_IRODS_MOVE_ERROR_DEST_EXISTS", oboTenantId, oboUsername, cleanedRelativeNewPath.toString());
             throw new IOException(msg, ex);
         } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, system.getId());
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, system.getId());
             throw new IOException(msg, ex);
         }
     }
@@ -279,13 +276,13 @@ public class IrodsDataClient implements IRemoteDataClient {
                 transferControlBlock
             );
         } catch (DataNotFoundException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_FILE_NOT_FOUND_ERROR", system.getId(), oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
+            String msg = LibUtils.getMsg("FILES_IRODS_FILE_NOT_FOUND_ERROR", system.getId(), oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
             throw new NotFoundException(msg, ex);
         } catch (JargonFileOrCollAlreadyExistsException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_MOVE_ERROR_DEST_EXISTS", oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
+            String msg = LibUtils.getMsg("FILES_IRODS_MOVE_ERROR_DEST_EXISTS", oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
             throw new IOException(msg, ex);
         } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, system.getId());
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, system.getId());
             throw new IOException(msg, ex);
         }
     }
@@ -312,7 +309,7 @@ public class IrodsDataClient implements IRemoteDataClient {
                 }
             }
         } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
             throw new IOException(msg, ex);
         }
     }
@@ -341,7 +338,7 @@ public class IrodsDataClient implements IRemoteDataClient {
     }
     catch (JargonException ex)
     {
-      String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+      String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
       throw new IOException(msg, ex);
     }
     catch (Exception ex)
@@ -365,7 +362,7 @@ public class IrodsDataClient implements IRemoteDataClient {
     }
     catch (JargonException ex)
     {
-      String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+      String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
       throw new IOException(msg, ex);
     }
   }
@@ -382,7 +379,7 @@ public class IrodsDataClient implements IRemoteDataClient {
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
         if (count > MAX_BYTES_PER_CHUNK) {
-            String msg = Utils.getMsg("FILES_MAX_BYTES_ERROR", MAX_BYTES_PER_CHUNK);
+            String msg = LibUtils.getMsg("FILES_MAX_BYTES_ERROR", MAX_BYTES_PER_CHUNK);
             throw new IllegalArgumentException(msg);
         }
         startByte = Math.max(startByte, 0);
@@ -443,7 +440,7 @@ public class IrodsDataClient implements IRemoteDataClient {
             fileFactory = accessObjectFactory.getIRODSFileFactory(account);
             return fileFactory;
         } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
             throw new IOException(msg, ex);
         }
     }
@@ -470,7 +467,7 @@ public class IrodsDataClient implements IRemoteDataClient {
             DataTransferOperations ops = accessObjectFactory.getDataTransferOperations(account);
             return ops;
         } catch (JargonException ex) {
-            String msg = Utils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
             throw new IOException(msg, ex);
         }
     }

@@ -22,16 +22,16 @@ import java.util.ResourceBundle;
    Utility class containing general use static methods.
    This class is non-instantiable
  */
-public class Utils
+public class LibUtils
 {
   // Private constructor to make it non-instantiable
-  private Utils() { throw new AssertionError(); }
+  private LibUtils() { throw new AssertionError(); }
 
   /* ********************************************************************** */
   /*                               Constants                                */
   /* ********************************************************************** */
   // Local logger.
-  private static final Logger log = LoggerFactory.getLogger(Utils.class);
+  private static final Logger log = LoggerFactory.getLogger(LibUtils.class);
 
   // Location of message bundle files
   private static final String MESSAGE_BUNDLE = "edu.utexas.tacc.tapis.files.lib.FilesMessages";
@@ -161,7 +161,7 @@ public class Utils
   {
     if (!svc.isPermitted(oboTenant, oboUser, systemId, pathToCheck.toString(), perm))
     {
-      String msg = Utils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, perm);
+      String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, perm);
       throw new ForbiddenException(msg);
     }
   }

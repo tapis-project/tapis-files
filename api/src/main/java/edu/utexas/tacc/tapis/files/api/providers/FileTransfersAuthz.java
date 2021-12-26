@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -43,11 +43,11 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
         try {
             boolean isPermitted = transfersService.isPermitted(username, tenantId, taskUUID);
             if (!isPermitted) {
-                throw new NotAuthorizedException(Utils.getMsgAuth("FILES_TXFR_NOT_AUTH", user, taskUUID));
+                throw new NotAuthorizedException(LibUtils.getMsgAuth("FILES_TXFR_NOT_AUTH", user, taskUUID));
             }
 
         } catch (ServiceException ex) {
-            String msg = Utils.getMsgAuth("FILES_TXFR_ERR", user, "authorization", ex.getMessage());
+            String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, "authorization", ex.getMessage());
             log.error(msg, ex);
             throw new IOException(msg, ex);
         }

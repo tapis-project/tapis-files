@@ -7,9 +7,8 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import org.apache.commons.io.FilenameUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -59,7 +58,7 @@ public class FileUtilsService implements IFileUtilsService {
           throws ServiceException, NotFoundException, NotAuthorizedException
   {
     if (!(client instanceof ISSHDataClient)) {
-      String msg = Utils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+      String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                 ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
       throw new IllegalArgumentException(msg);
     }
@@ -67,14 +66,14 @@ public class FileUtilsService implements IFileUtilsService {
     try {
       Path relativePath = PathUtils.getRelativePath(path);
       // Check permissions
-      Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                            relativePath, Permission.READ);
 
       // Make the remoteDataClient call
       return sshClient.getStatInfo(relativePath.toString(), followLinks);
 
     } catch (IOException ex) {
-      String msg = Utils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
+      String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
                                 client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
@@ -99,7 +98,7 @@ public class FileUtilsService implements IFileUtilsService {
   {
     NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
     if (!(client instanceof ISSHDataClient)) {
-      String msg = Utils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+      String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                 ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
       throw new IllegalArgumentException(msg);
     }
@@ -107,7 +106,7 @@ public class FileUtilsService implements IFileUtilsService {
     try {
       Path relativePath = PathUtils.getRelativePath(path);
       // Check permissions
-      Utils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                            relativePath, Permission.MODIFY);
 
       // Make the remoteDataClient call
@@ -118,7 +117,7 @@ public class FileUtilsService implements IFileUtilsService {
       }
 
     } catch (IOException ex) {
-      String msg = Utils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), op.name(),
+      String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), op.name(),
                                 client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);

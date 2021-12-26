@@ -6,7 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -69,9 +69,9 @@ public abstract class BaseFileOpsResource
     try { system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser()); }
     catch (ServiceException ex)
     {
-      throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId, path, ex.getMessage()));
+      throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId, path, ex.getMessage()));
     }
-    Utils.checkEnabled(user, system);
+    LibUtils.checkEnabled(user, system);
     return system;
 //    String effUser = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
 //    return effUser;
@@ -104,9 +104,9 @@ public abstract class BaseFileOpsResource
     try { system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser()); }
     catch (ServiceException ex)
     {
-      throw new NotFoundException(Utils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId, path, ex.getMessage()));
+      throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId, path, ex.getMessage()));
     }
-    Utils.checkEnabled(user, system);
+    LibUtils.checkEnabled(user, system);
     String effUser = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
     return getClientForUserAndSystem(user, system, effUser);
   }

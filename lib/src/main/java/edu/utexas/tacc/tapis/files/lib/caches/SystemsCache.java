@@ -6,7 +6,7 @@ import com.google.common.cache.LoadingCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -44,7 +44,7 @@ public class SystemsCache
     }
     catch (ExecutionException ex)
     {
-      String msg = Utils.getMsg("FILES_CACHE_ERR", "Systems", tenantId, systemId, username, ex.getMessage());
+      String msg = LibUtils.getMsg("FILES_CACHE_ERR", "Systems", tenantId, systemId, username, ex.getMessage());
       throw new ServiceException(msg, ex);
     }
   }
@@ -63,7 +63,7 @@ public class SystemsCache
     {
       SystemsClient client = serviceClients.getClient(key.getUsername(), key.getTenantId(), SystemsClient.class);
       TapisSystem system = client.getSystemWithCredentials(key.getSystemId(), null);
-      log.debug(Utils.getMsg("FILES_CACHE_SYS_LOAD", key.getTenantId(), key.getSystemId(), key.getUsername(),
+      log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOAD", key.getTenantId(), key.getSystemId(), key.getUsername(),
                              system.getDefaultAuthnMethod()));
       return system;
     }

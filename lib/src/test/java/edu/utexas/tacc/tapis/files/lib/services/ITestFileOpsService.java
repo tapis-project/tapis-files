@@ -1,12 +1,16 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.Utils;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -50,119 +54,125 @@ import static org.mockito.Mockito.when;
 @Test(groups = {"integration"})
 public class ITestFileOpsService
 {
-    private final String oboTenant = "oboTenant";
-    private final String oboUser = "oboUser";
-    TapisSystem testSystemSSH;
-    TapisSystem testSystemS3;
-    TapisSystem testSystemPKI;
-    TapisSystem testSystemIrods;
-    private RemoteDataClientFactory remoteDataClientFactory;
-    private FileOpsService fileOpsService;
-    private static final Logger log  = LoggerFactory.getLogger(ITestFileOpsService.class);
-    private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
+  private final String oboTenant = "oboTenant";
+  private final String oboUser = "oboUser";
+  private ResourceRequestUser rTestUser;
+  TapisSystem testSystemNotEnabled;
+  TapisSystem testSystemSSH;
+  TapisSystem testSystemS3;
+  TapisSystem testSystemPKI;
+  TapisSystem testSystemIrods;
+  private RemoteDataClientFactory remoteDataClientFactory;
+  private FileOpsService fileOpsService;
+  private static final Logger log  = LoggerFactory.getLogger(ITestFileOpsService.class);
+  private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
+  private final SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
 
-    private ITestFileOpsService() throws IOException {
-        SSHConnection.setLocalNodeName("dev");
-        String privateKey = IOUtils.toString(
-                this.getClass().getResourceAsStream("/test-machine"),
-                StandardCharsets.UTF_8
-        );
-        String publicKey = IOUtils.toString(
-                this.getClass().getResourceAsStream("/test-machine.pub"),
-                StandardCharsets.UTF_8
-        );
-        //SSH system with username/password
-        Credential creds = new Credential();
-        creds.setAccessKey("testuser");
-        creds.setPassword("password");
-        testSystemSSH = new TapisSystem();
-        testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
-        testSystemSSH.setAuthnCredential(creds);
-        testSystemSSH.setHost("localhost");
-        testSystemSSH.setPort(2222);
-        testSystemSSH.setRootDir("/data/home/testuser/");
-        testSystemSSH.setId("testSystem");
-        testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
-        testSystemSSH.setEffectiveUserId("testuser");
+  private ITestFileOpsService() throws IOException
+  {
+    SSHConnection.setLocalNodeName("dev");
+    String privateKey = IOUtils.toString(getClass().getResourceAsStream("/test-machine"), StandardCharsets.UTF_8);
+    String publicKey = IOUtils.toString(getClass().getResourceAsStream("/test-machine.pub"), StandardCharsets.UTF_8);
 
-        // PKI Keys system
-        creds = new Credential();
-        creds.setPublicKey(publicKey);
-        creds.setPrivateKey(privateKey);
-        testSystemPKI = new TapisSystem();
-        testSystemPKI.setSystemType(SystemTypeEnum.LINUX);
-        testSystemPKI.setAuthnCredential(creds);
-        testSystemPKI.setHost("localhost");
-        testSystemPKI.setPort(2222);
-        testSystemPKI.setRootDir("/data/home/testuser/");
-        testSystemPKI.setId("testSystem");
-        testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
-        testSystemPKI.setEffectiveUserId("testuser");
+    //SSH system that is not enabled
+    testSystemNotEnabled = new TapisSystem();
+    testSystemSSH.setId("testSystem");
+    testSystemNotEnabled.setSystemType(SystemTypeEnum.LINUX);
+    testSystemNotEnabled.setHost("localhost");
+    testSystemSSH.setPort(2222);
+    testSystemSSH.setRootDir("/data/home/testuser/");
+    testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+    testSystemSSH.setEffectiveUserId("testuser");
 
-        //S3 system
-        creds = new Credential();
-        creds.setAccessKey("user");
-        creds.setAccessSecret("password");
-        testSystemS3 = new TapisSystem();
-        testSystemS3.setSystemType(SystemTypeEnum.S3);
-        testSystemS3.setHost("http://localhost");
-        testSystemS3.setBucketName("test");
-        testSystemS3.setId("testSystem");
-        testSystemS3.setPort(9000);
-        testSystemS3.setAuthnCredential(creds);
-        testSystemS3.setRootDir("/");
-        testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    //SSH system with username/password
+    Credential creds = new Credential();
+    creds.setAccessKey("testuser");
+    creds.setPassword("password");
+    testSystemSSH = new TapisSystem();
+    testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
+    testSystemSSH.setAuthnCredential(creds);
+    testSystemSSH.setHost("localhost");
+    testSystemSSH.setPort(2222);
+    testSystemSSH.setRootDir("/data/home/testuser/");
+    testSystemSSH.setId("testSystem");
+    testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+    testSystemSSH.setEffectiveUserId("testuser");
 
-        //Irods system
-        creds = new Credential();
-        creds.setAccessKey("dev");
-        creds.setAccessSecret("dev");
-        testSystemIrods = new TapisSystem();
-        testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
-        testSystemIrods.setHost("localhost");
-        testSystemIrods.setId("testSystem");
-        testSystemIrods.setPort(1247);
-        testSystemIrods.setAuthnCredential(creds);
-        testSystemIrods.setRootDir("/tempZone/home/dev/");
-        testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
-    }
+    // PKI Keys system
+    creds = new Credential();
+    creds.setPublicKey(publicKey);
+    creds.setPrivateKey(privateKey);
+    testSystemPKI = new TapisSystem();
+    testSystemPKI.setSystemType(SystemTypeEnum.LINUX);
+    testSystemPKI.setAuthnCredential(creds);
+    testSystemPKI.setHost("localhost");
+    testSystemPKI.setPort(2222);
+    testSystemPKI.setRootDir("/data/home/testuser/");
+    testSystemPKI.setId("testSystem");
+    testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
+    testSystemPKI.setEffectiveUserId("testuser");
 
-    // Data provider for all test systems
+    //S3 system
+    creds = new Credential();
+    creds.setAccessKey("user");
+    creds.setAccessSecret("password");
+    testSystemS3 = new TapisSystem();
+    testSystemS3.setSystemType(SystemTypeEnum.S3);
+    testSystemS3.setHost("http://localhost");
+    testSystemS3.setBucketName("test");
+    testSystemS3.setId("testSystem");
+    testSystemS3.setPort(9000);
+    testSystemS3.setAuthnCredential(creds);
+    testSystemS3.setRootDir("/");
+    testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+
+    //Irods system
+    creds = new Credential();
+    creds.setAccessKey("dev");
+    creds.setAccessSecret("dev");
+    testSystemIrods = new TapisSystem();
+    testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
+    testSystemIrods.setHost("localhost");
+    testSystemIrods.setId("testSystem");
+    testSystemIrods.setPort(1247);
+    testSystemIrods.setAuthnCredential(creds);
+    testSystemIrods.setRootDir("/tempZone/home/dev/");
+    testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+  }
+
+  // Data provider for all test systems
     @DataProvider(name="testSystems")
-    public Object[] testSystemsDataProvider () {
-        return new TapisSystem[]{
-                testSystemSSH,
-                testSystemS3,
-                testSystemIrods,
-                testSystemPKI
-        };
+    public Object[] testSystemsDataProvider ()
+    {
+      return new TapisSystem[] { testSystemSSH, testSystemS3, testSystemIrods, testSystemPKI };
     }
 
   // Data provider for all test systems except S3
   // Needed since S3 does not support hierarchical directories and we do not emulate such functionality
   @DataProvider(name= "testSystemsNoS3")
-  public Object[] testSystemsNoS3DataProvider () {
-    return new TapisSystem[]{
-            testSystemSSH,
-            testSystemIrods,
-            testSystemPKI
-    };
+  public Object[] testSystemsNoS3DataProvider ()
+  {
+    return new TapisSystem[] { testSystemSSH, testSystemIrods, testSystemPKI };
   }
 
   @BeforeSuite
-    public void doBeforeSuite() {
-        ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
-        ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
-            @Override
-            protected void configure() {
-                bind(new SSHConnectionCache(10, 5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-                bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
-                bind(permsService).to(FilePermsService.class).ranked(1);
-                bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-            }
-        });
-        remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        fileOpsService = locator.getService(FileOpsService.class);
+    public void doBeforeSuite()
+  {
+    ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
+    ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
+      @Override
+      protected void configure() {
+        bind(new SSHConnectionCache(10, 5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+        bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
+        bind(systemsCache).to(SystemsCache.class).ranked(1);
+        bind(permsService).to(FilePermsService.class).ranked(1);
+        bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+      }
+    });
+    remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
+    fileOpsService = locator.getService(FileOpsService.class);
+    rTestUser = new ResourceRequestUser(new AuthenticatedUser(oboUser, oboTenant, TapisThreadContext.AccountType.user.name(),
+            null, oboUser, oboTenant, null, null, null));
     }
 
     @BeforeTest()
@@ -185,21 +195,29 @@ public class ITestFileOpsService
       fileOpsService.delete(client, "/");
     }
 
-    @Test(dataProvider = "testSystems")
-    public void testListingPath(TapisSystem testSystem) throws Exception {
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        InputStream in = Utils.makeFakeFile(10*1024);
-        fileOpsService.upload(client,"test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls(client,"test.txt");
-        Assert.assertEquals(listing.size(), 1);
-        fileOpsService.delete(client,"test.txt");
-        Assert.assertThrows(NotFoundException.class, ()-> {
-            fileOpsService.ls(client, "test.txt");
-        });
-    }
+  @Test(dataProvider = "testSystems")
+  public void testGetSysListingPath(TapisSystem testSystem) throws Exception
+  {
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+    InputStream in = Utils.makeFakeFile(10*1024);
+    fileOpsService.getSystemIfEnabled(rTestUser, );
+  }
 
-    @Test(dataProvider = "testSystems")
+  @Test(dataProvider = "testSystems")
+  public void testListingPath(TapisSystem testSystem) throws Exception
+  {
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+    InputStream in = Utils.makeFakeFile(10*1024);
+    fileOpsService.upload(client,"test.txt", in);
+    List<FileInfo> listing = fileOpsService.ls(client,"test.txt");
+    Assert.assertEquals(listing.size(), 1);
+    fileOpsService.delete(client,"test.txt");
+    Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "test.txt"); });
+  }
+
+  @Test(dataProvider = "testSystems")
     public void testListingPathNested(TapisSystem testSystem) throws Exception
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -227,9 +245,7 @@ public class ITestFileOpsService
       Assert.assertEquals(listing.size(), 1);
       Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
       fileOpsService.delete(client,"/dir1/dir2/test.txt");
-      Assert.assertThrows(NotFoundException.class, ()-> {
-        fileOpsService.ls(client, "/dir1/dir2/test.txt");
-      });
+      Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "/dir1/dir2/test.txt"); });
     }
 
     @Test(dataProvider = "testSystemsNoS3")
@@ -241,9 +257,7 @@ public class ITestFileOpsService
         List<FileInfo> listing = fileOpsService.ls(client,"/a/b/c/test.txt");
         Assert.assertEquals(listing.size(), 1);
         fileOpsService.delete(client,"/a/b/");
-        Assert.assertThrows(NotFoundException.class, ()-> {
-            fileOpsService.ls(client,"/a/b/c/test.txt");
-        });
+        Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client,"/a/b/c/test.txt"); });
     }
 
     @Test(dataProvider = "testSystems")
@@ -256,7 +270,7 @@ public class ITestFileOpsService
 
         List<FileInfo> listing = fileOpsService.ls(client, "/test.txt");
         Assert.assertEquals(listing.get(0).getSize(), 100*1024);
-        InputStream out = fileOpsService.getStream(client,"test.txt");
+        InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt");
         byte[] output = IOUtils.toByteArray(out);
         Assert.assertEquals(output.length, 100 * 1024);
     }
@@ -471,7 +485,7 @@ public class ITestFileOpsService
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
-        InputStream result = fileOpsService.getBytes(client,"test.txt", 0, 1000);
+        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000);
         Assert.assertEquals(result.readAllBytes().length, 1000);
     }
 
@@ -486,16 +500,15 @@ public class ITestFileOpsService
 
         File file = File.createTempFile("test", ".zip");
         OutputStream outputStream = new FileOutputStream(file);
-        fileOpsService.getZip(client, outputStream, "/a");
+        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a");
 
         try (FileInputStream fis = new FileInputStream(file);
-             ZipInputStream zis = new ZipInputStream(fis);
+             ZipInputStream zis = new ZipInputStream(fis)
         ) {
             ZipEntry ze;
             int count = 0;
             while ( (ze = zis.getNextEntry()) != null) {
                 log.info(ze.toString());
-                String fname = ze.getName();
                 count++;
             }
             // S3 will have 3 entries and others should have 4 (3 files + 1 dir)
@@ -512,18 +525,14 @@ public class ITestFileOpsService
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
 
-        Assert.assertThrows(ForbiddenException.class, ()-> {
-            fileOpsService.upload(client,"test.txt", in);
-        });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.upload(client,"test.txt", in); });
     }
 
     @Test(dataProvider = "testSystems")
     public void testListingNoAuthz(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        Assert.assertThrows(ForbiddenException.class, ()-> {
-            fileOpsService.ls(client,"test.txt");
-        });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(client,"test.txt"); });
 
     }
 
@@ -552,7 +561,7 @@ public class ITestFileOpsService
 
         List<FileInfo> listing = fileOpsService.ls(client,"/");
         // S3 doesn't really do folders?
-        Assert.assertTrue(listing.size() == 1);
+      Assert.assertEquals(listing.size(), 1);
 
     }
 }

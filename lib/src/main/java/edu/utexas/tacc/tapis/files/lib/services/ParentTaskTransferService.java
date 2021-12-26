@@ -14,7 +14,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
-import edu.utexas.tacc.tapis.files.lib.utils.Utils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jvnet.hk2.annotations.Service;
@@ -143,7 +143,7 @@ public class ParentTaskTransferService
     }
     catch (DAOException ex)
     {
-      throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
               "doParentStepOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage()), ex);
     }
 
@@ -159,7 +159,7 @@ public class ParentTaskTransferService
         // If srcSystem not enabled throw an exception
         if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
         {
-          String msg = Utils.getMsg("FILES_TXFR_SYS_NOTENABLED", parentTask.getTenantId(),
+          String msg = LibUtils.getMsg("FILES_TXFR_SYS_NOTENABLED", parentTask.getTenantId(),
                   parentTask.getUsername(), parentTask.getId(), parentTask.getUuid(), sourceSystem.getId());
           throw new ServiceException(msg);
         }
@@ -209,7 +209,7 @@ public class ParentTaskTransferService
     }
     catch (DAOException | TapisException | IOException e)
     {
-      throw new ServiceException(Utils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
               "doParentStepOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage()), e);
     }
     return parentTask;
@@ -226,8 +226,8 @@ public class ParentTaskTransferService
    */
   private Mono<TransferTaskParent> doErrorParentStepOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent)
   {
-    log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
-    log.error(Utils.getMsg("FILES_TXFR_SVC_ERR7", e));
+    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
+    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7", e));
     m.nack(false);
 
     // First update parent task, mark FAILED_OPT or FAILED
@@ -264,7 +264,7 @@ public class ParentTaskTransferService
     }
     catch (DAOException ex)
     {
-      log.error(Utils.getMsg("FILES_TXFR_SVC_ERR1", parent.getTenantId(), parent.getUsername(),
+      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parent.getTenantId(), parent.getUsername(),
               "doParentErrorStepOne", parent.getId(), parent.getUuid(), ex.getMessage()), ex);
     }
     return Mono.just(parent);
@@ -322,7 +322,7 @@ public class ParentTaskTransferService
     catch (IOException ex)
     {
       message.nack(false);
-      String msg = Utils.getMsg("FILES_TXFR_SVC_ERR11", ex.getMessage());
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR11", ex.getMessage());
       log.error(msg);
       throw new ServiceException(msg, ex);
     }
