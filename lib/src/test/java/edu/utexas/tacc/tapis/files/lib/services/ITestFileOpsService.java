@@ -45,6 +45,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /*
@@ -74,27 +75,17 @@ public class ITestFileOpsService
     String privateKey = IOUtils.toString(getClass().getResourceAsStream("/test-machine"), StandardCharsets.UTF_8);
     String publicKey = IOUtils.toString(getClass().getResourceAsStream("/test-machine.pub"), StandardCharsets.UTF_8);
 
-    //SSH system that is not enabled
-    testSystemNotEnabled = new TapisSystem();
-    testSystemSSH.setId("testSystem");
-    testSystemNotEnabled.setSystemType(SystemTypeEnum.LINUX);
-    testSystemNotEnabled.setHost("localhost");
-    testSystemSSH.setPort(2222);
-    testSystemSSH.setRootDir("/data/home/testuser/");
-    testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
-    testSystemSSH.setEffectiveUserId("testuser");
-
     //SSH system with username/password
     Credential creds = new Credential();
     creds.setAccessKey("testuser");
     creds.setPassword("password");
     testSystemSSH = new TapisSystem();
+    testSystemSSH.setId("testSystem");
     testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
     testSystemSSH.setAuthnCredential(creds);
     testSystemSSH.setHost("localhost");
     testSystemSSH.setPort(2222);
     testSystemSSH.setRootDir("/data/home/testuser/");
-    testSystemSSH.setId("testSystem");
     testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     testSystemSSH.setEffectiveUserId("testuser");
 
@@ -103,12 +94,12 @@ public class ITestFileOpsService
     creds.setPublicKey(publicKey);
     creds.setPrivateKey(privateKey);
     testSystemPKI = new TapisSystem();
+    testSystemPKI.setId("testSystem");
     testSystemPKI.setSystemType(SystemTypeEnum.LINUX);
     testSystemPKI.setAuthnCredential(creds);
     testSystemPKI.setHost("localhost");
     testSystemPKI.setPort(2222);
     testSystemPKI.setRootDir("/data/home/testuser/");
-    testSystemPKI.setId("testSystem");
     testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
     testSystemPKI.setEffectiveUserId("testuser");
 
@@ -117,10 +108,10 @@ public class ITestFileOpsService
     creds.setAccessKey("user");
     creds.setAccessSecret("password");
     testSystemS3 = new TapisSystem();
+    testSystemS3.setId("testSystem");
     testSystemS3.setSystemType(SystemTypeEnum.S3);
     testSystemS3.setHost("http://localhost");
     testSystemS3.setBucketName("test");
-    testSystemS3.setId("testSystem");
     testSystemS3.setPort(9000);
     testSystemS3.setAuthnCredential(creds);
     testSystemS3.setRootDir("/");
@@ -131,13 +122,24 @@ public class ITestFileOpsService
     creds.setAccessKey("dev");
     creds.setAccessSecret("dev");
     testSystemIrods = new TapisSystem();
+    testSystemIrods.setId("testSystem");
     testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
     testSystemIrods.setHost("localhost");
-    testSystemIrods.setId("testSystem");
     testSystemIrods.setPort(1247);
     testSystemIrods.setAuthnCredential(creds);
     testSystemIrods.setRootDir("/tempZone/home/dev/");
     testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+
+    //SSH system that is not enabled
+    testSystemNotEnabled = new TapisSystem();
+    testSystemNotEnabled.setId("testSystemNotEnabled");
+    testSystemNotEnabled.setSystemType(SystemTypeEnum.LINUX);
+    testSystemNotEnabled.setHost("localhost");
+    testSystemNotEnabled.setPort(2222);
+    testSystemNotEnabled.setRootDir("/data/home/testuser/");
+    testSystemNotEnabled.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+    testSystemNotEnabled.setEffectiveUserId("testuser");
+    testSystemNotEnabled.setEnabled(false);
   }
 
   // Data provider for all test systems
@@ -153,6 +155,13 @@ public class ITestFileOpsService
   public Object[] testSystemsNoS3DataProvider ()
   {
     return new TapisSystem[] { testSystemSSH, testSystemIrods, testSystemPKI };
+  }
+
+  // Data provider for NotEnabled system
+  @DataProvider(name= "testSystemsNotEnabled")
+  public Object[] testSystemsNotEnabled ()
+  {
+    return new TapisSystem[] { testSystemNotEnabled };
   }
 
   @BeforeSuite
@@ -195,13 +204,26 @@ public class ITestFileOpsService
       fileOpsService.delete(client, "/");
     }
 
-  @Test(dataProvider = "testSystems")
-  public void testGetSysListingPath(TapisSystem testSystem) throws Exception
+  // Check the getSystemIfEnabled() method
+  // TODO: This test not working properly. The call to systemsCache.getSystem() in FileOpsService.getSystemIfEnabled
+  //       is always returning null.
+  //       Also, the way the dataProvider works looks like we will need separate tests for enabled/disabled.
+
+  @Test(dataProvider = "testSystemsNotEnabled")
+  public void testGetSystemIfEnabled(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-    InputStream in = Utils.makeFakeFile(10*1024);
-    fileOpsService.getSystemIfEnabled(rTestUser, );
+    when(systemsCache.getSystem(any(), eq("testSystemNotEnabled"), any())).thenReturn(testSystemNotEnabled);
+    when(systemsCache.getSystem(any(), eq("testSystemEnabled"), any())).thenReturn(testSystemSSH);
+    // For an enabled system this should return the system
+    TapisSystem tmpSys = fileOpsService.getSystemIfEnabled(rTestUser, "testSystemEnabled");
+    Assert.assertNotNull(tmpSys);
+    Assert.assertEquals(tmpSys.getId(), testSystemSSH.getId());
+    // For a disabled or missing this should throw NotFound
+    Assert.assertThrows(NotFoundException.class, () ->
+            fileOpsService.getSystemIfEnabled(rTestUser, "testSystemNotEnabled"));
+    Assert.assertThrows(NotFoundException.class, () ->
+            fileOpsService.getSystemIfEnabled(rTestUser, "fakeSystemId"));
   }
 
   @Test(dataProvider = "testSystems")
