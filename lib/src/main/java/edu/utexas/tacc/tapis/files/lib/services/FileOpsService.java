@@ -494,6 +494,10 @@ public class FileOpsService implements IFileOpsService
         stream = getAllBytes(rUser, sys, path);
         stream.transferTo(output);
       }
+      catch (NotFoundException ex)
+      {
+        throw ex;
+      }
       catch (Exception e)
       {
         throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
@@ -538,9 +542,8 @@ public class FileOpsService implements IFileOpsService
   /**
    * Stream all content from object at path
    *
-   * In order to have the method auto disconnect the client, we have to copy the
-   * original InputStream from the client to another InputStream or else
-   * the finally block immediately disconnects.
+   * In order to have the method auto disconnect the client, we have to copy the original InputStream from the client
+   * to another InputStream or else the finally block immediately disconnects.
    *
    * @param path - path on system relative to system rootDir
    * @return InputStream
@@ -665,7 +668,7 @@ public class FileOpsService implements IFileOpsService
    */
   void getZip(@NotNull ResourceRequestUser rUser, @NotNull OutputStream outputStream, @NotNull TapisSystem sys,
                       @NotNull String path)
-          throws ServiceException, IOException, ForbiddenException
+          throws ServiceException, ForbiddenException
   {
     String apiTenant = rUser.getOboTenantId();
     String apiUser = rUser.getOboUserId();
@@ -691,7 +694,9 @@ public class FileOpsService implements IFileOpsService
         // Always add an entry for a dir to be sure empty directories are included
         if (fileInfo.isDir())
         {
-          ZipEntry entry = new ZipEntry(StringUtils.appendIfMissing(fileInfo.getPath(), "/"));
+          String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
+          Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
+          ZipEntry entry = new ZipEntry(StringUtils.appendIfMissing(pth.toString(), "/"));
           zipStream.putNextEntry(entry);
           zipStream.closeEntry();
         }

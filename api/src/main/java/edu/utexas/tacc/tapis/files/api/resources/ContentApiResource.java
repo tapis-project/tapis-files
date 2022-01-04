@@ -85,15 +85,15 @@ public class ContentApiResource extends BaseFileOpsResource
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
-    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
-    // If there is a problem throw an exception
-    if (resp != null)
-    {
-      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
-      // checkContext logs an error, so no need to log here.
-      throw new WebApplicationException(msg);
-    }
+//    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+//    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+//    // If there is a problem throw an exception
+//    if (resp != null)
+//    {
+//      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
+//      // checkContext logs an error, so no need to log here.
+//      throw new WebApplicationException(msg);
+//    }
 
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
@@ -126,7 +126,7 @@ public class ContentApiResource extends BaseFileOpsResource
       else
       {
         // So it will not be a zip. Check that path does not end with /.
-        // Ensure that the path is not a dir, if not zip, then this will error out
+        // If it ends with '/' then it is a bad request.
         if (path.endsWith("/"))
         {
           throw new BadRequestException(LibUtils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));

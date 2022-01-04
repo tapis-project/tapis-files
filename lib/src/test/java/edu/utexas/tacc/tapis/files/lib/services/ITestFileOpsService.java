@@ -205,10 +205,6 @@ public class ITestFileOpsService
     }
 
   // Check the getSystemIfEnabled() method
-  // TODO: This test not working properly. The call to systemsCache.getSystem() in FileOpsService.getSystemIfEnabled
-  //       is always returning null.
-  //       Also, the way the dataProvider works looks like we will need separate tests for enabled/disabled.
-
   @Test(dataProvider = "testSystemsNotEnabled")
   public void testGetSystemIfEnabled(TapisSystem testSystem) throws Exception
   {
@@ -512,26 +508,27 @@ public class ITestFileOpsService
     }
 
     @Test(dataProvider = "testSystems")
-    public void testZipFolder(TapisSystem testSystem) throws Exception {
+    public void testGetZip(TapisSystem testSystem) throws Exception
+    {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         client.delete("/");
         fileOpsService.upload(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
-        fileOpsService.upload(client,"a/test2.txt", Utils.makeFakeFile(1000 * 1024));
+        fileOpsService.upload(client,"a/b/test2.txt", Utils.makeFakeFile(1000 * 1024));
         fileOpsService.upload(client,"a/b/test3.txt", Utils.makeFakeFile(1000 * 1024));
 
         File file = File.createTempFile("test", ".zip");
         OutputStream outputStream = new FileOutputStream(file);
         fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a");
 
-        try (FileInputStream fis = new FileInputStream(file);
-             ZipInputStream zis = new ZipInputStream(fis)
-        ) {
+        try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis) )
+        {
             ZipEntry ze;
             int count = 0;
-            while ( (ze = zis.getNextEntry()) != null) {
-                log.info(ze.toString());
-                count++;
+            while ( (ze = zis.getNextEntry()) != null)
+            {
+              log.info(ze.toString());
+              count++;
             }
             // S3 will have 3 entries and others should have 4 (3 files + 1 dir)
             if (client instanceof S3DataClient) Assert.assertEquals(count, 3);
@@ -559,19 +556,32 @@ public class ITestFileOpsService
     }
 
     @Test(dataProvider = "testSystems")
-    public void testListingRecursive(TapisSystem testSystem) throws Exception {
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        client.delete("/");
-        fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(10*1024));
-        fileOpsService.upload(client,"/a/2.txt", Utils.makeFakeFile(10*1024));
-        fileOpsService.upload(client,"/a/b/3.txt", Utils.makeFakeFile(10*1024));
-        fileOpsService.upload(client,"/a/b/c/4.txt", Utils.makeFakeFile(10*1024));
+    public void testListingRecursive(TapisSystem testSystem) throws Exception
+    {
+      int maxDepth = 5;
+      when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+      client.delete("/");
+      fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(10*1024));
+      fileOpsService.upload(client,"/a/2.txt", Utils.makeFakeFile(10*1024));
+      fileOpsService.upload(client,"/a/b/3.txt", Utils.makeFakeFile(10*1024));
+      fileOpsService.upload(client,"/a/b/c/4.txt", Utils.makeFakeFile(10*1024));
+      fileOpsService.upload(client,"/a/b/c/5.txt", Utils.makeFakeFile(10*1024));
 
-        List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", 5);
-        // S3 doesn't really do folders?
-        Assert.assertTrue(listing.size() >=4);
+      List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", maxDepth);
+      for (FileInfo fi : listing) { log.info("Test1 found: " + fi.getUrl()); }
+      // S3 doesn't really do folders
+      // Test1 S3 should have 4 entries and others should have 7 (4 files + 3 directories)
+      if (testSystem.getSystemType() == SystemTypeEnum.S3) Assert.assertEquals(listing.size(), maxDepth);
+      else Assert.assertEquals(listing.size(), 8);
 
+      // Test2 S3 should have 3 entries and others should have 5 (3 files + 2 directories)
+      listing = fileOpsService.lsRecursive(client,"/a", maxDepth);
+      for (FileInfo fi : listing) { log.info("Test2 found: " + fi.getUrl()); }
+      // S3 doesn't really do folders
+      // S3 should have 3 entries and others should have 5 (3 files + 2 directories)
+      if (testSystem.getSystemType() == SystemTypeEnum.S3) Assert.assertEquals(listing.size(), 4);
+      else Assert.assertEquals(listing.size(), 6);
     }
 
     @Test(dataProvider = "testSystems")

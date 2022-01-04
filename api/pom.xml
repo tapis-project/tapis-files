@@ -54,18 +54,24 @@
             <groupId>org.glassfish.jersey.inject</groupId>
             <artifactId>jersey-hk2</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.glassfish.jersey.containers</groupId>
-            <artifactId>jersey-container-grizzly2-http</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.glassfish.jersey.test-framework</groupId>
-            <artifactId>jersey-test-framework-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.glassfish.jersey.test-framework.providers</groupId>
-            <artifactId>jersey-test-framework-provider-grizzly2</artifactId>
-        </dependency>
+<!--    TODO: Tests seem to run fine without these. Are they really needed? -->
+<!--    TODO: Also, how to support use of @Context for request so we can have access to TapisThreadLocal
+              for tests? Online search indicates jersey-test-framework-provider-grizzly2 does not support
+               @Context and presumably that is why TapisThreadLocal is not available when running tests.
+               The final thread handling the http request appears to be different from the thread that processes
+               the JWT filter. -->
+<!--        <dependency>-->
+<!--            <groupId>org.glassfish.jersey.containers</groupId>-->
+<!--            <artifactId>jersey-container-grizzly2-http</artifactId>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>org.glassfish.jersey.test-framework</groupId>-->
+<!--            <artifactId>jersey-test-framework-core</artifactId>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>org.glassfish.jersey.test-framework.providers</groupId>-->
+<!--            <artifactId>jersey-test-framework-provider-grizzly2</artifactId>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>org.glassfish.jersey.media</groupId>
             <artifactId>jersey-media-json-jackson</artifactId>
