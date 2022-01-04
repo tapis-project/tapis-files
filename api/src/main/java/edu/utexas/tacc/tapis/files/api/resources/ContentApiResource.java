@@ -85,6 +85,7 @@ public class ContentApiResource extends BaseFileOpsResource
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
+    // TODO/TBD: Leave this out for now since it prevents running of the tests. See api/pom.xml
 //    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
 //    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
 //    // If there is a problem throw an exception
@@ -113,44 +114,44 @@ public class ContentApiResource extends BaseFileOpsResource
     // Determine the target file name (.zip will get added for zipStream)
     java.nio.file.Path filepath = Paths.get(path);
     String filename = filepath.getFileName().toString();
-      // Make a different service call depending on type of response:
-      //  - zipStream, byteRangeStream, paginatedStream, fullStream
-      if (zip)
+    // Make a different service call depending on type of response:
+    //  - zipStream, byteRangeStream, paginatedStream, fullStream
+    if (zip)
+    {
+      // Send a zip stream. This can handle a path ending in /
+      outStream = fileOpsService.getZipStream(rUser, sys, path);
+      String newName = FilenameUtils.removeExtension(filename) + ".zip";
+      contentDisposition = String.format("attachment; filename=%s", newName);
+      mediaType = MediaType.APPLICATION_OCTET_STREAM;
+    }
+    else
+    {
+      // So it will not be a zip. Check that path does not end with /.
+      // If it ends with '/' then it is a bad request.
+      if (path.endsWith("/"))
       {
-        // Send a zip stream. This can handle a path ending in /
-        outStream = fileOpsService.getZipStream(rUser, sys, path);
-        String newName = FilenameUtils.removeExtension(filename) + ".zip";
-        contentDisposition = String.format("attachment; filename=%s", newName);
-        mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        throw new BadRequestException(LibUtils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
+      }
+      // Send a byteRange, page blocks or the full stream.
+      if (range != null)
+      {
+        outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range);
+        contentDisposition = String.format("attachment; filename=%s", filename);
+        mediaType = MediaType.TEXT_PLAIN;
+      }
+      else if (!Objects.isNull(startPage))
+      {
+        outStream = fileOpsService.getPagedStream(rUser, sys, path, startPage);
+        contentDisposition = "inline";
+        mediaType = MediaType.TEXT_PLAIN;
       }
       else
       {
-        // So it will not be a zip. Check that path does not end with /.
-        // If it ends with '/' then it is a bad request.
-        if (path.endsWith("/"))
-        {
-          throw new BadRequestException(LibUtils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
-        }
-        // Send a byteRange, page blocks or the full stream.
-        if (range != null)
-        {
-          outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range);
-          contentDisposition = String.format("attachment; filename=%s", filename);
-          mediaType = MediaType.TEXT_PLAIN;
-        }
-        else if (!Objects.isNull(startPage))
-        {
-          outStream = fileOpsService.getPagedStream(rUser, sys, path, startPage);
-          contentDisposition = "inline";
-          mediaType = MediaType.TEXT_PLAIN;
-        }
-        else
-        {
-          outStream = fileOpsService.getFullStream(rUser, sys, path);
-          contentDisposition = String.format("attachment; filename=%s", filename);
-          mediaType = MediaType.APPLICATION_OCTET_STREAM;
-        }
+        outStream = fileOpsService.getFullStream(rUser, sys, path);
+        contentDisposition = String.format("attachment; filename=%s", filename);
+        mediaType = MediaType.APPLICATION_OCTET_STREAM;
       }
+    }
 
     // Build the response using the outStream, contentDisposition and mediaType
     // For some reason non-zip has cache-control max-age of 1 hour and zip has no header,

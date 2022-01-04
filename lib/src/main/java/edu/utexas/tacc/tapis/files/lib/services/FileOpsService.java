@@ -107,7 +107,8 @@ public class FileOpsService implements IFileOpsService
     try
     {
       sys = systemsCache.getSystem(rUser.getOboTenantId(), systemId, rUser.getOboUserId());
-      if (sys == null || sys.getEnabled() == null || !sys.getEnabled())
+      if (sys == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
+      if (sys.getEnabled() == null || !sys.getEnabled())
       {
         throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTENABLED", rUser, systemId));
       }

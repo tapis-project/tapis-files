@@ -50,34 +50,6 @@ public abstract class BaseFileOpsResource
   }
 
   /**
-   * Fetch a Tapis System. Check that the Tapis system exists and is enabled.
-   * Provided path is used only for logging.
-   * TODO: Return complete system or just effUser?
-   *       we have fetched the system anyway
-   *
-   * @param systemId - Tapis System id
-   * @param user - Authenticated user (obo user)
-   * @param path - path, if any, for logging purposes only.
-   * @return Tapis system matching given id
-   * @throws NotFoundException system not found
-   * @throws BadRequestException system not enabled
-   */
-  protected TapisSystem getSystem(String systemId, AuthenticatedUser user, String path)
-          throws NotFoundException, BadRequestException
-  {
-    TapisSystem system;
-    try { system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser()); }
-    catch (ServiceException ex)
-    {
-      throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId, path, ex.getMessage()));
-    }
-    LibUtils.checkEnabled(user, system);
-    return system;
-//    String effUser = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-//    return effUser;
-  }
-
-  /**
    * Retrieve remote data client from the cache.
    * First fetch Tapis system (which ensures it exists)
    * Provided path is used only for logging.

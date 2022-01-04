@@ -10,27 +10,16 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
-import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.shared.utils.CallSiteToggle;
 import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
-import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
-import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils.RESPONSE_STATUS;
-
-//import edu.utexas.tacc.tapis.files.api.FilesApplication;
-//import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
-//import edu.utexas.tacc.tapis.files.service.FilesServiceImpl;
-//import edu.utexas.tacc.tapis.files.utils.LibUtils;
-
+import static edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils.RESPONSE_STATUS;
 
 /* Tapis Files general resource endpoints including healthcheck and readycheck
  *
@@ -60,8 +49,6 @@ public class FilesResource
   private static final CallSiteToggle checkDBOK = new CallSiteToggle();
 
   // **************** Inject Services using HK2 ****************
-//  @Inject
-//  private FilesServiceImpl svcImpl;
   @Inject
   private ServiceContext serviceContext;
 

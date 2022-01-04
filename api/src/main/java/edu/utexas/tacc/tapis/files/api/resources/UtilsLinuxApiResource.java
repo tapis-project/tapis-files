@@ -43,71 +43,77 @@ import java.time.Instant;
  * Another option would be to have systemType as a path parameter and rename this class to UtilsApiResource.
  */
 @Path("/v3/files/utils/linux")
-public class UtilsLinuxApiResource extends BaseFileOpsResource {
+public class UtilsLinuxApiResource extends BaseFileOpsResource
+{
+  private static final Logger log = LoggerFactory.getLogger(UtilsLinuxApiResource.class);
 
-    private static final Logger log = LoggerFactory.getLogger(UtilsLinuxApiResource.class);
+  @Inject
+  IFileUtilsService fileUtilsService;
 
-    @Inject
-    IFileUtilsService fileUtilsService;
-
-    @GET
-    @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getStatInfo(@PathParam("systemId") String systemId,
-                                @PathParam("path") String path,
-                                @QueryParam("followLinks") @DefaultValue("false") boolean followLinks,
-                                @Context SecurityContext securityContext)
+  @GET
+  @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getStatInfo(@PathParam("systemId") String systemId,
+                              @PathParam("path") String path,
+                              @QueryParam("followLinks") @DefaultValue("false") boolean followLinks,
+                              @Context SecurityContext securityContext)
+  {
+    String opName = "getStatInfo";
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    try
     {
-        String opName = "getStatInfo";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        try {
-            Instant start = Instant.now();
-            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            LibUtils.checkEnabled(user, system);
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
+      Instant start = Instant.now();
+      TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+      LibUtils.checkEnabled(user, system);
+      String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+      IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
 
-            // Make the service call
-            FileStatInfo fileStatInfo = fileUtilsService.getStatInfo(client, path, followLinks);
+      // Make the service call
+      FileStatInfo fileStatInfo = fileUtilsService.getStatInfo(client, path, followLinks);
 
-            String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
-            log.debug(msg);
-            TapisResponse<FileStatInfo> resp = TapisResponse.createSuccessResponse("ok", fileStatInfo);
-            return Response.status(Status.OK).entity(resp).build();
-        } catch (ServiceException | IOException e) {
-            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
+      String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+      log.debug(msg);
+      TapisResponse<FileStatInfo> resp = TapisResponse.createSuccessResponse("ok", fileStatInfo);
+      return Response.status(Status.OK).entity(resp).build();
     }
-
-    @POST
-    @Path("/{systemId}/{path:.+}")
-    public Response runLinuxNativeOp(@PathParam("systemId") String systemId,
-                                     @PathParam("path") String path,
-                                     @Valid NativeLinuxOpRequest request,
-                                     @QueryParam("recursive") @DefaultValue("false") boolean recursive,
-                                     @Context SecurityContext securityContext)
+    catch (ServiceException | IOException e)
     {
-        String opName = "runLinuxNativeOp";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        try {
-            TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-            LibUtils.checkEnabled(user, system);
-            String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
-            IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
-            if (client == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
-
-            // Make the service call
-            NativeLinuxOpResult nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(),
-                                                                               request.getArgument(), recursive);
-
-            TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse("ok", nativeLinuxOpResult);
-            return Response.ok(resp).build();
-        } catch (TapisException | ServiceException | IOException e) {
-            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
+      String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
     }
+  }
+
+  @POST
+  @Path("/{systemId}/{path:.+}")
+  public Response runLinuxNativeOp(@PathParam("systemId") String systemId,
+                                   @PathParam("path") String path,
+                                   @Valid NativeLinuxOpRequest request,
+                                   @QueryParam("recursive") @DefaultValue("false") boolean recursive,
+                                   @Context SecurityContext securityContext)
+  {
+    String opName = "runLinuxNativeOp";
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    try
+    {
+      TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+      LibUtils.checkEnabled(user, system);
+      String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
+      IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
+      if (client == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
+
+      // Make the service call
+      NativeLinuxOpResult nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(),
+              request.getArgument(), recursive);
+
+      TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse("ok", nativeLinuxOpResult);
+      return Response.ok(resp).build();
+    }
+    catch (TapisException | ServiceException | IOException e)
+    {
+      String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+  }
 }
