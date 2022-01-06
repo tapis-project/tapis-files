@@ -1,27 +1,26 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
 import javax.validation.constraints.NotNull;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MoveCopyOperation;
 
-public class MoveCopyRequest {
+public class MoveCopyRequest
+{
+  private MoveCopyOperation operation;
+  private String newPath;
 
-    private MoveCopyOperation operation;
-    private String newPath;
+  @NotNull
+  public MoveCopyOperation getOperation() { return operation; }
 
-    @NotNull
-    public MoveCopyOperation getOperation() {
-        return operation;
-    }
+  public void setOperation(MoveCopyOperation o) {
+    operation = o;
+  }
 
-    public void setOperation(MoveCopyOperation operation) {
-        this.operation = operation;
-    }
+  @NotNull
+  public String getNewPath() {
+    return newPath;
+  }
 
-    @NotNull
-    public String getNewPath() {
-        return newPath;
-    }
-
-    public void setNewPath(String newPath) {
-        this.newPath = newPath;
-    }
+  public void setNewPath(String s) {
+    newPath = s;
+  }
 }

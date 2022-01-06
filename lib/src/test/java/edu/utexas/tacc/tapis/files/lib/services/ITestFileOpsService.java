@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MoveCopyOperation;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -70,6 +71,9 @@ public class ITestFileOpsService
   private static final Logger log  = LoggerFactory.getLogger(ITestFileOpsService.class);
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
   private final SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
+
+  private static final MoveCopyOperation OP_MV = MoveCopyOperation.MOVE;
+  private static final MoveCopyOperation OP_CP = MoveCopyOperation.COPY;
 
   private ITestFileOpsService() throws IOException
   {
@@ -303,7 +307,7 @@ public class ITestFileOpsService
     InputStream in = Utils.makeFakeFile(100*1024);
     fileOpsService.upload(client,"test1.txt", in);
     in.close();
-    fileOpsService.move(client, "test1.txt", "test2.txt");
+    fileOpsService.moveOrCopy(client, OP_MV, "test1.txt", "test2.txt");
     List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 1);
@@ -349,14 +353,14 @@ public class ITestFileOpsService
           /dir2/test07.txt
           /dir2/test08.txt
      */
-    fileOpsService.copy(client, "test1.txt", "/dir1/test01.txt");
-    fileOpsService.copy(client, "test1.txt", "dir1/test02.txt");
-    fileOpsService.copy(client, "/dir1/test1.txt", "/dir1/test03.txt");
-    fileOpsService.copy(client, "dir1/test1.txt", "/dir1/test04.txt");
-    fileOpsService.copy(client, "/dir1/test1.txt", "/dir2/test05.txt");
-    fileOpsService.copy(client, "dir1/test1.txt", "/dir2/test06.txt");
-    fileOpsService.copy(client, "/dir1/test1.txt", "dir2/test07.txt");
-    fileOpsService.copy(client, "dir1/test1.txt", "dir2/test08.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/dir1/test01.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "dir1/test02.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "/dir1/test03.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "/dir1/test04.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "/dir2/test05.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "/dir2/test06.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "dir2/test07.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "dir2/test08.txt");
     // Check listing for /dir1 - 5 files
     System.out.println("After copying: list for /dir1");
     listing = fileOpsService.ls(client, "/dir1", MAX_LISTING_SIZE, 0);
@@ -423,21 +427,21 @@ public class ITestFileOpsService
           /dir1/dir2/test15.txt
           /dir2/test1.txt
      */
-    fileOpsService.copy(client, "/test1.txt", "/test01.txt");
-    fileOpsService.copy(client, "test1.txt", "/test02.txt");
-    fileOpsService.copy(client, "/test1.txt", "test03.txt");
-    fileOpsService.copy(client, "test1.txt", "test04.txt");
-    fileOpsService.copy(client, "test1.txt", "/dir1/test05.txt");
-    fileOpsService.copy(client, "test1.txt", "dir1/test06.txt");
-    fileOpsService.copy(client, "test1.txt", "/dir1/dir2/test07.txt");
-    fileOpsService.copy(client, "test1.txt", "dir1/dir2/test08.txt");
-    fileOpsService.copy(client, "/dir1/test1.txt", "/dir1/test09.txt");
-    fileOpsService.copy(client, "dir1/test1.txt", "/dir1/test10.txt");
-    fileOpsService.copy(client, "/dir1/dir2/test1.txt", "/dir1/test11.txt");
-    fileOpsService.copy(client, "dir1/dir2/test1.txt", "/dir1/test12.txt");
-    fileOpsService.copy(client, "/dir1/dir2/test1.txt", "/dir1/dir2/test13.txt");
-    fileOpsService.copy(client, "dir1/dir2/test1.txt", "/dir1/dir2/test14.txt");
-    fileOpsService.copy(client, "dir2/test1.txt", "/dir1/dir2/test15.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "/test1.txt", "/test01.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/test02.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "/test1.txt", "test03.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "test04.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/dir1/test05.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "dir1/test06.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/dir1/dir2/test07.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "dir1/dir2/test08.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "/dir1/test09.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "/dir1/test10.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/dir2/test1.txt", "/dir1/test11.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "dir1/dir2/test1.txt", "/dir1/test12.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/dir2/test1.txt", "/dir1/dir2/test13.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "dir1/dir2/test1.txt", "/dir1/dir2/test14.txt");
+    fileOpsService.moveOrCopy(client, OP_CP, "dir2/test1.txt", "/dir1/dir2/test15.txt");
     // Check listing for /
     // 2 directories and 5 files
     System.out.println("After copying: list for / ");
@@ -575,12 +579,12 @@ public class ITestFileOpsService
     Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"newdir"); });
     Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/newdir"); });
     Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/a/newdir"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.move(client,"/1.txt","/1new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.move(client,"/1.txt","/a/1new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.move(client,"/a/2.txt","/b/2new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.copy(client,"/1.txt","/1new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.copy(client,"/1.txt","/a/1new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.copy(client,"/a/2.txt","/b/2new.txt"); });
+    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/1.txt","/1new.txt"); });
+    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/1.txt","/a/1new.txt"); });
+    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/a/2.txt","/b/2new.txt"); });
+    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client, OP_CP,"/1.txt","/1new.txt"); });
+    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client, OP_CP,"/1.txt","/a/1new.txt"); });
+    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client, OP_CP,"/a/2.txt","/b/2new.txt"); });
     Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/1.txt"); });
     Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a/1.txt"); });
     Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a"); });

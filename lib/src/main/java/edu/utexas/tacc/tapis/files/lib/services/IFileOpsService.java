@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MoveCopyOperation;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jetbrains.annotations.NotNull;
@@ -44,14 +45,12 @@ public interface IFileOpsService
   void mkdir(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path) throws WebApplicationException;
   void mkdir(@NotNull IRemoteDataClient client, String path) throws ServiceException;
 
-//  void move(@NotNull ResourceRequestUser rUser, TapisSystem sys, String srcPath, String dstPath) throws WebApplicationException;
-  void move(@NotNull IRemoteDataClient client, String srcPath, String dstPath) throws ServiceException;
+  void moveOrCopy(@NotNull ResourceRequestUser rUser, MoveCopyOperation op, TapisSystem sys, String srcPath, String dstPath)
+          throws WebApplicationException;
+  void moveOrCopy(@NotNull IRemoteDataClient client, MoveCopyOperation op, String srcPath, String dstPath) throws ServiceException;
 
-//  void copy(@NotNull ResourceRequestUser rUser, TapisSystem sys, String srcPath, String dstPath) throws WebApplicationException;
-  void copy(@NotNull IRemoteDataClient client, String srcPath, String dstPath) throws ServiceException;
-
-//  void delete(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path) throws WebApplicationException;
-  void delete(@NotNull IRemoteDataClient client, String path) throws ServiceException, NotFoundException;
+  void delete(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path) throws WebApplicationException;
+  void delete(@NotNull IRemoteDataClient client, String path) throws ServiceException;
 
   // ===================
   // GetContents

@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
-import edu.utexas.tacc.tapis.files.api.models.MoveCopyOperation;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -27,7 +26,6 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -180,17 +178,6 @@ public class OperationsApiResource extends BaseFileOpsResource
       fileOpsService.upload(rUser, sys, path, fileInputStream);
       TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
       return Response.ok(resp).build();
-//
-//      try {
-//            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-//            fileOpsService.upload(client, path, fileInputStream);
-//            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-//            return Response.ok(resp).build();
-//        } catch (ServiceException | IOException e) {
-//            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
-//            log.error(msg, e);
-//            throw new WebApplicationException(msg, e);
-//        }
     }
 
   /**
@@ -227,24 +214,13 @@ public class OperationsApiResource extends BaseFileOpsResource
       fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath());
       TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
       return Response.ok(resp).build();
-//        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-//        try {
-//            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, null);
-//            fileOpsService.mkdir(client, mkdirRequest.getPath());
-//            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-//            return Response.ok(resp).build();
-//        } catch (ServiceException | IOException e) {
-//            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, mkdirRequest.getPath(), e.getMessage());
-//            log.error(msg, e);
-//            throw new WebApplicationException(msg, e);
-//        }
     }
 
   /**
    * Perform a move or copy operation
    * @param systemId - id of system
    * @param path - source path on system
-   * @param request - request body containing operation (MOVE/COPY) and target path
+   * @param mvCpReq - request body containing operation (MOVE/COPY) and target path
    * @param securityContext - user identity
    * @return response
    */
@@ -254,30 +230,28 @@ public class OperationsApiResource extends BaseFileOpsResource
     @Consumes(MediaType.APPLICATION_JSON)
     public Response moveCopy(@PathParam("systemId") String systemId,
                              @PathParam("path") String path,
-                             @Valid MoveCopyRequest request,
+                             @Valid MoveCopyRequest mvCpReq,
                              @Context SecurityContext securityContext)
     {
       String opName = "moveCopy";
-      AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-      try
-      {
-        // Get a remoteDataClient for the given TapisSystem
-        IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-        if (client == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
-        // Perform the operation
-        MoveCopyOperation operation = request.getOperation();
-        if (operation.equals(MoveCopyOperation.MOVE)) fileOpsService.move(client, path, request.getNewPath());
-        else if (operation.equals(MoveCopyOperation.COPY)) fileOpsService.copy(client, path, request.getNewPath());
-        // Return response
-        TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
-        return Response.ok(resp).build();
-      }
-      catch (ServiceException | IOException e)
-      {
-        String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
-        log.error(msg, e);
-        throw new WebApplicationException(msg, e);
-      }
+      // Create a user that collects together tenant, user and request information needed by service calls
+      ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+      // Trace this request.
+      if (log.isTraceEnabled())
+        ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
+                            "op="+mvCpReq.getOperation(), "newPath="+mvCpReq.getNewPath());
+
+      // Make sure the Tapis System exists and is enabled
+      TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+
+      // ---------------------------- Make service call -------------------------------
+      // Note that we do not use try/catch around service calls because exceptions are already either
+      //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+      //   to responses (FilesExceptionMapper).
+      fileOpsService.moveOrCopy(rUser, mvCpReq.getOperation(), sys, path, mvCpReq.getNewPath());
+      TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+      return Response.ok(resp).build();
     }
 
   /**
