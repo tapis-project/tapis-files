@@ -9,7 +9,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Contract;
 
-import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
@@ -23,7 +22,6 @@ import java.util.List;
 @Contract
 public interface IFileOpsService
 {
-
   // ===================
   // GeneralOps
   // ===================
@@ -32,23 +30,28 @@ public interface IFileOpsService
   // ===================
   // FileOps
   // ===================
-  List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException;
+  List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, long limit, long offset)
+          throws WebApplicationException;
+  List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException;
 
-  List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset)
-          throws ServiceException, NotFoundException, ForbiddenException;
+  List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, int maxDepth)
+          throws WebApplicationException;
+  List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth) throws ServiceException;
 
-  List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth)
-          throws ServiceException, NotFoundException, ForbiddenException;
+  void upload(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path, InputStream in) throws WebApplicationException;
+  void upload(@NotNull IRemoteDataClient client, String path, InputStream in) throws ServiceException;
 
+  void mkdir(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path) throws WebApplicationException;
   void mkdir(@NotNull IRemoteDataClient client, String path) throws ServiceException;
 
+//  void move(@NotNull ResourceRequestUser rUser, TapisSystem sys, String srcPath, String dstPath) throws WebApplicationException;
   void move(@NotNull IRemoteDataClient client, String srcPath, String dstPath) throws ServiceException;
 
+//  void copy(@NotNull ResourceRequestUser rUser, TapisSystem sys, String srcPath, String dstPath) throws WebApplicationException;
   void copy(@NotNull IRemoteDataClient client, String srcPath, String dstPath) throws ServiceException;
 
+//  void delete(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path) throws WebApplicationException;
   void delete(@NotNull IRemoteDataClient client, String path) throws ServiceException, NotFoundException;
-
-  void upload(@NotNull IRemoteDataClient client, String path, InputStream in) throws ServiceException;
 
   // ===================
   // GetContents

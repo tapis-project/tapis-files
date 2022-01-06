@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyOperation;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
+import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -10,11 +11,15 @@ import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.servlet.ServletContext;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -30,11 +35,14 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
@@ -49,60 +57,92 @@ import java.util.List;
 @Path("/v3/files/ops")
 public class OperationsApiResource extends BaseFileOpsResource
 {
-    private static final int MAX_RECURSION_DEPTH = 10;
-    private static final Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
+  private static final int MAX_RECURSION_DEPTH = 10;
+  private static final Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
+  private final String className = getClass().getSimpleName();
+  // Always return a nicely formatted response
+  private static final boolean PRETTY = true;
 
-    @Inject
-    IFileOpsService fileOpsService;
+  // ************************************************************************
+  // *********************** Fields *****************************************
+  // ************************************************************************
+  @Context
+  private HttpHeaders _httpHeaders;
+  @Context
+  private Application _application;
+  @Context
+  private UriInfo _uriInfo;
+  @Context
+  private SecurityContext _securityContext;
+  @Context
+  private ServletContext _servletContext;
+  @Context
+  private Request _request;
+
+  @Inject
+  IFileOpsService fileOpsService;
 
   /**
-   * List files at path
+   * List files at path.
+   *  If recursion is specified max depth is MAX_RECURSION_DEPTH (10)
    * @param systemId - id of system
    * @param path - path on system relative to system rootDir
    * @param limit - pagination limit
    * @param offset - pagination offset
-   * @param recurse - flag indicating a recursive listing should be provided
+   * @param recurse - flag indicating a recursive listing should be provided (up to depth of 10)
    * @param securityContext - user identity
    * @return response containing list of files
    */
-    @GET
-    @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response listFiles(@PathParam("systemId") String systemId,
-                              @PathParam("path") String path,
-                              @QueryParam("limit") @DefaultValue("1000") @Max(1000) int limit,
-                              @QueryParam("offset") @DefaultValue("0") @Min(0) long offset,
-                              @QueryParam("recurse") @DefaultValue("false") boolean recurse,
-                              @Context SecurityContext securityContext)
-    {
-        String opName = "listFiles";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        log.debug("PATH={}", path);
-        try {
-            Instant start = Instant.now();
-          // TODO/TBD move setup of client to the service layer.
-          // TODO/TBD: replace checkSystemAndGetClient with getSystem
-          //             or move fetch of system to svc layer also?
-          //       would need to do this for all apiResource calls.
-            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-            List<FileInfo> listing;
-            if (recurse) {
-                listing = fileOpsService.lsRecursive(client, path, MAX_RECURSION_DEPTH);
-            } else {
-                listing = fileOpsService.ls(client, path, limit, offset);
-            }
-            String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
-            log.debug(msg);
-            TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
-            return Response.status(Status.OK).entity(resp).build();
-        } catch (NotFoundException e) {
-            throw new NotFoundException(LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage()));
-        } catch (ServiceException | IOException e) {
-            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
-    }
+  @GET
+  @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response listFiles(@PathParam("systemId") String systemId,
+                            @PathParam("path") String path,
+                            @QueryParam("limit") @DefaultValue("1000") @Max(1000) int limit,
+                            @QueryParam("offset") @DefaultValue("0") @Min(0) long offset,
+                            @QueryParam("recurse") @DefaultValue("false") boolean recurse,
+                            @Context SecurityContext securityContext)
+  {
+    String opName = "listFiles";
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    // TODO/TBD: Leave this out for now since it prevents running of the tests. See api/pom.xml
+//    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+//    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+//    // If there is a problem throw an exception
+//    if (resp != null)
+//    {
+//      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
+//      // checkContext logs an error, so no need to log here.
+//      throw new WebApplicationException(msg);
+//    }
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
+              "path="+path, "limit="+limit, "offset="+offset, "recurse="+recurse);
+
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+
+    Instant start = Instant.now();
+    List<FileInfo> listing;
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION_DEPTH);
+    else listing = fileOpsService.ls(rUser, sys, path, limit, offset);
+
+    String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+    log.debug(msg);
+    TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
+    return Response.status(Status.OK).entity(resp).build();
+  }
 
   /**
    * Upload a file
@@ -121,18 +161,36 @@ public class OperationsApiResource extends BaseFileOpsResource
                            @FormDataParam(value = "file") InputStream fileInputStream,
                            @Context SecurityContext securityContext)
     {
-        String opName = "upload";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        try {
-            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-            fileOpsService.upload(client, path, fileInputStream);
-            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-            return Response.ok(resp).build();
-        } catch (ServiceException | IOException e) {
-            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
+      String opName = "upload";
+      // Create a user that collects together tenant, user and request information needed by service calls
+      ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+      // Trace this request.
+      if (log.isTraceEnabled())
+        ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
+                            "path="+path);
+
+      // Make sure the Tapis System exists and is enabled
+      TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+
+      // ---------------------------- Make service call -------------------------------
+      // Note that we do not use try/catch around service calls because exceptions are already either
+      //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+      //   to responses (FilesExceptionMapper).
+      fileOpsService.upload(rUser, sys, path, fileInputStream);
+      TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+      return Response.ok(resp).build();
+//
+//      try {
+//            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
+//            fileOpsService.upload(client, path, fileInputStream);
+//            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+//            return Response.ok(resp).build();
+//        } catch (ServiceException | IOException e) {
+//            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
+//            log.error(msg, e);
+//            throw new WebApplicationException(msg, e);
+//        }
     }
 
   /**
@@ -150,22 +208,40 @@ public class OperationsApiResource extends BaseFileOpsResource
                           @Valid MkdirRequest mkdirRequest,
                           @Context SecurityContext securityContext)
     {
-        String opName = "mkdir";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        try {
-            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, null);
-            fileOpsService.mkdir(client, mkdirRequest.getPath());
-            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-            return Response.ok(resp).build();
-        } catch (ServiceException | IOException e) {
-            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, mkdirRequest.getPath(), e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
+      String opName = "mkdir";
+      // Create a user that collects together tenant, user and request information needed by service calls
+      ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+      // Trace this request.
+      if (log.isTraceEnabled())
+        ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
+                            "path="+mkdirRequest.getPath());
+
+      // Make sure the Tapis System exists and is enabled
+      TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+
+      // ---------------------------- Make service call -------------------------------
+      // Note that we do not use try/catch around service calls because exceptions are already either
+      //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+      //   to responses (FilesExceptionMapper).
+      fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath());
+      TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+      return Response.ok(resp).build();
+//        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+//        try {
+//            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, null);
+//            fileOpsService.mkdir(client, mkdirRequest.getPath());
+//            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+//            return Response.ok(resp).build();
+//        } catch (ServiceException | IOException e) {
+//            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, mkdirRequest.getPath(), e.getMessage());
+//            log.error(msg, e);
+//            throw new WebApplicationException(msg, e);
+//        }
     }
 
   /**
-   *
+   * Perform a move or copy operation
    * @param systemId - id of system
    * @param path - source path on system
    * @param request - request body containing operation (MOVE/COPY) and target path

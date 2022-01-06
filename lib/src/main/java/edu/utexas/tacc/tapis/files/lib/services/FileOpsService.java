@@ -123,104 +123,198 @@ public class FileOpsService implements IFileOpsService
   // ----------------------------------------------------------------------------------------------------
   // ------------- Support for FileOps
   // ----------------------------------------------------------------------------------------------------
+//  /**
+//   * List files at path using default limit=MAX_LISTING_SIZE(1000) and offset=0
+//   * NOTE: This is not public because it is only used in this class and in test classes.
+//   * @param rUser - ResourceRequestUser containing tenant, user and request info
+//   * @param sys - System
+//   * @param path - path on system relative to system rootDir
+//   * @return Collection of FileInfo objects
+//   * @throws ServiceException - general error
+//   * @throws NotFoundException - requested path not found
+//   * @throws ForbiddenException - user not authorized
+//   */
+//    List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+//            throws ServiceException, NotFoundException, NotAuthorizedException
+//    {
+//        return ls(rUser, sys, path, MAX_LISTING_SIZE, 0);
+//    }
+//
   /**
-   * List files at path
-   * @param client remote data client to use
+   * List files at path using given limit and offset
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
    * @param path - path on system relative to system rootDir
+   * @param limit - pagination limit
+   * @param offset - pagination offset
    * @return Collection of FileInfo objects
-   * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
-   * @throws ForbiddenException - user not authorized
+   * @throws NotAuthorizedException - user not authorized
    */
-    @Override
-    public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path)
-            throws ServiceException, NotFoundException, NotAuthorizedException
+  @Override
+  public List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                           long limit, long offset)
+          throws WebApplicationException
+  {
+    String apiTenant = rUser.getOboTenantId();
+    String apiUser = rUser.getOboUserId();
+    String sysId = sys.getId();
+    Path relativePath = PathUtils.getRelativePath(path);
+    // Reserve a client connection, use it to get listing and then release it
+    IRemoteDataClient client = null;
+    try
     {
-        return ls(client, path, MAX_LISTING_SIZE, 0);
+      LibUtils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+      client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
+      client.reserve();
+      return ls(client, path, limit, offset);
     }
+    catch (IOException | ServiceException ex)
+    {
+      String msg = LibUtils.getMsg("FILES_OPSC_ERR", apiTenant, apiUser, "ls", sysId, path, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
+    }
+    finally
+    {
+      if (client != null) client.release();
+    }
+  }
 
   /**
-   * Recursive list files at path
-   * @param client remote data client to use
-   * @param path - path on system relative to system rootDir
-   * @param maxDepth - maximum depth for recursion
-   * @return Collection of FileInfo objects
-   * @throws ServiceException - general error
-   * @throws NotFoundException - requested path not found
-   * @throws ForbiddenException - user not authorized
-   */
-    @Override
-    public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth)
-            throws ServiceException, NotFoundException, ForbiddenException
-    {
-      Path relativePath = PathUtils.getRelativePath(path);
-      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           relativePath, Permission.READ);
-      maxDepth = Math.min(maxDepth, MAX_RECURSION);
-      List<FileInfo> listing = new ArrayList<>();
-      listDirectoryRec(client, path, listing, 0, maxDepth);
-      return listing;
-    }
-
-  /**
-   * List files at path
-   * @param client remote data client to use
+   * List files at path using given limit and offset
+   * NOTE: This method does not check permissions. Callers should check first
+   * @param client - Remote data client
    * @param path - path on system relative to system rootDir
    * @param limit - pagination limit
    * @param offset - pagination offset
    * @return Collection of FileInfo objects
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
-   * @throws NotAuthorizedException - user not authorized
    */
-    @Override
-    public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset)
-            throws ServiceException, NotFoundException
+  @Override
+  public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset)
+          throws ServiceException, NotFoundException
+  {
+    Path relativePath = PathUtils.getRelativePath(path);
+    LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                            relativePath, Permission.READ);
+    try
     {
-        try {
-            Path relativePath = PathUtils.getRelativePath(path);
-            LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                 relativePath, Permission.READ);
-            List<FileInfo> listing = client.ls(relativePath.toString(), limit, offset);
-            listing.forEach(f -> {
-                String url = String.format("%s/%s", client.getSystemId(), f.getPath());
-                url = StringUtils.replace(url, "//", "/");
-                f.setUrl("tapis://" + url);
-                // Ensure there is a leading slash
-                f.setPath(StringUtils.prependIfMissing(f.getPath(), "/"));
-            });
-            return listing;
-        } catch (IOException ex) {
-            String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "listing",
-                                      client.getSystemId(), path, ex.getMessage());
-            log.error(msg, ex);
-            throw new ServiceException(msg, ex);
+      List<FileInfo> listing = client.ls(relativePath.toString(), limit, offset);
+      listing.forEach(f ->
+        {
+          String url = String.format("%s/%s", client.getSystemId(), f.getPath());
+          url = StringUtils.replace(url, "//", "/");
+          f.setUrl("tapis://" + url);
+          // Ensure there is a leading slash
+          f.setPath(StringUtils.prependIfMissing(f.getPath(), "/"));
         }
+      );
+      return listing;
     }
+    catch (IOException ex)
+    {
+      String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "lsWithClient",
+                                   client.getSystemId(), path, ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+  }
 
   /**
-   * Create a directory at provided path.
-   * Intermediate directories in the path will be created as necessary.
-   * @param client remote data client to use
+   * Recursive list files at path. Max possible depth = MAX_RECURSION(20)
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
    * @param path - path on system relative to system rootDir
-   * @throws ServiceException - general error
+   * @param depth - maximum depth for recursion
+   * @return Collection of FileInfo objects
+   * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
     @Override
-    public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException, ForbiddenException
+    public List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
+                                      @NotNull String path, int depth)
+            throws WebApplicationException
     {
-      try {
-        Path relativePath = PathUtils.getRelativePath(path);
-        LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                             relativePath, Permission.MODIFY);
-        client.mkdir(relativePath.toString());
-      } catch (IOException ex) {
-        String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdir",
-                client.getSystemId(), path, ex.getMessage());
-        log.error(msg, ex);
-        throw new ServiceException(msg, ex);
+      String apiTenant = rUser.getOboTenantId();
+      String apiUser = rUser.getOboUserId();
+      String sysId = sys.getId();
+      Path relativePath = PathUtils.getRelativePath(path);
+      // Reserve a client connection, use it to get listing and then release it
+      IRemoteDataClient client = null;
+      try
+      {
+        LibUtils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+        client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
+        client.reserve();
+        return lsRecursive(client, path, depth);
+      }
+      catch (IOException | ServiceException ex)
+      {
+        throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "lsRecursive", sysId, path,
+                                          ex.getMessage()), ex);
+      }
+      finally
+      {
+        if (client != null) client.release();
       }
     }
+
+  /**
+   * Recursive list files at path. Max possible depth = MAX_RECURSION(20)
+   * NOTE: This method does not check permissions. Callers should check first
+   * @param client - Remote data client
+   * @param path - path on system relative to system rootDir
+   * @return Collection of FileInfo objects
+   * @throws ServiceException - general error
+   * @throws NotFoundException - requested path not found
+   */
+  public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int depth)
+          throws ServiceException
+  {
+    List<FileInfo> listing = new ArrayList<>();
+    // Make the call that does recursion
+    listDirectoryRecurse(client, path, listing, 0, Math.min(depth, MAX_RECURSION));
+    return listing;
+  }
+
+  /**
+   * Upload a file
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param path - path on system relative to system rootDir
+   * @param inStrm  data stream to be used when creating file
+   * @throws ForbiddenException - user not authorized
+   */
+  @Override
+  public void upload(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                     @NotNull InputStream inStrm)
+          throws WebApplicationException
+  {
+    String apiTenant = rUser.getOboTenantId();
+    String apiUser = rUser.getOboUserId();
+    String sysId = sys.getId();
+    Path relativePath = PathUtils.getRelativePath(path);
+    // Reserve a client connection, use it to get listing and then release it
+    IRemoteDataClient client = null;
+    try
+    {
+      LibUtils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.MODIFY);
+      client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
+      client.reserve();
+      upload(client, path, inStrm);
+    }
+    catch (IOException | ServiceException ex)
+    {
+      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "upload", sysId, path,
+                                        ex.getMessage()), ex);
+    }
+    finally
+    {
+      if (client != null) client.release();
+    }
+  }
 
   /**
    * Upload a file
@@ -232,20 +326,86 @@ public class FileOpsService implements IFileOpsService
    */
     @Override
     public void upload(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull InputStream inputStream)
-            throws ServiceException, ForbiddenException
+            throws ServiceException
     {
-        try {
-            Path relativePath = PathUtils.getRelativePath(path);
-            LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                 relativePath, Permission.MODIFY);
-            client.upload(relativePath.toString(), inputStream);
-        } catch (IOException ex) {
-            String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "insert",
-                                      client.getSystemId(), path, ex.getMessage());
-            log.error(msg, ex);
-            throw new ServiceException(msg, ex);
-        }
+      Path relativePath = PathUtils.getRelativePath(path);
+      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                              relativePath, Permission.MODIFY);
+      try
+      {
+        client.upload(relativePath.toString(), inputStream);
+      }
+      catch (IOException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "uploadWithClient",
+                                     client.getSystemId(), path, ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
     }
+
+  /**
+   * Create a directory at provided path.
+   * Intermediate directories in the path will be created as necessary.
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param path - path on system relative to system rootDir
+   * @throws ForbiddenException - user not authorized
+   */
+  @Override
+  public void mkdir(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+          throws WebApplicationException
+  {
+    String apiTenant = rUser.getOboTenantId();
+    String apiUser = rUser.getOboUserId();
+    String sysId = sys.getId();
+    Path relativePath = PathUtils.getRelativePath(path);
+    // Reserve a client connection, use it to mkdir and then release it
+    IRemoteDataClient client = null;
+    try
+    {
+      LibUtils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.MODIFY);
+      client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
+      client.reserve();
+      mkdir(client, path);
+    }
+    catch (IOException | ServiceException ex)
+    {
+      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "mkdir", sysId, path,
+                                        ex.getMessage()), ex);
+    }
+    finally
+    {
+      if (client != null) client.release();
+    }
+  }
+
+  /**
+   * Create a directory at provided path.
+   * Intermediate directories in the path will be created as necessary.
+   * @param client remote data client to use
+   * @param path - path on system relative to system rootDir
+   * @throws ServiceException - general error
+   * @throws ForbiddenException - user not authorized
+   */
+  @Override
+  public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException, ForbiddenException
+  {
+    Path relativePath = PathUtils.getRelativePath(path);
+    LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                            relativePath, Permission.MODIFY);
+    try
+    {
+      client.mkdir(relativePath.toString());
+    }
+    catch (IOException ex)
+    {
+      String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdirWithClient",
+                                   client.getSystemId(), path, ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+  }
 
   /**
    * Move a file or directory
@@ -395,7 +555,7 @@ public class FileOpsService implements IFileOpsService
       {
         getZip(rUser, output, sys, path);
       }
-      catch (NotFoundException ex)
+      catch (NotFoundException | ForbiddenException ex)
       {
         throw ex;
       }
@@ -426,7 +586,7 @@ public class FileOpsService implements IFileOpsService
       stream = getByteRange(rUser, sys, path, range.getMin(), range.getMax());
       stream.transferTo(output);
     }
-    catch (NotFoundException ex)
+    catch (NotFoundException | ForbiddenException ex)
     {
       throw ex;
     }
@@ -462,7 +622,7 @@ public class FileOpsService implements IFileOpsService
         stream = getPaginatedBytes(rUser, sys, path, startPage);
         stream.transferTo(output);
       }
-      catch (NotFoundException ex)
+      catch (NotFoundException | ForbiddenException ex)
       {
         throw ex;
       }
@@ -495,7 +655,7 @@ public class FileOpsService implements IFileOpsService
         stream = getAllBytes(rUser, sys, path);
         stream.transferTo(output);
       }
-      catch (NotFoundException ex)
+      catch (NotFoundException | ForbiddenException ex)
       {
         throw ex;
       }
@@ -591,7 +751,7 @@ public class FileOpsService implements IFileOpsService
    */
   InputStream getByteRange(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
                                    long startByte, long count)
-          throws ServiceException, IOException, NotFoundException, ForbiddenException
+          throws ServiceException
   {
     String apiTenant = rUser.getOboTenantId();
     String apiUser = rUser.getOboUserId();
@@ -630,7 +790,7 @@ public class FileOpsService implements IFileOpsService
    */
   private InputStream getPaginatedBytes(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
                                         @NotNull String path, long startPAge)
-          throws ServiceException, NotFoundException, ForbiddenException
+          throws ServiceException
   {
     long startByte = (startPAge - 1) * 1024;
     String apiTenant = rUser.getOboTenantId();
@@ -669,7 +829,7 @@ public class FileOpsService implements IFileOpsService
    */
   void getZip(@NotNull ResourceRequestUser rUser, @NotNull OutputStream outputStream, @NotNull TapisSystem sys,
                       @NotNull String path)
-          throws ServiceException, ForbiddenException
+          throws ServiceException
   {
     String apiTenant = rUser.getOboTenantId();
     String apiUser = rUser.getOboUserId();
@@ -737,15 +897,18 @@ public class FileOpsService implements IFileOpsService
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    */
-  private void listDirectoryRec(@NotNull IRemoteDataClient client, String basePath, List<FileInfo> listing, int depth, int maxDepth)
-          throws ServiceException, NotFoundException
+  private void listDirectoryRecurse(@NotNull IRemoteDataClient client, String basePath, List<FileInfo> listing,
+                                    int depth, int maxDepth)
+          throws ServiceException
   {
-    List<FileInfo> currentListing = ls(client, basePath);
+    List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0);
     listing.addAll(currentListing);
-    for (FileInfo fileInfo: currentListing) {
-      if (fileInfo.isDir() && depth < maxDepth) {
+    for (FileInfo fileInfo: currentListing)
+    {
+      if (fileInfo.isDir() && depth < maxDepth)
+      {
         depth++;
-        listDirectoryRec(client, fileInfo.getPath(), listing, depth, maxDepth);
+        listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth);
       }
     }
   }
