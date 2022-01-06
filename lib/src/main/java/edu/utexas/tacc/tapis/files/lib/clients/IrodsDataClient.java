@@ -398,12 +398,7 @@ public class IrodsDataClient implements IRemoteDataClient {
         return new ByteArrayInputStream(bytes);
     }
 
-    @Override
-    public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
-
-    }
-
-    @Override
+  @Override
     public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
 
     }

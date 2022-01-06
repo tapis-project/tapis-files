@@ -100,12 +100,7 @@ public class HTTPClient implements IRemoteDataClient {
         throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
     }
 
-    @Override
-    public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException {
-        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
-    }
-
-    @Override
+  @Override
     public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
         throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
     }

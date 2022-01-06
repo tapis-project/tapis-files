@@ -12,7 +12,7 @@ public interface ISSHDataClient extends IRemoteDataClient
 {
   // In addition to oboTenant, oboUser and systemId in IRemoteDataClient an SSHClient also has an
   //   associated user and host
-  String getUsername();
+  String getEffectiveUserId();
   String getHost();
 
   // ------------------------------

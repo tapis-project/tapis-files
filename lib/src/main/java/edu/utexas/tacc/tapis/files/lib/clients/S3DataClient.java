@@ -145,17 +145,6 @@ public class S3DataClient implements IRemoteDataClient
       return endpoint;
     }
 
-//  /**
-//   * Create a bucket
-//   * @param name - name of bucket
-//   */
-//  @Override
-//  public void makeBucket(String name)
-//  {
-//    CreateBucketRequest req = CreateBucketRequest.builder().bucket(name).build();
-//    client.createBucket(req);
-//  }
-//
   /**
    * Return all S3 objects matching a path prefix using default max limit and 0 offset
    *
@@ -404,14 +393,7 @@ public class S3DataClient implements IRemoteDataClient
       }
     }
 
-    @Override
-    public void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_S3_NO_SUPPORT", oboTenant, oboUser, "putBytesByRange", system.getId(), bucket, path);
-      throw new NotImplementedException(msg);
-    }
-
-    @Override
+  @Override
     public void append(@NotNull String path, @NotNull InputStream byteStream)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_S3_NO_SUPPORT", oboTenant, oboUser, "append", system.getId(), bucket, path);

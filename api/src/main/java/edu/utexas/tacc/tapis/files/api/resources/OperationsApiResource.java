@@ -122,7 +122,7 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Trace this request.
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-              "path="+path, "limit="+limit, "offset="+offset, "recurse="+recurse);
+                          "path="+path, "limit="+limit, "offset="+offset, "recurse="+recurse);
 
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
@@ -150,35 +150,34 @@ public class OperationsApiResource extends BaseFileOpsResource
    * @param securityContext - user identity
    * @return response
    */
-    @POST
-    @Path("/{systemId}/{path:.+}")
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response upload(@PathParam("systemId") String systemId,
-                           @PathParam("path") String path,
-                           @FormDataParam(value = "file") InputStream fileInputStream,
-                           @Context SecurityContext securityContext)
-    {
-      String opName = "upload";
-      // Create a user that collects together tenant, user and request information needed by service calls
-      ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+  @POST
+  @Path("/{systemId}/{path:.+}")
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response upload(@PathParam("systemId") String systemId,
+                         @PathParam("path") String path,
+                         @FormDataParam(value = "file") InputStream fileInputStream,
+                         @Context SecurityContext securityContext)
+  {
+    String opName = "upload";
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
-      // Trace this request.
-      if (log.isTraceEnabled())
-        ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-                            "path="+path);
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
 
-      // Make sure the Tapis System exists and is enabled
-      TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
 
-      // ---------------------------- Make service call -------------------------------
-      // Note that we do not use try/catch around service calls because exceptions are already either
-      //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-      //   to responses (FilesExceptionMapper).
-      fileOpsService.upload(rUser, sys, path, fileInputStream);
-      TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-      return Response.ok(resp).build();
-    }
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    fileOpsService.upload(rUser, sys, path, fileInputStream);
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+    return Response.ok(resp).build();
+  }
 
   /**
    * Create a directory
@@ -187,34 +186,34 @@ public class OperationsApiResource extends BaseFileOpsResource
    * @param securityContext - user identity
    * @return response
    */
-    @POST
-    @Path("/{systemId}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response mkdir(@PathParam("systemId") String systemId,
-                          @Valid MkdirRequest mkdirRequest,
-                          @Context SecurityContext securityContext)
-    {
-      String opName = "mkdir";
-      // Create a user that collects together tenant, user and request information needed by service calls
-      ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+  @POST
+  @Path("/{systemId}")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response mkdir(@PathParam("systemId") String systemId,
+                        @Valid MkdirRequest mkdirRequest,
+                        @Context SecurityContext securityContext)
+  {
+    String opName = "mkdir";
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
-      // Trace this request.
-      if (log.isTraceEnabled())
-        ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-                            "path="+mkdirRequest.getPath());
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
+                          "path="+mkdirRequest.getPath());
 
-      // Make sure the Tapis System exists and is enabled
-      TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
 
-      // ---------------------------- Make service call -------------------------------
-      // Note that we do not use try/catch around service calls because exceptions are already either
-      //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-      //   to responses (FilesExceptionMapper).
-      fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath());
-      TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-      return Response.ok(resp).build();
-    }
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath());
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+    return Response.ok(resp).build();
+  }
 
   /**
    * Perform a move or copy operation
@@ -224,35 +223,35 @@ public class OperationsApiResource extends BaseFileOpsResource
    * @param securityContext - user identity
    * @return response
    */
-    @PUT
-    @Path("/{systemId}/{path:.+}")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response moveCopy(@PathParam("systemId") String systemId,
-                             @PathParam("path") String path,
-                             @Valid MoveCopyRequest mvCpReq,
-                             @Context SecurityContext securityContext)
-    {
-      String opName = "moveCopy";
-      // Create a user that collects together tenant, user and request information needed by service calls
-      ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+  @PUT
+  @Path("/{systemId}/{path:.+}")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response moveCopy(@PathParam("systemId") String systemId,
+                           @PathParam("path") String path,
+                           @Valid MoveCopyRequest mvCpReq,
+                           @Context SecurityContext securityContext)
+  {
+    String opName = "moveCopy";
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
-      // Trace this request.
-      if (log.isTraceEnabled())
-        ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-                            "op="+mvCpReq.getOperation(), "newPath="+mvCpReq.getNewPath());
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
+                          "op="+mvCpReq.getOperation(), "newPath="+mvCpReq.getNewPath());
 
-      // Make sure the Tapis System exists and is enabled
-      TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
 
-      // ---------------------------- Make service call -------------------------------
-      // Note that we do not use try/catch around service calls because exceptions are already either
-      //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-      //   to responses (FilesExceptionMapper).
-      fileOpsService.moveOrCopy(rUser, mvCpReq.getOperation(), sys, path, mvCpReq.getNewPath());
-      TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-      return Response.ok(resp).build();
-    }
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    fileOpsService.moveOrCopy(rUser, mvCpReq.getOperation(), sys, path, mvCpReq.getNewPath());
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+    return Response.ok(resp).build();
+  }
 
   /**
    * Delete a directory
@@ -261,24 +260,30 @@ public class OperationsApiResource extends BaseFileOpsResource
    * @param securityContext - user identity
    * @return response
    */
-    @DELETE
-    @Path("/{systemId}/{path:(.*+)}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response delete(@PathParam("systemId") String systemId,
-                           @PathParam("path") String path,
-                           @Context SecurityContext securityContext)
-    {
-        String opName = "delete";
-        AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-        try {
-            IRemoteDataClient client = checkSystemAndGetClient(systemId, user, path);
-            fileOpsService.delete(client, path);
-            TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok");
-            return Response.ok(resp).build();
-        } catch (ServiceException | IOException e) {
-            String msg = LibUtils.getMsgAuth("FILES_OPS_ERR", user, opName, systemId, path, e.getMessage());
-            log.error(msg, e);
-            throw new WebApplicationException(msg, e);
-        }
-    }
+  @DELETE
+  @Path("/{systemId}/{path:(.*+)}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response delete(@PathParam("systemId") String systemId,
+                         @PathParam("path") String path,
+                         @Context SecurityContext securityContext)
+  {
+    String opName = "delete";
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
+
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    fileOpsService.delete(rUser, sys, path);
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
+    return Response.ok(resp).build();
+  }
 }

@@ -20,12 +20,12 @@ public interface IRemoteDataClient
    * Record a reservation for a client. Only used for SSH clients.
    * A reservation indicates a service call using the client is in progress.
    * A client should not be fully closed until all reservations are released even if the client has
-   *   already been removed from the SSHConnectionCache until
+   *   already been removed from the SSHConnectionCache
    */
   void reserve();
 
   /**
-   * Release a reservation for a client
+   * Release a reservation for a client. Only used for SSH clients.
    */
   void release();
 
@@ -114,16 +114,6 @@ public interface IRemoteDataClient
    * @throws IOException Generic IO Exception
    */
   InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException;
-
-  /**
-   * Not many fielsystems and/or file formats support this type of operation
-   * @param path - path on system relative to system rootDir
-   * @param byteStream stream of data to put
-   * @param startByte start point
-   * @param endByte end point
-   * @throws IOException on error
-   */
-  void putBytesByRange(String path, InputStream byteStream, long startByte, long endByte) throws IOException;
 
   /**
    * Append will take an existing file at location path and append the byteStream to the end of it.
