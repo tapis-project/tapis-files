@@ -45,7 +45,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest
+public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
 {
     private final TapisSystem testSystem;
     private final Credential creds;
@@ -63,7 +63,7 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest
     private SystemsCache systemsCache;
     private final Map<String, Tenant> tenantMap = new HashMap<>();
 
-    private ITestTransfersRoutes()
+    private TestTransfersRoutes()
     {
         //List<String> creds = new ArrayList<>();
         creds = new Credential();

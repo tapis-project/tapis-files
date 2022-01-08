@@ -2,11 +2,13 @@ package edu.utexas.tacc.tapis.files.lib.caches;
 
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /*
- * Class to remove an SSHConnection from the cache and mark the connection as stale.
+ * Class to mark an SSHConnection as stale when it is removed from the cache.
  */
 public class SSHConnectionExpire implements RemovalListener<SSHConnectionCacheKey, SSHConnectionHolder>
 {
@@ -16,13 +18,9 @@ public class SSHConnectionExpire implements RemovalListener<SSHConnectionCacheKe
   {
     SSHConnectionHolder holder = notification.getValue();
     SSHConnectionCacheKey key = notification.getKey();
+    TapisSystem sys = key.getSystem();
     holder.makeStale();
-    // TODO: move msg to resource bundle
-    log.debug("Expired SSH connecting from cache for System: {} EffectiveUser {}", key.getSystem().getId(), key.getEffUserId());
-//    SSHConnectionHolder holder = notification.getValue();
-//    SSHConnectionCacheKey key = notification.getKey();
-//    log.debug("Closing SSH connecting from cache for System: {} EffectiveUser {}", key.getSystem().getId(), key.getEffUserId());
-//    holder.getSshConnection().stop();
-//    log.debug("Closed SSH connecting from cache for System: {} EffectiveUser {}", key.getSystem().getId(), key.getEffUserId());
+    String msg = LibUtils.getMsg("FILES_CLIENT_CONN_STALE", sys.getTenant(), sys.getId(), sys.getEffectiveUserId());
+    log.debug(msg);
   }
 }

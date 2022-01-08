@@ -65,9 +65,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestOpsRoutes extends BaseDatabaseIntegrationTest
+public class TestOpsRoutes extends BaseDatabaseIntegrationTest
 {
-    private final Logger log = LoggerFactory.getLogger(ITestOpsRoutes.class);
+    private final Logger log = LoggerFactory.getLogger(TestOpsRoutes.class);
     private static class FileListResponse extends TapisResponse<List<FileInfo>> {}
 
     private static class FileStringResponse extends TapisResponse<String> {}
@@ -89,7 +89,7 @@ public class ITestOpsRoutes extends BaseDatabaseIntegrationTest
   /**
    * Private constructor
    */
-  private ITestOpsRoutes()
+  private TestOpsRoutes()
   {
     Credential creds;
         //SSH system with username+password

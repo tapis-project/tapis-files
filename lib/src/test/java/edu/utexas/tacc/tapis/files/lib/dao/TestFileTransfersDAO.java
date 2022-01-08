@@ -17,9 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Test(groups={"integration"})
-public class ITestFileTransfersDAO extends BaseDatabaseIntegrationTest
+public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
 {
-    public ITestFileTransfersDAO() throws Exception {
+    public TestFileTransfersDAO() throws Exception {
         super();
     }
 

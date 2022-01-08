@@ -65,9 +65,9 @@ import static org.mockito.Mockito.when;
  * Tests for getStatInfo and runLinuxNativeOp (chmod, chown, chgrp)
  */
 @Test(groups = {"integration"})
-public class ITestLibUtilsRoutes extends BaseDatabaseIntegrationTest
+public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 {
-  private final Logger log = LoggerFactory.getLogger(ITestLibUtilsRoutes.class);
+  private final Logger log = LoggerFactory.getLogger(TestLibUtilsRoutes.class);
 
   private static class FileStatInfoResponse extends TapisResponse<FileStatInfo> { }
   private static class NativeLinuxOpResultResponse extends TapisResponse<NativeLinuxOpResult> { }
@@ -103,7 +103,7 @@ public class ITestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   /*
    * Private constructor to create and setup systems used in tests
    */
-  private ITestLibUtilsRoutes()
+  private TestLibUtilsRoutes()
   {
     //SSH system with username/password
     Credential sshCreds = new Credential();

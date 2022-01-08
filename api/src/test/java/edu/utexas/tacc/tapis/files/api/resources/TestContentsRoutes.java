@@ -57,9 +57,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
-public class ITestContentsRoutes extends BaseDatabaseIntegrationTest
+public class TestContentsRoutes extends BaseDatabaseIntegrationTest
 {
-  private final Logger log = LoggerFactory.getLogger(ITestContentsRoutes.class);
+  private final Logger log = LoggerFactory.getLogger(TestContentsRoutes.class);
   private final String oboTenant = "oboTenant";
   private final String oboUser = "oboUser";
   private final TapisSystem testSystemS3;
@@ -78,7 +78,7 @@ public class ITestContentsRoutes extends BaseDatabaseIntegrationTest
   private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
-  private ITestContentsRoutes()
+  private TestContentsRoutes()
   {
     // Test systems
     creds = new Credential();

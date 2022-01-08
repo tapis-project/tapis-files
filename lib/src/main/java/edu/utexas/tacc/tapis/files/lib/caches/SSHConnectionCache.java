@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
  * A single threaded ScheduledExecutorService is used to periodically do the maintenance
  *
  * The cache value is SSHConnectionHolder which manages the underlying edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection
- * The cache key is SSHConnectionCacheKey, a combination of systemId, tenant and effectiveUserId
+ * The cache key is SSHConnectionCacheKey, a combination of tenantId, systemId and effectiveUserId
  *
  * https://github.com/google/guava/wiki/CachesExplained
  *
@@ -35,20 +35,17 @@ public class SSHConnectionCache
   /**
    * Constructor for the cache
    * NOTE: Can add recordStats() to the CacheBuilder if we want to monitor stats
-   * // TODO/TBD: honor maxSize? do we need it? should we have it?
-   * param maxSize maximum size
+   * NOTE: Can have a maxSize using CacheBuilder.newBuilder().maximumSize(maxSize) ...
    * @param timeout Timeout of when to preform maintenance
    * @param timeUnit TimeUnit of timeout
    */
   public SSHConnectionCache(long timeout, TimeUnit timeUnit)
   {
     // Create a cache that uses SSHConnectionCacheLoader to create new entries.
-    // TODO/TBD: Set max size
     // Have the cache expire entries using timeout values
     // Note that we use expireAfterWrite instead of expireAfterAccess because of the concern that a user's
     //   credentials will change. If we used expireAfterAccess and a system+user is accessed frequently we might
     //   never pick up the new credentials.
-//    sessionCache = CacheBuilder.newBuilder().maximumSize(maxSize).expireAfterWrite(timeout, timeUnit)
     sessionCache = CacheBuilder.newBuilder().expireAfterWrite(timeout, timeUnit)
             .removalListener(new SSHConnectionExpire())
             .build(new SSHConnectionCacheLoader());
@@ -56,26 +53,6 @@ public class SSHConnectionCache
     //   small amounts of maintenance during read/write. By starting a thread we can make sure it happens regularly.
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     executorService.scheduleAtFixedRate(() -> sessionCache.cleanUp(), timeout, timeout, timeUnit);
-
-// Previous cache cleanup code with some extra comments:
-//    executorService.scheduleAtFixedRate(() -> sessionCache.cleanUp(), timeout, timeout, timeUnit);
-//    executorService.scheduleAtFixedRate(
-//            ()-> sessionCache.asMap().forEach((SSHConnectionCacheKey key, SSHConnectionHolder holder) ->
-//            {
-//
-//              // TODO/TBD: Move closing to a RemovalListener
-//              if (holder.getChannelCount() == 0)
-//              {
-//                log.debug("Closing SSH connecting from cache: {} for user {}", holder.getSshConnection().getHost(),
-//                          holder.getSshConnection().getUsername());
-//                sessionCache.invalidate(key);
-//        // TODO/TBD: See github issue https://github.com/tapis-project/tapis-files/issues/39
-//        //  seems that there may be a race condition. The stop sets the session to null but the
-//        //  cached connection is still available? See SSHConnectionHolder
-//                holder.getSshConnection().stop();
-//              }
-//            }
-//            ), timeout, timeout, timeUnit);
   }
 
   /**
@@ -93,9 +70,8 @@ public class SSHConnectionCache
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_CONN_ERR", system.getTenant(), effUserId, system.getId(),
                                    effUserId, system.getHost(), ex.getMessage());
-      // TODO/TBD: Should we log here? Does it result in msg getting logged too many times?
       log.error(msg, ex);
-      throw new IOException("Could not get or create SSH session", ex);
+      throw new IOException(msg, ex);
     }
   }
 }

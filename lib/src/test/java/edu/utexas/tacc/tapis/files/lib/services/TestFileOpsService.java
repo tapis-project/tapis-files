@@ -56,7 +56,7 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
  The user is set to be testuser
 */
 @Test(groups = {"integration"})
-public class ITestFileOpsService
+public class TestFileOpsService
 {
   private final String oboTenant = "oboTenant";
   private final String oboUser = "oboUser";
@@ -68,14 +68,14 @@ public class ITestFileOpsService
   TapisSystem testSystemIrods;
   private RemoteDataClientFactory remoteDataClientFactory;
   private FileOpsService fileOpsService;
-  private static final Logger log  = LoggerFactory.getLogger(ITestFileOpsService.class);
+  private static final Logger log  = LoggerFactory.getLogger(TestFileOpsService.class);
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
   private final SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
 
   private static final MoveCopyOperation OP_MV = MoveCopyOperation.MOVE;
   private static final MoveCopyOperation OP_CP = MoveCopyOperation.COPY;
 
-  private ITestFileOpsService() throws IOException
+  private TestFileOpsService() throws IOException
   {
     SSHConnection.setLocalNodeName("dev");
     String privateKey = IOUtils.toString(getClass().getResourceAsStream("/test-machine"), StandardCharsets.UTF_8);

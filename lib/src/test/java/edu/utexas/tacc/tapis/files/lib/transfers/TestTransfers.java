@@ -45,16 +45,16 @@ import static org.mockito.Mockito.when;
  * NOTE: Currently no tests for multiple top level transfer request elements (i.e. parent tasks) in a transfer request.
  */
 @Test(groups = {"integration"})
-public class ITestTransfers extends BaseDatabaseIntegrationTest
+public class TestTransfers extends BaseDatabaseIntegrationTest
 {
-    private static final Logger log = LoggerFactory.getLogger(ITestTransfers.class);
+    private static final Logger log = LoggerFactory.getLogger(TestTransfers.class);
 
     private final String oboTenant = "oboTenant";
     private final String oboUser = "oboUser";
     private String childQ;
     private String parentQ;
 
-    public ITestTransfers() throws Exception {
+    public TestTransfers() throws Exception {
         super();
     }
 
