@@ -5,26 +5,26 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import java.util.Objects;
 
 /**
- * Cache key to put into the LoadingCache. Equality is based on the username, the
- * system's tenantId and the system's ID.
+ * Cache key for the LoadingCache. Equality is based on tenantId, systemId and effUserId.
+ * Note that tenantId and systemId are contained in the TapisSystem
  */
 public class SSHConnectionCacheKey
 {
   private final TapisSystem system;
-  private final String      username;
+  private final String effUserId;
 
-  public SSHConnectionCacheKey(TapisSystem sys, String uname)
+  public SSHConnectionCacheKey(TapisSystem system1, String effUserId1)
   {
-    system = sys;
-    username = uname;
+    system = system1;
+    effUserId = effUserId1;
   }
 
   public TapisSystem getSystem() {
     return system;
   }
 
-  public String getUsername() {
-    return username;
+  public String getEffUserId() {
+    return effUserId;
   }
 
   @Override
@@ -34,12 +34,12 @@ public class SSHConnectionCacheKey
     if (o == null || getClass() != o.getClass()) return false;
     SSHConnectionCacheKey that = (SSHConnectionCacheKey) o;
     return Objects.equals(this.system.getId(), that.system.getId()) &&
-            Objects.equals(this.username, that.getUsername()) &&
+            Objects.equals(this.effUserId, that.getEffUserId()) &&
             Objects.equals(this.system.getTenant(), that.system.getTenant());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(system.getId(), system.getTenant(), username);
+    return Objects.hash(system.getId(), system.getTenant(), effUserId);
   }
 }

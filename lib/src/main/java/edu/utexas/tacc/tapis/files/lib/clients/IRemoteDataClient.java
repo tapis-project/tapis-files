@@ -12,15 +12,15 @@ import javax.ws.rs.NotFoundException;
 public interface IRemoteDataClient
 {
   // A remote data client always has at a minimum an associated oboUser, oboTenant and systemId
-  String getOboTenant();
-  String getOboUser();
+  String getApiTenant();
+  String getApiUser();
   String getSystemId();
 
   /**
    * Record a reservation for a client. Only used for SSH clients.
    * A reservation indicates a service call using the client is in progress.
    * A client should not be fully closed until all reservations are released even if the client has
-   *   already been removed from the SSHConnectionCache
+   *   already been removed from the cache
    */
   void reserve();
 
@@ -114,12 +114,4 @@ public interface IRemoteDataClient
    * @throws IOException Generic IO Exception
    */
   InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException;
-
-  /**
-   * Append will take an existing file at location path and append the byteStream to the end of it.
-   * @param path - path on system relative to system rootDir
-   * @param byteStream input stream
-   * @throws IOException on error
-   */
-  void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException;
 }

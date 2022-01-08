@@ -25,8 +25,8 @@ public class HTTPClient implements IRemoteDataClient {
   @Override
   public void release() {}
 
-    public String getOboTenant() { return oboTenant; }
-    public String getOboUser() { return oboUser; }
+    public String getApiTenant() { return oboTenant; }
+    public String getApiUser() { return oboUser; }
     // Since no system use srcDstURIs instead
     public String getSystemId() { return srcDstURIs; }
     private final String oboTenant;
@@ -97,11 +97,6 @@ public class HTTPClient implements IRemoteDataClient {
 
    @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
-        throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
-    }
-
-  @Override
-    public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
         throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "") );
     }
 }

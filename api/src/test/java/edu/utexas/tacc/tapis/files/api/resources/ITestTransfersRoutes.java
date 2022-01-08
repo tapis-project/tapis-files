@@ -105,7 +105,7 @@ public class ITestTransfersRoutes extends BaseDatabaseIntegrationTest
             .register(new AbstractBinder() {
                 @Override
                 protected void configure() {
-                    bind(new SSHConnectionCache(CACHE_MAX_SIZE, CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                    bind(new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                     bind(serviceClients).to(ServiceClients.class);
                     bind(systemsClient).to(SystemsClient.class);
                     bind(serviceJWT).to(ServiceJWT.class);

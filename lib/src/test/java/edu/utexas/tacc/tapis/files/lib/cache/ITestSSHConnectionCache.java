@@ -34,13 +34,18 @@ public class ITestSSHConnectionCache
   }
 
   @Test
+  // TODO: This test fails even pausing for a very long time of 15 seconds.
+  //       but when debugging it passes.
+  //       figure out what is happening.
   public void testClosesConnection() throws Exception
   {
-    SSHConnectionCache cache = new SSHConnectionCache(10, 2, TimeUnit.SECONDS);
+    SSHConnectionCache cache = new SSHConnectionCache(2, TimeUnit.SECONDS);
     SSHConnectionHolder holder = cache.getConnection(testSystemSSH, "testuser");
+    holder.reserve();
     SSHSftpClient client = holder.getSftpClient();
     holder.returnSftpClient(client);
-    Thread.sleep(4500);
+    holder.release();
+    Thread.sleep(15000);
     Assert.assertTrue(holder.getSshConnection().isClosed());
   }
 }

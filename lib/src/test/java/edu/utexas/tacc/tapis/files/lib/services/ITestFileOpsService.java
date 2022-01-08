@@ -177,7 +177,7 @@ public class ITestFileOpsService
     ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
       @Override
       protected void configure() {
-        bind(new SSHConnectionCache(10, 5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+        bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
         bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
         bind(permsService).to(FilePermsService.class).ranked(1);

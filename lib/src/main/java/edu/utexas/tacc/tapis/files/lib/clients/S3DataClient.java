@@ -60,8 +60,8 @@ public class S3DataClient implements IRemoteDataClient
   @Override
   public void release() {}
 
-    public String getOboTenant() { return oboTenant; }
-    public String getOboUser() { return oboUser; }
+    public String getApiTenant() { return oboTenant; }
+    public String getApiUser() { return oboUser; }
     public String getSystemId() { return system.getId(); }
 //    public String getBucket() { return bucket; }
 
@@ -391,13 +391,6 @@ public class S3DataClient implements IRemoteDataClient
         log.error(msg);
         throw new IOException(msg, ex);
       }
-    }
-
-  @Override
-    public void append(@NotNull String path, @NotNull InputStream byteStream)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_S3_NO_SUPPORT", oboTenant, oboUser, "append", system.getId(), bucket, path);
-      throw new NotImplementedException(msg);
     }
 
   /* **************************************************************************** */

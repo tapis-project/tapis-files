@@ -152,7 +152,8 @@ public class FilesApplication extends ResourceConfig
       {
         @Override
         protected void configure() {
-          bind(new SSHConnectionCache(SSHCACHE_MAX_SIZE, SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+//          bind(new SSHConnectionCache(SSHCACHE_MAX_SIZE, SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+          bind(new SSHConnectionCache(SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);

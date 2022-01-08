@@ -146,7 +146,7 @@ public class ITestLibUtilsRoutes extends BaseDatabaseIntegrationTest
               @Override
               protected void configure()
               {
-                bind(new SSHConnectionCache(CACHE_MAX_SIZE, CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                bind(new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bind(serviceClients).to(ServiceClients.class);
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);

@@ -8,6 +8,6 @@ import java.io.IOException;
 
 public interface IRemoteDataClientFactory
 {
-   IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
-                                         @NotNull TapisSystem system, @NotNull String username) throws IOException;
+   IRemoteDataClient getRemoteDataClient(@NotNull String apiTenant, @NotNull String apiUser,
+                                         @NotNull TapisSystem system, @NotNull String effUserId) throws IOException;
 }

@@ -70,12 +70,12 @@ public class IrodsDataClient implements IRemoteDataClient {
   public void release() {}
 
   @Override
-    public String getOboTenant() {
+    public String getApiTenant() {
         return oboTenantId;
     }
 
     @Override
-    public String getOboUser() {
+    public String getApiUser() {
         return oboUsername;
     }
 
@@ -396,11 +396,6 @@ public class IrodsDataClient implements IRemoteDataClient {
             }
         };
         return new ByteArrayInputStream(bytes);
-    }
-
-  @Override
-    public void append(@NotNull String path, @NotNull InputStream byteStream) throws IOException {
-
     }
 
     /**

@@ -182,7 +182,7 @@ public class FileOpsService implements IFileOpsService
           throws ServiceException
   {
     Path relativePath = PathUtils.getRelativePath(path);
-    LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+    LibUtils.checkPermitted(permsService, client.getApiTenant(), client.getApiUser(), client.getSystemId(),
                             relativePath, Permission.READ);
     try
     {
@@ -200,7 +200,7 @@ public class FileOpsService implements IFileOpsService
     }
     catch (IOException ex)
     {
-      String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "lsWithClient",
+      String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getApiTenant(), client.getApiUser(), "lsWithClient",
                                    client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
@@ -315,7 +315,7 @@ public class FileOpsService implements IFileOpsService
             throws ServiceException
     {
       Path relativePath = PathUtils.getRelativePath(path);
-      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+      LibUtils.checkPermitted(permsService, client.getApiTenant(), client.getApiUser(), client.getSystemId(),
                               relativePath, Permission.MODIFY);
       try
       {
@@ -323,7 +323,7 @@ public class FileOpsService implements IFileOpsService
       }
       catch (IOException ex)
       {
-        String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "uploadWithClient",
+        String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getApiTenant(), client.getApiUser(), "uploadWithClient",
                                      client.getSystemId(), path, ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
@@ -378,7 +378,7 @@ public class FileOpsService implements IFileOpsService
   public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException, ForbiddenException
   {
     Path relativePath = PathUtils.getRelativePath(path);
-    LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+    LibUtils.checkPermitted(permsService, client.getApiTenant(), client.getApiUser(), client.getSystemId(),
                             relativePath, Permission.MODIFY);
     try
     {
@@ -386,7 +386,7 @@ public class FileOpsService implements IFileOpsService
     }
     catch (IOException ex)
     {
-      String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdirWithClient",
+      String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getApiTenant(), client.getApiUser(), "mkdirWithClient",
                                    client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
@@ -451,8 +451,8 @@ public class FileOpsService implements IFileOpsService
           throws ServiceException
   {
     String opName = op.name().toLowerCase();
-    String apiTenant = client.getOboTenant();
-    String apiUser = client.getOboUser();
+    String apiTenant = client.getApiTenant();
+    String apiUser = client.getApiUser();
     String sysId = client.getSystemId();
     Path srcRelativePath = PathUtils.getRelativePath(srcPath);
     Path dstRelativePath = PathUtils.getRelativePath(dstPath);
@@ -546,17 +546,17 @@ public class FileOpsService implements IFileOpsService
   public void delete(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException
   {
     Path relativePath = PathUtils.getRelativePath(path);
-    LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+    LibUtils.checkPermitted(permsService, client.getApiTenant(), client.getApiUser(), client.getSystemId(),
                             relativePath, Permission.MODIFY);
     try
     {
       client.delete(relativePath.toString());
-      permsService.removePathPermissionFromAllRoles(client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+      permsService.removePathPermissionFromAllRoles(client.getApiTenant(), client.getApiUser(), client.getSystemId(),
                                                     relativePath.toString());
     }
     catch (IOException ex)
     {
-      String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "deleteWithClient",
+      String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getApiTenant(), client.getApiUser(), "deleteWithClient",
                                    client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
