@@ -204,7 +204,7 @@ public class FilesApplication extends ResourceConfig
     FileOpsService svcImpl = locator.getService(FileOpsService.class);
 
     // Call the main service init method
-    svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
+// TODO    svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
     // Create and start the server
     final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(baseUri, config, false);
     Collection<NetworkListener> listeners = server.getListeners();

@@ -8,19 +8,21 @@ https://tapis.readthedocs.io/en/latest/technical/files.html
 You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
-## 1.0.3 - 202?-??-??
+---------------------------------------------------------------------------
+## 1.0.3 - 2022-01-08
 
-TBD
+Code cleanup and refactoring, fix issue with SSH client cache.
 
 ### New features:
-- TBD
+- None
 
 ### Updates:
-- 
+- Code cleanup and refactoring.
 
 ### Bug fixes:
-- None.
+- Fix concurrence problem with SSH client cache. Github issue #39
 
+---------------------------------------------------------------------------
 ## 1.0.2 - 2021-12-06
 
 Incremental improvements, support optional flag for file transfers.
@@ -36,6 +38,7 @@ Incremental improvements, support optional flag for file transfers.
 ### Bug fixes:
 - None.
 
+---------------------------------------------------------------------------
 ## 1.0.1 - 2021-12-01
 
 Incremental improvements.
@@ -43,6 +46,7 @@ Incremental improvements.
 ### New features:
 - Support copy/move of a file to a directory without having to specify full path for destination.
 
+---------------------------------------------------------------------------
 ## 1.0.0 - 2021-07-16
 
 Initial release supporting basic file operations in the Tapis ecosystem.
