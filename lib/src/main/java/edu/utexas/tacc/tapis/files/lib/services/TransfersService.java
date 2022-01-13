@@ -40,6 +40,7 @@ import reactor.util.retry.RetrySpec;
 
 import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.WebApplicationException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -247,14 +248,17 @@ public class TransfersService
         for (TransferTaskParent parent : newTask.getParentTasks()) { publishParentTaskMessage(parent); }
         return newTask;
       }
-      catch (DAOException ex)
+      catch (DAOException | ServiceException e)
       {
-        throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR6", tenantId, username, "createTransfer", tag,
-                                                ex.getMessage()), ex);
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR6", tenantId, username, "createTransfer", tag, e.getMessage());
+        throw new ServiceException(msg, e);
       }
     }
 
-    // TODO/TBD: Is this method only for testing? Can it be made package-private?
+    /*
+      // TODO/TBD: Is this method only for testing? Can it be made package-private?
+     *
+     */
     public TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException
     {
         try { return dao.insertChildTask(task); }

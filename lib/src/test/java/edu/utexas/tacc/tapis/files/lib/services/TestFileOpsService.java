@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MoveCopyOperation;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -218,14 +219,14 @@ public class TestFileOpsService
     when(systemsCache.getSystem(any(), eq("testSystemNotEnabled"), any())).thenReturn(testSystemNotEnabled);
     when(systemsCache.getSystem(any(), eq("testSystemEnabled"), any())).thenReturn(testSystemSSH);
     // For an enabled system this should return the system
-    TapisSystem tmpSys = fileOpsService.getSystemIfEnabled(rTestUser, "testSystemEnabled");
+    TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemEnabled");
     Assert.assertNotNull(tmpSys);
     Assert.assertEquals(tmpSys.getId(), testSystemSSH.getId());
     // For a disabled or missing this should throw NotFound
     Assert.assertThrows(NotFoundException.class, () ->
-            fileOpsService.getSystemIfEnabled(rTestUser, "testSystemNotEnabled"));
+            LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemNotEnabled"));
     Assert.assertThrows(NotFoundException.class, () ->
-            fileOpsService.getSystemIfEnabled(rTestUser, "fakeSystemId"));
+            LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "fakeSystemId"));
   }
 
   @Test(dataProvider = "testSystems")

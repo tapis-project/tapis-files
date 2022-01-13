@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.utils;
 
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -7,12 +8,14 @@ import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotAuthorizedException;
+import javax.ws.rs.NotFoundException;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.util.Locale;
@@ -175,5 +178,32 @@ public class LibUtils
   {
     if (sys.getEnabled() == null || !sys.getEnabled())
       throw new BadRequestException(getMsgAuth("FILES_SYS_NOTENABLED", authenticatedUser, sys.getId()));
+  }
+
+  /**
+   * Check to see if a Tapis System exists and is enabled
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param systemId - System to check
+   * @throws NotFoundException System not found or not enabled
+   */
+  public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
+                                               @NotNull String systemId) throws NotFoundException
+  {
+    // Check for the system
+    TapisSystem sys;
+    try
+    {
+      sys = systemsCache.getSystem(rUser.getOboTenantId(), systemId, rUser.getOboUserId());
+      if (sys == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
+      if (sys.getEnabled() == null || !sys.getEnabled())
+      {
+        throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTENABLED", rUser, systemId));
+      }
+    }
+    catch (ServiceException ex)
+    {
+      throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
+    }
+    return sys;
   }
 }

@@ -125,7 +125,7 @@ public class OperationsApiResource extends BaseFileOpsResource
                           "path="+path, "limit="+limit, "offset="+offset, "recurse="+recurse);
 
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
     Instant start = Instant.now();
     List<FileInfo> listing;
@@ -168,7 +168,7 @@ public class OperationsApiResource extends BaseFileOpsResource
       ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
 
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -204,7 +204,7 @@ public class OperationsApiResource extends BaseFileOpsResource
                           "path="+mkdirRequest.getPath());
 
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -242,7 +242,7 @@ public class OperationsApiResource extends BaseFileOpsResource
                           "op="+mvCpReq.getOperation(), "newPath="+mvCpReq.getNewPath());
 
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -276,7 +276,7 @@ public class OperationsApiResource extends BaseFileOpsResource
       ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
 
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = fileOpsService.getSystemIfEnabled(rUser, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either

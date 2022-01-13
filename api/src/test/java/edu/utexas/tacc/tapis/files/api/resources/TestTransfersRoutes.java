@@ -3,11 +3,14 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
@@ -100,6 +103,10 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
         systemsCache = Mockito.mock(SystemsCache.class);
         JWTValidateRequestFilter.setSiteId("tacc");
         JWTValidateRequestFilter.setService("files");
+        ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
+        IRuntimeConfig runtimeConfig = RuntimeSettings.get();
+        TenantManager tenantManager = TenantManager.getInstance(runtimeConfig.getTenantsServiceURL());
+        tenantManager.getTenants();
         ResourceConfig app = new BaseResourceConfig()
             .register(new JWTValidateRequestFilter(tenantManager))
             .register(new AbstractBinder() {
@@ -116,7 +123,7 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
                     bindAsContract(TransfersService.class).in(Singleton.class);
                     bindAsContract(FileTransfersDAO.class);
                     bindAsContract(RemoteDataClientFactory.class);
-
+                  bind(serviceContext).to(ServiceContext.class);
                 }
             });
         app.register(TransfersApiResource.class);

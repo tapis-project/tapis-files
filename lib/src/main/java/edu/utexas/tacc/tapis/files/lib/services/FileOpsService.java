@@ -96,32 +96,6 @@ public class FileOpsService implements IFileOpsService
 //    dao.migrateDB();
   }
 
-  /**
-   * Check to see if a Tapis System exists and is enabled
-   * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param systemId - System to check
-   * @throws NotFoundException System not found or not enabled
-   */
-  public TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull String systemId) throws NotFoundException
-  {
-    // Check for the system
-    TapisSystem sys;
-    try
-    {
-      sys = systemsCache.getSystem(rUser.getOboTenantId(), systemId, rUser.getOboUserId());
-      if (sys == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
-      if (sys.getEnabled() == null || !sys.getEnabled())
-      {
-        throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTENABLED", rUser, systemId));
-      }
-    }
-    catch (ServiceException ex)
-    {
-      throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
-    }
-    return sys;
-  }
-
   // ----------------------------------------------------------------------------------------------------
   // ------------- Support for FileOps
   // ----------------------------------------------------------------------------------------------------

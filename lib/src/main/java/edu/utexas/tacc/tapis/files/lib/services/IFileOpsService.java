@@ -24,11 +24,6 @@ import java.util.List;
 public interface IFileOpsService
 {
   // ===================
-  // GeneralOps
-  // ===================
-  TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull String systemId) throws NotFoundException;
-
-  // ===================
   // FileOps
   // ===================
   List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, long limit, long offset)
