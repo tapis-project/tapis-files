@@ -21,14 +21,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.servlet.ServletContext;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.*;
+import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -48,7 +52,17 @@ public class  TransfersApiResource
   // ************************************************************************
   // *********************** Fields *****************************************
   // ************************************************************************
-
+  @Context
+  private HttpHeaders _httpHeaders;
+  @Context
+  private Application _application;
+  @Context
+  private UriInfo _uriInfo;
+  @Context
+  private SecurityContext _securityContext;
+  @Context
+  private ServletContext _servletContext;
+  @Context
   private Request _request;
 
   @Inject
