@@ -8,6 +8,8 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -105,11 +107,10 @@ public class OperationsApiResource extends BaseFileOpsResource
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
-    // TODO/TBD: Leave this out for now since it prevents running of the tests. See api/pom.xml
-//    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-//    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
-//    // If there is a problem throw an exception
-//    if (resp != null)
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 //    {
 //      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
 //      // checkContext logs an error, so no need to log here.
@@ -162,6 +163,12 @@ public class OperationsApiResource extends BaseFileOpsResource
     String opName = "upload";
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 
     // Trace this request.
     if (log.isTraceEnabled())
@@ -197,6 +204,12 @@ public class OperationsApiResource extends BaseFileOpsResource
     String opName = "mkdir";
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 
     // Trace this request.
     if (log.isTraceEnabled())
@@ -235,6 +248,12 @@ public class OperationsApiResource extends BaseFileOpsResource
     String opName = "moveCopy";
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 
     // Trace this request.
     if (log.isTraceEnabled())
@@ -270,6 +289,12 @@ public class OperationsApiResource extends BaseFileOpsResource
     String opName = "delete";
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 
     // Trace this request.
     if (log.isTraceEnabled())

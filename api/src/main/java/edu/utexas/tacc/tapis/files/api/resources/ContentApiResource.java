@@ -85,11 +85,12 @@ public class ContentApiResource extends BaseFileOpsResource
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
-    // TODO/TBD: Leave this out for now since it prevents running of the tests. See api/pom.xml
+    // TODO: This causes TestContentsRoutes to fail, but Routes tests work for Ops and Txfrs
+    //       compare Ops and Txfrs tests with Contents test to look for diffs.
 //    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-//    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+//    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
 //    // If there is a problem throw an exception
-//    if (resp != null)
+//    if (resp1 != null)
 //    {
 //      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
 //      // checkContext logs an error, so no need to log here.

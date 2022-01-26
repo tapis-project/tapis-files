@@ -5,6 +5,8 @@ import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
@@ -49,6 +51,9 @@ public class  TransfersApiResource
   private static final Logger log = LoggerFactory.getLogger(TransfersApiResource.class);
   private final String className = getClass().getSimpleName();
 
+  // Always return a nicely formatted response
+  private static final boolean PRETTY = true;
+
   // ************************************************************************
   // *********************** Fields *****************************************
   // ************************************************************************
@@ -83,6 +88,13 @@ public class  TransfersApiResource
   {
     String opName = "getRecentTransferTasks";
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
+
     try
     {
       List<TransferTask> tasks = transfersService.getRecentTransfers(user.getTenantId(), user.getName(), limit, offset);
@@ -105,6 +117,13 @@ public class  TransfersApiResource
   {
     String opName = "getTransferTask";
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
+
     try
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
@@ -130,6 +149,13 @@ public class  TransfersApiResource
   {
     String opName = "getTransferTaskHistory";
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
+
     try
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
@@ -155,6 +181,13 @@ public class  TransfersApiResource
   {
     String opName = "cancelTransferTask";
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
+
     try
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
@@ -185,27 +218,21 @@ public class  TransfersApiResource
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
-    // TODO/TBD: Leave this out for now since it prevents running of the tests. See api/pom.xml
-//    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-//    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
-//    // If there is a problem throw an exception
-//    if (resp != null)
-//    {
-//      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
-//      // checkContext logs an error, so no need to log here.
-//      throw new WebApplicationException(msg);
-//    }
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
     if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "txfrTaskRequest="+transferTaskRequest);
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "txfrTaskRequestTag="+transferTaskRequest.getTag());
 
     // Make sure source and destination systems exist, are enabled, and we support transfers between the systems.
-    Response response = validateSystems(transferTaskRequest, rUser);
-    if (response != null) return response;
+    resp1 = validateSystems(transferTaskRequest, rUser);
+    if (resp1 != null) return resp1;
 
     // ---------------------------- Make service call -------------------------------
     try
