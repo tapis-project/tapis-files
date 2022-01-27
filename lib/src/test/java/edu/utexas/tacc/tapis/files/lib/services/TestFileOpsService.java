@@ -172,7 +172,7 @@ public class TestFileOpsService
   }
 
   @BeforeSuite
-    public void doBeforeSuite()
+  public void doBeforeSuite()
   {
     ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
     ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
@@ -182,7 +182,7 @@ public class TestFileOpsService
         bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
         bind(permsService).to(FilePermsService.class).ranked(1);
-        bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+        bind(FileOpsService.class).to(FileOpsService.class).in(Singleton.class);
       }
     });
     remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);

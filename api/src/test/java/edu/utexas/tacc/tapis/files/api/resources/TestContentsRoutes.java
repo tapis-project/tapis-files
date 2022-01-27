@@ -174,8 +174,8 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     systemsClient = Mockito.mock(SystemsClient.class);
     systemsCache = Mockito.mock(SystemsCache.class);
     SSHConnection.setLocalNodeName("test");
-    JWTValidateRequestFilter.setService("files");
     JWTValidateRequestFilter.setSiteId("tacc");
+    JWTValidateRequestFilter.setService("files");
     ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
 
     IRuntimeConfig runtimeConfig = RuntimeSettings.get();
