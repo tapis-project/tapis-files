@@ -150,7 +150,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     IRuntimeConfig runtimeConfig = RuntimeSettings.get();
     TenantManager tenantManager = TenantManager.getInstance(runtimeConfig.getTenantsServiceURL());
     tenantManager.getTenants();
-    //JWT validation
+
     ResourceConfig app = new BaseResourceConfig()
             .register(JWTValidateRequestFilter.class)
             .register(FilePermissionsAuthz.class)

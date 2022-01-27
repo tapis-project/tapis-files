@@ -362,8 +362,16 @@ public class IrodsDataClient implements IRemoteDataClient {
     }
     catch (JargonException ex)
     {
-      String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
-      throw new IOException(msg, ex);
+      if (ex.getMessage().contains("FileNotFound"))
+      {
+        String msg = LibUtils.getMsg("FILES_IRODS_PATH_NOT_FOUND", oboTenantId, oboUsername, system.getId(), cleanedAbsolutePath.toString());
+        throw new NotFoundException(msg);
+      }
+      else
+      {
+        String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername);
+        throw new IOException(msg, ex);
+      }
     }
   }
 
@@ -379,7 +387,7 @@ public class IrodsDataClient implements IRemoteDataClient {
     @Override
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
         if (count > MAX_BYTES_PER_CHUNK) {
-            String msg = LibUtils.getMsg("FILES_MAX_BYTES_ERROR", MAX_BYTES_PER_CHUNK);
+            String msg = LibUtils.getMsg("FILES_IRODS_MAX_BYTES_ERROR", MAX_BYTES_PER_CHUNK);
             throw new IllegalArgumentException(msg);
         }
         startByte = Math.max(startByte, 0);

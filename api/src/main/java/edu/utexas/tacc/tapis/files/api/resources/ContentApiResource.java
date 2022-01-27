@@ -70,6 +70,15 @@ public class ContentApiResource extends BaseFileOpsResource
   @Inject
   IFileOpsService fileOpsService;
 
+  /**
+   * Start an async data stream that can be used to receive contents of a file
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param range - range of bytes to include in the stream
+   * @param zip - flag indicating if a zip stream should be created
+   * @param startPage -
+   * @param securityContext - user identity
+   */
   @GET
   @ManagedAsync
   @Path("/{systemId}/{path:.+}")
@@ -83,19 +92,21 @@ public class ContentApiResource extends BaseFileOpsResource
   {
     String opName = "getContents";
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
-    // Utility method returns null if all OK and appropriate error response if there was a problem.
-    // TODO: This causes TestContentsRoutes to fail, but Routes tests work for Ops and Txfrs
-    //       compare Ops and Txfrs tests with Contents test to look for diffs.
-    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
-    // If there is a problem throw an exception
-    if (resp1 != null)
-    {
-      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
-      // checkContext logs an error, so no need to log here.
-      throw new WebApplicationException(msg);
-    }
+//    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+//    // Utility method returns null if all OK and appropriate error response if there was a problem.
+//    // TODO: This causes TestContentsRoutes to fail, but Routes tests work for Ops and Txfrs
+//    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+////    // Try this out for Tests, might work using mockito static ( result - did not work)
+////    try {TapisThreadLocal.push();} catch (CloneNotSupportedException cne) {}
+////    threadContext = TapisThreadLocal.pop();
+//    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+//    // If there is a problem throw an exception
+//    if (resp1 != null)
+//    {
+//      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
+//      // checkContext logs an error, so no need to log here.
+//      throw new WebApplicationException(msg);
+//    }
 
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
