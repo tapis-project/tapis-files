@@ -61,6 +61,9 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   // Logger for tests
   private final Logger log = LoggerFactory.getLogger(TestContentsRoutes.class);
 
+  private final static String oboTenant = "oboTenant";
+  private final static String oboUser = "oboUser";
+
   // Responses used in tests
   private static class FileStringResponse extends TapisResponse<String> {}
 
@@ -230,20 +233,15 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   {
     testSystems.forEach( (sys)->
     {
-      try {
+      try
+      {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(sys);
         System.out.println("Cleanup for System: " + sys.getId());
-        String targetPath = "/v3/files/ops/" + sys.getId() + "/";
-        target(targetPath)
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
-                .delete(FileStringResponse.class);
-      } catch (Exception ex) {
-        log.error(ex.getMessage(), ex);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, "testuser");
+        client.delete("/");
       }
-    });
+      catch (Exception ex) { log.error(ex.getMessage(), ex); }    });
   }
 
   /**
@@ -423,8 +421,6 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
 
   private void addTestFilesToSystem(TapisSystem system, String fileName, int fileSize) throws Exception
   {
-    String oboTenant = "oboTenant";
-    String oboUser = "oboUser";
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, system, "testuser");
     InputStream f1 = makeFakeFile(fileSize);
     client.upload(fileName, f1);
