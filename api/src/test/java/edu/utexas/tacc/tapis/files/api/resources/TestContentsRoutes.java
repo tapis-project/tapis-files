@@ -17,6 +17,7 @@ import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -29,13 +30,11 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Site;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
-import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.media.multipart.FormDataMultiPart;
-import org.glassfish.jersey.media.multipart.MultiPartFeature;
-import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.TestProperties;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+//import org.mockito.
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -46,13 +45,9 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.inject.Singleton;
-import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
@@ -67,6 +62,7 @@ import java.util.zip.ZipInputStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.when;
 
 @Test(groups = {"integration"})
@@ -76,8 +72,12 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   private final Logger log = LoggerFactory.getLogger(TestContentsRoutes.class);
   private final String oboTenant = "oboTenant";
   private final String oboUser = "oboUser";
+
   // Responses used in tests
   private static class FileStringResponse extends TapisResponse<String> {}
+
+  // TapisThreadContext that can be validated
+  TapisThreadContext threadContext = new TapisThreadContext();
 
   // Tapis Systems used in test.
   private final TapisSystem testSystemSSH;
@@ -95,6 +95,8 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   private SystemsClient systemsClient;
   private SKClient skClient;
   private SystemsCache systemsCache;
+  private TapisThreadContext tapisThreadContext;
+  private TapisThreadLocal tapisThreadLocal;
   private ServiceJWT serviceJWT;
   private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES);
   private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
@@ -147,16 +149,16 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     testSystemDisabled.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
     // TODO IRODS system
-//    creds = new Credential();
-//    creds.setAccessKey("dev");
-//    creds.setAccessSecret("dev");
-//    TapisSystem testSystemIrods = new TapisSystem();
-//    testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
-//    testSystemIrods.setHost("localhost");
-//    testSystemIrods.setPort(1247);
-//    testSystemIrods.setRootDir("/tempZone/home/dev/");
-//    testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
-//    testSystemIrods.setAuthnCredential(creds);
+    creds = new Credential();
+    creds.setAccessKey("dev");
+    creds.setAccessSecret("dev");
+    TapisSystem testSystemIrods = new TapisSystem();
+    testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
+    testSystemIrods.setHost("localhost");
+    testSystemIrods.setPort(1247);
+    testSystemIrods.setRootDir("/tempZone/home/dev/");
+    testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+    testSystemIrods.setAuthnCredential(creds);
 
     // Collect all systems, for cleanup
     testSystems.add(testSystemSSH);
@@ -165,6 +167,12 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     testSystems.add(testSystemDisabled);
     testSystemsNoS3.add(testSystemSSH);
 //    testSystemsNoS3.add(testSystemIrods);
+
+    // Initialize tapisThreadContext
+    threadContext.setJwtTenantId("dev");
+    threadContext.setJwtUser("testuser1");
+    threadContext.setOboTenantId("dev");
+    threadContext.setOboUser("testuser1");
   }
 
   @Override
@@ -177,8 +185,9 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     serviceClients = Mockito.mock(ServiceClients.class);
     systemsClient = Mockito.mock(SystemsClient.class);
     systemsCache = Mockito.mock(SystemsCache.class);
+//    tapisThreadContext = Mockito.mock(TapisThreadContext.class);
+//    tapisThreadLocal = Mockito.mock(TapisThreadLocal.class);
     serviceJWT = Mockito.mock(ServiceJWT.class);
-//    Mockito.mock(TapisThreadLocal.class);
     SSHConnection.setLocalNodeName("test");
     JWTValidateRequestFilter.setService("files");
     JWTValidateRequestFilter.setSiteId("tacc");
@@ -199,9 +208,13 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
                 bindAsContract(SystemsCache.class);
+                bindAsContract(TapisThreadContext.class);
+                bindAsContract(TapisThreadLocal.class);
                 bindAsContract(FilePermsService.class);
                 bind(serviceContext).to(ServiceContext.class);
                 bind(systemsCache).to(SystemsCache.class);
+//                bind(tapisThreadContext).to(TapisThreadContext.class);
+//                bind(tapisThreadLocal).to(TapisThreadLocal.class);
                 bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
                 bind(remoteDataClientFactory).to(RemoteDataClientFactory.class);
                 bind(sshConnectionCache).to(SSHConnectionCache.class);
@@ -214,92 +227,136 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
 
   @BeforeClass
   @Override
-  public void setUp() throws Exception { super.setUp(); }
-
-  public static class RandomInputStream extends InputStream
+  public void setUp() throws Exception
   {
-    private final long length;
-    private long count;
-    private final Random random;
-
-    public RandomInputStream(long l) {length = l; random = new Random(); }
-
-    @Override
-    public int read()
-    {
-      if (count >= length) return -1;
-      count++;
-      return random.nextInt();
-    }
-  }
-
-  public void tearDownTest() throws Exception
-  {
-    S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystemS3);
-    client.delete("/");
-    client = new S3DataClient(oboTenant, oboUser, testSystemDisabled);
-    client.delete("/");
-
-    IRemoteDataClient client2 = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemSSH, "testuser");
-    client2.delete("/");
+    super.setUp();
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
   }
 
   @BeforeMethod
-  public void beforeTest() throws Exception
+  public void initMocks() throws Exception
   {
-    when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
+    Mockito.reset(skClient);
+    Mockito.reset(serviceClients);
+    Mockito.reset(systemsCache);
+    Mockito.reset(systemsClient);
     when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
     when(serviceClients.getClient(any(String.class), any(String.class), eq(SystemsClient.class))).thenReturn(systemsClient);
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystemS3);
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    // Establish TapisThreadLocal context
-//    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
-    TapisThreadLocal.tapisThreadContext.get().setJwtTenantId(oboTenant);
-    TapisThreadLocal.tapisThreadContext.get().setOboUser(oboUser);
-//    threadContext.setJwtUser(oboUser);
-//    threadContext.setOboTenantId(oboTenant);
-//    threadContext.setOboUser(oboUser);
-//    threadContext.setAccountType(TapisThreadContext.AccountType.user);
-//    threadContext.setSiteId("tacc");
+    when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
+//    given(TapisThreadLocal.tapisThreadContext.get()).willReturn(threadContext);
   }
 
-//  // Needed for the test client to be able to use Mutlipart/form posts;
-//  @Override
-//  protected void configureClient(ClientConfig config)
+  @BeforeMethod
+  @AfterMethod
+  // Remove all files from test systems
+  public void cleanup()
+  {
+    testSystems.forEach( (sys)->
+    {
+      try {
+        when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
+        when(systemsCache.getSystem(any(), any(), any())).thenReturn(sys);
+        target("/v3/files/ops/testSystem/")
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+                .delete(FileStringResponse.class);
+      } catch (Exception ex) {
+        log.error(ex.getMessage(), ex);
+      }
+    });
+  }
+
+//  public void tearDownTest() throws Exception
 //  {
-//    config.register(MultiPartFeature.class);
+//    S3DataClient client = new S3DataClient(oboTenant, oboUser, testSystemS3);
+//    client.delete("/");
+//    client = new S3DataClient(oboTenant, oboUser, testSystemDisabled);
+//    client.delete("/");
+//
+//    IRemoteDataClient client2 = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemSSH, "testuser");
+//    client2.delete("/");
 //  }
 
-  @DataProvider(name = "testSystemsDataProvider")
-  public Object[] mkdirDataProvider() { return new TapisSystem[]{testSystemS3, testSystemSSH}; }
+//  @BeforeMethod
+//  public void beforeTest() throws Exception
+//  {
+//    Mockito.reset(skClient);
+//    Mockito.reset(serviceClients);
+//    Mockito.reset(systemsCache);
+//    Mockito.reset(systemsClient);
+//    when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
+//    when(serviceClients.getClient(any(String.class), any(String.class), eq(SystemsClient.class))).thenReturn(systemsClient);
+//    when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
+//
+//
+//
+//    when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
+//    when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
+//    when(serviceClients.getClient(any(String.class), any(String.class), eq(SystemsClient.class))).thenReturn(systemsClient);
+//    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystemS3);
+//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//    // Establish TapisThreadLocal context
+////    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
+//    TapisThreadLocal.tapisThreadContext.get().setJwtTenantId(oboTenant);
+//    TapisThreadLocal.tapisThreadContext.get().setOboUser(oboUser);
+////    threadContext.setJwtUser(oboUser);
+////    threadContext.setOboTenantId(oboTenant);
+////    threadContext.setOboUser(oboUser);
+////    threadContext.setAccountType(TapisThreadContext.AccountType.user);
+////    threadContext.setSiteId("tacc");
+//  }
 
-  @DataProvider(name = "testSystemsDataProviderSSH")
-  public Object[] mkdirDataProviderSSH() { return new TapisSystem[]{testSystemSSH}; }
+  /**
+   * This is silly, but TestNG requires this to be an Object[]
+   */
+  @DataProvider(name="testSystemsProvider")
+  public Object[] testSystemsProvider() { return new TapisSystem[]{testSystemS3, testSystemSSH}; }
+
+  @DataProvider(name="testSystemsProviderNoS3")
+  public Object[] testSystemsProviderNoS3() { return new TapisSystem[]{testSystemSSH}; }
 
 
   /* **************************************************************************** */
   /*                                Tests                                         */
   /* **************************************************************************** */
 
-  @Test(dataProvider = "testSystemsDataProvider")
+  @Test(dataProvider = "testSystemsProvider")
   public void testGetContents(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
-    addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1000);
-    Response response = target("/v3/files/content/testSystem/testfile1.txt")
+    try (MockedStatic<TapisThreadLocal> mockedThreadLocal = Mockito.mockStatic(TapisThreadLocal.class))
+    {
+      when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
+      when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+      mockedThreadLocal.when(() -> TapisThreadLocal.pop()).thenReturn(threadContext);
+//    given(tapisThreadContext.validate()).willReturn(true);
+      addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1000);
+
+    /*
+   FileListResponse response = target("/v3/files/ops/testSystem/")
             .request()
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
-            .get();
-    byte[] contents = response.readEntity(byte[].class);
-    Assert.assertEquals(contents.length, 10 * 1000);
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .get(FileListResponse.class);
+    FileInfo file = response.getResult().get(0);
+
+     */
+      Response response = target("/v3/files/content/testSystem/testfile1.txt")
+              .request()
+              .accept(MediaType.APPLICATION_JSON) // ???????????????????????
+              .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+              .get();
+      byte[] contents = response.readEntity(byte[].class);
+      Assert.assertEquals(contents.length, 10 * 1000);
+    }
   }
 
   // For some reason this test almost always uses the S3 system causing it to fail.
-  //  but oddly enough it will pass using dataProvider testSystemsDataProviderSSH and running it separately.
-  // Even when using testSystemsDataProviderSSH it will fail (always uses S3) when all tests in class are run.
+  //  but oddly enough it will pass using dataProvider testSystemsProviderNoS3 and running it separately.
+  // Even when using testSystemsProviderNoS3 it will fail (always uses S3) when all tests in class are run.
   // So it seems to be a test issue.
-//  @Test(dataProvider = "testSystemsDataProvider")
-  @Test(dataProvider = "testSystemsDataProviderSSH", enabled = false)
+//  @Test(dataProvider = "testSystemsProvider")
+  @Test(dataProvider = "testSystemsProviderNoS3", enabled = false)
   public void testZipOutput(TapisSystem system) throws Exception
   {
     when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
@@ -328,7 +385,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     else Assert.assertEquals(count, 4);
   }
 
-  @Test(dataProvider = "testSystemsDataProvider")
+  @Test(dataProvider = "testSystemsProvider")
   public void testStreamLargeFile(TapisSystem system) throws Exception
   {
     when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
@@ -352,7 +409,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     contents.close();
   }
 
-  @Test(dataProvider = "testSystemsDataProvider")
+  @Test(dataProvider = "testSystemsProvider")
   public void testNotFound(TapisSystem system) throws Exception
   {
     when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
@@ -363,7 +420,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertEquals(response.getStatus(), 404);
   }
 
-  @Test(dataProvider = "testSystemsDataProvider")
+  @Test(dataProvider = "testSystemsProvider")
   public void testGetWithRange(TapisSystem system) throws Exception
   {
     when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
@@ -378,7 +435,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertEquals(contents.length, 1000);
   }
 
-  @Test(dataProvider = "testSystemsDataProvider")
+  @Test(dataProvider = "testSystemsProvider")
   public void testGetWithMore(TapisSystem system) throws Exception
   {
     when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
@@ -395,7 +452,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertTrue(contents.length() > 0);
   }
 
-  @Test(dataProvider = "testSystemsDataProvider")
+  @Test(dataProvider = "testSystemsProvider")
   public void testGetContentsHeaders(TapisSystem system) throws Exception
   {
     when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
@@ -414,7 +471,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   // Various requests that should result in a BadRequest status code (400)
   //  - Attempt to serve a folder, which is not allowed resulting in 400
   //  - Attempt to retrieve from a system which is disabled
-//    @Test(dataProvider = "testSystemsDataProvider")
+//    @Test(dataProvider = "testSystemsProvider")
   @Test
   public void testBadRequests() throws Exception
   {
@@ -442,34 +499,33 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   /*                                Private Methods                               */
   /* **************************************************************************** */
 
-  private InputStream makeFakeFile(long size)
-  {
-    return new RandomInputStream(size);
-  }
-
-//  private void addTestFilesToSystem(TapisSystem system, String fileName, int fileSize) throws Exception
-//  {
-//    InputStream inputStream = makeFakeFile(fileSize);
-//    File tempFile = File.createTempFile("tempfile", null);
-//    tempFile.deleteOnExit();
-//    FileOutputStream fos = new FileOutputStream(tempFile);
-//    fos.write(inputStream.readAllBytes());
-//    fos.close();
-//    FileDataBodyPart filePart = new FileDataBodyPart("file", tempFile);
-//    FormDataMultiPart form = new FormDataMultiPart();
-//    FormDataMultiPart multiPart = (FormDataMultiPart) form.bodyPart(filePart);
-//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-//    FileStringResponse response = target("/v3/files/ops/" + system.getId() + "/" + fileName)
-//            .request()
-//            .accept(MediaType.APPLICATION_JSON)
-//            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
-//            .post(Entity.entity(multiPart, MediaType.MULTIPART_FORM_DATA_TYPE), FileStringResponse.class);
-//  }
-//
   private void addTestFilesToSystem(TapisSystem system, String fileName, int fileSize) throws Exception
   {
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, system, "testuser");
     InputStream f1 = makeFakeFile(fileSize);
     client.upload(fileName, f1);
   }
+
+  private InputStream makeFakeFile(long size)
+  {
+    return new RandomInputStream(size);
+  }
+
+  private static class RandomInputStream extends InputStream
+  {
+    private final long length;
+    private long count;
+    private final Random random;
+
+    public RandomInputStream(long l) {length = l; random = new Random(); }
+
+    @Override
+    public int read()
+    {
+      if (count >= length) return -1;
+      count++;
+      return random.nextInt();
+    }
+  }
+
 }

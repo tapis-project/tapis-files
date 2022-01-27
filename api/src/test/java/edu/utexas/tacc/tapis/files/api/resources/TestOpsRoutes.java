@@ -93,6 +93,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     creds.setPassword("password");
     TapisSystem testSystemSSH = new TapisSystem();
     testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
+    testSystemSSH.setOwner("testuser1");
     testSystemSSH.setHost("localhost");
     testSystemSSH.setPort(2222);
     testSystemSSH.setRootDir("/data/home/testuser/");
