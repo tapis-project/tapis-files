@@ -1,10 +1,11 @@
-FROM maven:3-openjdk-15 AS build
-EXPOSE 8080
+FROM openjdk:17-jdk-bullseye
 WORKDIR /app
-#RUN mvn -pl api clean install --also-make -DskipTests
-COPY  lib/target  ./lib/target/
+COPY lib/target ./lib/target/
 WORKDIR /app/lib
-CMD ["java", "-cp", "target/tapis-files.jar:target/dependencies/*", "edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp"]
 
+# Java module commands that are always needed (java 17 and later).
+ENV JAVA_MODULE_OPTS --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.time=ALL-UNNAMED \
+                     --add-opens java.base/java.util=ALL-UNNAMED
+EXPOSE 8080
 
-
+CMD java -Xms4g -Xmx4g ${JAVA_MODULE_OPTS} -cp "target/tapis-files.jar:target/dependencies/*" edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp
