@@ -37,6 +37,7 @@ import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 import java.nio.file.Paths;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /*
  * JAX-RS REST resource for Tapis File content downloads (file or directory)
@@ -186,6 +187,7 @@ public class ContentApiResource extends BaseFileOpsResource
                          .build();
     }
     // Start the streaming response
+// In case we want a timeout    asyncResponse.setTimeout(1, TimeUnit.DAYS);
     asyncResponse.resume(response);
   }
 }
