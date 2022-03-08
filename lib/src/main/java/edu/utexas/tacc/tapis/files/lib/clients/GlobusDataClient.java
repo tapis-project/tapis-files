@@ -140,7 +140,7 @@ public class GlobusDataClient implements IRemoteDataClient
   }
 
   /**
-   * TODO Return files and directories
+   * Return list of directories and files
    *
    * @param path - Path to file or directory relative to the system rootDir
    * @param limit - maximum number of items to return
@@ -154,27 +154,31 @@ public class GlobusDataClient implements IRemoteDataClient
   {
     String opName = "ls";
     // TODO ************************************************************************************
-    boolean recurse = false;
     String clientId = "0259148a-8ae0-44b7-80b5-a4060e92dd3e"; // Client for scblack
-//    String endpointId = system.getHost();
+//TODO    String endpointId = system.getHost();
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
-    String tmpPath = "data/globus/test1.txt"; // File on scblack-test-laptop, /~/data/globus/test1.txt
+    String tmpPath = "/~/data/globus/test1.txt"; // File on scblack-test-laptop, /~/data/globus/test1.txt
     // TODO ************************************************************************************
 
-    long count = Math.min(limit, MAX_LISTING_SIZE);
-    long startIdx = Math.max(offset, 0);
+    // Convert limit and offset to int for call to Globus.
+    // As long as MAX_LISTING_SIZE is less than Integer max that is ok
+    int count = (int) Math.min(limit, MAX_LISTING_SIZE);
+    int startIdx = (int) Math.min(offset, MAX_LISTING_SIZE);
+    startIdx = Math.max(startIdx, 0);
     List<FileInfo> filesList = new ArrayList<>();
-//    List<SftpClient.DirEntry> dirEntries = new ArrayList<>();
+    // Process the relative path string and make sure it is not empty.
     String relPathStr = PathUtils.getRelativePath(path).toString();
     Path absolutePath = PathUtils.getAbsolutePath(rootDir, relPathStr);
 
     // TODO
     relPathStr = tmpPath;
+    String filterStr = null;
 
     try
     {
       // TODO for now use hard coded values for cliendId, endpointId, path and recurse
-      var globusFilesList = client.listFiles(clientId, endpointId, accessToken, tmpPath, recurse);
+      var globusFilesList = client.listFiles(clientId, endpointId, accessToken, tmpPath, count,
+                                                               startIdx, filterStr);
       for (GlobusFileInfo globusFileInfo : globusFilesList)
       {
         FileInfo fileInfo = new FileInfo();
@@ -192,19 +196,6 @@ public class GlobusDataClient implements IRemoteDataClient
         // NOTE: currently can use the type from Globus because they match our defined types of
         //       FileInfo.FILETYPE_FILE and FileInfo.FILETYPE_DIR.
         fileInfo.setType(globusFileInfo.getType());
-
-// TODO     //Path should be relative to rootDir
-//      // TODO: Add more comments as to exactly why this is needed and what is going on.
-//      Path tmpFilePath = Paths.get(rootDir, entry.getFilename());
-//      if (tmpFilePath.equals(absolutePath))
-//      {
-//        String thePath = StringUtils.removeStart(entryPath.toString(), "/");
-//        fileInfo.setPath(thePath);
-//      }
-//      else
-//      {
-//        fileInfo.setPath(Paths.get(relPathStr, entryPath.toString()).toString());
-//      }
         filesList.add(fileInfo);
       }
     }
@@ -214,17 +205,6 @@ public class GlobusDataClient implements IRemoteDataClient
                                      endpointId, relPathStr, e.getMessage());
         throw new IOException(msg, e);
     }
-        // TODO How to check if path exists?
-//      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
-//      {
-//        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", apiTenant, apiUser, systemId, effectiveUserId, host, rootDir, relPathStr);
-//        throw new NotFoundException(msg);
-//      }
-//      else
-//      {
-//        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", apiTenant, apiUser, "ls", systemId, effectiveUserId, host, relPathStr, e.getMessage());
-//        throw new IOException(msg, e);
-//      }
     filesList.sort(Comparator.comparing(FileInfo::getName));
     return filesList.stream().skip(startIdx).limit(count).collect(Collectors.toList());
   }
@@ -242,7 +222,7 @@ public class GlobusDataClient implements IRemoteDataClient
     String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
     // TODO ************************************************************************************
     String clientId = "0259148a-8ae0-44b7-80b5-a4060e92dd3e"; // Client for scblack
-//    String endpointId = system.getHost();
+//TODO    String endpointId = system.getHost();
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
     // TODO ************************************************************************************
 
@@ -260,43 +240,33 @@ public class GlobusDataClient implements IRemoteDataClient
                                    endpointId, path, e.getMessage());
       throw new IOException(msg, e);
     }
-      // TODO How to check if path exists?
-//      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
-//      {
-//        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", apiTenant, apiUser, systemId, effectiveUserId, host, rootDir, relPathStr);
-//        throw new NotFoundException(msg);
-//      }
-//      else
-//      {
-//        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", apiTenant, apiUser, "ls", systemId, effectiveUserId, host, relPathStr, e.getMessage());
-//        throw new IOException(msg, e);
-//      }
       // TODO/TBD check status string returned by client?
   }
 
   /**
-   * Rename a file or directory
+   * Move oldPath to newPath using globusProxy client
+   * If newPath is an existing directory then oldPath will be moved into the directory newPath.
    *
-   * @param srcPath current location relative to system rootDir
-   * @param dstPath desired location relative to system rootDir
+   * @param oldPath current location relative to system rootDir
+   * @param newPath desired location relative to system rootDir
    * @throws IOException Network errors generally
    * @throws NotFoundException Source path not found
    */
   @Override
-  public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
+  public void move(@NotNull String oldPath, @NotNull String newPath) throws IOException, NotFoundException
   {
     String opName = "move";
-    String srcAbsolutePath = PathUtils.getAbsolutePath(rootDir, srcPath).toString();
-    String dstAbsolutePath = PathUtils.getAbsolutePath(rootDir, dstPath).toString();
+    String oldAbsolutePath = PathUtils.getAbsolutePath(rootDir, oldPath).toString();
+    String newAbsolutePath = PathUtils.getAbsolutePath(rootDir, newPath).toString();
     // TODO ************************************************************************************
     String clientId = "0259148a-8ae0-44b7-80b5-a4060e92dd3e"; // Client for scblack
-//    String endpointId = system.getHost();
+//TODO    String endpointId = system.getHost();
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
     // TODO ************************************************************************************
 
     var reqRename = new ReqRename();
-    reqRename.setSourcePath(srcPath);
-    reqRename.setDestinationPath(dstPath);
+    reqRename.setSourcePath(oldAbsolutePath);
+    reqRename.setDestinationPath(newAbsolutePath);
     String status = null;
     try
     {
@@ -306,7 +276,7 @@ public class GlobusDataClient implements IRemoteDataClient
     catch (TapisClientException e)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_ERR2", oboTenant, oboUser, opName, system.getId(),
-                                   endpointId, srcPath, dstPath, e.getMessage());
+                                   endpointId, oldPath, newPath, e.getMessage());
       throw new IOException(msg, e);
     }
       // TODO How to check if path exists?
@@ -321,6 +291,40 @@ public class GlobusDataClient implements IRemoteDataClient
 //        throw new IOException(msg, e);
 //      }
       // TODO/TBD check status string returned by client?
+// TODO **********************************************************************************************************
+/*  From SSHDataClient move() method
+    String relOldPathStr = PathUtils.getRelativePath(srcPath).toString();
+    String relNewPathStr = PathUtils.getRelativePath(dstPath).toString();
+    Path absoluteOldPath = PathUtils.getAbsolutePath(rootDir, relOldPathStr);
+    Path absoluteNewPath = PathUtils.getAbsolutePath(rootDir, relNewPathStr);
+    SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+    try
+    {
+      // If newPath is an existing directory then append the oldPath file/dir name to the newPath
+      //  so the oldPath is moved into the target directory.
+      FileInfo fileInfo = getFileInfo(sftpClient, relNewPathStr);
+      if (fileInfo != null && fileInfo.isDir()) {
+        absoluteNewPath = Paths.get(absoluteNewPath.toString(), absoluteOldPath.getFileName().toString());
+      }
+      sftpClient.rename(absoluteOldPath.toString(), absoluteNewPath.toString());
+    }
+    catch (IOException e)
+    {
+      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", apiTenant, apiUser, systemId, effectiveUserId, host, rootDir, srcPath);
+        throw new NotFoundException(msg);
+      } else {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR2", apiTenant, apiUser, "move", systemId, effectiveUserId, host, srcPath, dstPath, e.getMessage());
+        throw new IOException(msg, e);
+      }
+    }
+    finally
+    {
+      sftpClient.close();
+      connectionHolder.returnSftpClient(sftpClient);
+    }
+ */
+// TODO **********************************************************************************************************
   }
 
   /**
@@ -338,7 +342,7 @@ public class GlobusDataClient implements IRemoteDataClient
       // TODO ************************************************************************************
       boolean recurse = true; // TODO/TBD: ??? check if file or dir then set to true only if dir? or can be true for either?
       String clientId = "0259148a-8ae0-44b7-80b5-a4060e92dd3e"; // Client for scblack
-//    String endpointId = system.getHost();
+// TODO   String endpointId = system.getHost();
       String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
       // TODO ************************************************************************************
 
@@ -370,6 +374,71 @@ public class GlobusDataClient implements IRemoteDataClient
         // TODO/TBD check status string returned by client?
     }
 
+  /*
+   * Returns file info for the file/dir or object if path exists, null if path does not exist
+   *
+   * @param path - path on system relative to system rootDir
+   * @return FileInfo for the object or null if path does not exist.
+   * @throws IOException on error
+   */
+  @Override
+  public FileInfo getFileInfo(@NotNull String path) throws IOException
+  {
+    String opName = "getFileInfo";
+    FileInfo fileInfo = null;
+    // Process the relative path string and make sure it is not empty.
+    String relativePathStr = PathUtils.getRelativePath(path).toString();
+    String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relativePathStr).toString();
+    // TODO ************************************************************************************
+    String clientId = "0259148a-8ae0-44b7-80b5-a4060e92dd3e"; // Client for scblack
+//TODO    String endpointId = system.getHost();
+    String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
+    String tmpPath = "data/globus/test1.txt"; // File on scblack-test-laptop, /~/data/globus/test1.txt
+    int count = 1;
+    int startIdx = 0;
+    String filterStr = "name:="+ absolutePathStr;
+    // TODO ************************************************************************************
+    // TODO for now use hard coded values for cliendId, endpointId, path and recurse
+    List<GlobusFileInfo> globusFilesList;
+    try
+    {
+      globusFilesList = client.listFiles(clientId, endpointId, accessToken, absolutePathStr, count, startIdx, filterStr);
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_ERR", oboTenant, oboUser, opName, system.getId(),
+              endpointId, absolutePathStr, e.getMessage());
+      throw new IOException(msg, e);
+    }
+    if (globusFilesList == null || globusFilesList.isEmpty()) return null;
+    // There should be only one item
+    if (globusFilesList.size() != 1)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_ERR3", oboTenant, oboUser, opName, system.getId(),
+                                   endpointId, absolutePathStr, globusFilesList.size());
+      throw new IOException(msg);
+    }
+
+    var globusFileInfo = globusFilesList.get(0);
+    fileInfo = new FileInfo();
+    // Set the fileInfo attributes from the retrieved globus files
+    fileInfo.setName(globusFileInfo.getName());
+    fileInfo.setPath(globusFileInfo.getPath());
+    fileInfo.setGroup(globusFileInfo.getGroup());
+    fileInfo.setOwner(globusFileInfo.getUser());
+    if (globusFileInfo.getLastModified() != null)
+      fileInfo.setLastModified(Instant.from(globusFileInfo.getLastModified()));
+    fileInfo.setNativePermissions(globusFileInfo.getPermissions());
+    if (globusFileInfo.getSize() != null)
+      fileInfo.setSize(globusFileInfo.getSize());
+    // Set the type
+    // NOTE: currently can use the type from Globus because they match our defined types of
+    //       FileInfo.FILETYPE_FILE and FileInfo.FILETYPE_DIR.
+    fileInfo.setType(globusFileInfo.getType());
+
+    return fileInfo;
+  }
+
   /* **************************************************************************** */
   /*                   Unsupported Operations                                     */
   /* **************************************************************************** */
@@ -394,19 +463,6 @@ public class GlobusDataClient implements IRemoteDataClient
     String opName = "copy";
     String msg = LibUtils.getMsg("FILES_OPSC_UNSUPPORTED", oboTenant, oboUser, system.getSystemType(), opName,
                                  system.getId(), srcPath);
-    throw new NotImplementedException(msg);
-  }
-
-  /*
-   * getFileInfo - not supported
-   */
-  @Override
-  public FileInfo getFileInfo(@NotNull String path) throws IOException
-  {
-    String opName = "getFileInfo";
-    FileInfo fileInfo = null;
-    String msg = LibUtils.getMsg("FILES_OPSC_UNSUPPORTED", oboTenant, oboUser, system.getSystemType(), opName,
-                                 system.getId(), path);
     throw new NotImplementedException(msg);
   }
 
@@ -439,7 +495,7 @@ public class GlobusDataClient implements IRemoteDataClient
   /* **************************************************************************** */
 
   /**
-   * Get GlobusProxy client associated with specified tenant
+   * Get GlobusProxy client associated with specified tenant and user
    * @return GlobusProxy client
    * @throws IOException - on error
    */
