@@ -9,7 +9,7 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.1.1 - 2022-03-03
+## 1.1.1 - 2022-03-09
 
 Updates for JDK 17.
 
