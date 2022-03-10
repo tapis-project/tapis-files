@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.Valid;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.NotFoundException;
@@ -85,6 +86,8 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
   }
 
   @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
   @Path("/{systemId}/{path:.+}")
   public Response runLinuxNativeOp(@PathParam("systemId") String systemId,
                                    @PathParam("path") String path,
