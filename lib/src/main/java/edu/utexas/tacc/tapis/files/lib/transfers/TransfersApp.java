@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
@@ -41,14 +42,18 @@ public class TransfersApp
   public static void main(String[] args)
   {
     log.info("Starting transfers application.");
+    // Initialize bindings for HK2 dependency injection
     ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
     ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
       @Override
-      protected void configure() {
+      protected void configure()
+      {
+        bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+        bind(FileUtilsService.class).to(FileUtilsService.class);
+        bind(FileTransfersDAO.class).to(FileTransfersDAO.class);
         bind(new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
         bindAsContract(RemoteDataClientFactory.class);
         bindAsContract(SystemsCache.class).in(Singleton.class);
-        bindAsContract(FileTransfersDAO.class);
         bindAsContract(TransfersService.class).in(Singleton.class);
         bindAsContract(FilePermsService.class).in(Singleton.class);
         bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
@@ -57,7 +62,6 @@ public class TransfersApp
         bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
         bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
         bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
-        bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
       }
     });
 
@@ -65,15 +69,25 @@ public class TransfersApp
     // Need to init the tenant manager for some reason.
     TenantManager tenantManager = locator.getService(TenantManager.class);
     tenantManager.getTenants();
+    log.info("Getting serviceContext.");
     ServiceContext serviceContext = locator.getService(ServiceContext.class);
+    log.info("Got serviceContext.");
 
+    log.info("Getting childTxfrSvc.");
     ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
+    log.info("Got childTxfrSvc.");
+    log.info("Getting parentTxfrSvc.");
     ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
+    log.info("Got parentTxfrSvc.");
+    log.info("Starting parent pipeline.");
     Flux<TransferTaskParent> parentTaskFlux = parentTaskTransferService.runPipeline();
     parentTaskFlux.subscribe();
+    log.info("Started parent pipeline.");
 
+    log.info("Starting child pipeline.");
     Flux<TransferTaskChild> childTaskFlux = childTaskTransferService.runPipeline();
     childTaskFlux.subscribe();
+    log.info("Started child pipeline.");
   }
 
   private static void logSuccess(TransferTask t) { log.info(t.toString()); }
