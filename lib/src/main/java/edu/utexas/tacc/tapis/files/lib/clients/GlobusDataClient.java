@@ -12,31 +12,26 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
-import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
-import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusFileInfo;
-import edu.utexas.tacc.tapis.globusproxy.client.gen.model.ReqMakeDir;
-import edu.utexas.tacc.tapis.globusproxy.client.gen.model.ReqRename;
-import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.sshd.sftp.client.SftpClient;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusFileInfo;
+import edu.utexas.tacc.tapis.globusproxy.client.gen.model.ReqMakeDir;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.globusproxy.client.GlobusProxyClient;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /**
@@ -92,10 +87,10 @@ public class GlobusDataClient implements IRemoteDataClient
 
   /**
    * On instantiation create a GlobusProxyClient with credentials for given tenant+user
-   * TODO/TBD: do we need to pass in ServiceClients? Or is it enough to directly inject into this class
    * @param oboTenant1 - tenant
    * @param oboUser1 - user
    * @param system1 - system
+   * @param serviceClients1 - used to get the globusProxy client
    * @throws IOException on error
    */
   public GlobusDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1,
@@ -176,14 +171,8 @@ public class GlobusDataClient implements IRemoteDataClient
 //    tmpPath="/data";
     // TODO ************************************************************************************
 
-    // If clientId not provided then use clientId configured for Tapis.
-    if (StringUtils.isBlank(clientId))
-    {
-      clientId = RuntimeSettings.get().getGlobusClientId();
-      // If no clientId provided and none configured then throw an exception
-      if (StringUtils.isBlank(clientId))
-        throw new IOException(LibUtils.getMsg("FILES_CLIENT_GLOBUS_NO_CLIENTID", oboTenant, oboUser, opName, system.getId()));
-    }
+    // Use pre-configured Tapis clientId
+// TODO    String clientId = getClientId(opName);
 
     // Convert limit and offset to int for call to Globus.
     // As long as MAX_LISTING_SIZE is less than Integer max that is ok
@@ -201,7 +190,7 @@ public class GlobusDataClient implements IRemoteDataClient
 
     try
     {
-      // TODO for now use hard coded values for cliendId, endpointId, path and recurse
+      // TODO for now use hard coded values for cliendId, endpointId, path
       var globusFilesList = client.listFiles(clientId, endpointId, accessToken, refreshToken,
                                                                tmpPath, count, startIdx, filterStr);
       for (GlobusFileInfo globusFileInfo : globusFilesList)
@@ -257,13 +246,17 @@ public class GlobusDataClient implements IRemoteDataClient
     String clientId = "0259148a-8ae0-44b7-80b5-a4060e92dd3e"; // Client for scblack
 //TODO    String endpointId = system.getHost();
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
+    String tmpPath = "/~/data/globus/test_dir_new"; // File on scblack-test-laptop, /~/data/globus/test1.txt
     // TODO ************************************************************************************
+
+    // Use pre-configured Tapis clientId
+// TODO    String clientId = getClientId(opName);
 
     String status = null;
     try
     {
-      // TODO for now use hard coded values for cliendId, endpointId
-      status = client.makeDir(clientId, endpointId, accessToken, refreshToken, path);
+      // TODO for now use hard coded values for cliendId, endpointId, path
+      status = client.makeDir(clientId, endpointId, accessToken, refreshToken, tmpPath);
     }
     catch (TapisClientException e)
     {
@@ -294,6 +287,9 @@ public class GlobusDataClient implements IRemoteDataClient
 //TODO    String endpointId = system.getHost();
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
     // TODO ************************************************************************************
+
+    // Use pre-configured Tapis clientId
+// TODO    String clientId = getClientId(opName);
 
     String status = null;
     try
@@ -376,6 +372,10 @@ public class GlobusDataClient implements IRemoteDataClient
 
       var reqMakeDir = new ReqMakeDir();
       reqMakeDir.setPath(absolutePath);
+
+      // Use pre-configured Tapis clientId
+// TODO    String clientId = getClientId(opName);
+
       String status = null;
       try
       {
@@ -422,6 +422,10 @@ public class GlobusDataClient implements IRemoteDataClient
 //TODO    String endpointId = system.getHost();
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
     String tmpPath = "data/globus/test1.txt"; // File on scblack-test-laptop, /~/data/globus/test1.txt
+
+    // Use pre-configured Tapis clientId
+// TODO    String clientId = getClientId(opName);
+
     int count = 1;
     int startIdx = 0;
     String filterStr = "name:="+ absolutePathStr;
@@ -454,9 +458,13 @@ public class GlobusDataClient implements IRemoteDataClient
     fileInfo.setPath(globusFileInfo.getPath());
     fileInfo.setGroup(globusFileInfo.getGroup());
     fileInfo.setOwner(globusFileInfo.getUser());
-// TODO
-//    if (globusFileInfo.getLastModified() != null)
-//      fileInfo.setLastModified(Instant.from(globusFileInfo.getLastModified()));
+    // If we have a last_modified timestamp then convert it to an instant
+    if (!StringUtils.isBlank(globusFileInfo.getLastModified()))
+    {
+      Instant lastModified =
+              OffsetDateTime.parse(globusFileInfo.getLastModified(), DateTimeFormatter.ofPattern(pat)).toInstant();
+      fileInfo.setLastModified(lastModified);
+    }
     fileInfo.setNativePermissions(globusFileInfo.getPermissions());
     if (globusFileInfo.getSize() != null)
       fileInfo.setSize(globusFileInfo.getSize());
@@ -541,5 +549,20 @@ public class GlobusDataClient implements IRemoteDataClient
       throw new IOException(msg, e);
     }
     return globusProxyClient;
+  }
+
+  /**
+   * Get the configured Globus Client Id
+   * @param opName - operation, for logging
+   * @return clientId
+   * @throws IOException If clientId not found in runtime settings.
+   */
+  private String getClientId(String opName) throws IOException
+  {
+    String clientId = RuntimeSettings.get().getGlobusClientId();
+    // If no clientId configured then throw an exception
+    if (StringUtils.isBlank(clientId))
+      throw new IOException(LibUtils.getMsg("FILES_CLIENT_GLOBUS_NO_CLIENTID", oboTenant, oboUser, opName, system.getId()));
+    return clientId;
   }
 }
