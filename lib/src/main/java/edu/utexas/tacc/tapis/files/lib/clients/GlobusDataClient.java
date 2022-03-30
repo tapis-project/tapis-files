@@ -1,18 +1,15 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
@@ -65,6 +62,10 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
  */
 public class GlobusDataClient implements IRemoteDataClient
 {
+  // Timestamp parse pattern used by Globus for lastModified, e.g. 2022-01-31 20:31:01+00:00
+  // Note that this is not ISO 8601 because there is a space and not a T between data and time.
+  private static final String pat = "yyyy-MM-dd HH:mm:ssxxx";
+
   private final Logger log = LoggerFactory.getLogger(GlobusDataClient.class);
 
   private static final String DEFAULT_GLOBUS_ROOT_DIR = "/~/";
@@ -77,8 +78,7 @@ public class GlobusDataClient implements IRemoteDataClient
   private final String accessToken;
   private final String refreshToken;
 
-//  @Inject
-  private ServiceClients serviceClients;
+  private final ServiceClients serviceClients;
 
   @Override
   public void reserve() {}
@@ -172,8 +172,8 @@ public class GlobusDataClient implements IRemoteDataClient
     String clientId = "0259148a-8ae0-44b7-80b5-a4060e92dd3e"; // Client for scblack
 //TODO    String endpointId = system.getHost();
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
-    String tmpPath = "/~/data/globus/test1.txt"; // File on scblack-test-laptop, /~/data/globus/test1.txt
-    tmpPath="/data";
+    String tmpPath = "/~/data/globus"; // File on scblack-test-laptop, /~/data/globus/test1.txt
+//    tmpPath="/data";
     // TODO ************************************************************************************
 
     // If clientId not provided then use clientId configured for Tapis.
@@ -212,8 +212,16 @@ public class GlobusDataClient implements IRemoteDataClient
         fileInfo.setPath(globusFileInfo.getPath());
         fileInfo.setGroup(globusFileInfo.getGroup());
         fileInfo.setOwner(globusFileInfo.getUser());
-        if (globusFileInfo.getLastModified() != null)
-          fileInfo.setLastModified(Instant.from(globusFileInfo.getLastModified()));
+        // NOTE: It appears globus is using RFC 3339 rather than ISO 8601.
+        //       RFC 3339 allows either a space or a 'T' to separate date and time.
+        //       ISO 8601 requires a 'T'
+        // If we have a last_modified timestamp then convert it to an instant
+        if (!StringUtils.isBlank(globusFileInfo.getLastModified()))
+        {
+          Instant lastModified =
+             OffsetDateTime.parse(globusFileInfo.getLastModified(), DateTimeFormatter.ofPattern(pat)).toInstant();
+          fileInfo.setLastModified(lastModified);
+        }
         fileInfo.setNativePermissions(globusFileInfo.getPermissions());
         if (globusFileInfo.getSize() != null)
           fileInfo.setSize(globusFileInfo.getSize());
@@ -446,8 +454,9 @@ public class GlobusDataClient implements IRemoteDataClient
     fileInfo.setPath(globusFileInfo.getPath());
     fileInfo.setGroup(globusFileInfo.getGroup());
     fileInfo.setOwner(globusFileInfo.getUser());
-    if (globusFileInfo.getLastModified() != null)
-      fileInfo.setLastModified(Instant.from(globusFileInfo.getLastModified()));
+// TODO
+//    if (globusFileInfo.getLastModified() != null)
+//      fileInfo.setLastModified(Instant.from(globusFileInfo.getLastModified()));
     fileInfo.setNativePermissions(globusFileInfo.getPermissions());
     if (globusFileInfo.getSize() != null)
       fileInfo.setSize(globusFileInfo.getSize());

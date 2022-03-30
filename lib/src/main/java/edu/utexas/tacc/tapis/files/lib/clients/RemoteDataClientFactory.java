@@ -19,7 +19,6 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
 {
   private final SSHConnectionCache sshConnectionCache;
 
-  // TODO/TBD
   @Inject
   private ServiceClients serviceClients;
 
