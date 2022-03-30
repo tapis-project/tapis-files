@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusFileInfo;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.ReqMakeDir;
@@ -56,6 +57,11 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
  *   - mkdir
  *   - move
  *   - delete
+ * Unsupported operations:
+ *   - copy
+ *   - upload
+ *   - getStream
+ *   - getBytesByRange
  */
 public class GlobusDataClient implements IRemoteDataClient
 {
@@ -71,7 +77,7 @@ public class GlobusDataClient implements IRemoteDataClient
   private final String accessToken;
   private final String refreshToken;
 
-  @Inject
+//  @Inject
   private ServiceClients serviceClients;
 
   @Override
@@ -85,7 +91,7 @@ public class GlobusDataClient implements IRemoteDataClient
   public GlobusProxyClient getClient() { return client; }
 
   /**
-   * On instantiation create a GlobusProxyClient with credentials for give tenant+user
+   * On instantiation create a GlobusProxyClient with credentials for given tenant+user
    * TODO/TBD: do we need to pass in ServiceClients? Or is it enough to directly inject into this class
    * @param oboTenant1 - tenant
    * @param oboUser1 - user
@@ -99,7 +105,7 @@ public class GlobusDataClient implements IRemoteDataClient
     oboTenant = oboTenant1;
     oboUser = oboUser1;
     system = system1;
-//    serviceClients = serviceClients1;
+    serviceClients = serviceClients1;
     // Make sure we have a valid rootDir that is not empty and begins with /
     String tmpDir = system.getRootDir();
     if (StringUtils.isBlank(tmpDir)) tmpDir = DEFAULT_GLOBUS_ROOT_DIR;
@@ -114,8 +120,17 @@ public class GlobusDataClient implements IRemoteDataClient
     }
     else
     {
-      accessToken = null;
-      refreshToken = null;
+// TODO     accessToken = null;
+// TODO     refreshToken = null;
+// TODO *****************************************************************
+// TODO *****************************************************************
+// TODO *****************************************************************
+      // TODO remove hard coded access token
+// TODO *****************************************************************
+// TODO *****************************************************************
+// TODO *****************************************************************
+      accessToken = "AgroVw5qp5erwknQl0wzwYvOEbJ3mqn7Vvd5EazX52G8Wv5OQ2CXCOykJJwwaoMWW84aKBQwwOOk6zHleE5rwin2aj";
+      refreshToken = "AgV7mPmvv44x1eVezOQ9a8QxePg52Ej6QMXDkNrnY8dBEXGzrJuaUW8B49wQ1DxOyQvomPoEjwG96l4jvgxmj7pK50oEl";
     }
 
     // Throw IOException if credentials are missing
@@ -158,7 +173,17 @@ public class GlobusDataClient implements IRemoteDataClient
 //TODO    String endpointId = system.getHost();
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
     String tmpPath = "/~/data/globus/test1.txt"; // File on scblack-test-laptop, /~/data/globus/test1.txt
+    tmpPath="/data";
     // TODO ************************************************************************************
+
+    // If clientId not provided then use clientId configured for Tapis.
+    if (StringUtils.isBlank(clientId))
+    {
+      clientId = RuntimeSettings.get().getGlobusClientId();
+      // If no clientId provided and none configured then throw an exception
+      if (StringUtils.isBlank(clientId))
+        throw new IOException(LibUtils.getMsg("FILES_CLIENT_GLOBUS_NO_CLIENTID", oboTenant, oboUser, opName, system.getId()));
+    }
 
     // Convert limit and offset to int for call to Globus.
     // As long as MAX_LISTING_SIZE is less than Integer max that is ok
@@ -177,8 +202,8 @@ public class GlobusDataClient implements IRemoteDataClient
     try
     {
       // TODO for now use hard coded values for cliendId, endpointId, path and recurse
-      var globusFilesList = client.listFiles(clientId, endpointId, accessToken, tmpPath, count,
-                                                               startIdx, filterStr);
+      var globusFilesList = client.listFiles(clientId, endpointId, accessToken, refreshToken,
+                                                               tmpPath, count, startIdx, filterStr);
       for (GlobusFileInfo globusFileInfo : globusFilesList)
       {
         FileInfo fileInfo = new FileInfo();
@@ -226,13 +251,11 @@ public class GlobusDataClient implements IRemoteDataClient
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
     // TODO ************************************************************************************
 
-    var reqMakeDir = new ReqMakeDir();
-    reqMakeDir.setPath(absolutePath);
     String status = null;
     try
     {
       // TODO for now use hard coded values for cliendId, endpointId
-      status = client.makeDir(clientId, endpointId, accessToken, reqMakeDir);
+      status = client.makeDir(clientId, endpointId, accessToken, refreshToken, path);
     }
     catch (TapisClientException e)
     {
@@ -264,14 +287,11 @@ public class GlobusDataClient implements IRemoteDataClient
     String endpointId = "4549fadc-7941-11ec-9f32-ed182a728dff"; // Endpoint scblack-test-laptop
     // TODO ************************************************************************************
 
-    var reqRename = new ReqRename();
-    reqRename.setSourcePath(oldAbsolutePath);
-    reqRename.setDestinationPath(newAbsolutePath);
     String status = null;
     try
     {
       // TODO for now use hard coded values for cliendId, endpointId
-      status = client.renamePath(clientId, endpointId, accessToken, reqRename);
+      status = client.renamePath(clientId, endpointId, accessToken, refreshToken, oldAbsolutePath, newAbsolutePath);
     }
     catch (TapisClientException e)
     {
@@ -352,7 +372,7 @@ public class GlobusDataClient implements IRemoteDataClient
       try
       {
         // TODO for now use hard coded values for cliendId, endpointId
-        status = client.deletePath(clientId, endpointId, accessToken, absolutePath, recurse);
+        status = client.deletePath(clientId, endpointId, accessToken, refreshToken, absolutePath, recurse);
       }
       catch (TapisClientException e)
       {
@@ -402,7 +422,7 @@ public class GlobusDataClient implements IRemoteDataClient
     List<GlobusFileInfo> globusFilesList;
     try
     {
-      globusFilesList = client.listFiles(clientId, endpointId, accessToken, absolutePathStr, count, startIdx, filterStr);
+      globusFilesList = client.listFiles(clientId, endpointId, accessToken, refreshToken, absolutePathStr, count, startIdx, filterStr);
     }
     catch (TapisClientException e)
     {
@@ -484,7 +504,7 @@ public class GlobusDataClient implements IRemoteDataClient
   @Override
   public InputStream getBytesByRange(@NotNull String path, long startByte, long count)
   {
-    String opName = "getBytesRange";
+    String opName = "getBytesByRange";
     String msg = LibUtils.getMsg("FILES_OPSC_UNSUPPORTED", oboTenant, oboUser, system.getSystemType(), opName,
                                  system.getId(), path);
     throw new NotImplementedException(msg);

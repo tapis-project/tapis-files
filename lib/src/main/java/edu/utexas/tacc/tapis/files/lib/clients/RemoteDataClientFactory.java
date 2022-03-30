@@ -20,8 +20,8 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
   private final SSHConnectionCache sshConnectionCache;
 
   // TODO/TBD
-//  @Inject
-//  private ServiceClients serviceClients;
+  @Inject
+  private ServiceClients serviceClients;
 
   @Inject
   public RemoteDataClientFactory(SSHConnectionCache cache1) { sshConnectionCache = cache1; }
@@ -56,7 +56,8 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
     }
     else if (SystemTypeEnum.GLOBUS.equals(system.getSystemType()))
     {
-      return new GlobusDataClient(apiTenant, apiUser, system, null /*TODO/TBD serviceClients*/);
+//      return new GlobusDataClient(apiTenant, apiUser, system, null /*TODO/TBD serviceClients*/);
+      return new GlobusDataClient(apiTenant, apiUser, system, serviceClients);
     }
     else
     {

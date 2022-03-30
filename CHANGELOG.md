@@ -9,7 +9,22 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.1.1 - 2022-03-03
+## 1.1.2 - 2022-03-10
+
+Fix issues with Jackson mapper and with worker startup..
+
+### New features:
+- None
+
+### Updates:
+- None
+
+### Bug fixes:
+- Transfer worker failing to start.
+- Api throwing exceptions due to empty bean during json serialization.
+
+---------------------------------------------------------------------------
+## 1.1.1 - 2022-03-09
 
 Updates for JDK 17.
 
