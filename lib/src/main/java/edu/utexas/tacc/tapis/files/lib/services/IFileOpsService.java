@@ -26,11 +26,13 @@ public interface IFileOpsService
   // ===================
   // FileOps
   // ===================
-  List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, long limit, long offset)
+  List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, long limit,
+                    long offset, boolean skipTapisAuth)
           throws WebApplicationException;
   List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException;
 
-  List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, int maxDepth)
+  List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                             int maxDepth, boolean skipTapisAuth)
           throws WebApplicationException;
   List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth) throws ServiceException;
 
@@ -50,17 +52,17 @@ public interface IFileOpsService
   // ===================
   // GetContents
   // ===================
-  StreamingOutput getZipStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+  StreamingOutput getZipStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, boolean skipTapisAuth)
           throws WebApplicationException;
 
   StreamingOutput getByteRangeStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                                     @NotNull HeaderByteRange range)
+                                     @NotNull HeaderByteRange range, boolean skipTapisAuth)
           throws WebApplicationException;
 
   StreamingOutput getPagedStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                                 Long startPage)
+                                 Long startPage, boolean skipTapisAuth)
           throws WebApplicationException;
 
-  StreamingOutput getFullStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+  StreamingOutput getFullStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, boolean skipTapisAuth)
           throws WebApplicationException;
 }

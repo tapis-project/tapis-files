@@ -25,7 +25,6 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
-import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
@@ -35,7 +34,9 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -62,6 +63,12 @@ public class FileOpsService implements IFileOpsService
   // 0=systemId, 1=path, 2=tenant
   private final String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}?tenant={2}";
   private static final int MAX_RECURSION = 20;
+
+  private static final String SYSTEMS_SERVICE = TapisConstants.SERVICE_NAME_SYSTEMS;
+  private static final String APPS_SERVICE = TapisConstants.SERVICE_NAME_APPS;
+  private static final String JOBS_SERVICE = TapisConstants.SERVICE_NAME_JOBS;
+  private static final Set<String> SVCLIST_SKIPAUTH = new HashSet<>(Set.of(JOBS_SERVICE));
+
 
   @Inject
   public FileOpsService(FilePermsService svc) { permsService = svc; }
@@ -106,13 +113,13 @@ public class FileOpsService implements IFileOpsService
    * @param path - path on system relative to system rootDir
    * @param limit - pagination limit
    * @param offset - pagination offset
+   * @param skipTapisAuth - skip tapis auth, calling service has checked
    * @return Collection of FileInfo objects
    * @throws NotFoundException - requested path not found
-   * @throws NotAuthorizedException - user not authorized
    */
   @Override
   public List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                           long limit, long offset)
+                           long limit, long offset, boolean skipTapisAuth)
           throws WebApplicationException
   {
     String apiTenant = rUser.getOboTenantId();
@@ -123,7 +130,9 @@ public class FileOpsService implements IFileOpsService
     IRemoteDataClient client = null;
     try
     {
-      LibUtils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+      // Check for READ permission
+      checkAuthForReadOrSkip(rUser, sysId, relativePath, skipTapisAuth);
+
       client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
       client.reserve();
       return ls(client, path, limit, offset);
@@ -187,13 +196,14 @@ public class FileOpsService implements IFileOpsService
    * @param sys - System
    * @param path - path on system relative to system rootDir
    * @param depth - maximum depth for recursion
+   * @param skipTapisAuth - skip tapis auth, calling service has checked
    * @return Collection of FileInfo objects
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
     @Override
     public List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
-                                      @NotNull String path, int depth)
+                                      @NotNull String path, int depth, boolean skipTapisAuth)
             throws WebApplicationException
     {
       String apiTenant = rUser.getOboTenantId();
@@ -204,7 +214,9 @@ public class FileOpsService implements IFileOpsService
       IRemoteDataClient client = null;
       try
       {
-        LibUtils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+        // Check for READ permission
+        checkAuthForReadOrSkip(rUser, sysId, relativePath, skipTapisAuth);
+
         client = remoteDataClientFactory.getRemoteDataClient(apiTenant, apiUser, sys, sys.getEffectiveUserId());
         client.reserve();
         return lsRecursive(client, path, depth);
@@ -546,15 +558,17 @@ public class FileOpsService implements IFileOpsService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - path to download
+   * @param skipTapisAuth - skip tapis auth, calling service has checked
    * @throws NotFoundException System or path not found
    */
-  public StreamingOutput getZipStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+  public StreamingOutput getZipStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
+                                      @NotNull String path, boolean skipTapisAuth)
           throws WebApplicationException
   {
     StreamingOutput outStream = output -> {
       try
       {
-        getZip(rUser, output, sys, path);
+        getZip(rUser, output, sys, path, skipTapisAuth);
       }
       catch (NotFoundException | ForbiddenException ex)
       {
@@ -574,17 +588,18 @@ public class FileOpsService implements IFileOpsService
    * @param sys - System
    * @param path - file to download
    * @param range - optional range for bytes to send
+   * @param skipTapisAuth - skip tapis auth, calling service has checked
    * @throws NotFoundException System or path not found
    */
   public StreamingOutput getByteRangeStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
-                                            @NotNull String path, @NotNull HeaderByteRange range)
+                                            @NotNull String path, @NotNull HeaderByteRange range, boolean skipTapisAuth)
           throws WebApplicationException
   {
     StreamingOutput outStream = output -> {
     InputStream stream = null;
     try
     {
-      stream = getByteRange(rUser, sys, path, range.getMin(), range.getMax());
+      stream = getByteRange(rUser, sys, path, range.getMin(), range.getMax(), skipTapisAuth);
       stream.transferTo(output);
     }
     catch (NotFoundException | ForbiddenException ex)
@@ -610,10 +625,11 @@ public class FileOpsService implements IFileOpsService
    * @param path - file to download
    * @param startPage - Send 1k of UTF-8 encoded string back starting at specified block,
                         e.g. more=2 to start at 2nd block
+   * @param skipTapisAuth - skip tapis auth, calling service has checked
    * @throws NotFoundException System or path not found
    */
   public StreamingOutput getPagedStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
-                                        @NotNull String path, @NotNull Long startPage)
+                                        @NotNull String path, @NotNull Long startPage, boolean skipTapisAuth)
           throws WebApplicationException
   {
     StreamingOutput outStream = output -> {
@@ -644,16 +660,18 @@ public class FileOpsService implements IFileOpsService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - file to download
+   * @param skipTapisAuth - skip tapis auth, calling service has checked
    * @throws NotFoundException System or path not found
    */
-  public StreamingOutput getFullStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+  public StreamingOutput getFullStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
+                                       @NotNull String path, boolean skipTapisAuth)
           throws WebApplicationException
   {
     StreamingOutput outStream = output -> {
       InputStream stream = null;
       try
       {
-        stream = getAllBytes(rUser, sys, path);
+        stream = getAllBytes(rUser, sys, path, skipTapisAuth);
         stream.transferTo(output);
       }
       catch (NotFoundException | ForbiddenException ex)
@@ -713,7 +731,7 @@ public class FileOpsService implements IFileOpsService
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-  InputStream getAllBytes(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+  InputStream getAllBytes(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, boolean skipTapisAuth)
           throws ServiceException
   {
     String apiTenant = rUser.getOboTenantId();
@@ -721,7 +739,8 @@ public class FileOpsService implements IFileOpsService
     String sysId = sys.getId();
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    LibUtils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+    checkAuthForReadOrSkip(rUser, sysId, relativePath, skipTapisAuth);
+
     // Get a remoteDataClient to stream contents
     IRemoteDataClient client = null;
     try
@@ -751,7 +770,7 @@ public class FileOpsService implements IFileOpsService
    * @throws ForbiddenException user not authorized
    */
   InputStream getByteRange(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                                   long startByte, long count)
+                                   long startByte, long count, boolean skipTapisAuth)
           throws ServiceException
   {
     String apiTenant = rUser.getOboTenantId();
@@ -829,7 +848,7 @@ public class FileOpsService implements IFileOpsService
    * @throws ForbiddenException user not authorized
    */
   void getZip(@NotNull ResourceRequestUser rUser, @NotNull OutputStream outputStream, @NotNull TapisSystem sys,
-                      @NotNull String path)
+                      @NotNull String path, boolean skipTapisAuth)
           throws ServiceException
   {
     String apiTenant = rUser.getOboTenantId();
@@ -837,7 +856,7 @@ public class FileOpsService implements IFileOpsService
     String sysId = sys.getId();
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    LibUtils.checkPermitted(permsService, apiTenant, apiUser, sysId, relativePath, Permission.READ);
+    checkAuthForReadOrSkip(rUser, sysId, relativePath, skipTapisAuth);
 
     String cleanedPath = FilenameUtils.normalize(path);
     cleanedPath = StringUtils.removeStart(cleanedPath, "/");
@@ -864,7 +883,7 @@ public class FileOpsService implements IFileOpsService
         }
         else
         {
-          try (InputStream inputStream = getAllBytes(rUser, sys, fileInfo.getPath()))
+          try (InputStream inputStream = getAllBytes(rUser, sys, fileInfo.getPath(), skipTapisAuth))
           {
             String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
             Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
@@ -911,6 +930,38 @@ public class FileOpsService implements IFileOpsService
         depth++;
         listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth);
       }
+    }
+  }
+
+  /**
+   * Confirm that caller has READ permission on path or is allowed to skip normal tapis auth check.
+   * To skip it must be a service request from a service allowed to bypass the check.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param systemId - system containing path
+   * @param path - path to the file, dir or object
+   * @throws ForbiddenException - apiUserId not authorized to perform operation
+   */
+  private void checkAuthForReadOrSkip(ResourceRequestUser rUser, String systemId, Path path, boolean skipTapisAuth)
+          throws ForbiddenException, ServiceException
+  {
+    String pathStr = path.toString();
+    Permission perm = Permission.READ;
+    // If skipTapisAuth=true make a special check to confirm that auth can be bypassed
+    //   To bypoass must be a service request from an allowed service.
+    // else do normal auth check
+    if (skipTapisAuth)
+    {
+      // If a service request the username will be the service name. E.g. systems, jobs, streams, etc
+      String svcName = rUser.getJwtUserId();
+      if (rUser.isServiceRequest() && SVCLIST_SKIPAUTH.contains(svcName)) return;
+
+      String msg = LibUtils.getMsgAuthR("FILES_NOTAUTH_SKIPAUTH", rUser, systemId, pathStr, perm);
+      throw new ForbiddenException(msg);
+    }
+    else
+    {
+      LibUtils.checkPermitted(permsService, rUser.getJwtTenantId(), rUser.getJwtUserId(), systemId, path, Permission.READ);
     }
   }
 }

@@ -295,7 +295,7 @@ public class TestFileOpsService
 
         List<FileInfo> listing = fileOpsService.ls(client, "/test.txt", MAX_LISTING_SIZE, 0);
         Assert.assertEquals(listing.get(0).getSize(), 100*1024);
-        InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt");
+        InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt", false);
         byte[] output = IOUtils.toByteArray(out);
         Assert.assertEquals(output.length, 100 * 1024);
     }
@@ -510,7 +510,7 @@ public class TestFileOpsService
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
-        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000);
+        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, false);
         Assert.assertEquals(result.readAllBytes().length, 1000);
     }
 
@@ -526,7 +526,7 @@ public class TestFileOpsService
 
         File file = File.createTempFile("test", ".zip");
         OutputStream outputStream = new FileOutputStream(file);
-        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a");
+        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a", false);
 
         try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis) )
         {

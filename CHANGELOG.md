@@ -8,6 +8,16 @@ https://tapis.readthedocs.io/en/latest/technical/files.html
 You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
+## 1.1.3 - 2022-04-08
+
+Preview of new features.
+
+### New features:
+- Support skipTapisAuthorization for requests from Jobs and Apps services.
+
+### Bug fixes:
+- None
+
 ---------------------------------------------------------------------------
 ## 1.1.2 - 2022-03-10
 
