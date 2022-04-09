@@ -60,8 +60,8 @@ public class S3DataClient implements IRemoteDataClient
   @Override
   public void release() {}
 
-    public String getApiTenant() { return oboTenant; }
-    public String getApiUser() { return oboUser; }
+    public String getOboTenant() { return oboTenant; }
+    public String getOboUser() { return oboUser; }
     public String getSystemId() { return system.getId(); }
 //    public String getBucket() { return bucket; }
 

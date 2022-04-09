@@ -25,8 +25,8 @@ public class HTTPClient implements IRemoteDataClient {
   @Override
   public void release() {}
 
-    public String getApiTenant() { return oboTenant; }
-    public String getApiUser() { return oboUser; }
+    public String getOboTenant() { return oboTenant; }
+    public String getOboUser() { return oboUser; }
     // Since no system use srcDstURIs instead
     public String getSystemId() { return srcDstURIs; }
     private final String oboTenant;

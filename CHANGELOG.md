@@ -10,7 +10,7 @@ https://tapis-project.github.io/live-docs
 
 ## 1.1.3 - 2022-04-08
 
-Preview of new features.
+Preview of new feature.
 
 ### New features:
 - Support skipTapisAuthorization for requests from Jobs and Apps services.

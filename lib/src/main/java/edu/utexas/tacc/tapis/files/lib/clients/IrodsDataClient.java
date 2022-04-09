@@ -70,12 +70,12 @@ public class IrodsDataClient implements IRemoteDataClient {
   public void release() {}
 
   @Override
-    public String getApiTenant() {
+    public String getOboTenant() {
         return oboTenantId;
     }
 
     @Override
-    public String getApiUser() {
+    public String getOboUser() {
         return oboUsername;
     }
 

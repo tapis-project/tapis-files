@@ -56,8 +56,8 @@ public class FilePermsService {
 
   /**
    * Update SK permissions after a file or directory move/copy
-   * @param tenantId - apiUser tenant id
-   * @param username - apiUser user id
+   * @param tenantId - obo tenant id
+   * @param username - oboUser user id
    * @param systemId - system id
    * @param oldPath - old path
    * @param newPath - new path
