@@ -51,6 +51,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
 
     private final String oboTenant = "oboTenant";
     private final String oboUser = "oboUser";
+    private final boolean skipTapisAuthFalse = false;
     private String childQ;
     private String parentQ;
 
@@ -325,7 +326,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         //Take for 5 secs then finish
         stream.take(Duration.ofSeconds(5)).blockLast();
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/dest/b/c/", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/dest/b/c/", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertTrue(listing.size() > 0);
     }
 
@@ -404,7 +405,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         Assert.assertTrue(parent.getBytesTransferred() > 0);
 
 // Verify that transfers happened.
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 2);
     }
 
@@ -449,7 +450,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
             .thenCancel()
             .verify(Duration.ofSeconds(600));
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "program.exe", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(destClient, "program.exe", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 1);
         Assert.assertTrue(listing.get(0).getNativePermissions().contains("x"));
     }
@@ -512,7 +513,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // 2 files, so total should be 2x
     Assert.assertEquals(parent.getBytesTransferred(), 2 * FILESIZE);
 
-    List<FileInfo> listing = fileOpsService.ls(destClient, "/b/cat/dog/", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/b/cat/dog/", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     Assert.assertEquals(listing.size(), 2);
   }
 
@@ -618,7 +619,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         Assert.assertNotNull(parent.getStartTime());
         Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-        List<FileInfo> listing = fileOpsService.ls(destClient,"/b", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(destClient,"/b", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 1);
     }
 
@@ -676,7 +677,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         Assert.assertNotNull(parent.getStartTime());
         Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/transferred", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/transferred", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 1);
     }
 
@@ -735,7 +736,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         Assert.assertNotNull(parent.getStartTime());
         Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 1);
     }
 
@@ -868,7 +869,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
         stream.take(Duration.ofSeconds(5)).blockLast();
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 10);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
@@ -909,7 +910,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
             .thenCancel()
             .verify(Duration.ofSeconds(5));
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 2);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
@@ -963,7 +964,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
                 .thenCancel()
                 .verify(Duration.ofSeconds(60));
 
-        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 8);
         t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
         Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);

@@ -61,6 +61,7 @@ public class TestFileOpsService
 {
   private final String oboTenant = "oboTenant";
   private final String oboUser = "oboUser";
+  private final boolean skipTapisAuthFalse = false;
   private ResourceRequestUser rTestUser;
   TapisSystem testSystemNotEnabled;
   TapisSystem testSystemSSH;
@@ -236,10 +237,10 @@ public class TestFileOpsService
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
     InputStream in = Utils.makeFakeFile(10*1024);
     fileOpsService.upload(client,"test.txt", in);
-    List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     Assert.assertEquals(listing.size(), 1);
     fileOpsService.delete(client,"test.txt");
-    Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "test.txt", MAX_LISTING_SIZE, 0); });
+    Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "test.txt", MAX_LISTING_SIZE, 0, skipTapisAuthFalse); });
   }
 
   @Test(dataProvider = "testSystems")
@@ -250,7 +251,7 @@ public class TestFileOpsService
       fileOpsService.delete(client, "/");
       InputStream in = Utils.makeFakeFile(10*1024);
       fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
-      List<FileInfo> listing = fileOpsService.ls(client,"/dir1/dir2", MAX_LISTING_SIZE, 0);
+      List<FileInfo> listing = fileOpsService.ls(client,"/dir1/dir2", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
       Assert.assertEquals(listing.size(), 1);
       Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
     }
@@ -265,12 +266,12 @@ public class TestFileOpsService
       fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
       // List files after upload
       System.out.println("After upload: ");
-      List<FileInfo> listing = fileOpsService.ls(client,"dir1/dir2/", MAX_LISTING_SIZE, 0);
+      List<FileInfo> listing = fileOpsService.ls(client,"dir1/dir2/", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
       for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
       Assert.assertEquals(listing.size(), 1);
       Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
       fileOpsService.delete(client,"/dir1/dir2/test.txt");
-      Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "/dir1/dir2/test.txt", MAX_LISTING_SIZE, 0); });
+      Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "/dir1/dir2/test.txt", MAX_LISTING_SIZE, 0, skipTapisAuthFalse); });
     }
 
     @Test(dataProvider = "testSystemsNoS3")
@@ -279,10 +280,10 @@ public class TestFileOpsService
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.upload(client,"a/b/c/test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls(client,"/a/b/c/test.txt", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(client,"/a/b/c/test.txt", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 1);
         fileOpsService.delete(client,"/a/b/");
-        Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client,"/a/b/c/test.txt", MAX_LISTING_SIZE, 0); });
+        Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client,"/a/b/c/test.txt", MAX_LISTING_SIZE, 0, skipTapisAuthFalse); });
     }
 
     @Test(dataProvider = "testSystems")
@@ -293,7 +294,7 @@ public class TestFileOpsService
         InputStream in = Utils.makeFakeFile(100*1024);
         fileOpsService.upload(client,"test.txt", in);
 
-        List<FileInfo> listing = fileOpsService.ls(client, "/test.txt", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(client, "/test.txt", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.get(0).getSize(), 100*1024);
         InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt", false);
         byte[] output = IOUtils.toByteArray(out);
@@ -309,7 +310,7 @@ public class TestFileOpsService
     fileOpsService.upload(client,"test1.txt", in);
     in.close();
     fileOpsService.moveOrCopy(client, OP_MV, "test1.txt", "test2.txt");
-    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 1);
     Assert.assertEquals(listing.get(0).getName(), "test2.txt");
@@ -340,7 +341,7 @@ public class TestFileOpsService
     in.close();
     // List files before copying
     System.out.println("Before copying: ");
-    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     /* Now copy files. Should end up with following:
           /test1.txt
@@ -364,12 +365,12 @@ public class TestFileOpsService
     fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "dir2/test08.txt");
     // Check listing for /dir1 - 5 files
     System.out.println("After copying: list for /dir1");
-    listing = fileOpsService.ls(client, "/dir1", MAX_LISTING_SIZE, 0);
+    listing = fileOpsService.ls(client, "/dir1", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 5);
     // Check listing for /dir2 - 5 files
     System.out.println("After copying: list for /dir2");
-    listing = fileOpsService.ls(client, "/dir2", MAX_LISTING_SIZE, 0);
+    listing = fileOpsService.ls(client, "/dir2", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 5);
   }
@@ -404,7 +405,7 @@ public class TestFileOpsService
     // Before copying when listing "/" should have 3 items since listing is not recursive
     // 2 directories and 1 file
     System.out.println("Before copying: ");
-    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 3);
     /* Now copy files. Should end up with following:
@@ -446,25 +447,25 @@ public class TestFileOpsService
     // Check listing for /
     // 2 directories and 5 files
     System.out.println("After copying: list for / ");
-    listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
+    listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 7);
     // Check listing for /dir1
     // 1 directory and 7 files
     System.out.println("After copying: list for /dir1");
-    listing = fileOpsService.ls(client, "/dir1", MAX_LISTING_SIZE, 0);
+    listing = fileOpsService.ls(client, "/dir1", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 8);
     // Check listing for /dir2
     // 0 directories and 1 file
     System.out.println("After copying: list for /dir2");
-    listing = fileOpsService.ls(client, "/dir2", MAX_LISTING_SIZE, 0);
+    listing = fileOpsService.ls(client, "/dir2", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 1);
     // Check listing for /dir1/dir2
     // 0 directories and 6 files
     System.out.println("After copying: list for /dir1/dir2");
-    listing = fileOpsService.ls(client, "/dir1/dir2", MAX_LISTING_SIZE, 0);
+    listing = fileOpsService.ls(client, "/dir1/dir2", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 6);
   }
@@ -481,7 +482,7 @@ public class TestFileOpsService
     in = Utils.makeFakeFile(10*1024);
     fileOpsService.upload(client,"dir1/test2.txt", in);
     in.close();
-    List<FileInfo> listing = fileOpsService.ls(client,"/dir1", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(client,"/dir1", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 2);
     String name1 = listing.get(0).getName();
@@ -498,7 +499,7 @@ public class TestFileOpsService
         fileOpsService.delete(client, "/");
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         Assert.assertEquals(listing.size(), 1);
         Assert.assertEquals(listing.get(0).getName(), "test.txt");
         Assert.assertEquals(listing.get(0).getSize(), 100 * 1000 * 1024L);
@@ -561,7 +562,7 @@ public class TestFileOpsService
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
       client.delete("/");
       fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
-      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0); });
+      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0, skipTapisAuthFalse); });
     }
 
   // NoAuthz tests for mkdir, move, copy and delete
@@ -604,7 +605,7 @@ public class TestFileOpsService
       fileOpsService.upload(client,"/a/b/c/4.txt", Utils.makeFakeFile(10*1024));
       fileOpsService.upload(client,"/a/b/c/5.txt", Utils.makeFakeFile(10*1024));
 
-      List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", maxDepth);
+      List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", maxDepth, skipTapisAuthFalse);
       for (FileInfo fi : listing) { log.info("Test1 found: " + fi.getUrl()); }
       // S3 doesn't really do folders
       // Test1 S3 should have 4 entries and others should have 7 (4 files + 3 directories)
@@ -612,7 +613,7 @@ public class TestFileOpsService
       else Assert.assertEquals(listing.size(), 8);
 
       // Test2 S3 should have 3 entries and others should have 5 (3 files + 2 directories)
-      listing = fileOpsService.lsRecursive(client,"/a", maxDepth);
+      listing = fileOpsService.lsRecursive(client,"/a", maxDepth, skipTapisAuthFalse);
       for (FileInfo fi : listing) { log.info("Test2 found: " + fi.getUrl()); }
       // S3 doesn't really do folders
       // S3 should have 3 entries and others should have 5 (3 files + 2 directories)
@@ -627,7 +628,7 @@ public class TestFileOpsService
         client.delete("/");
         fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(0));
 
-        List<FileInfo> listing = fileOpsService.ls(client,"/", MAX_LISTING_SIZE, 0);
+        List<FileInfo> listing = fileOpsService.ls(client,"/", MAX_LISTING_SIZE, 0, skipTapisAuthFalse);
         // S3 doesn't really do folders?
       Assert.assertEquals(listing.size(), 1);
 

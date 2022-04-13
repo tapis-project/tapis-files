@@ -29,12 +29,14 @@ public interface IFileOpsService
   List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, long limit,
                     long offset, boolean skipTapisAuth)
           throws WebApplicationException;
-  List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset) throws ServiceException;
+  List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset,
+                    boolean skipTapisAuth) throws ServiceException;
 
   List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
                              int maxDepth, boolean skipTapisAuth)
           throws WebApplicationException;
-  List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth) throws ServiceException;
+  List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth, boolean skipTapisAuth)
+          throws ServiceException;
 
   void upload(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path, InputStream in) throws WebApplicationException;
   void upload(@NotNull IRemoteDataClient client, String path, InputStream in) throws ServiceException;

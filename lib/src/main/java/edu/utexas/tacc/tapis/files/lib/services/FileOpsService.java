@@ -135,7 +135,7 @@ public class FileOpsService implements IFileOpsService
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
-      return ls(client, path, limit, offset);
+      return ls(client, path, limit, offset, skipTapisAuth);
     }
     catch (IOException | ServiceException ex)
     {
@@ -161,12 +161,16 @@ public class FileOpsService implements IFileOpsService
    * @throws NotFoundException - requested path not found
    */
   @Override
-  public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset)
+  public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset,
+                           boolean skipTapisAuth)
           throws ServiceException
   {
     Path relativePath = PathUtils.getRelativePath(path);
-    LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                            relativePath, Permission.READ);
+    if (!skipTapisAuth)
+    {
+      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                              relativePath, Permission.READ);
+    }
     try
     {
       List<FileInfo> listing = client.ls(relativePath.toString(), limit, offset);
@@ -219,7 +223,7 @@ public class FileOpsService implements IFileOpsService
 
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
-        return lsRecursive(client, path, depth);
+        return lsRecursive(client, path, depth, skipTapisAuth);
       }
       catch (IOException | ServiceException ex)
       {
@@ -242,12 +246,13 @@ public class FileOpsService implements IFileOpsService
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    */
-  public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int depth)
+  public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int depth,
+                                    boolean skipTapisAuth)
           throws ServiceException
   {
     List<FileInfo> listing = new ArrayList<>();
     // Make the call that does recursion
-    listDirectoryRecurse(client, path, listing, 0, Math.min(depth, MAX_RECURSION));
+    listDirectoryRecurse(client, path, listing, 0, Math.min(depth, MAX_RECURSION), skipTapisAuth);
     return listing;
   }
 
@@ -869,7 +874,7 @@ public class FileOpsService implements IFileOpsService
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
       // Step through a recursive listing up to some max depth
-      List<FileInfo> listing = lsRecursive(client, path, MAX_RECURSION);
+      List<FileInfo> listing = lsRecursive(client, path, MAX_RECURSION, skipTapisAuth);
       for (FileInfo fileInfo : listing)
       {
         // Always add an entry for a dir to be sure empty directories are included
@@ -918,17 +923,17 @@ public class FileOpsService implements IFileOpsService
    * @throws NotFoundException - requested path not found
    */
   private void listDirectoryRecurse(@NotNull IRemoteDataClient client, String basePath, List<FileInfo> listing,
-                                    int depth, int maxDepth)
+                                    int depth, int maxDepth, boolean skipTapisAuth)
           throws ServiceException
   {
-    List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0);
+    List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0, skipTapisAuth);
     listing.addAll(currentListing);
     for (FileInfo fileInfo: currentListing)
     {
       if (fileInfo.isDir() && depth < maxDepth)
       {
         depth++;
-        listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth);
+        listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth, skipTapisAuth);
       }
     }
   }
