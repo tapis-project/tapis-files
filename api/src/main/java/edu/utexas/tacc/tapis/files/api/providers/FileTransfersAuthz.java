@@ -29,27 +29,29 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
     private ResourceInfo resourceInfo;
 
     @Override
-    public void filter(ContainerRequestContext requestContext) throws IOException {
+    public void filter(ContainerRequestContext requestContext) throws IOException
+    {
+      //TODO:
 
-        //TODO:
-
-        user = (AuthenticatedUser) requestContext.getSecurityContext().getUserPrincipal();
-        String username = user.getName();
-        String tenantId = user.getTenantId();
-        MultivaluedMap<String, String> params = requestContext.getUriInfo().getPathParameters();
-        String taskID = params.getFirst("transferTaskId");
-        UUID taskUUID = UUID.fromString(taskID);
-
-        try {
-            boolean isPermitted = transfersService.isPermitted(username, tenantId, taskUUID);
-            if (!isPermitted) {
-                throw new NotAuthorizedException(LibUtils.getMsgAuth("FILES_TXFR_NOT_AUTH", user, taskUUID));
-            }
-
-        } catch (ServiceException ex) {
-            String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, "authorization", ex.getMessage());
-            log.error(msg, ex);
-            throw new IOException(msg, ex);
+      user = (AuthenticatedUser) requestContext.getSecurityContext().getUserPrincipal();
+      String username = user.getName();
+      String tenantId = user.getTenantId();
+      MultivaluedMap<String, String> params = requestContext.getUriInfo().getPathParameters();
+      String taskID = params.getFirst("transferTaskId");
+      UUID taskUUID = UUID.fromString(taskID);
+      try
+      {
+        boolean isPermitted = transfersService.isPermitted(username, tenantId, taskUUID);
+        if (!isPermitted)
+        {
+          throw new NotAuthorizedException(LibUtils.getMsgAuth("FILES_TXFR_NOT_AUTH", user, taskUUID));
         }
+      }
+      catch (ServiceException ex)
+      {
+        String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, "authorization", ex.getMessage());
+        log.error(msg, ex);
+        throw new IOException(msg, ex);
+      }
     }
 }

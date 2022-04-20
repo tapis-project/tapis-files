@@ -41,8 +41,8 @@ public class FilePermsService {
     public void grantPermission(String tenantId, String username, String systemId, String path, Permission perm) throws ServiceException {
         try {
             // This avoids ambiguous path issues with the SK. basically ensures that
-            // the even if the path is dir/file1.txt the entry will be /dir/file1.txt
-            // Also removes any trailing slashes if present needed for SK permissions checks
+            // even if the path is dir/file1.txt the entry will be /dir/file1.txt
+            // Also removes any trailing slashes if present, needed for SK permissions checks
             path = StringUtils.removeEnd(path, "/");
             path = StringUtils.prependIfMissing(path, "/");
             SKClient skClient = getSKClient(tenantId, username);

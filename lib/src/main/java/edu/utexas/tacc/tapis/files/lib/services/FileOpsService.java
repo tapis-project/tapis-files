@@ -131,7 +131,7 @@ public class FileOpsService implements IFileOpsService
     try
     {
       // Check for READ permission
-      checkAuthForReadOrSkip(rUser, sysId, relativePath, skipTapisAuth);
+      checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, skipTapisAuth);
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
@@ -219,7 +219,7 @@ public class FileOpsService implements IFileOpsService
       try
       {
         // Check for READ permission
-        checkAuthForReadOrSkip(rUser, sysId, relativePath, skipTapisAuth);
+        checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, skipTapisAuth);
 
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
@@ -744,7 +744,7 @@ public class FileOpsService implements IFileOpsService
     String sysId = sys.getId();
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    checkAuthForReadOrSkip(rUser, sysId, relativePath, skipTapisAuth);
+    checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, skipTapisAuth);
 
     // Get a remoteDataClient to stream contents
     IRemoteDataClient client = null;
@@ -861,7 +861,7 @@ public class FileOpsService implements IFileOpsService
     String sysId = sys.getId();
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    checkAuthForReadOrSkip(rUser, sysId, relativePath, skipTapisAuth);
+    checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, skipTapisAuth);
 
     String cleanedPath = FilenameUtils.normalize(path);
     cleanedPath = StringUtils.removeStart(cleanedPath, "/");
@@ -947,7 +947,7 @@ public class FileOpsService implements IFileOpsService
    * @param path - path to the file, dir or object
    * @throws ForbiddenException - oboUserId not authorized to perform operation
    */
-  private void checkAuthForReadOrSkip(ResourceRequestUser rUser, String systemId, Path path, boolean skipTapisAuth)
+  private void checkAuthForReadOrSkipAllowed(ResourceRequestUser rUser, String systemId, Path path, boolean skipTapisAuth)
           throws ForbiddenException, ServiceException
   {
     String pathStr = path.toString();
