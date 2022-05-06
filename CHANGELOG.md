@@ -8,6 +8,18 @@ https://tapis.readthedocs.io/en/latest/technical/files.html
 You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
+---------------------------------------------------------------------------
+## 1.1.4 - 2022-??-??
+
+Incremental improvements and preview of new feature.
+
+### New features:
+- Replace skipTapisAuthorization with impersonationId for requests from Jobs and Apps services.
+
+### Bug fixes:
+- None
+
+---------------------------------------------------------------------------
 ## 1.1.3 - 2022-04-08
 
 Preview of new feature.

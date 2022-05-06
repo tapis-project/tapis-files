@@ -27,15 +27,15 @@ public interface IFileOpsService
   // FileOps
   // ===================
   List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, long limit,
-                    long offset, boolean skipTapisAuth)
+                    long offset, String impersonationId)
           throws WebApplicationException;
   List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset,
-                    boolean skipTapisAuth) throws ServiceException;
+                    String impersonationId) throws ServiceException;
 
   List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                             int maxDepth, boolean skipTapisAuth)
+                             int maxDepth, String impersonationId)
           throws WebApplicationException;
-  List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth, boolean skipTapisAuth)
+  List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int maxDepth, String impersonationId)
           throws ServiceException;
 
   void upload(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path, InputStream in) throws WebApplicationException;
@@ -54,17 +54,19 @@ public interface IFileOpsService
   // ===================
   // GetContents
   // ===================
-  StreamingOutput getZipStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, boolean skipTapisAuth)
+  StreamingOutput getZipStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                               String impersonationId)
           throws WebApplicationException;
 
   StreamingOutput getByteRangeStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                                     @NotNull HeaderByteRange range, boolean skipTapisAuth)
+                                     @NotNull HeaderByteRange range, String impersonationId)
           throws WebApplicationException;
 
   StreamingOutput getPagedStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                                 Long startPage, boolean skipTapisAuth)
+                                 Long startPage, String impersonationId)
           throws WebApplicationException;
 
-  StreamingOutput getFullStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, boolean skipTapisAuth)
+  StreamingOutput getFullStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                                String impersonationId)
           throws WebApplicationException;
 }

@@ -69,6 +69,8 @@ public class FileOpsService implements IFileOpsService
   private static final String JOBS_SERVICE = TapisConstants.SERVICE_NAME_JOBS;
   private static final Set<String> SVCLIST_SKIPAUTH = new HashSet<>(Set.of(JOBS_SERVICE));
 
+  // Named null values to make it clear what is being passed in to a method
+  private static final String nullImpersonationId = null;
 
   @Inject
   public FileOpsService(FilePermsService svc) { permsService = svc; }
@@ -113,13 +115,13 @@ public class FileOpsService implements IFileOpsService
    * @param path - path on system relative to system rootDir
    * @param limit - pagination limit
    * @param offset - pagination offset
-   * @param skipTapisAuth - skip tapis auth, calling service has checked
+   * @param impersonationId - use provided Tapis username instead of oboUser
    * @return Collection of FileInfo objects
    * @throws NotFoundException - requested path not found
    */
   @Override
   public List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                           long limit, long offset, boolean skipTapisAuth)
+                           long limit, long offset, String impersonationId)
           throws WebApplicationException
   {
     String oboTenant = rUser.getOboTenantId();
@@ -135,7 +137,7 @@ public class FileOpsService implements IFileOpsService
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
-      return ls(client, path, limit, offset, skipTapisAuth);
+      return ls(client, path, limit, offset, impersonationId);
     }
     catch (IOException | ServiceException ex)
     {
@@ -162,7 +164,7 @@ public class FileOpsService implements IFileOpsService
    */
   @Override
   public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset,
-                           boolean skipTapisAuth)
+                           String impersonationId)
           throws ServiceException
   {
     Path relativePath = PathUtils.getRelativePath(path);
@@ -200,14 +202,14 @@ public class FileOpsService implements IFileOpsService
    * @param sys - System
    * @param path - path on system relative to system rootDir
    * @param depth - maximum depth for recursion
-   * @param skipTapisAuth - skip tapis auth, calling service has checked
+   * @param impersonationId - use provided Tapis username instead of oboUser
    * @return Collection of FileInfo objects
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
     @Override
     public List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
-                                      @NotNull String path, int depth, boolean skipTapisAuth)
+                                      @NotNull String path, int depth, String impersonationId)
             throws WebApplicationException
     {
       String oboTenant = rUser.getOboTenantId();
@@ -223,7 +225,7 @@ public class FileOpsService implements IFileOpsService
 
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
-        return lsRecursive(client, path, depth, skipTapisAuth);
+        return lsRecursive(client, path, depth, impersonationId);
       }
       catch (IOException | ServiceException ex)
       {
@@ -247,12 +249,12 @@ public class FileOpsService implements IFileOpsService
    * @throws NotFoundException - requested path not found
    */
   public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int depth,
-                                    boolean skipTapisAuth)
+                                    String impersonationId)
           throws ServiceException
   {
     List<FileInfo> listing = new ArrayList<>();
     // Make the call that does recursion
-    listDirectoryRecurse(client, path, listing, 0, Math.min(depth, MAX_RECURSION), skipTapisAuth);
+    listDirectoryRecurse(client, path, listing, 0, Math.min(depth, MAX_RECURSION), impersonationId);
     return listing;
   }
 
@@ -563,17 +565,17 @@ public class FileOpsService implements IFileOpsService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - path to download
-   * @param skipTapisAuth - skip tapis auth, calling service has checked
+   * @param impersonationId - use provided Tapis username instead of oboUser
    * @throws NotFoundException System or path not found
    */
   public StreamingOutput getZipStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
-                                      @NotNull String path, boolean skipTapisAuth)
+                                      @NotNull String path, String impersonationId)
           throws WebApplicationException
   {
     StreamingOutput outStream = output -> {
       try
       {
-        getZip(rUser, output, sys, path, skipTapisAuth);
+        getZip(rUser, output, sys, path, impersonationId);
       }
       catch (NotFoundException | ForbiddenException ex)
       {
@@ -593,18 +595,18 @@ public class FileOpsService implements IFileOpsService
    * @param sys - System
    * @param path - file to download
    * @param range - optional range for bytes to send
-   * @param skipTapisAuth - skip tapis auth, calling service has checked
+   * @param impersonationId - use provided Tapis username instead of oboUser
    * @throws NotFoundException System or path not found
    */
   public StreamingOutput getByteRangeStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
-                                            @NotNull String path, @NotNull HeaderByteRange range, boolean skipTapisAuth)
+                                            @NotNull String path, @NotNull HeaderByteRange range,String impersonationId)
           throws WebApplicationException
   {
     StreamingOutput outStream = output -> {
     InputStream stream = null;
     try
     {
-      stream = getByteRange(rUser, sys, path, range.getMin(), range.getMax(), skipTapisAuth);
+      stream = getByteRange(rUser, sys, path, range.getMin(), range.getMax(), impersonationId);
       stream.transferTo(output);
     }
     catch (NotFoundException | ForbiddenException ex)
@@ -630,11 +632,11 @@ public class FileOpsService implements IFileOpsService
    * @param path - file to download
    * @param startPage - Send 1k of UTF-8 encoded string back starting at specified block,
                         e.g. more=2 to start at 2nd block
-   * @param skipTapisAuth - skip tapis auth, calling service has checked
+   * @param impersonationId - use provided Tapis username instead of oboUser
    * @throws NotFoundException System or path not found
    */
   public StreamingOutput getPagedStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
-                                        @NotNull String path, @NotNull Long startPage, boolean skipTapisAuth)
+                                        @NotNull String path, @NotNull Long startPage, String impersonationId)
           throws WebApplicationException
   {
     StreamingOutput outStream = output -> {
@@ -665,18 +667,18 @@ public class FileOpsService implements IFileOpsService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - file to download
-   * @param skipTapisAuth - skip tapis auth, calling service has checked
+   * @param impersonationId - use provided Tapis username instead of oboUser
    * @throws NotFoundException System or path not found
    */
   public StreamingOutput getFullStream(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
-                                       @NotNull String path, boolean skipTapisAuth)
+                                       @NotNull String path, String impersonationId)
           throws WebApplicationException
   {
     StreamingOutput outStream = output -> {
       InputStream stream = null;
       try
       {
-        stream = getAllBytes(rUser, sys, path, skipTapisAuth);
+        stream = getAllBytes(rUser, sys, path, impersonationId);
         stream.transferTo(output);
       }
       catch (NotFoundException | ForbiddenException ex)
@@ -736,7 +738,7 @@ public class FileOpsService implements IFileOpsService
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-  InputStream getAllBytes(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, boolean skipTapisAuth)
+  InputStream getAllBytes(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path, String impersonationId)
           throws ServiceException
   {
     String oboTenant = rUser.getOboTenantId();
@@ -744,7 +746,7 @@ public class FileOpsService implements IFileOpsService
     String sysId = sys.getId();
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, skipTapisAuth);
+    checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, impersonationId);
 
     // Get a remoteDataClient to stream contents
     IRemoteDataClient client = null;
@@ -775,7 +777,7 @@ public class FileOpsService implements IFileOpsService
    * @throws ForbiddenException user not authorized
    */
   InputStream getByteRange(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                                   long startByte, long count, boolean skipTapisAuth)
+                                   long startByte, long count, String impersonationId)
           throws ServiceException
   {
     String oboTenant = rUser.getOboTenantId();
@@ -853,7 +855,7 @@ public class FileOpsService implements IFileOpsService
    * @throws ForbiddenException user not authorized
    */
   void getZip(@NotNull ResourceRequestUser rUser, @NotNull OutputStream outputStream, @NotNull TapisSystem sys,
-                      @NotNull String path, boolean skipTapisAuth)
+                      @NotNull String path, String impersonationId)
           throws ServiceException
   {
     String oboTenant = rUser.getOboTenantId();
@@ -874,7 +876,7 @@ public class FileOpsService implements IFileOpsService
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
       // Step through a recursive listing up to some max depth
-      List<FileInfo> listing = lsRecursive(client, path, MAX_RECURSION, skipTapisAuth);
+      List<FileInfo> listing = lsRecursive(client, path, MAX_RECURSION, impersonationId);
       for (FileInfo fileInfo : listing)
       {
         // Always add an entry for a dir to be sure empty directories are included
@@ -888,7 +890,7 @@ public class FileOpsService implements IFileOpsService
         }
         else
         {
-          try (InputStream inputStream = getAllBytes(rUser, sys, fileInfo.getPath(), skipTapisAuth))
+          try (InputStream inputStream = getAllBytes(rUser, sys, fileInfo.getPath(), impersonationId))
           {
             String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
             Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
@@ -923,17 +925,17 @@ public class FileOpsService implements IFileOpsService
    * @throws NotFoundException - requested path not found
    */
   private void listDirectoryRecurse(@NotNull IRemoteDataClient client, String basePath, List<FileInfo> listing,
-                                    int depth, int maxDepth, boolean skipTapisAuth)
+                                    int depth, int maxDepth, String impersonationId)
           throws ServiceException
   {
-    List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0, skipTapisAuth);
+    List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0, impersonationId);
     listing.addAll(currentListing);
     for (FileInfo fileInfo: currentListing)
     {
       if (fileInfo.isDir() && depth < maxDepth)
       {
         depth++;
-        listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth, skipTapisAuth);
+        listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth, impersonationId);
       }
     }
   }
