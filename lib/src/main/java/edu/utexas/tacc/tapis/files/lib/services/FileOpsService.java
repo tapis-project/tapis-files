@@ -629,6 +629,17 @@ public class FileOpsService implements IFileOpsService
                                         @NotNull String path, @NotNull Long startPage, String impersonationId)
           throws WebApplicationException
   {
+    // Make sure user has permission for this path
+    Path relativePath = PathUtils.getRelativePath(path);
+    try
+    {
+      checkAuthForRead(rUser, sys.getId(), relativePath, impersonationId);
+    }
+    catch (ServiceException e)
+    {
+      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+    }
+
     StreamingOutput outStream = output -> {
       InputStream stream = null;
       try
@@ -846,7 +857,7 @@ public class FileOpsService implements IFileOpsService
    * @throws ForbiddenException user not authorized
    */
   void getZip(@NotNull ResourceRequestUser rUser, @NotNull OutputStream outputStream, @NotNull TapisSystem sys,
-                      @NotNull String path, String impersonationId)
+              @NotNull String path, String impersonationId)
           throws ServiceException
   {
     String oboTenant = rUser.getOboTenantId();

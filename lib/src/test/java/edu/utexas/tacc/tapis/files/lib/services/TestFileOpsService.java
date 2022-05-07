@@ -562,7 +562,7 @@ public class TestFileOpsService
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
       client.delete("/");
       fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
-      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0); });
+      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId); });
     }
 
   // NoAuthz tests for mkdir, move, copy and delete
