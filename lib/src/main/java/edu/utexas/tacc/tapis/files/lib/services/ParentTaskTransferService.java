@@ -168,8 +168,7 @@ public class ParentTaskTransferService
 
         // Get a listing of all files / objects to be transferred
         //TODO: Retries will break this, should delete anything in the DB if it is a retry?
-        boolean skipTapisAuth = false;
-        List<FileInfo> fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 10, skipTapisAuth);
+        List<FileInfo> fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 10);
         // Create child tasks for each file or object to be transferred.
         List<TransferTaskChild> children = new ArrayList<>();
         long totalBytes = 0;

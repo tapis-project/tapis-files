@@ -78,7 +78,7 @@ public class ContentApiResource extends BaseFileOpsResource
    * @param range - range of bytes to include in the stream
    * @param zip - flag indicating if a zip stream should be created
    * @param startPage -
-   * @param skipTapisAuth - skip tapis perms auth, calling service has checked.
+   * @param impersonationId - use provided Tapis username instead of oboUser when checking auth, getSystem (effUserId)
    * @param securityContext - user identity
    */
   @GET
@@ -89,7 +89,7 @@ public class ContentApiResource extends BaseFileOpsResource
                           @HeaderParam("range") HeaderByteRange range,
                           @QueryParam("zip") boolean zip,
                           @HeaderParam("more") @Min(1) Long startPage,
-                          @QueryParam("skipTapisAuthorization") @DefaultValue("false") boolean skipTapisAuth,
+                          @QueryParam("impersonationId") String impersonationId,
                           @Context SecurityContext securityContext,
                           @Suspended final AsyncResponse asyncResponse)
   {
@@ -117,7 +117,7 @@ public class ContentApiResource extends BaseFileOpsResource
     // Trace this request.
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-              "path="+path, "range="+range, "zip="+zip, "more="+startPage, "skipTapisAuthorization="+skipTapisAuth);
+              "path="+path, "range="+range, "zip="+zip, "more="+startPage, "impersonationId="+impersonationId);
 
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
@@ -137,7 +137,7 @@ public class ContentApiResource extends BaseFileOpsResource
     if (zip)
     {
       // Send a zip stream. This can handle a path ending in /
-      outStream = fileOpsService.getZipStream(rUser, sys, path, skipTapisAuth);
+      outStream = fileOpsService.getZipStream(rUser, sys, path, impersonationId);
       String newName = FilenameUtils.removeExtension(filename) + ".zip";
       contentDisposition = String.format("attachment; filename=%s", newName);
       mediaType = MediaType.APPLICATION_OCTET_STREAM;
@@ -153,19 +153,19 @@ public class ContentApiResource extends BaseFileOpsResource
       // Send a byteRange, page blocks or the full stream.
       if (range != null)
       {
-        outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range, skipTapisAuth);
+        outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range, impersonationId);
         contentDisposition = String.format("attachment; filename=%s", filename);
         mediaType = MediaType.TEXT_PLAIN;
       }
       else if (!Objects.isNull(startPage))
       {
-        outStream = fileOpsService.getPagedStream(rUser, sys, path, startPage, skipTapisAuth);
+        outStream = fileOpsService.getPagedStream(rUser, sys, path, startPage, impersonationId);
         contentDisposition = "inline";
         mediaType = MediaType.TEXT_PLAIN;
       }
       else
       {
-        outStream = fileOpsService.getFullStream(rUser, sys, path, skipTapisAuth);
+        outStream = fileOpsService.getFullStream(rUser, sys, path, impersonationId);
         contentDisposition = String.format("attachment; filename=%s", filename);
         mediaType = MediaType.APPLICATION_OCTET_STREAM;
       }

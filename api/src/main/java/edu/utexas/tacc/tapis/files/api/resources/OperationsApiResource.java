@@ -90,6 +90,7 @@ public class OperationsApiResource extends BaseFileOpsResource
    * @param limit - pagination limit
    * @param offset - pagination offset
    * @param recurse - flag indicating a recursive listing should be provided (up to depth of 10)
+   * @param impersonationId - use provided Tapis username instead of oboUser when checking auth, getSystem (effUserId)
    * @param securityContext - user identity
    * @return response containing list of files
    */
@@ -101,7 +102,7 @@ public class OperationsApiResource extends BaseFileOpsResource
                             @QueryParam("limit") @DefaultValue("1000") @Max(1000) int limit,
                             @QueryParam("offset") @DefaultValue("0") @Min(0) long offset,
                             @QueryParam("recurse") @DefaultValue("false") boolean recurse,
-                            @QueryParam("skipTapisAuthorization") @DefaultValue("false") boolean skipTapisAuth,
+                            @QueryParam("impersonationId") String impersonationId,
                             @Context SecurityContext securityContext)
   {
     String opName = "listFiles";
@@ -124,7 +125,7 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Trace this request.
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path,
-                          "limit="+limit, "offset="+offset, "recurse="+recurse,"skipTapisAuthorization="+skipTapisAuth);
+                          "limit="+limit, "offset="+offset, "recurse="+recurse,"impersonationId="+impersonationId);
 
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
@@ -135,8 +136,8 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (FilesExceptionMapper).
-    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION_DEPTH, skipTapisAuth);
-    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, skipTapisAuth);
+    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION_DEPTH, impersonationId);
+    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId);
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);

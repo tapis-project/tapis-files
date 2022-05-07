@@ -67,10 +67,7 @@ public class FileOpsService implements IFileOpsService
   private static final String SYSTEMS_SERVICE = TapisConstants.SERVICE_NAME_SYSTEMS;
   private static final String APPS_SERVICE = TapisConstants.SERVICE_NAME_APPS;
   private static final String JOBS_SERVICE = TapisConstants.SERVICE_NAME_JOBS;
-  private static final Set<String> SVCLIST_SKIPAUTH = new HashSet<>(Set.of(JOBS_SERVICE));
-
-  // Named null values to make it clear what is being passed in to a method
-  private static final String nullImpersonationId = null;
+  private static final Set<String> SVCLIST_IMPERSONATE = new HashSet<>(Set.of(JOBS_SERVICE));
 
   @Inject
   public FileOpsService(FilePermsService svc) { permsService = svc; }
@@ -133,11 +130,11 @@ public class FileOpsService implements IFileOpsService
     try
     {
       // Check for READ permission
-      checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, skipTapisAuth);
+      checkAuthForRead(rUser, sysId, relativePath, impersonationId);
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
-      return ls(client, path, limit, offset, impersonationId);
+      return ls(client, path, limit, offset);
     }
     catch (IOException | ServiceException ex)
     {
@@ -163,16 +160,10 @@ public class FileOpsService implements IFileOpsService
    * @throws NotFoundException - requested path not found
    */
   @Override
-  public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset,
-                           String impersonationId)
+  public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset)
           throws ServiceException
   {
     Path relativePath = PathUtils.getRelativePath(path);
-    if (!skipTapisAuth)
-    {
-      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                              relativePath, Permission.READ);
-    }
     try
     {
       List<FileInfo> listing = client.ls(relativePath.toString(), limit, offset);
@@ -221,11 +212,11 @@ public class FileOpsService implements IFileOpsService
       try
       {
         // Check for READ permission
-        checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, skipTapisAuth);
+        checkAuthForRead(rUser, sysId, relativePath, impersonationId);
 
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
-        return lsRecursive(client, path, depth, impersonationId);
+        return lsRecursive(client, path, depth);
       }
       catch (IOException | ServiceException ex)
       {
@@ -248,13 +239,12 @@ public class FileOpsService implements IFileOpsService
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    */
-  public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int depth,
-                                    String impersonationId)
+  public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String path, int depth)
           throws ServiceException
   {
     List<FileInfo> listing = new ArrayList<>();
     // Make the call that does recursion
-    listDirectoryRecurse(client, path, listing, 0, Math.min(depth, MAX_RECURSION), impersonationId);
+    listDirectoryRecurse(client, path, listing, 0, Math.min(depth, MAX_RECURSION));
     return listing;
   }
 
@@ -746,7 +736,7 @@ public class FileOpsService implements IFileOpsService
     String sysId = sys.getId();
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, impersonationId);
+    checkAuthForRead(rUser, sysId, relativePath, impersonationId);
 
     // Get a remoteDataClient to stream contents
     IRemoteDataClient client = null;
@@ -785,7 +775,8 @@ public class FileOpsService implements IFileOpsService
     String sysId = sys.getId();
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, relativePath, Permission.READ);
+    checkAuthForRead(rUser, sysId, relativePath, impersonationId);
+
     IRemoteDataClient client = null;
     try
     {
@@ -863,7 +854,7 @@ public class FileOpsService implements IFileOpsService
     String sysId = sys.getId();
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    checkAuthForReadOrSkipAllowed(rUser, sysId, relativePath, skipTapisAuth);
+    checkAuthForRead(rUser, sysId, relativePath, impersonationId);
 
     String cleanedPath = FilenameUtils.normalize(path);
     cleanedPath = StringUtils.removeStart(cleanedPath, "/");
@@ -876,7 +867,7 @@ public class FileOpsService implements IFileOpsService
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
       // Step through a recursive listing up to some max depth
-      List<FileInfo> listing = lsRecursive(client, path, MAX_RECURSION, impersonationId);
+      List<FileInfo> listing = lsRecursive(client, path, MAX_RECURSION);
       for (FileInfo fileInfo : listing)
       {
         // Always add an entry for a dir to be sure empty directories are included
@@ -925,50 +916,50 @@ public class FileOpsService implements IFileOpsService
    * @throws NotFoundException - requested path not found
    */
   private void listDirectoryRecurse(@NotNull IRemoteDataClient client, String basePath, List<FileInfo> listing,
-                                    int depth, int maxDepth, String impersonationId)
+                                    int depth, int maxDepth)
           throws ServiceException
   {
-    List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0, impersonationId);
+    List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0);
     listing.addAll(currentListing);
     for (FileInfo fileInfo: currentListing)
     {
       if (fileInfo.isDir() && depth < maxDepth)
       {
         depth++;
-        listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth, impersonationId);
+        listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth);
       }
     }
   }
 
   /**
-   * Confirm that caller has READ permission on path or is allowed to skip normal tapis auth check.
-   * To skip it must be a service request from a service allowed to bypass the check.
+   * Confirm that caller or impersonationId has READ permission on path.
+   * To use impersonationId it must be a service request from a service allowed to impersonate.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - system containing path
    * @param path - path to the file, dir or object
    * @throws ForbiddenException - oboUserId not authorized to perform operation
    */
-  private void checkAuthForReadOrSkipAllowed(ResourceRequestUser rUser, String systemId, Path path, boolean skipTapisAuth)
+  private void checkAuthForRead(ResourceRequestUser rUser, String systemId, Path path, String impersonationId)
           throws ForbiddenException, ServiceException
   {
     String pathStr = path.toString();
-    Permission perm = Permission.READ;
-    // If skipTapisAuth=true make a special check to confirm that auth can be bypassed
-    //   To bypass must be a service request from an allowed service.
-    // else do normal auth check
-    if (skipTapisAuth)
+    // To impersonate must be a service request from an allowed service.
+    if (!StringUtils.isBlank(impersonationId))
     {
       // If a service request the username will be the service name. E.g. systems, jobs, streams, etc
       String svcName = rUser.getJwtUserId();
-      if (rUser.isServiceRequest() && SVCLIST_SKIPAUTH.contains(svcName)) return;
+      if (!rUser.isServiceRequest() || !SVCLIST_IMPERSONATE.contains(svcName))
+      {
+        String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_IMPERSONATE", rUser, systemId, pathStr, impersonationId);
+        throw new ForbiddenException(msg);
+      }
+      // An allowed service is impersonating, log it
+      log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE", rUser, systemId, pathStr, impersonationId));
+    }
 
-      String msg = LibUtils.getMsgAuthR("FILES_NOTAUTH_SKIPAUTH", rUser, systemId, pathStr, perm);
-      throw new ForbiddenException(msg);
-    }
-    else
-    {
-      LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), rUser.getOboUserId(), systemId, path, Permission.READ);
-    }
+    // Finally check for READ perm using oboUser or impersonationId
+    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+    LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, path, Permission.READ);
   }
 }
