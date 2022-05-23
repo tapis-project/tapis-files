@@ -9,6 +9,17 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.2.0 - 2022-05-23
+
+Incremental improvements and preview of new feature.
+
+### New features:
+- Support impersonationId for service to service requests.
+
+### Bug fixes:
+- None
+
+---------------------------------------------------------------------------
 ## 1.1.4 - 2022-05-07
 
 Incremental improvements and preview of new feature.

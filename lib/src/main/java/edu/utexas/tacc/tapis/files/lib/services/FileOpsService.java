@@ -969,7 +969,9 @@ public class FileOpsService implements IFileOpsService
       log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE", rUser, systemId, pathStr, impersonationId));
     }
 
-    // Finally check for READ perm using oboUser or impersonationId
+    // Finally, check for READ perm using oboUser or impersonationId
+    // Certain services are allowed to impersonate an OBO user for the purposes of authorization
+    //   and effectiveUserId resolution.
     String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
     LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, path, Permission.READ);
   }
