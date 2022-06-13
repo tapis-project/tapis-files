@@ -61,10 +61,11 @@ public class SystemsCache
     @Override
     public TapisSystem load(SystemCacheKey key) throws Exception
     {
+      log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADING", key.getTenantId(), key.getSystemId(), key.getUsername()));
       SystemsClient client = serviceClients.getClient(key.getUsername(), key.getTenantId(), SystemsClient.class);
       TapisSystem system = client.getSystemWithCredentials(key.getSystemId(), null);
-      log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOAD", key.getTenantId(), key.getSystemId(), key.getUsername(),
-                             system.getDefaultAuthnMethod()));
+      log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADED", key.getTenantId(), key.getSystemId(), key.getUsername(),
+                                system.getDefaultAuthnMethod()));
       return system;
     }
   }

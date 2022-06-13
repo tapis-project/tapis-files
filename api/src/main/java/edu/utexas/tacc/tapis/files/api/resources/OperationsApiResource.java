@@ -113,11 +113,6 @@ public class OperationsApiResource extends BaseFileOpsResource
     Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
-//    {
-//      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
-//      // checkContext logs an error, so no need to log here.
-//      throw new WebApplicationException(msg);
-//    }
 
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());

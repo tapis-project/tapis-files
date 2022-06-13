@@ -101,11 +101,14 @@ public class FilePermsCache
     @Override
     public Boolean load(FilePermCacheKey key) throws Exception
     {
+      log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOADING", key.getTenantId(), key.getSystemId(), key.getUsername(),
+                                key.getPath()));
       SKClient skClient = getSKClient(key.getTenantId(), key.getUsername());
       String permSpec = String.format(PERMSPEC, key.getTenantId(), key.getPerm(), key.getSystemId(), key.getPath());
-      log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOAD", key.getTenantId(), key.getSystemId(), key.getUsername(),
+      boolean isPermitted = skClient.isPermitted(key.getTenantId(), key.getUsername(), permSpec);
+      log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOADED", key.getTenantId(), key.getSystemId(), key.getUsername(),
                                 key.getPath()));
-      return skClient.isPermitted(key.getTenantId(), key.getUsername(), permSpec);
+      return isPermitted;
     }
   }
 
