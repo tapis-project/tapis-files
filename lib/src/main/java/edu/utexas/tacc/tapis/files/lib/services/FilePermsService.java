@@ -11,6 +11,7 @@ import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -38,6 +39,9 @@ public class FilePermsService {
         this.permsCache = permsCache;
     }
 
+
+    private SKClient skClient = null;
+
     public void grantPermission(String tenantId, String username, String systemId, String path, Permission perm) throws ServiceException {
         try {
             // This avoids ambiguous path issues with the SK. basically ensures that
@@ -45,9 +49,8 @@ public class FilePermsService {
             // Also removes any trailing slashes if present, needed for SK permissions checks
             path = StringUtils.removeEnd(path, "/");
             path = StringUtils.prependIfMissing(path, "/");
-            SKClient skClient = getSKClient(tenantId, username);
             String permSpec = String.format(PERMSPEC, tenantId, perm, systemId, path);
-            skClient.grantUserPermission(tenantId, username, permSpec);
+            getSKClient().grantUserPermission(tenantId, username, permSpec);
         } catch (TapisClientException ex) {
             String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, path, ex.getMessage());
             throw new ServiceException(msg, ex);
@@ -67,8 +70,7 @@ public class FilePermsService {
         try {
             oldPath = StringUtils.prependIfMissing(oldPath, "/");
             newPath = StringUtils.prependIfMissing(newPath, "/");
-            SKClient skClient = getSKClient(tenantId, username);
-            int modified = skClient.replacePathPrefix(tenantId, "files", null, systemId, systemId, oldPath, newPath);
+            int modified = getSKClient().replacePathPrefix(tenantId, "files", null, systemId, systemId, oldPath, newPath);
             log.debug(String.valueOf(modified));
         } catch (TapisClientException ex) {
             String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, oldPath, ex.getMessage());
@@ -92,11 +94,10 @@ public class FilePermsService {
         try {
             path = StringUtils.removeEnd(path, "/");
             path = StringUtils.prependIfMissing(path, "/");
-            SKClient skClient = getSKClient(tenantId, username);
             String permSpec = String.format(PERMSPEC, tenantId, Permission.READ, systemId, path);
-            skClient.revokeUserPermission(tenantId, username, permSpec);
+            getSKClient().revokeUserPermission(tenantId, username, permSpec);
             permSpec = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
-            skClient.revokeUserPermission(tenantId, username, permSpec);
+            getSKClient().revokeUserPermission(tenantId, username, permSpec);
         } catch (TapisClientException ex) {
             String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
             throw new ServiceException(msg, ex);
@@ -107,18 +108,16 @@ public class FilePermsService {
         try {
             path = StringUtils.prependIfMissing(path, "/");
             if (path.endsWith("/")) {
-                SKClient skClient = getSKClient(tenantId, username);
                 String permSpec = String.format(PERMSPEC, tenantId, Permission.READ, systemId, path);
-                skClient.removePathPermissionFromAllRoles(tenantId, permSpec);
+                getSKClient().removePathPermissionFromAllRoles(tenantId, permSpec);
                 String permSpec2 = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
-                skClient.removePathPermissionFromAllRoles(tenantId, permSpec2);
+                getSKClient().removePathPermissionFromAllRoles(tenantId, permSpec2);
             } else {
                 path = StringUtils.removeEnd(path, "/");
-                SKClient skClient = getSKClient(tenantId, username);
                 String permSpec = String.format(PERMSPEC, tenantId, Permission.READ, systemId, path);
-                skClient.removePermissionFromAllRoles(tenantId, permSpec);
+                getSKClient().removePermissionFromAllRoles(tenantId, permSpec);
                 String permSpec2 = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
-                skClient.removePermissionFromAllRoles(tenantId, permSpec2);
+                getSKClient().removePermissionFromAllRoles(tenantId, permSpec2);
             }
         } catch (TapisClientException ex) {
             String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
@@ -126,22 +125,30 @@ public class FilePermsService {
         }
     }
 
-    /**
-     * Get Security Kernel client
-     *
-     * @param tenantName
-     * @param username
-     * @return SK client
-     * @throws TapisClientException - for Tapis related exceptions
-     */
-    private SKClient getSKClient(String tenantName, String username) throws TapisClientException {
-        SKClient skClient;
-        try {
-            skClient = serviceClients.getClient(username, tenantName, SKClient.class);
-        } catch (Exception e) {
-            String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_FILES, tenantName, username);
-            throw new TapisClientException(msg, e);
-        }
-        return skClient;
+  /**
+   * Get Security Kernel client
+   *
+   * @return SK client
+   * @throws TapisClientException - for Tapis related exceptions
+   */
+  private SKClient getSKClient() throws TapisClientException
+  {
+    // Create skClient if necessary
+    if (skClient == null)
+    {
+      String siteId = RuntimeSettings.get().getSiteId();
+      String userName = TapisConstants.SERVICE_NAME_FILES;
+      String tenantName = TenantManager.getInstance().getSiteAdminTenantId(siteId);
+      try
+      {
+        skClient = serviceClients.getClient(userName, tenantName, SKClient.class);
+      }
+      catch (Exception e)
+      {
+        String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, tenantName, userName);
+        throw new TapisClientException(msg, e);
+      }
     }
+    return skClient;
+  }
 }
