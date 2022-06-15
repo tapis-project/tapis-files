@@ -40,7 +40,9 @@ public class FilePermsService {
     }
 
 
-    private SKClient skClient = null;
+    private static final String svcUserName = TapisConstants.SERVICE_NAME_FILES;
+    private String siteId = null;
+    private String svcTenantName = null;
 
     public void grantPermission(String tenantId, String username, String systemId, String path, Permission perm) throws ServiceException {
         try {
@@ -133,22 +135,17 @@ public class FilePermsService {
    */
   private SKClient getSKClient() throws TapisClientException
   {
-    // Create skClient if necessary
-    if (skClient == null)
+    // Init if necessary
+    if (siteId == null)
     {
-      String siteId = RuntimeSettings.get().getSiteId();
-      String userName = TapisConstants.SERVICE_NAME_FILES;
-      String tenantName = TenantManager.getInstance().getSiteAdminTenantId(siteId);
-      try
-      {
-        skClient = serviceClients.getClient(userName, tenantName, SKClient.class);
-      }
-      catch (Exception e)
-      {
-        String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, tenantName, userName);
-        throw new TapisClientException(msg, e);
-      }
+      siteId = RuntimeSettings.get().getSiteId();
+      svcTenantName = TenantManager.getInstance().getSiteAdminTenantId(siteId);
     }
-    return skClient;
+    try { return serviceClients.getClient(svcUserName, svcTenantName, SKClient.class); }
+    catch (Exception e)
+    {
+      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, svcTenantName, svcUserName);
+      throw new TapisClientException(msg, e);
+    }
   }
 }
