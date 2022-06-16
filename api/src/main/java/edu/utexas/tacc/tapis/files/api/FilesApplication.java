@@ -114,7 +114,7 @@ public class FilesApplication extends ResourceConfig
     register(ContentApiResource.class);
     register(TransfersApiResource.class);
     register(PermissionsApiResource.class);
-    register(ShareApiResource.class);
+    register(ShareResource.class);
     register(FilesResource.class);
     register(OperationsApiResource.class);
     register(UtilsLinuxApiResource.class);
