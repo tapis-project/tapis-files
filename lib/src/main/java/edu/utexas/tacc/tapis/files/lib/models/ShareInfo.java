@@ -12,8 +12,8 @@ import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
  */
 public final class ShareInfo
 {
-  private final boolean isPublic;
-  private final List<String> userList;
+  private final boolean isPublic; // Indicates if path is shared publicly for all users in the tenant
+  private final List<String> userList; // List of users with whom the path is shared.
 
   /* ********************************************************************** */
   /*                           Constructors                                 */

@@ -129,7 +129,9 @@ public class FilePermsService {
 
   /**
    * Get Security Kernel client
-   *
+   * Need to use serviceClients.getClient() every time because it checks for expired service jwt token and
+   *   refreshes it as needed.
+   * Files service always calls SK as itself.
    * @return SK client
    * @throws TapisClientException - for Tapis related exceptions
    */

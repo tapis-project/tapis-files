@@ -2,41 +2,28 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.servlet.ServletContext;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import javax.ws.rs.core.Response.Status;
 
-import com.google.gson.JsonSyntaxException;
-import edu.utexas.tacc.tapis.files.api.responses.RespShareInfo;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
-import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
-import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespAbstract;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespResourceUrl;
-import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
-import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultResourceUrl;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.commons.lang3.StringUtils;
-import org.glassfish.grizzly.http.server.Request;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import edu.utexas.tacc.tapis.files.api.responses.RespShareInfo;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.sharedapi.responses.RespAbstract;
+import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.glassfish.grizzly.http.server.Request;
 import org.apache.commons.io.IOUtils;
 
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -48,14 +35,11 @@ import edu.utexas.tacc.tapis.shared.schema.JsonValidatorSpec;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespNameArray;
-import edu.utexas.tacc.tapis.sharedapi.responses.results.ResultNameArray;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 
 /*
- * JAX-RS REST resource for Tapis File share operations
+ * JAX-RS REST resource for Tapis File sharing operations
  *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
  * Annotations map HTTP verb + endpoint to method invocation and map query parameters.
  *
@@ -73,7 +57,9 @@ public class ShareResource
   // Always return a nicely formatted response
   private static final boolean PRETTY = true;
   // Json schema resource files.
-  private static final String FILE_CREATE_REQUEST = "/edu/utexas/tacc/tapis/files/api/jsonschema/ShareInfoRequest.json";
+  private static final String FILE_SHARE_REQUEST = "/edu/utexas/tacc/tapis/files/api/jsonschema/ShareRequest.json";
+  // Field names used in Json
+  private static final String USERLIST_FIELD = "users";
 
 
   // ************************************************************************
@@ -104,10 +90,12 @@ public class ShareResource
   // ************************************************************************
 
   /**
-   * Create/update share info for a path
+   * Share a path with one or more users
    * @param payloadStream - request body
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
    * @param securityContext - user identity
-   * @return response containing reference to created object
+   * @return basic response
    */
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
@@ -135,105 +123,100 @@ public class ShareResource
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
-    ?????????????????????
-    ?????????????????????
+    // Read the payload into a string.
+    String json;
+    String msg;
+    try { json = IOUtils.toString(payloadStream, StandardCharsets.UTF_8); }
+    catch (Exception e)
+    {
+      msg = ApiUtils.getMsgAuth("FAPI_SHARE_JSON_ERROR", rUser, opName, systemId, path, e.getMessage());
+      log.error(msg, e);
+      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
+    }
 
     // ------------------------- Extract and validate payload -------------------------
-    // Read the payload into a string.
-    String rawJson;
-    String msg;
-    try { rawJson = IOUtils.toString(payloadStream, StandardCharsets.UTF_8); }
-    catch (Exception e)
-    {
-      msg = MsgUtils.getMsg(INVALID_JSON_INPUT, opName , e.getMessage());
-      log.error(msg, e);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-    }
-    // Create validator specification and validate the json against the schema
-    JsonValidatorSpec spec = new JsonValidatorSpec(rawJson, FILE_CREATE_REQUEST);
-    try { JsonValidator.validate(spec); }
-    catch (TapisJSONException e)
-    {
-      msg = MsgUtils.getMsg(JSON_VALIDATION_ERR, e.getMessage());
-      log.error(msg, e);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-    }
-
-    ReqPostSchedulerProfile req;
-    try { req = TapisGsonUtils.getGson().fromJson(rawJson, ReqPostSchedulerProfile.class); }
-    catch (JsonSyntaxException e)
-    {
-      msg = MsgUtils.getMsg(INVALID_JSON_INPUT, opName, e.getMessage());
-      log.error(msg, e);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-    }
-    // If req is null that is an unrecoverable error
-    if (req == null)
-    {
-      msg = ApiUtils.getMsgAuth(CREATE_ERR, rUser, "N/A", "ReqPostSchedulerProfile == null");
-      log.error(msg);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-    }
-
-    // Create a scheduler profile from the request
-    var schedProfile =
-            new SchedulerProfile(rUser.getOboTenantId(), req.name, req.description, req.owner, req.moduleLoadCommand,
-                    req.modulesToLoad, req.hiddenOptions, null, null, null);
-
-    resp = validateSchedulerProfile(schedProfile, rUser);
+    var userSet = new HashSet<String>();
+    resp = checkAndExtractPayload(rUser, systemId, path, json, userSet, opName);
     if (resp != null) return resp;
 
-    // ---------------------------- Make service call to create -------------------------------
-    // Pull out name for convenience
-    String profileName = schedProfile.getName();
-    try
-    {
-      systemsService.createSchedulerProfile(rUser, schedProfile);
-    }
-    catch (IllegalStateException e)
-    {
-      if (e.getMessage().contains("SYSLIB_PRF_EXISTS"))
-      {
-        // IllegalStateException with msg containing PRF_EXISTS indicates object exists - return 409 - Conflict
-        msg = ApiUtils.getMsgAuth("SYSAPI_PRF_EXISTS", rUser, profileName);
-        log.warn(msg);
-        return Response.status(Status.CONFLICT).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-      }
-      else if (e.getMessage().contains(LIB_UNAUTH))
-      {
-        // IllegalStateException with msg containing UNAUTH indicates operation not authorized for apiUser - return 401
-        msg = ApiUtils.getMsgAuth(API_UNAUTH, rUser, profileName, opName);
-        log.warn(msg);
-        return Response.status(Status.UNAUTHORIZED).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-      }
-      else
-      {
-        // IllegalStateException indicates an Invalid object was passed in
-        msg = ApiUtils.getMsgAuth(CREATE_ERR, rUser, profileName, e.getMessage());
-        log.error(msg);
-        return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-      }
-    }
-    catch (IllegalArgumentException e)
-    {
-      // IllegalArgumentException indicates somehow a bad argument made it this far
-      msg = ApiUtils.getMsgAuth(CREATE_ERR, rUser, profileName, e.getMessage());
-      log.error(msg);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-    }
-    catch (Exception e)
-    {
-      msg = ApiUtils.getMsgAuth(CREATE_ERR, rUser, profileName, e.getMessage());
-      log.error(msg, e);
-      return Response.status(Status.INTERNAL_SERVER_ERROR).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-    }
+    // ------------------------- Perform the operation -------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    svc.sharePath(rUser, sys, path, userSet, json);
 
     // ---------------------------- Success -------------------------------
-    // Success means the object was created.
-    ResultResourceUrl respUrl = new ResultResourceUrl();
-    respUrl.url = _request.getRequestURL().toString() + "/" + profileName;
-    RespResourceUrl resp1 = new RespResourceUrl(respUrl);
-    return createSuccessResponse(Status.CREATED, ApiUtils.getMsgAuth("SYSAPI_PRF_CREATED", rUser, profileName), resp1);
+    String userListStr = String.join(",", userSet);
+    RespBasic resp1 = new RespBasic();
+    msg = ApiUtils.getMsgAuth("FAPI_SHARE_UPDATED", rUser, opName, systemId, path, userListStr);
+    return Response.status(Status.CREATED)
+      .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+      .build();
+  }
+
+  /**
+   * Unshare a path with one or more users
+   * @param payloadStream - request body
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param securityContext - user identity
+   * @return basic response
+   */
+  @POST
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response unSharePath(InputStream payloadStream,
+                              @PathParam("systemId") String systemId,
+                              @PathParam("path") String path,
+                              @Context SecurityContext securityContext)
+  {
+    String opName = "unSharePath";
+    // ------------------------- Retrieve and validate thread context -------------------------
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+    if (resp != null) return resp;
+
+    // Create a user that collects together tenant, user and request information needed by the service call
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path);
+
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+
+    // Read the payload into a string.
+    String json;
+    String msg;
+    try { json = IOUtils.toString(payloadStream, StandardCharsets.UTF_8); }
+    catch (Exception e)
+    {
+      msg = ApiUtils.getMsgAuth("FAPI_SHARE_JSON_ERROR", rUser, opName, systemId, path, e.getMessage());
+      log.error(msg, e);
+      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
+    }
+
+    // ------------------------- Extract and validate payload -------------------------
+    var userSet = new HashSet<String>();
+    resp = checkAndExtractPayload(rUser, systemId, path, json, userSet, opName);
+    if (resp != null) return resp;
+
+    // ------------------------- Perform the operation -------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    svc.unSharePath(rUser, sys, path, userSet, json);
+
+    // ---------------------------- Success -------------------------------
+    String userListStr = String.join(",", userSet);
+    RespBasic resp1 = new RespBasic();
+    msg = ApiUtils.getMsgAuth("FAPI_SHARE_UPDATED", rUser, opName, systemId, path, userListStr);
+    return Response.status(Status.CREATED)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+            .build();
   }
 
   /**
@@ -285,6 +268,55 @@ public class ShareResource
     // Success means we retrieved the information.
     RespShareInfo resp1 = new RespShareInfo(shareInfo);
     return createSuccessResponse(Status.OK, MsgUtils.getMsg("FAPI_SHARE_FOUND", systemId, path), resp1);
+  }
+
+  // ************************************************************************
+  // *********************** Private Methods ********************************
+  // ************************************************************************
+
+  /**
+   * Check json payload for a share/unshare request and extract set of users
+   * @param systemId - name of the system, for constructing response msg
+   * @param path - name of path associated with the request, for constructing response msg
+   * @param json - Request json extracted from payloadStream
+   * @param userList - Set to be populated with users extracted from payload
+   * @return - null if all checks OK else Response containing info
+   */
+  private Response checkAndExtractPayload(ResourceRequestUser rUser, String systemId, String path,
+                                          String json, Set<String> userList, String op)
+  {
+    String msg;
+    // Create validator specification and validate the json against the schema
+    JsonValidatorSpec spec = new JsonValidatorSpec(json, FILE_SHARE_REQUEST);
+    try { JsonValidator.validate(spec); }
+    catch (TapisJSONException e)
+    {
+      msg = ApiUtils.getMsgAuth("FAPI_SHARE_JSON_INVALID", rUser, op, systemId, path, e.getMessage());
+      log.error(msg, e);
+      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
+    }
+
+    JsonObject obj = TapisGsonUtils.getGson().fromJson(json, JsonObject.class);
+
+    // Extract permissions from the request body
+    JsonArray users = null;
+    if (obj.has(USERLIST_FIELD)) users = obj.getAsJsonArray(USERLIST_FIELD);
+    if (users != null && users.size() > 0)
+    {
+      for (int i = 0; i < users.size(); i++)
+      {
+        // Remove quotes from around incoming string
+        String userStr = StringUtils.remove(users.get(i).toString(),'"');
+        userList.add(userStr);
+      }
+    }
+    // We require at least one user
+    if (users == null || users.size() <= 0)
+    {
+      msg = ApiUtils.getMsgAuth("FAPI_SHARE_NOUSERS", rUser, op, systemId, path);
+      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
+    }
+    return null;
   }
 
   /**
