@@ -40,6 +40,11 @@ import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 
 /*
  * JAX-RS REST resource for Tapis File sharing operations
+ *
+ * These methods should do the minimal amount of validation and processing of incoming requests and
+ *   then make the service method call.
+ * One reason for this is the service methods are much easier to test. Also, it results in easier to follow code.
+ *
  *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
  * Annotations map HTTP verb + endpoint to method invocation and map query parameters.
  *
@@ -61,6 +66,10 @@ public class ShareResource
   // Field names used in Json
   private static final String USERLIST_FIELD = "users";
 
+  private static final String OP_SHARE_PATH_USERS = "sharePath";
+  private static final String OP_UNSHARE_PATH_USERS = "unSharePath";
+  private static final String OP_SHARE_PATH_PUBLIC = "sharePathPublic";
+  private static final String OP_UNSHARE_PATH_PUBLIC = "unSharePathPublic";
 
   // ************************************************************************
   // *********************** Fields *****************************************
@@ -71,8 +80,6 @@ public class ShareResource
   private Application _application;
   @Context
   private UriInfo _uriInfo;
-  @Context
-  private SecurityContext _securityContext;
   @Context
   private ServletContext _servletContext;
   @Context
@@ -105,53 +112,39 @@ public class ShareResource
                             @PathParam("path") String path,
                             @Context SecurityContext securityContext)
   {
-    String opName = "sharePath";
-    // ------------------------- Retrieve and validate thread context -------------------------
-    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
-    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
-    // Utility method returns null if all OK and appropriate error response if there was a problem.
-    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
-    if (resp != null) return resp;
+    return postUpdateUserShares(OP_SHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
+  }
 
-    // Create a user that collects together tenant, user and request information needed by the service call
-    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+  /**
+   * Share a path on a system publicly with all users in the tenant.
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param securityContext - user identity
+   * @return basic response
+   */
+  @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response sharePathPublic(@PathParam("systemId") String systemId,
+                                  @PathParam("path") String path,
+                                  @Context SecurityContext securityContext)
+  {
+    return postUpdatePublicShare(OP_SHARE_PATH_PUBLIC, systemId, path, securityContext);
+  }
 
-    // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path);
-
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-
-    // Read the payload into a string.
-    String json;
-    String msg;
-    try { json = IOUtils.toString(payloadStream, StandardCharsets.UTF_8); }
-    catch (Exception e)
-    {
-      msg = ApiUtils.getMsgAuth("FAPI_SHARE_JSON_ERROR", rUser, opName, systemId, path, e.getMessage());
-      log.error(msg, e);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-    }
-
-    // ------------------------- Extract and validate payload -------------------------
-    var userSet = new HashSet<String>();
-    resp = checkAndExtractPayload(rUser, systemId, path, json, userSet, opName);
-    if (resp != null) return resp;
-
-    // ------------------------- Perform the operation -------------------------
-    // Note that we do not use try/catch around service calls because exceptions are already either
-    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
-    svc.sharePath(rUser, sys, path, userSet, json);
-
-    // ---------------------------- Success -------------------------------
-    String userListStr = String.join(",", userSet);
-    RespBasic resp1 = new RespBasic();
-    msg = ApiUtils.getMsgAuth("FAPI_SHARE_UPDATED", rUser, opName, systemId, path, userListStr);
-    return Response.status(Status.CREATED)
-      .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
-      .build();
+  /**
+   * Remove public access for a path on a system.
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param securityContext - user identity
+   * @return basic response
+   */
+  @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response unSharePathPublic(@PathParam("systemId") String systemId,
+                                    @PathParam("path") String path,
+                                    @Context SecurityContext securityContext)
+  {
+    return postUpdatePublicShare(OP_UNSHARE_PATH_PUBLIC, systemId, path, securityContext);
   }
 
   /**
@@ -170,53 +163,7 @@ public class ShareResource
                               @PathParam("path") String path,
                               @Context SecurityContext securityContext)
   {
-    String opName = "unSharePath";
-    // ------------------------- Retrieve and validate thread context -------------------------
-    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
-    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
-    // Utility method returns null if all OK and appropriate error response if there was a problem.
-    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
-    if (resp != null) return resp;
-
-    // Create a user that collects together tenant, user and request information needed by the service call
-    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
-
-    // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path);
-
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-
-    // Read the payload into a string.
-    String json;
-    String msg;
-    try { json = IOUtils.toString(payloadStream, StandardCharsets.UTF_8); }
-    catch (Exception e)
-    {
-      msg = ApiUtils.getMsgAuth("FAPI_SHARE_JSON_ERROR", rUser, opName, systemId, path, e.getMessage());
-      log.error(msg, e);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
-    }
-
-    // ------------------------- Extract and validate payload -------------------------
-    var userSet = new HashSet<String>();
-    resp = checkAndExtractPayload(rUser, systemId, path, json, userSet, opName);
-    if (resp != null) return resp;
-
-    // ------------------------- Perform the operation -------------------------
-    // Note that we do not use try/catch around service calls because exceptions are already either
-    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
-    svc.unSharePath(rUser, sys, path, userSet, json);
-
-    // ---------------------------- Success -------------------------------
-    String userListStr = String.join(",", userSet);
-    RespBasic resp1 = new RespBasic();
-    msg = ApiUtils.getMsgAuth("FAPI_SHARE_UPDATED", rUser, opName, systemId, path, userListStr);
-    return Response.status(Status.CREATED)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
-            .build();
+    return postUpdateUserShares(OP_UNSHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
   }
 
   /**
@@ -248,14 +195,11 @@ public class ShareResource
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path);
 
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (FilesExceptionMapper).
-    ShareInfo shareInfo = svc.getShareInfo(rUser, sys, path);
+    ShareInfo shareInfo = svc.getShareInfo(rUser, systemId, path);
 
     // No share info for path.
     if (shareInfo == null)
@@ -267,7 +211,10 @@ public class ShareResource
     // ---------------------------- Success -------------------------------
     // Success means we retrieved the information.
     RespShareInfo resp1 = new RespShareInfo(shareInfo);
-    return createSuccessResponse(Status.OK, MsgUtils.getMsg("FAPI_SHARE_FOUND", systemId, path), resp1);
+    String msg = MsgUtils.getMsg("FAPI_SHARE_FOUND", systemId, path);
+    return Response.status(Status.OK)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+            .build();
   }
 
   // ************************************************************************
@@ -319,14 +266,94 @@ public class ShareResource
     return null;
   }
 
-  /**
-   * Create an OK response given message and base response to put in result
-   * @param msg - message for resp.message
-   * @param resp - base response (the result)
-   * @return - Final response to return to client
+  /*
+   * Common routine to update share/unshare for a list of users.
    */
-  private static Response createSuccessResponse(Status status, String msg, RespAbstract resp)
+  private Response postUpdateUserShares(String opName, String systemId, String path, InputStream payloadStream,
+                                        SecurityContext securityContext)
   {
-    return Response.status(status).entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp)).build();
+    // ------------------------- Retrieve and validate thread context -------------------------
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+    if (resp != null) return resp;
+
+    // Create a user that collects together tenant, user and request information needed by the service call
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path);
+
+    // Read the payload into a string.
+    String json, msg;
+    try { json = IOUtils.toString(payloadStream, StandardCharsets.UTF_8); }
+    catch (Exception e)
+    {
+      msg = ApiUtils.getMsgAuth("FAPI_SHARE_JSON_ERROR", rUser, opName, systemId, path, e.getMessage());
+      log.error(msg, e);
+      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
+    }
+
+    // ------------------------- Extract and validate payload -------------------------
+    var userSet = new HashSet<String>();
+    resp = checkAndExtractPayload(rUser, systemId, path, json, userSet, opName);
+    if (resp != null) return resp;
+
+    // ------------------------- Perform the operation -------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    switch (opName)
+    {
+      case OP_SHARE_PATH_USERS ->   svc.sharePath(rUser, systemId, path, userSet, json);
+      case OP_UNSHARE_PATH_USERS -> svc.unSharePath(rUser, systemId, path, userSet, json);
+    }
+
+    // ---------------------------- Success -------------------------------
+    String userListStr = String.join(",", userSet);
+    RespBasic resp1 = new RespBasic();
+    msg = ApiUtils.getMsgAuth("FAPI_SHAREU_UPDATED", rUser, opName, systemId, path, userListStr);
+    return Response.status(Status.OK)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+            .build();
+  }
+
+  /*
+   * Common routine to update public sharing.
+   */
+  private Response postUpdatePublicShare(String opName, String systemId, String path, SecurityContext securityContext)
+  {
+    // ------------------------- Retrieve and validate thread context -------------------------
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+    if (resp != null) return resp;
+
+    // Create a user that collects together tenant, user and request information needed by the service call
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path);
+
+    // ------------------------- Perform the operation -------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    switch (opName)
+    {
+      case OP_SHARE_PATH_PUBLIC ->   svc.sharePathPublic(rUser, systemId, path);
+      case OP_UNSHARE_PATH_PUBLIC -> svc.unSharePathPublic(rUser, systemId, path);
+    }
+
+    // ---------------------------- Success -------------------------------
+    RespBasic resp1 = new RespBasic();
+    String msg = ApiUtils.getMsgAuth("FAPI_SHAREP_UPDATED", rUser, opName, systemId, path);
+    return Response.status(Status.OK)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+            .build();
   }
 }
