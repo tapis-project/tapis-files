@@ -9,6 +9,17 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.2.1 - 2022-06-21
+
+Incremental improvements and bug fix.
+
+### New features:
+- None.
+
+### Bug fixes:
+- Fix issue with getSKClient() that breaks associate site support.
+
+---------------------------------------------------------------------------
 ## 1.2.0 - 2022-05-23
 
 Incremental improvements and preview of new feature.
