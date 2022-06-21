@@ -1,7 +1,7 @@
 {
   "$id": "https://tapis.tacc.utexas.edu/ShareRequest",
   "$schema": "https://json-schema.org/draft-07/schema#",
-  "description": "Schema for a request to share/unshare a file path",
+  "description": "Schema for a request to share/unshare a file path with one or more users",
 
   "type": "object",
   "required": [ "users" ],

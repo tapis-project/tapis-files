@@ -1,15 +1,25 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import java.util.HashSet;
+import javax.inject.Inject;
+import javax.ws.rs.WebApplicationException;
+import java.util.Set;
+
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.security.client.model.SKShareDeleteShareParms;
+import org.jvnet.hk2.annotations.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.security.client.gen.model.ReqShareResource;
 import edu.utexas.tacc.tapis.security.client.gen.model.SkShare;
 import edu.utexas.tacc.tapis.security.client.gen.model.SkShareList;
 import edu.utexas.tacc.tapis.security.client.model.SKShareGetSharesParms;
@@ -19,16 +29,6 @@ import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
-import org.jvnet.hk2.annotations.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import javax.ws.rs.WebApplicationException;
-import java.util.HashSet;
-import java.util.Set;
 
 /*
  * Service level methods for File sharing operations. Support:
@@ -51,8 +51,8 @@ public class FileShareService
   private static final Logger log = LoggerFactory.getLogger(FileShareService.class);
 
   private static final IRuntimeConfig settings = RuntimeSettings.get();
-  private static final String OP_SHARE_PATH_USERS = "sharePath";
-  private static final String OP_UNSHARE_PATH_USERS = "unSharePath";
+  private static final String OP_SHARE_PATH = "sharePath";
+  private static final String OP_UNSHARE_PATH = "unSharePath";
   private static final String OP_SHARE_PATH_PUBLIC = "sharePathPublic";
   private static final String OP_UNSHARE_PATH_PUBLIC = "unSharePathPublic";
   private static final String RESOURCE_TYPE = "file";
@@ -86,18 +86,18 @@ public class FileShareService
 
   /**
    * Share a path with one or more users
+   * Sharing means grantees effectively have READ permission on the path.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
    * @param path - path on system relative to system rootDir
    * @param userSet - Set of users
-   * @param rawData - Client provided text used to create the permissions list. Saved in update record.
    * @throws WebApplicationException - on error
    */
-  public void sharePath(ResourceRequestUser rUser, String systemId, String path, Set<String> userSet, String rawData)
+  public void sharePath(ResourceRequestUser rUser, String systemId, String path, Set<String> userSet)
           throws WebApplicationException
   {
-    updateUserShares(rUser, OP_SHARE_PATH_USERS, systemId, path, userSet, rawData);
+    updateUserShares(rUser, OP_SHARE_PATH, systemId, path, userSet);
   }
 
   /**
@@ -107,17 +107,17 @@ public class FileShareService
    * @param systemId - Tapis system
    * @param path - path on system relative to system rootDir
    * @param userSet - Set of users
-   * @param rawData - Client provided text used to create the permissions list. Saved in update record.
    * @throws WebApplicationException - on error
    */
-  public void unSharePath(ResourceRequestUser rUser, String systemId, String path, Set<String> userSet, String rawData)
+  public void unSharePath(ResourceRequestUser rUser, String systemId, String path, Set<String> userSet)
           throws WebApplicationException
   {
-    updateUserShares(rUser, OP_UNSHARE_PATH_USERS, systemId, path, userSet, rawData);
+    updateUserShares(rUser, OP_UNSHARE_PATH, systemId, path, userSet);
   }
 
   /**
    * Share a path on a system publicly with all users in the tenant.
+   * Sharing means grantees effectively have READ permission on the path.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
@@ -146,6 +146,7 @@ public class FileShareService
 
   /**
    * Get share info for path
+   * Sharing means grantees effectively have READ permission on the path.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
@@ -178,7 +179,7 @@ public class FileShareService
       // Set isPublic based on result.
       isPublic = (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty());
 
-      // Now get all the users that have been granted a share
+      // Now get all the users with whom the path has been shared
       skParms.setGrantee(null);
       skParms.setIncludePublicGrantees(false);
       skShares = getSKClient().getShares(skParms);
@@ -206,13 +207,62 @@ public class FileShareService
    * Common routine to update share/unshare for a list of users.
    */
   private void updateUserShares(ResourceRequestUser rUser, String opName, String systemId, String path,
-                                Set<String> userSet, String rawData)
+                                Set<String> userSet)
           throws WebApplicationException
   {
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
-    // TODO
+    // Create request object needed for SK calls.
+    ReqShareResource reqShareResource = null;
+    SKShareDeleteShareParms deleteShareParms = null;
+    switch (opName)
+    {
+      case OP_SHARE_PATH ->
+      {
+        reqShareResource = new ReqShareResource();
+        reqShareResource.setResourceType(RESOURCE_TYPE);
+        reqShareResource.setResourceId1(systemId);
+        reqShareResource.setResourceId2(path);
+        reqShareResource.setGrantor(rUser.getOboUserId());
+        reqShareResource.setPrivilege(FileInfo.Permission.READ.name());
+      }
+      case OP_UNSHARE_PATH ->
+      {
+        deleteShareParms = new SKShareDeleteShareParms();
+        deleteShareParms.setResourceType(RESOURCE_TYPE);
+        deleteShareParms.setResourceId1(systemId);
+        deleteShareParms.setResourceId2(path);
+      }
+    }
+
+    // Catch client exceptions and convert them to WebApplicationException
+    try
+    {
+      for (String userName : userSet)
+      {
+
+        switch (opName)
+        {
+          case OP_SHARE_PATH ->
+          {
+            reqShareResource.setGrantee(userName);
+            getSKClient().shareResource(reqShareResource);
+          }
+          case OP_UNSHARE_PATH ->
+          {
+            deleteShareParms.setGrantee(userName);
+            getSKClient().deleteShare(deleteShareParms);
+          }
+        }
+      }
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, opName, systemId, path, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
   }
 
   /*

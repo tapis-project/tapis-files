@@ -98,6 +98,8 @@ public class ShareResource
 
   /**
    * Share a path with one or more users
+   * Sharing means grantees effectively have READ permission on the path.
+   *
    * @param payloadStream - request body
    * @param systemId - id of system
    * @param path - path on system relative to system rootDir
@@ -117,6 +119,8 @@ public class ShareResource
 
   /**
    * Share a path on a system publicly with all users in the tenant.
+   * Sharing means grantees effectively have READ permission on the path.
+   *
    * @param systemId - id of system
    * @param path - path on system relative to system rootDir
    * @param securityContext - user identity
@@ -133,6 +137,7 @@ public class ShareResource
 
   /**
    * Remove public access for a path on a system.
+   *
    * @param systemId - id of system
    * @param path - path on system relative to system rootDir
    * @param securityContext - user identity
@@ -149,6 +154,7 @@ public class ShareResource
 
   /**
    * Unshare a path with one or more users
+   *
    * @param payloadStream - request body
    * @param systemId - id of system
    * @param path - path on system relative to system rootDir
@@ -168,6 +174,8 @@ public class ShareResource
 
   /**
    * Get share info for path.
+   * Sharing means grantees effectively have READ permission on the path.
+   *
    * @param systemId - id of system
    * @param path - path on system relative to system rootDir
    * @param securityContext - user identity
@@ -223,6 +231,7 @@ public class ShareResource
 
   /**
    * Check json payload for a share/unshare request and extract set of users
+   *
    * @param systemId - name of the system, for constructing response msg
    * @param path - name of path associated with the request, for constructing response msg
    * @param json - Request json extracted from payloadStream
@@ -307,8 +316,8 @@ public class ShareResource
     //   to responses (FilesExceptionMapper).
     switch (opName)
     {
-      case OP_SHARE_PATH_USERS ->   svc.sharePath(rUser, systemId, path, userSet, json);
-      case OP_UNSHARE_PATH_USERS -> svc.unSharePath(rUser, systemId, path, userSet, json);
+      case OP_SHARE_PATH_USERS ->   svc.sharePath(rUser, systemId, path, userSet);
+      case OP_UNSHARE_PATH_USERS -> svc.unSharePath(rUser, systemId, path, userSet);
     }
 
     // ---------------------------- Success -------------------------------
