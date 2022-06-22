@@ -12,6 +12,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
@@ -69,6 +70,10 @@ public class FileOpsService implements IFileOpsService
   private static final String JOBS_SERVICE = TapisConstants.SERVICE_NAME_JOBS;
   private static final Set<String> SVCLIST_IMPERSONATE = new HashSet<>(Set.of(JOBS_SERVICE));
 
+  // **************** Inject Services using HK2 ****************
+  @Inject
+  private ServiceContext serviceContext;
+
   @Inject
   public FileOpsService(FilePermsService svc) { permsService = svc; }
 
@@ -89,17 +94,13 @@ public class FileOpsService implements IFileOpsService
   /**
    * Initialize the service:
    *   init service context
-   *   migrate DB
    */
   public void initService(String siteId1, String siteAdminTenantId1, String svcPassword) throws TapisException, TapisClientException
   {
     // Initialize service context and site info
     siteId = siteId1;
     siteAdminTenantId = siteAdminTenantId1;
-//  TODO
-//    serviceContext.initServiceJWT(siteId, APPS_SERVICE, svcPassword);
-//    // Make sure DB is present and updated to latest version using flyway
-//    dao.migrateDB();
+    serviceContext.initServiceJWT(siteId, SERVICE_NAME, svcPassword);
   }
 
   // ----------------------------------------------------------------------------------------------------

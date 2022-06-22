@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
@@ -115,7 +116,7 @@ public class FilesApplication extends ResourceConfig
     register(TransfersApiResource.class);
     register(PermissionsApiResource.class);
     register(ShareResource.class);
-    register(FilesResource.class);
+    register(GeneralResource.class);
     register(OperationsApiResource.class);
     register(UtilsLinuxApiResource.class);
 
@@ -159,6 +160,7 @@ public class FilesApplication extends ResourceConfig
           bindAsContract(SystemsCache.class).in(Singleton.class);
           bindAsContract(FilePermsService.class).in(Singleton.class);
           bindAsContract(FilePermsCache.class).in(Singleton.class);
+          bindAsContract(FileShareService.class).in(Singleton.class);
           bind(tenantManager).to(TenantManager.class);
           bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
           bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
@@ -202,9 +204,12 @@ public class FilesApplication extends ResourceConfig
     InjectionManager im = handler.getInjectionManager();
     ServiceLocator locator = im.getInstance(ServiceLocator.class);
     FileOpsService svcImpl = locator.getService(FileOpsService.class);
-
     // Call the main service init method
-// TODO    svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
+    // TODO svcImpl ends up null but serviceContext does not, why?
+    //      so for now initialize the service by getting the serviceContext. This initializes the service jwt.
+    //  svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
+    ServiceContext serviceContext = locator.getService(ServiceContext.class);
+
     // Create and start the server
     final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(baseUri, config, false);
     Collection<NetworkListener> listeners = server.getListeners();

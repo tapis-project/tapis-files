@@ -140,7 +140,7 @@ public class ShareResource
     // ---------------------------- Success -------------------------------
     // Success means we retrieved the information.
     RespShareInfo resp1 = new RespShareInfo(shareInfo);
-    String msg = MsgUtils.getMsg("FAPI_SHARE_FOUND", systemId, path);
+    String msg = ApiUtils.getMsg("FAPI_SHARE_FOUND", systemId, path);
     return Response.status(Status.OK)
             .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
             .build();
