@@ -16,10 +16,7 @@ import edu.utexas.tacc.tapis.files.api.responses.RespShareInfo;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespAbstract;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +47,7 @@ import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
  *
  * Shares are stored in the Security Kernel
  */
-@Path("/v3/files/share")
+@Path("/v3/files")
 public class ShareResource
 {
   // ************************************************************************
@@ -97,82 +94,6 @@ public class ShareResource
   // ************************************************************************
 
   /**
-   * Share a path with one or more users
-   * Sharing means grantees effectively have READ permission on the path.
-   *
-   * @param payloadStream - request body
-   * @param systemId - id of system
-   * @param path - path on system relative to system rootDir
-   * @param securityContext - user identity
-   * @return basic response
-   */
-  @POST
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response sharePath(InputStream payloadStream,
-                            @PathParam("systemId") String systemId,
-                            @PathParam("path") String path,
-                            @Context SecurityContext securityContext)
-  {
-    return postUpdateUserShares(OP_SHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
-  }
-
-  /**
-   * Share a path on a system publicly with all users in the tenant.
-   * Sharing means grantees effectively have READ permission on the path.
-   *
-   * @param systemId - id of system
-   * @param path - path on system relative to system rootDir
-   * @param securityContext - user identity
-   * @return basic response
-   */
-  @POST
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response sharePathPublic(@PathParam("systemId") String systemId,
-                                  @PathParam("path") String path,
-                                  @Context SecurityContext securityContext)
-  {
-    return postUpdatePublicShare(OP_SHARE_PATH_PUBLIC, systemId, path, securityContext);
-  }
-
-  /**
-   * Remove public access for a path on a system.
-   *
-   * @param systemId - id of system
-   * @param path - path on system relative to system rootDir
-   * @param securityContext - user identity
-   * @return basic response
-   */
-  @POST
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response unSharePathPublic(@PathParam("systemId") String systemId,
-                                    @PathParam("path") String path,
-                                    @Context SecurityContext securityContext)
-  {
-    return postUpdatePublicShare(OP_UNSHARE_PATH_PUBLIC, systemId, path, securityContext);
-  }
-
-  /**
-   * Unshare a path with one or more users
-   *
-   * @param payloadStream - request body
-   * @param systemId - id of system
-   * @param path - path on system relative to system rootDir
-   * @param securityContext - user identity
-   * @return basic response
-   */
-  @POST
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Produces(MediaType.APPLICATION_JSON)
-  public Response unSharePath(InputStream payloadStream,
-                              @PathParam("systemId") String systemId,
-                              @PathParam("path") String path,
-                              @Context SecurityContext securityContext)
-  {
-    return postUpdateUserShares(OP_UNSHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
-  }
-
-  /**
    * Get share info for path.
    * Sharing means grantees effectively have READ permission on the path.
    *
@@ -182,7 +103,7 @@ public class ShareResource
    * @return response containing share info
    */
   @GET
-  @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
+  @Path("/share/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
   @Produces(MediaType.APPLICATION_JSON)
   public Response getShareInfo(@PathParam("systemId") String systemId,
                                @PathParam("path") String path,
@@ -223,6 +144,84 @@ public class ShareResource
     return Response.status(Status.OK)
             .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
             .build();
+  }
+
+  /**
+   * Share a path with one or more users
+   * Sharing means grantees effectively have READ permission on the path.
+   *
+   * @param payloadStream - request body
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param securityContext - user identity
+   * @return basic response
+   */
+  @POST
+  @Path("/share/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response sharePath(InputStream payloadStream,
+                            @PathParam("systemId") String systemId,
+                            @PathParam("path") String path,
+                            @Context SecurityContext securityContext)
+  {
+    return postUpdateUserShares(OP_SHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
+  }
+
+  /**
+   * Share a path on a system publicly with all users in the tenant.
+   * Sharing means grantees effectively have READ permission on the path.
+   *
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param securityContext - user identity
+   * @return basic response
+   */
+  @POST
+  @Path("/share_public/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response sharePathPublic(@PathParam("systemId") String systemId,
+                                  @PathParam("path") String path,
+                                  @Context SecurityContext securityContext)
+  {
+    return postUpdatePublicShare(OP_SHARE_PATH_PUBLIC, systemId, path, securityContext);
+  }
+
+  /**
+   * Unshare a path with one or more users
+   *
+   * @param payloadStream - request body
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param securityContext - user identity
+   * @return basic response
+   */
+  @POST
+  @Path("/unshare/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response unSharePath(InputStream payloadStream,
+                              @PathParam("systemId") String systemId,
+                              @PathParam("path") String path,
+                              @Context SecurityContext securityContext)
+  {
+    return postUpdateUserShares(OP_UNSHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
+  }
+
+  /**
+   * Remove public access for a path on a system.
+   *
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param securityContext - user identity
+   * @return basic response
+   */
+  @POST
+  @Path("/unshare_public/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response unSharePathPublic(@PathParam("systemId") String systemId,
+                                    @PathParam("path") String path,
+                                    @Context SecurityContext securityContext)
+  {
+    return postUpdatePublicShare(OP_UNSHARE_PATH_PUBLIC, systemId, path, securityContext);
   }
 
   // ************************************************************************
@@ -316,7 +315,7 @@ public class ShareResource
     //   to responses (FilesExceptionMapper).
     switch (opName)
     {
-      case OP_SHARE_PATH_USERS ->   svc.sharePath(rUser, systemId, path, userSet);
+      case OP_SHARE_PATH_USERS   -> svc.sharePath(rUser, systemId, path, userSet);
       case OP_UNSHARE_PATH_USERS -> svc.unSharePath(rUser, systemId, path, userSet);
     }
 
@@ -354,7 +353,7 @@ public class ShareResource
     //   to responses (FilesExceptionMapper).
     switch (opName)
     {
-      case OP_SHARE_PATH_PUBLIC ->   svc.sharePathPublic(rUser, systemId, path);
+      case OP_SHARE_PATH_PUBLIC   -> svc.sharePathPublic(rUser, systemId, path);
       case OP_UNSHARE_PATH_PUBLIC -> svc.unSharePathPublic(rUser, systemId, path);
     }
 

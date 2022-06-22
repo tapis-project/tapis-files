@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import java.util.Collections;
 import java.util.HashSet;
 import javax.inject.Inject;
 import javax.ws.rs.WebApplicationException;
@@ -12,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
@@ -35,8 +35,8 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
  *   - share/unshare path with users
  *   - share/unshare path with all users in a tenant (i.e. make public)
  *   - retrieve share info for a path
- *  - Paths provided will all be treated as relative to the system rootDir. Paths will be normalized. Please see
- *    PathUtils.java.
+ *  - Paths provided will all be treated as relative to the system rootDir. Paths will be normalized.
+ *    Please see PathUtils.java.
  *
  * Annotate as an hk2 Service so that default scope for Dependency Injection is singleton
  */
@@ -51,19 +51,17 @@ public class FileShareService
   private static final Logger log = LoggerFactory.getLogger(FileShareService.class);
 
   private static final IRuntimeConfig settings = RuntimeSettings.get();
-  private static final String OP_SHARE_PATH = "sharePath";
-  private static final String OP_UNSHARE_PATH = "unSharePath";
-  private static final String OP_SHARE_PATH_PUBLIC = "sharePathPublic";
-  private static final String OP_UNSHARE_PATH_PUBLIC = "unSharePathPublic";
+  private static final String OP_SHARE = "sharePath";
+  private static final String OP_UNSHARE = "unSharePath";
   private static final String RESOURCE_TYPE = "file";
   private static final String svcUserName = TapisConstants.SERVICE_NAME_FILES;
+  private static final Set<String> publicUserSet = Collections.singleton(SKClient.PUBLIC_GRANTEE); // "~public"
 
   // ************************************************************************
   // *********************** Fields *****************************************
   // ************************************************************************
 
   // TODO/TBD create a sharesCache?
-  private final FilePermsCache permsCache;
   private final SystemsCache systemsCache;
 
   // Use HK2 to inject singletons
@@ -71,10 +69,9 @@ public class FileShareService
   private ServiceClients serviceClients;
 
   @Inject
-  public FileShareService(FilePermsCache permsCache, SystemsCache systemsCache)
+  public FileShareService(SystemsCache sysCache)
   {
-    this.permsCache = permsCache;
-    this.systemsCache = systemsCache;
+    systemsCache = sysCache;
   }
 
   private String siteId = null;
@@ -83,66 +80,6 @@ public class FileShareService
   // ************************************************************************
   // *********************** Public Methods *********************************
   // ************************************************************************
-
-  /**
-   * Share a path with one or more users
-   * Sharing means grantees effectively have READ permission on the path.
-   *
-   * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param systemId - Tapis system
-   * @param path - path on system relative to system rootDir
-   * @param userSet - Set of users
-   * @throws WebApplicationException - on error
-   */
-  public void sharePath(ResourceRequestUser rUser, String systemId, String path, Set<String> userSet)
-          throws WebApplicationException
-  {
-    updateUserShares(rUser, OP_SHARE_PATH, systemId, path, userSet);
-  }
-
-  /**
-   * UnShare a path with one or more users
-   *
-   * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param systemId - Tapis system
-   * @param path - path on system relative to system rootDir
-   * @param userSet - Set of users
-   * @throws WebApplicationException - on error
-   */
-  public void unSharePath(ResourceRequestUser rUser, String systemId, String path, Set<String> userSet)
-          throws WebApplicationException
-  {
-    updateUserShares(rUser, OP_UNSHARE_PATH, systemId, path, userSet);
-  }
-
-  /**
-   * Share a path on a system publicly with all users in the tenant.
-   * Sharing means grantees effectively have READ permission on the path.
-   *
-   * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param systemId - Tapis system
-   * @param path - path on system relative to system rootDir
-   * @throws WebApplicationException - on error
-   */
-  public void sharePathPublic(ResourceRequestUser rUser, String systemId, String path)
-          throws WebApplicationException
-  {
-    updatePublicShare(rUser, OP_SHARE_PATH_PUBLIC, systemId, path);
-  }
-
-  /**
-   * Remove public access for a path on a system.
-   *
-   * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param systemId - Tapis system
-   * @param path - path on system relative to system rootDir
-   * @throws WebApplicationException - on error
-   */
-  public void unSharePathPublic(ResourceRequestUser rUser, String systemId, String path)
-          throws WebApplicationException
-  {
-    updatePublicShare(rUser, OP_UNSHARE_PATH_PUBLIC, systemId, path);
-  }
 
   /**
    * Get share info for path
@@ -167,10 +104,10 @@ public class FileShareService
 
     ShareInfo shareInfo;
     SkShareList skShares;
-    boolean isPublic = true;
+    boolean isPublic;
     var userSet = new HashSet<String>();
 
-    // Catch client exceptions and convert them to WebApplicationException
+    // Catch client exceptions thrown by SK calls and convert them to WebApplicationException
     try
     {
       // First determine if path is publicly shared. Search for share on sys+path to grantee ~public
@@ -199,12 +136,73 @@ public class FileShareService
     return shareInfo;
   }
 
+  /**
+   * Share a path with one or more users
+   * Sharing means grantees effectively have READ permission on the path.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param systemId - Tapis system
+   * @param path - path on system relative to system rootDir
+   * @param userSet - Set of users
+   * @throws WebApplicationException - on error
+   */
+  public void sharePath(ResourceRequestUser rUser, String systemId, String path, Set<String> userSet)
+          throws WebApplicationException
+  {
+    updateUserShares(rUser, OP_SHARE, systemId, path, userSet);
+  }
+
+  /**
+   * UnShare a path with one or more users
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param systemId - Tapis system
+   * @param path - path on system relative to system rootDir
+   * @param userSet - Set of users
+   * @throws WebApplicationException - on error
+   */
+  public void unSharePath(ResourceRequestUser rUser, String systemId, String path, Set<String> userSet)
+          throws WebApplicationException
+  {
+    updateUserShares(rUser, OP_UNSHARE, systemId, path, userSet);
+  }
+
+  /**
+   * Share a path on a system publicly with all users in the tenant.
+   * Sharing means grantees effectively have READ permission on the path.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param systemId - Tapis system
+   * @param path - path on system relative to system rootDir
+   * @throws WebApplicationException - on error
+   */
+  public void sharePathPublic(ResourceRequestUser rUser, String systemId, String path)
+          throws WebApplicationException
+  {
+    updateUserShares(rUser, OP_SHARE, systemId, path, publicUserSet);
+  }
+
+  /**
+   * Remove public access for a path on a system.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param systemId - Tapis system
+   * @param path - path on system relative to system rootDir
+   * @throws WebApplicationException - on error
+   */
+  public void unSharePathPublic(ResourceRequestUser rUser, String systemId, String path)
+          throws WebApplicationException
+  {
+    updateUserShares(rUser, OP_UNSHARE, systemId, path, publicUserSet);
+  }
+
   // ************************************************************************
   // **************************  Private Methods  ***************************
   // ************************************************************************
 
   /*
    * Common routine to update share/unshare for a list of users.
+   * Can be used to mark a path publicly shared with all users in tenant including "~public" in the set of users.
    */
   private void updateUserShares(ResourceRequestUser rUser, String opName, String systemId, String path,
                                 Set<String> userSet)
@@ -218,7 +216,7 @@ public class FileShareService
     SKShareDeleteShareParms deleteShareParms = null;
     switch (opName)
     {
-      case OP_SHARE_PATH ->
+      case OP_SHARE ->
       {
         reqShareResource = new ReqShareResource();
         reqShareResource.setResourceType(RESOURCE_TYPE);
@@ -227,7 +225,7 @@ public class FileShareService
         reqShareResource.setGrantor(rUser.getOboUserId());
         reqShareResource.setPrivilege(FileInfo.Permission.READ.name());
       }
-      case OP_UNSHARE_PATH ->
+      case OP_UNSHARE ->
       {
         deleteShareParms = new SKShareDeleteShareParms();
         deleteShareParms.setResourceType(RESOURCE_TYPE);
@@ -236,20 +234,19 @@ public class FileShareService
       }
     }
 
-    // Catch client exceptions and convert them to WebApplicationException
+    // Catch client exceptions thrown by SK calls and convert them to WebApplicationException
     try
     {
       for (String userName : userSet)
       {
-
         switch (opName)
         {
-          case OP_SHARE_PATH ->
+          case OP_SHARE ->
           {
             reqShareResource.setGrantee(userName);
             getSKClient().shareResource(reqShareResource);
           }
-          case OP_UNSHARE_PATH ->
+          case OP_UNSHARE ->
           {
             deleteShareParms.setGrantee(userName);
             getSKClient().deleteShare(deleteShareParms);
@@ -263,18 +260,6 @@ public class FileShareService
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
-  }
-
-  /*
-   * Common routine to update public sharing.
-   */
-  private void updatePublicShare(ResourceRequestUser rUser, String opName, String systemId, String path)
-          throws WebApplicationException
-  {
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-
-    // TODO
   }
 
   /**

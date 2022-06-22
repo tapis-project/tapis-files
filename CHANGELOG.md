@@ -9,6 +9,17 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.2.2 - 2022-??-??
+
+Incremental improvements and preview of new feature.
+
+### New features:
+- Support sharing of a path with one or more users. Includes support for sharing with all users in a tenant.
+
+### Bug fixes:
+- None
+
+---------------------------------------------------------------------------
 ## 1.2.1 - 2022-06-21
 
 Incremental improvements and bug fix.
