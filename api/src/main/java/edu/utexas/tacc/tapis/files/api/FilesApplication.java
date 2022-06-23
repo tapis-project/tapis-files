@@ -193,7 +193,6 @@ public class FilesApplication extends ResourceConfig
     // Initialize the application container
     FilesApplication config = new FilesApplication();
 
-    // TODO/TBD - adapt from Apps to Files
     // Initialize the service
     // In order to instantiate our service class using HK2 we need to create an application handler
     //   which allows us to get an injection manager which is used to get a locator.
@@ -206,8 +205,9 @@ public class FilesApplication extends ResourceConfig
     FileOpsService svcImpl = locator.getService(FileOpsService.class);
     // Call the main service init method
     // TODO svcImpl ends up null but serviceContext does not, why?
-    //      so for now initialize the service by getting the serviceContext. This initializes the service jwt.
-    //  svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
+    // svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
+    // For now initialize the service by getting the serviceContext.
+    // The provide() method in ServiceContextFactory will initialize the service jwt.
     ServiceContext serviceContext = locator.getService(ServiceContext.class);
 
     // Create and start the server
