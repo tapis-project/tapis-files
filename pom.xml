@@ -32,9 +32,9 @@
       <!-- Most properties set in parent tapis-bom   -->
       <!-- Properties can be overridden here         -->
       <!-- Individual projects may want to override. -->
-        <tapis-client-java.version>[2.0.0, 3.0.0]</tapis-client-java.version>
-        <tapis-shared.version>[2.0.0, 3.0]</tapis-shared.version>
-        <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
+<!--        <tapis-client-java.version>[2.0.0, 3.0.0]</tapis-client-java.version>-->
+<!--        <tapis-shared.version>[2.0.0, 3.0]</tapis-shared.version>-->
+<!--        <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>-->
         <jetbrains.annotations.version>20.1.0</jetbrains.annotations.version>
         <apache-commons-exec.version>1.3</apache-commons-exec.version>
         <globus.version>2.1.0</globus.version>
