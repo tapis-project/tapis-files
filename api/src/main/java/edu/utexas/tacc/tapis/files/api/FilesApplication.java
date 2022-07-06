@@ -128,13 +128,15 @@ public class FilesApplication extends ResourceConfig
     setApplicationName(TapisConstants.SERVICE_NAME_FILES);
 
     // Perform remaining init steps in try block so we can print a fatal error message if something goes wrong.
-    try {
+    try
+    {
       // Get runtime parameters
       IRuntimeConfig runtimeConfig = RuntimeSettings.get();
 
       // Set site on which we are running. This is a required runtime parameter.
       siteId = runtimeConfig.getSiteId();
 
+      // Init tenant manager, site admin tenant, JWT filter
       String url = runtimeConfig.getTenantsServiceURL();
       TenantManager tenantManager = TenantManager.getInstance(url);
       tenantManager.getTenants();
@@ -152,8 +154,9 @@ public class FilesApplication extends ResourceConfig
       {
         @Override
         protected void configure() {
-//          bind(new SSHConnectionCache(SSHCACHE_MAX_SIZE, SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
           bind(new SSHConnectionCache(SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+          bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+          bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);
@@ -163,11 +166,11 @@ public class FilesApplication extends ResourceConfig
           bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
           bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
           bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
-          bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-          bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
         }
       });
-    } catch (Exception e) {
+    }
+    catch (Exception e)
+    {
       // This is a fatal error
       System.out.println("**** FAILURE TO INITIALIZE: Tapis Files Service ****");
       e.printStackTrace();

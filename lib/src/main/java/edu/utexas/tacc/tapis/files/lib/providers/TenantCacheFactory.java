@@ -29,7 +29,5 @@ public class TenantCacheFactory implements Factory<TenantManager> {
     }
 
     @Override
-    public void dispose(TenantManager tenantCache) {
-
-    }
+    public void dispose(TenantManager tenantCache) { }
 }

@@ -32,15 +32,17 @@ import javax.ws.rs.*;
 @Path("/v3/files/permissions")
 public class PermissionsApiResource
 {
-    private static final Logger log = LoggerFactory.getLogger(PermissionsApiResource.class);
-    private final FilePermsService permsService;
-    private final SystemsCache systemsCache;
+  private static final Logger log = LoggerFactory.getLogger(PermissionsApiResource.class);
+  private final FilePermsService permsService;
+  private final SystemsCache systemsCache;
 
-    @Inject
-    public PermissionsApiResource(FilePermsService permsService, SystemsCache systemsCache) {
-        this.permsService = permsService;
-        this.systemsCache = systemsCache;
-    }
+  // **************** Inject Services using HK2 ****************
+  @Inject
+  public PermissionsApiResource(FilePermsService permsService, SystemsCache systemsCache)
+  {
+    this.permsService = permsService;
+    this.systemsCache = systemsCache;
+  }
 
     @DELETE
     @FilePermissionsAuthorization

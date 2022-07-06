@@ -67,8 +67,10 @@ public class FileOpsService implements IFileOpsService
   private static final String SYSTEMS_SERVICE = TapisConstants.SERVICE_NAME_SYSTEMS;
   private static final String APPS_SERVICE = TapisConstants.SERVICE_NAME_APPS;
   private static final String JOBS_SERVICE = TapisConstants.SERVICE_NAME_JOBS;
-  private static final Set<String> SVCLIST_IMPERSONATE = new HashSet<>(Set.of(JOBS_SERVICE));
 
+  public static final Set<String> SVCLIST_IMPERSONATE = new HashSet<>(Set.of(JOBS_SERVICE));
+
+  // **************** Inject Services using HK2 ****************
   @Inject
   public FileOpsService(FilePermsService svc) { permsService = svc; }
 

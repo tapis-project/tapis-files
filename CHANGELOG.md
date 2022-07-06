@@ -9,6 +9,18 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.2.2 - 2022-07-06
+
+Incremental improvements and bug fix.
+
+### New features:
+- Add support for impersonationId query parameter to getTransferTaskDetails.
+- Improve handling of paths in S3 support. Keys updated to never start with "/".
+
+### Bug fixes:
+- Fix issue with S3 support by updating to the latest AWS java libraries.
+
+---------------------------------------------------------------------------
 ## 1.2.1 - 2022-06-21
 
 Incremental improvements and bug fix.

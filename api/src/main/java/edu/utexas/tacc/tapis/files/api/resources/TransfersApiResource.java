@@ -40,6 +40,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_IMPERSONATE;
+
 /*
  * JAX-RS REST resource for Tapis file transfer operations
  * jax-rs annotations map HTTP verb + endpoint to method invocation and map query parameters.
@@ -129,7 +131,7 @@ public class  TransfersApiResource
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
       if (task == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
-      isPermitted(task, user);
+      isPermitted(task, user.getOboUser(), user.getOboTenantId());
       TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
       return Response.ok(resp).build();
     }
@@ -141,10 +143,18 @@ public class  TransfersApiResource
     }
   }
 
+  /**
+   *
+   * @param transferTaskId Id of transfer task.
+   * @param impersonationId - use provided Tapis username instead of oboUser when checking auth, getSystem (effUserId)
+   * @param securityContext - user identity
+   * @return response containing transfer task history.
+   */
   @GET
   @Path("/{transferTaskId}/details/")
   @Produces(MediaType.APPLICATION_JSON)
   public Response getTransferTaskDetails(@PathParam("transferTaskId") @ValidUUID String transferTaskId,
+                                         @QueryParam("impersonationId") String impersonationId,
                                          @Context SecurityContext securityContext)
   {
     String opName = "getTransferTaskHistory";
@@ -156,12 +166,40 @@ public class  TransfersApiResource
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId="+transferTaskId,
+                          "impersonationId="+impersonationId);
+
     try
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskDetails(transferTaskUUID);
       if (task == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
-      isPermitted(task, user);
+
+      // Check permission taking into account impersonationId
+      // Must be a service to use impersonationId
+      if (!StringUtils.isBlank(impersonationId))
+      {
+        // If a service request the username will be the service name. E.g. systems, jobs, streams, etc
+        String svcName = rUser.getJwtUserId();
+        if (!rUser.isServiceRequest() || !SVCLIST_IMPERSONATE.contains(svcName))
+        {
+          String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_IMPERSONATE_TXFR", rUser, transferTaskId, impersonationId);
+          throw new ForbiddenException(msg);
+        }
+        // An allowed service is impersonating, log it
+        log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE_TXFR", rUser, transferTaskId, impersonationId));
+      }
+
+      // Finally, check for perm using oboUser or impersonationId
+      // Certain services are allowed to impersonate an OBO user for the purposes of authorization
+      String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+
+      isPermitted(task, oboOrImpersonatedUser, user.getOboTenantId());
       TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
       return Response.ok(resp).build();
     }
@@ -193,7 +231,7 @@ public class  TransfersApiResource
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
       if (task == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
-      isPermitted(task, user);
+      isPermitted(task, user.getOboUser(), user.getOboTenantId());
       transfersService.cancelTransfer(task);
       TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);
       resp.setMessage("Transfer deleted.");
@@ -378,12 +416,12 @@ public class  TransfersApiResource
   /**
    * Check that user has permission to access and act on the task
    * @param task - task to check
-   * @param user - user trying to act on the task
+   * @param oboUser - user trying to act on the task
    * @throws NotAuthorizedException if not authorized
    */
-  private void isPermitted(TransferTask task, AuthenticatedUser user) throws NotAuthorizedException
+  private void isPermitted(TransferTask task, String oboUser, String oboTenant) throws NotAuthorizedException
   {
-    if (!task.getUsername().equals(user.getOboUser())) throw new NotAuthorizedException("");
-    if (!task.getTenantId().equals(user.getOboTenantId())) throw new NotAuthorizedException("");
+    if (!task.getUsername().equals(oboUser)) throw new NotAuthorizedException("");
+    if (!task.getTenantId().equals(oboTenant)) throw new NotAuthorizedException("");
   }
 }
