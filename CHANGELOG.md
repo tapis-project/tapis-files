@@ -11,7 +11,7 @@ https://tapis-project.github.io/live-docs
 ---------------------------------------------------------------------------
 ## 1.2.2 - 2022-07-06
 
-Incremental improvements and bug fix.
+Incremental improvements, new preview features and bug fix.
 
 ### New features:
 - Add support for impersonationId query parameter to getTransferTaskDetails.
