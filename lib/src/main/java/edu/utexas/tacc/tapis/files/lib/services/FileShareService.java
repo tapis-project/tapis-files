@@ -1,20 +1,23 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
 import javax.inject.Inject;
 import javax.ws.rs.WebApplicationException;
 import java.util.Set;
 
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.models.UserShareInfo;
-import edu.utexas.tacc.tapis.security.client.model.SKShareDeleteShareParms;
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.UserShareInfo;
+import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
+import edu.utexas.tacc.tapis.security.client.model.SKShareDeleteShareParms;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
@@ -27,6 +30,7 @@ import edu.utexas.tacc.tapis.security.client.gen.model.SkShare;
 import edu.utexas.tacc.tapis.security.client.gen.model.SkShareList;
 import edu.utexas.tacc.tapis.security.client.model.SKShareGetSharesParms;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -38,8 +42,10 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
  *   - share/unshare path with users
  *   - share/unshare path with all users in a tenant (i.e. make public)
  *   - retrieve share info for a path
- *  - Paths provided will all be treated as relative to the system rootDir. Paths will be normalized.
- *    Please see PathUtils.java.
+ * Notes:
+ *   - Path provided will all be treated as relative to the system rootDir. See PathUtils.getRelativePath()
+ *   - Path will be normalized
+ *   - For sharing all paths will start with "/".
  *
  * Annotate as an hk2 Service so that default scope for Dependency Injection is singleton
  */
@@ -98,6 +104,11 @@ public class FileShareService
   {
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    // Get path relative to system rootDir and protect against ../..
+    Path relativePath = PathUtils.getRelativePath(path);
+    String relPathStr = relativePath.toString();
+    // Add "/" to front of relative path, all sharing entries should look like absolute paths.
+    String pathStr = String.format("/%s", relPathStr);
 
     // Create SKShareGetSharesParms needed for SK calls.
     var skParms = new SKShareGetSharesParms();
@@ -115,8 +126,8 @@ public class FileShareService
     try
     {
       // First determine if path is publicly shared. Search for share on sys+path to grantee ~public
-      // First check the specific path
-      skParms.setResourceId2(path);
+      // First check the specific path passed in
+      skParms.setResourceId2(pathStr);
       skParms.setGrantee(SKClient.PUBLIC_GRANTEE);
       skShares = getSKClient().getShares(skParms);
       // Set isPublic based on result.
@@ -128,13 +139,13 @@ public class FileShareService
       if (SystemTypeEnum.LINUX.equals(sys.getSystemType()) && !isPublic)
       {
         // The method returns null if no public sharing found in parent paths.
-        isPublicPath = checkForPublicInParentPaths(skParms, path);
+        isPublicPath = checkForPublicInParentPaths(skParms, pathStr);
         isPublic = !StringUtils.isBlank(isPublicPath);
       }
 
       // Now get all the users with whom the path has been shared
       // First get users for the specific path
-      skParms.setResourceId2(path);
+      skParms.setResourceId2(pathStr);
       skParms.setGrantee(null);
       skParms.setIncludePublicGrantees(false);
       skShares = getSKClient().getShares(skParms);
@@ -143,22 +154,21 @@ public class FileShareService
         for (SkShare skShare : skShares.getShares())
         {
           userSet.add(skShare.getGrantee());
-          UserShareInfo usi = new UserShareInfo();
+          UserShareInfo usi = new UserShareInfo(skShare.getGrantee(), pathStr);
           userShareInfoSet.add(usi);
         }
       }
+
+      // If system is of type LINUX then path may be shared with other users via a parent path
+      // So process all parent paths, adding users to userSet and userShareInfoSet as we go along.
+      checkForSharesInParentPaths(skParms, pathStr, userSet, userShareInfoSet);
     }
     catch (TapisClientException e)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, "getShareInfo", systemId, path, e.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, "getShareInfo", systemId, path, relPathStr, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
-
-    //TODO If system is of type LINUX then path may be shared with other users via a parent path
-    // So process all parent paths, adding users to userSet and userShareInfoSet as we go along.
-//    checkForSharesInParentPaths(skParms, path, userSet, userShareInfoSet);
-
     shareInfo = new ShareInfo(isPublic, isPublicPath, userSet, userShareInfoSet);
     return shareInfo;
   }
@@ -237,6 +247,9 @@ public class FileShareService
   {
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    // Get path relative to system rootDir and protect against ../..
+    Path relativePath = PathUtils.getRelativePath(path);
+    String relPathStr = relativePath.toString();
 
     // Create request object needed for SK calls.
     ReqShareResource reqShareResource = null;
@@ -248,7 +261,7 @@ public class FileShareService
         reqShareResource = new ReqShareResource();
         reqShareResource.setResourceType(RESOURCE_TYPE);
         reqShareResource.setResourceId1(systemId);
-        reqShareResource.setResourceId2(path);
+        reqShareResource.setResourceId2(relPathStr);
         reqShareResource.setGrantor(rUser.getOboUserId());
         reqShareResource.setPrivilege(FileInfo.Permission.READ.name());
       }
@@ -257,7 +270,7 @@ public class FileShareService
         deleteShareParms = new SKShareDeleteShareParms();
         deleteShareParms.setResourceType(RESOURCE_TYPE);
         deleteShareParms.setResourceId1(systemId);
-        deleteShareParms.setResourceId2(path);
+        deleteShareParms.setResourceId2(relPathStr);
       }
     }
 
@@ -283,7 +296,7 @@ public class FileShareService
     }
     catch (TapisClientException e)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, opName, systemId, path, e.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, opName, systemId, path, relPathStr, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
@@ -294,30 +307,91 @@ public class FileShareService
    *
    * If System is of type LINUX and specific path not public then one of the parent directories might be
    * @param skParms Parameter set for calling SK with many attributes already set.
-   * @param path path to check
+   * @param pathStr normalized path to check
    * @return path that allows public or null if no such path found.
    */
-  private String checkForPublicInParentPaths(SKShareGetSharesParms skParms, String path) throws TapisClientException
+  private String checkForPublicInParentPaths(SKShareGetSharesParms skParms, String pathStr) throws TapisClientException
   {
-    // If path is empty or less than 2 characters then no work to do.
-    // E.g. "/a" is the shortest path with a parent.
-    if (StringUtils.isBlank(path) || path.length() < 2) return null;
+    // If path is empty  or "/" then we are done.
+    // We should never be given an empty string and if it is "/" then there are no parents and the calling routine
+    //   will have already checked.
+    if (StringUtils.isBlank(pathStr) || "/".equals(pathStr)) return null;
+    Path path = Paths.get(pathStr);
+
     SkShareList skShares;
     skParms.setGrantee(SKClient.PUBLIC_GRANTEE);
-    // TODO walk parent paths up to root
-//TODO while      String parentPath = ???;
-//      skParms.setResourceId2(parentPath);
-//      skShares = getSKClient().getShares(skParms);
-//      if (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty()) return parentPath;
-
+    // walk parent paths up to root
+    Path parentPath = path.getParent();
+    while (parentPath != null)
+    {
+      // Get shares for the path for grantee ~public
+      String parentPathStr = parentPath.toString();
+      skParms.setResourceId2(parentPathStr);
+      skShares = getSKClient().getShares(skParms);
+      // If any found then we are done
+      if (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty())
+      {
+        return parentPathStr;
+      }
+      // Get the next parent path to check
+      parentPath = parentPath.getParent();
+    }
     return null;
   }
 
   /**
-   * Get Security Kernel client
+   * For given path collected all share information for all parent directories
+   * Place results in provided Sets.
+   * If system is of type LINUX then path may be shared with other users via a parent path
+   * So process all parent paths, adding users to userSet and userShareInfoSet as we go along.
+   *
+   * @param skParms Parameter set for calling SK with many attributes already set.
+   * @param pathStr normalized path to check
+   * @param userSet add users found to this set
+   * @param userShareInfoSet add additional share information to this set
+   */
+  private void checkForSharesInParentPaths(SKShareGetSharesParms skParms, String pathStr, Set<String> userSet,
+                                             Set<UserShareInfo> userShareInfoSet)
+          throws TapisClientException
+  {
+    // If path is empty  or "/" then we are done.
+    // We should never be given an empty string and if it is "/" then there are no parents and the calling routine
+    //   will have already processed it.
+    if (StringUtils.isBlank(pathStr) || "/".equals(pathStr)) return;
+    Path path = Paths.get(pathStr);
+
+    SkShareList skShares;
+    // Clear out any grantee previously set. We want all users.
+    skParms.setGrantee(null);
+    // walk parent paths up to root
+    Path parentPath = path.getParent();
+    while (parentPath != null)
+    {
+      // Get shares for the path
+      String parentPathStr = parentPath.toString();
+      skParms.setResourceId2(parentPathStr);
+      //TODO
+      skShares = getSKClient().getShares(skParms);
+      if (skShares != null && skShares.getShares() != null)
+      {
+        for (SkShare skShare : skShares.getShares())
+        {
+          userSet.add(skShare.getGrantee());
+          UserShareInfo usi = new UserShareInfo(skShare.getGrantee(), parentPathStr);
+          userShareInfoSet.add(usi);
+        }
+      }
+
+      // Get the next parent path to check
+      parentPath = parentPath.getParent();
+    }
+  }
+
+  /**
+   * Get Security Kernel client with obo tenant and user set to the service tenant and user.
+   * I.e. this is a client where the service calls SK as itself.
    * Need to use serviceClients.getClient() every time because it checks for expired service jwt token and
    *   refreshes it as needed.
-   * Files service always calls SK as itself.
    * @return SK client
    * @throws TapisClientException - for Tapis related exceptions
    */
@@ -329,10 +403,24 @@ public class FileShareService
       siteId = settings.getSiteId();
       svcTenantName = TenantManager.getInstance().getSiteAdminTenantId(siteId);
     }
-    try { return serviceClients.getClient(svcUserName, svcTenantName, SKClient.class); }
+    return getSKClient(svcUserName, svcTenantName);
+  }
+
+  /**
+   * Get Security Kernel client with oboUser and oboTenant set as given.
+   * Need to use serviceClients.getClient() every time because it checks for expired service jwt token and
+   *   refreshes it as needed.
+   * @param oboUser - obo user
+   * @param oboTenant - obo tenant
+   * @return SK client
+   * @throws TapisException - for Tapis related exceptions
+   */
+  private SKClient getSKClient(String oboUser, String oboTenant) throws TapisClientException
+  {
+    try { return serviceClients.getClient(oboUser, oboTenant, SKClient.class); }
     catch (Exception e)
     {
-      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, svcTenantName, svcUserName);
+      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, oboTenant, oboUser);
       throw new TapisClientException(msg, e);
     }
   }

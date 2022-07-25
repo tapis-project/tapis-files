@@ -71,8 +71,8 @@ public class FileOpsService implements IFileOpsService
   private static final Set<String> SVCLIST_IMPERSONATE = new HashSet<>(Set.of(JOBS_SERVICE));
 
   // **************** Inject Services using HK2 ****************
-  @Inject
-  private ServiceContext serviceContext;
+//  @Inject
+//  private ServiceContext serviceContext;
 
   @Inject
   public FileOpsService(FilePermsService svc) { permsService = svc; }
@@ -100,7 +100,7 @@ public class FileOpsService implements IFileOpsService
     // Initialize service context and site info
     siteId = siteId1;
     siteAdminTenantId = siteAdminTenantId1;
-    serviceContext.initServiceJWT(siteId, SERVICE_NAME, svcPassword);
+//    serviceContext.initServiceJWT(siteId, SERVICE_NAME, svcPassword);
   }
 
   // ----------------------------------------------------------------------------------------------------
@@ -125,6 +125,7 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
@@ -164,6 +165,7 @@ public class FileOpsService implements IFileOpsService
   public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset)
           throws ServiceException
   {
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     try
     {
@@ -207,6 +209,7 @@ public class FileOpsService implements IFileOpsService
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       String sysId = sys.getId();
+      // Get path relative to system rootDir and protect against ../..
       Path relativePath = PathUtils.getRelativePath(path);
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
@@ -265,6 +268,7 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
@@ -298,6 +302,7 @@ public class FileOpsService implements IFileOpsService
     public void upload(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull InputStream inputStream)
             throws ServiceException
     {
+      // Get path relative to system rootDir and protect against ../..
       Path relativePath = PathUtils.getRelativePath(path);
       LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                               relativePath, Permission.MODIFY);
@@ -329,6 +334,7 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
@@ -361,6 +367,7 @@ public class FileOpsService implements IFileOpsService
   @Override
   public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException, ForbiddenException
   {
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                             relativePath, Permission.MODIFY);
@@ -396,6 +403,7 @@ public class FileOpsService implements IFileOpsService
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       String sysId = sys.getId();
+      // Get paths relative to system rootDir and protect against ../..
       Path srcRelativePath = PathUtils.getRelativePath(srcPath);
       Path dstRelativePath = PathUtils.getRelativePath(dstPath);
       // Reserve a client connection, use it to perform the operation and then release it
@@ -438,6 +446,7 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = client.getOboTenant();
     String oboUser = client.getOboUser();
     String sysId = client.getSystemId();
+    // Get paths relative to system rootDir and protect against ../..
     Path srcRelativePath = PathUtils.getRelativePath(srcPath);
     Path dstRelativePath = PathUtils.getRelativePath(dstPath);
     // Check the source and destination permissions
@@ -497,6 +506,7 @@ public class FileOpsService implements IFileOpsService
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       String sysId = sys.getId();
+      // Get path relative to system rootDir and protect against ../..
       Path relativePath = PathUtils.getRelativePath(path);
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
@@ -529,6 +539,7 @@ public class FileOpsService implements IFileOpsService
   @Override
   public void delete(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException
   {
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                             relativePath, Permission.MODIFY);
@@ -631,6 +642,7 @@ public class FileOpsService implements IFileOpsService
           throws WebApplicationException
   {
     // Make sure user has permission for this path
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     try
     {
@@ -746,6 +758,7 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
     checkAuthForRead(rUser, sysId, relativePath, impersonationId);
@@ -785,6 +798,7 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
     checkAuthForRead(rUser, sysId, relativePath, impersonationId);
@@ -826,6 +840,7 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
     LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, relativePath, Permission.READ);
@@ -864,6 +879,7 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
+    // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
     checkAuthForRead(rUser, sysId, relativePath, impersonationId);

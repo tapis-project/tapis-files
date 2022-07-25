@@ -8,7 +8,7 @@
         <version>1.2.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>tapis-files-api</artifactId>
+    <artifactId>tapis-filesapi</artifactId>
 
     <properties>
         <maven-exec-plugin.version>3.0.0</maven-exec-plugin.version>
@@ -22,7 +22,7 @@
         </dependency>
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
-            <artifactId>tapis-files-lib</artifactId>
+            <artifactId>tapis-fileslib</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>

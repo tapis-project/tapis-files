@@ -295,9 +295,8 @@
     </dependencies>
 
     <modules>
-        <module>api</module>
-        <module>lib</module>
-        <module>migrations</module>
+        <module>tapis-filesapi</module>
+        <module>tapis-fileslib</module>
     </modules>
 
 </project>
