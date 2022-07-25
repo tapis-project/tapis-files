@@ -46,82 +46,102 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
 
 /**
  * This class provides remoteDataClient file operations for S3 systems.
+ *
  * Note that S3 buckets do not have a hierarchical structure. There are no directories.
  * Everything is an object associated with a key.
- * Note that in Tapis the difference between a key and an absolute path is the path starts with "/"
- *   and the key does not.
+ *
+ * In S3 Tapis support, the difference between a key and an absolute path is the absolute path starts with a "/"
+ *   and the key does not. So for the final fully resolved key to the object the absolute path is used with the
+ *   initial "/" stripped off.
+ *
+ * Tapis does not support S3 keys beginning with a "/". Such objects may be shown in a listing, but it will not be
+ *   possible through Tapis to reference the object directly using the key.
+ *
+ * Note that for S3 this means a path of "/" or the empty string indicates all objects in the bucket with a prefix matching
+ *   *rootDir*, with any preceding "/" stripped off of *rootDir*
+ *
  */
 public class S3DataClient implements IRemoteDataClient
 {
-    private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
+  private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
 
   @Override
   public void reserve() {}
   @Override
   public void release() {}
 
-    public String getOboTenant() { return oboTenant; }
-    public String getOboUser() { return oboUser; }
-    public String getSystemId() { return system.getId(); }
-//    public String getBucket() { return bucket; }
+  public String getOboTenant() { return oboTenant; }
+  public String getOboUser() { return oboUser; }
+  public String getSystemId() { return system.getId(); }
 
-    private final String oboTenant;
-    private final String oboUser;
+  private final String oboTenant;
+  private final String oboUser;
 
-    public S3Client getClient() {
-        return client;
-    }
+  public S3Client getClient() {
+    return client;
+  }
 
-    private final S3Client client;
-    private final String bucket;
-    private final TapisSystem system;
-    private final String rootDir;
+  private final S3Client client;
+  private final String bucket;
+  private final TapisSystem system;
+  private final String rootDir;
 
-    public S3DataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1)
-            throws IOException
+  public S3DataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1)
+          throws IOException
+  {
+    oboTenant = oboTenant1;
+    oboUser = oboUser1;
+    system = system1;
+    bucket = system.getBucketName();
+    // Make sure we have a valid rootDir that is not empty and begins with /
+    String tmpDir = system.getRootDir();
+    if (StringUtils.isBlank(tmpDir)) tmpDir = "/";
+    rootDir = StringUtils.prependIfMissing(tmpDir,"/");
+
+    // There are so many flavors of s3 URLs we have to do the gymnastics below.
+    try
     {
-      oboTenant = oboTenant1;
-      oboUser = oboUser1;
-      system = system1;
-      bucket = system.getBucketName();
-      // Make sure we have a valid rootDir that is not empty and begins with /
-      String tmpDir = system.getRootDir();
-      if (StringUtils.isBlank(tmpDir)) tmpDir = "/";
-      rootDir = StringUtils.prependIfMissing(tmpDir,"/");
+      String host = system.getHost();
+      String region = S3URLParser.getRegion(host);
+      URI endpoint = configEndpoint(host);
+      Region reg;
 
-      // There are so many flavors of s3 URLs we have to do the gymnastics below.
-      try {
-        String host = system.getHost();
-        String region = S3URLParser.getRegion(host);
-        URI endpoint = configEndpoint(host);
-        Region reg;
+      //For minio/other S3 compliant APIs, the region is not needed
+      if (region == null) reg = Region.US_EAST_1;
+      else reg = Region.of(region);
 
-        //For minio/other S3 compliant APIs, the region is not needed
-        if (region == null) reg = Region.US_EAST_1;
-        else reg = Region.of(region);
-
-        String accessKey = "";
-        String accessSecret = "";
-        if (system.getAuthnCredential() != null)
-        {
-          accessKey = system.getAuthnCredential().getAccessKey();
-          accessSecret = system.getAuthnCredential().getAccessSecret();
-        }
-        AwsCredentials credentials = AwsBasicCredentials.create(accessKey, accessSecret);
-        S3ClientBuilder builder = S3Client.builder()
-                .region(reg)
-                .credentialsProvider(StaticCredentialsProvider.create(credentials));
-
-        // Have to do the endpoint override if its not a real AWS route, as in the case for a minio instance
-        if (!S3URLParser.isAWSUrl(host)) builder.endpointOverride(endpoint);
-        client = builder.build();
-
-      } catch (URISyntaxException e) {
-        String msg = LibUtils.getMsg("FILES_CLIENT_S3_ERR", oboTenant, oboUser, system.getId(), bucket, e.getMessage());
-        log.error(msg);
-        throw new IOException(msg, e);
+      String accessKey = "";
+      String accessSecret = "";
+      if (system.getAuthnCredential() != null)
+      {
+        accessKey = system.getAuthnCredential().getAccessKey();
+        accessSecret = system.getAuthnCredential().getAccessSecret();
       }
+      AwsCredentials credentials = AwsBasicCredentials.create(accessKey, accessSecret);
+      S3ClientBuilder builder = S3Client.builder()
+              .region(reg)
+              .credentialsProvider(StaticCredentialsProvider.create(credentials));
+
+      // Have to do the endpoint override if it is not a real AWS route, as in the case for a minio instance
+      if (!S3URLParser.isAWSUrl(host))
+      {
+        log.debug(LibUtils.getMsg("FILES_CLIENT_S3_EP_OVER", oboTenant, oboUser, system.getId(), bucket,
+                reg.toString(), host, endpoint.toString()));
+        builder.endpointOverride(endpoint);
+      }
+      // Log info about client we are building
+      log.debug(LibUtils.getMsg("FILES_CLIENT_S3_BUILD", oboTenant, oboUser, system.getId(), bucket,
+              reg.toString(), host, endpoint.toString()));
+      // Build the client
+      client = builder.build();
     }
+    catch (URISyntaxException e)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_S3_ERR", oboTenant, oboUser, system.getId(), bucket, e.getMessage());
+      log.error(msg);
+      throw new IOException(msg, e);
+    }
+  }
 
   /**
    * Build a URI using host, scheme, port
@@ -130,20 +150,19 @@ public class S3DataClient implements IRemoteDataClient
    * @return a URI
    * @throws URISyntaxException on error
    */
-    public URI configEndpoint(String host) throws URISyntaxException
-    {
-      URI endpoint;
-      URI tmpURI = new URI(host);
-      // Build a URI setting host, scheme, port
-      UriBuilder uriBuilder = UriBuilder.fromUri("");
-      uriBuilder.host(tmpURI.getHost()).scheme(tmpURI.getScheme());
-      if ((system.getPort() != null) && (system.getPort() > 0)) uriBuilder.port(system.getPort());
-      if (StringUtils.isBlank(tmpURI.getHost())) uriBuilder.host(host);
-      //Make sure there is a scheme, and default to https if not.
-      if (StringUtils.isBlank(tmpURI.getScheme())) uriBuilder.scheme("https");
-      endpoint = uriBuilder.build();
-      return endpoint;
-    }
+  public URI configEndpoint(String host) throws URISyntaxException
+  {
+    URI tmpURI = new URI(host);
+    // Build a URI setting host, scheme, port
+    UriBuilder uriBuilder = UriBuilder.fromUri("");
+    uriBuilder.host(tmpURI.getHost()).scheme(tmpURI.getScheme());
+    if ((system.getPort() != null) && (system.getPort() > 0)) uriBuilder.port(system.getPort());
+    if (StringUtils.isBlank(tmpURI.getHost())) uriBuilder.host(host);
+    //Make sure there is a scheme, and default to https if not.
+    if (StringUtils.isBlank(tmpURI.getScheme())) uriBuilder.scheme("https");
+    URI endpoint = uriBuilder.build();
+    return endpoint;
+  }
 
   /**
    * Return all S3 objects matching a path prefix using default max limit and 0 offset
@@ -169,23 +188,23 @@ public class S3DataClient implements IRemoteDataClient
    * @throws IOException       Generally a network error
    * @throws NotFoundException No file at target
    */
-    @Override
-    public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException
-    {
-      int maxKeys = Integer.MAX_VALUE;
-      if (limit < Integer.MAX_VALUE) maxKeys = (int) limit;
+  @Override
+  public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException
+  {
+    int maxKeys = Integer.MAX_VALUE;
+    if (limit < Integer.MAX_VALUE) maxKeys = (int) limit;
 
-      String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
+    String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
 
-      Stream<S3Object> response = listWithIterator(absolutePath, maxKeys);
-      List<FileInfo> files = new ArrayList<>();
-      response.skip(offset).limit(limit).forEach((S3Object x) -> files.add(new FileInfo(x)));
+    Stream<S3Object> response = listWithIterator(absoluteKey, maxKeys);
+    List<FileInfo> files = new ArrayList<>();
+    response.skip(offset).limit(limit).forEach((S3Object x) -> files.add(new FileInfo(x)));
 
-      // For s3 at least, if the listing is empty it could just be not found, which should really throw
-      // a NotFoundException
-      if (files.isEmpty()) doesExist(absolutePath);
-      return files;
-    }
+    // For s3 at least, if the listing is empty it could just be not found, which should really throw
+    // a NotFoundException
+    if (files.isEmpty()) doesExist(absoluteKey);
+    return files;
+  }
 
   /** UNSUPPORTED
    * Create a simulated "directory" in S3
@@ -194,11 +213,11 @@ public class S3DataClient implements IRemoteDataClient
    * @param path - Path to directory relative to the system rootDir
    * @throws IOException Generally a network error
    */
-    @Override
-    public void mkdir(@NotNull String path) throws IOException
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_S3_NO_SUPPORT", oboTenant, oboUser, "mkdir", system.getId(), bucket, path);
-      throw new NotImplementedException(msg);
+  @Override
+  public void mkdir(@NotNull String path) throws IOException
+  {
+    String msg = LibUtils.getMsg("FILES_CLIENT_S3_NO_SUPPORT", oboTenant, oboUser, "mkdir", system.getId(), bucket, path);
+    throw new NotImplementedException(msg);
 //      String pathAsDir = PathUtils.getAbsolutePath(rootDir, path).toString();
 //      // Since absolute paths do not have a trailing / we will add one in order to support the concept of a directory
 //      pathAsDir = StringUtils.appendIfMissing(pathAsDir, "/");
@@ -212,7 +231,7 @@ public class S3DataClient implements IRemoteDataClient
 //        log.error(msg);
 //        throw new IOException(msg, ex);
 //      }
-    }
+  }
 
   /**
    * Upload an S3 object
@@ -226,19 +245,24 @@ public class S3DataClient implements IRemoteDataClient
   {
     // TODO: This should use multipart on an InputStream ideally;
     // Determine the absolute path and the corresponding object key.
-    String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
-    String objKey = StringUtils.removeStart(absolutePath, "/");
+    String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
+    String objKey = StringUtils.removeStart(absoluteKey, "/");
     File scratchFile = File.createTempFile(UUID.randomUUID().toString(), "tmp");
-    try {
+    try
+    {
       FileUtils.copyInputStreamToFile(fileStream, scratchFile);
       PutObjectRequest req = PutObjectRequest.builder().bucket(bucket).key(objKey).build();
       client.putObject(req, RequestBody.fromFile(scratchFile));
-    } catch (S3Exception ex) {
+    }
+    catch (S3Exception ex)
+    {
       String msg = LibUtils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "insert", system.getId(), bucket,
-                                path, ex.getMessage());
+              path, ex.getMessage());
       log.error(msg);
       throw new IOException(msg, ex);
-    } finally {
+    }
+    finally
+    {
       scratchFile.delete();
     }
   }
@@ -255,37 +279,33 @@ public class S3DataClient implements IRemoteDataClient
   public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
   {
     // Determine the absolute srcPath and the corresponding object key.
-    String srcAbsolutePath = PathUtils.getAbsolutePath(rootDir, srcPath).toString();
-    String srcKey = StringUtils.removeStart(srcAbsolutePath, "/");
+    String srcKey = PathUtils.getAbsoluteKey(rootDir, srcPath);
     // Make sure the source object exists
-    doesExist(srcAbsolutePath);
+    doesExist(srcKey);
     // Determine the absolute dstPath and the corresponding object key.
-    String dstAbsolutePath = PathUtils.getAbsolutePath(rootDir, dstPath).toString();
-    String dstKey = StringUtils.removeStart(dstAbsolutePath, "/");
+    String dstKey = PathUtils.getAbsoluteKey(rootDir, dstPath);
     copyObject(srcKey, dstKey, true);
   }
 
-    /**
-     * Copy an S3 object from one key to another
-     *
-     * @param srcPath current location relative to system rootDir
-     * @param dstPath desired location relative to system rootDir
-     * @throws IOException Network errors generally
-     * @throws NotFoundException Source path not found
-     */
-    @Override
-    public void copy(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
-    {
-      // Determine the absolute srcPath and the corresponding object key.
-      String srcAbsolutePath = PathUtils.getAbsolutePath(rootDir, srcPath).toString();
-      String srcKey = StringUtils.removeStart(srcAbsolutePath, "/");
-      // Make sure the source object exists
-      doesExist(srcAbsolutePath);
-      // Determine the absolute dstPath and the corresponding object key.
-      String dstAbsolutePath = PathUtils.getAbsolutePath(rootDir, dstPath).toString();
-      String dstKey = StringUtils.removeStart(dstAbsolutePath, "/");
-      copyObject(srcKey, dstKey, false);
-    }
+  /**
+   * Copy an S3 object from one key to another
+   *
+   * @param srcPath current location relative to system rootDir
+   * @param dstPath desired location relative to system rootDir
+   * @throws IOException Network errors generally
+   * @throws NotFoundException Source path not found
+   */
+  @Override
+  public void copy(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
+  {
+    // Determine the absolute srcPath and the corresponding object key.
+    String srcKey = PathUtils.getAbsoluteKey(rootDir, srcPath);
+    // Make sure the source object exists
+    doesExist(srcKey);
+    // Determine the absolute dstPath and the corresponding object key.
+    String dstKey = PathUtils.getAbsoluteKey(rootDir, dstPath);
+    copyObject(srcKey, dstKey, false);
+  }
 
   /**
    * Delete either a single object or all objects under relative path "/"
@@ -294,36 +314,29 @@ public class S3DataClient implements IRemoteDataClient
    * @throws NotFoundException if path not found
    * @throws IOException on error
    */
-    @Override
-    public void delete(@NotNull String path) throws IOException, NotFoundException
+  @Override
+  public void delete(@NotNull String path) throws IOException, NotFoundException
+  {
+    // Determine the absolute path and the corresponding object key.
+    String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
+    String objKey = StringUtils.removeStart(absoluteKey, "/");
+    // If relative path is "/" delete all objects in rootDir
+    // else remove a single object
+    if (StringUtils.isEmpty(objKey)) { deleteAllObjectsInBucket(); }
+    else
     {
-      // Determine the absolute path and the corresponding object key.
-      String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
-      String objKey = StringUtils.removeStart(absolutePath, "/");
-      // If relative path is "/" delete all objects in rootDir
-      // else remove a single object
-      if (StringUtils.isBlank(path) || "/".equals(path))
+      // Remove a single object
+      try { deleteObject(objKey); }
+      catch (NoSuchKeyException ex) { throw new NotFoundException(); }
+      catch (S3Exception ex)
       {
-        // We are removing all from rootDir, figure out the key prefix
-        absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
-        objKey = StringUtils.removeStart(absolutePath, "/");
-        // If rootDir is / we now have an empty key, use / as the key.
-        if (StringUtils.isBlank(objKey)) objKey = "/";
-        deleteAll(objKey);
-      }
-      else
-      {
-        // Remove a single object
-        try { deleteObject(objKey); }
-        catch (NoSuchKeyException ex) { throw new NotFoundException(); }
-        catch (S3Exception ex) {
-          String msg = LibUtils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "delete", system.getId(), bucket,
-                  path, ex.getMessage());
-          log.error(msg);
-          throw new IOException(msg, ex);
-        }
+        String msg = LibUtils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "delete", system.getId(), bucket,
+                                     path, ex.getMessage());
+        log.error(msg);
+        throw new IOException(msg, ex);
       }
     }
+  }
 
   @Override
   public FileInfo getFileInfo(@NotNull String path) throws IOException
@@ -331,8 +344,8 @@ public class S3DataClient implements IRemoteDataClient
     FileInfo fileInfo = null;
     try
     {
-      String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
-      Stream<S3Object> response = listWithIterator(absolutePath, 1);
+      String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
+      Stream<S3Object> response = listWithIterator(absoluteKey, 1);
       List<FileInfo> files = new ArrayList<>();
       response.limit(1).forEach((S3Object x) -> files.add(new FileInfo(x)));
       if (!files.isEmpty()) fileInfo = files.get(0);
@@ -341,7 +354,7 @@ public class S3DataClient implements IRemoteDataClient
     catch (S3Exception ex)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "delete", system.getId(), bucket,
-                                path, ex.getMessage());
+              path, ex.getMessage());
       throw new IOException(msg, ex);
     }
     return fileInfo;
@@ -351,8 +364,8 @@ public class S3DataClient implements IRemoteDataClient
   public InputStream getStream(@NotNull String path) throws IOException, NotFoundException
   {
     // Determine the absolute path and the corresponding object key.
-    String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
-    String objKey = StringUtils.removeStart(absolutePath, "/");
+    String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
+    String objKey = StringUtils.removeStart(absoluteKey, "/");
     try
     {
       GetObjectRequest req = GetObjectRequest.builder().bucket(bucket).key(objKey).build();
@@ -365,33 +378,33 @@ public class S3DataClient implements IRemoteDataClient
     catch (S3Exception ex)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "getStream", system.getId(), bucket,
-                                path, ex.getMessage());
+              path, ex.getMessage());
       log.error(msg);
       throw new IOException(msg, ex);
     }
   }
 
-    @Override
-    public InputStream getBytesByRange(@NotNull String path, long startByte, long count)
-            throws IOException, NotFoundException
-    {
-      // Determine the absolute path and the corresponding object key.
-      String absolutePath = PathUtils.getAbsolutePath(rootDir, path).toString();
-      String objKey = StringUtils.removeStart(absolutePath, "/");
-      try {
-        // S3 api includes the final byte, different than posix, so we subtract one to get the proper count.
-        String brange = String.format("bytes=%s-%s", startByte, startByte + count - 1);
-        GetObjectRequest req = GetObjectRequest.builder().bucket(bucket).range(brange).key(objKey).build();
-        return client.getObject(req, ResponseTransformer.toInputStream());
-      } catch (NoSuchKeyException ex) {
-        throw new NotFoundException();
-      } catch (S3Exception ex) {
-        String msg = LibUtils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "getBytesByRange", system.getId(), bucket,
-                path, ex.getMessage());
-        log.error(msg);
-        throw new IOException(msg, ex);
-      }
+  @Override
+  public InputStream getBytesByRange(@NotNull String path, long startByte, long count)
+          throws IOException, NotFoundException
+  {
+    // Determine the absolute path and the corresponding object key.
+    String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
+    String objKey = StringUtils.removeStart(absoluteKey, "/");
+    try {
+      // S3 api includes the final byte, different than posix, so we subtract one to get the proper count.
+      String brange = String.format("bytes=%s-%s", startByte, startByte + count - 1);
+      GetObjectRequest req = GetObjectRequest.builder().bucket(bucket).range(brange).key(objKey).build();
+      return client.getObject(req, ResponseTransformer.toInputStream());
+    } catch (NoSuchKeyException ex) {
+      throw new NotFoundException();
+    } catch (S3Exception ex) {
+      String msg = LibUtils.getMsg("FILES_CLIENT_S3_OP_ERR1", oboTenant, oboUser, "getBytesByRange", system.getId(), bucket,
+              path, ex.getMessage());
+      log.error(msg);
+      throw new IOException(msg, ex);
     }
+  }
 
   /* **************************************************************************** */
   /*                                Private Methods                               */
@@ -400,8 +413,8 @@ public class S3DataClient implements IRemoteDataClient
   /**
    * Copy an object with the option to delete the old key
    *
-   * @param srcKey S3 key of object to copy
-   * @param dstKey desired location relative to system rootDir
+   * @param srcKey S3 absolute source key of object to copy
+   * @param dstKey desired absolute destination key
    * @param withDelete flag indicating if old object should be removed
    * @throws IOException on error
    */
@@ -420,11 +433,9 @@ public class S3DataClient implements IRemoteDataClient
   private void doCopy(@NotNull String srcKey, @NotNull String dstKey) throws NotFoundException, IOException
   {
     // Source path encoded as a bucket URL
-    String bucketSrcKey = bucket + "/" + srcKey;
     CopyObjectRequest req = CopyObjectRequest.builder()
-            .destinationBucket(bucket)
-            .copySource(bucketSrcKey)
-            .destinationKey(dstKey)
+            .sourceBucket(bucket).sourceKey(srcKey)
+            .destinationBucket(bucket).destinationKey(dstKey)
             .build();
     try
     {
@@ -434,7 +445,7 @@ public class S3DataClient implements IRemoteDataClient
     catch (S3Exception ex)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_S3_OP_ERR3", oboTenant, oboUser, "doCopy", system.getId(), bucket,
-                                srcKey, dstKey, bucketSrcKey, dstKey, ex.getMessage());
+                                   srcKey, dstKey, srcKey, dstKey, ex.getMessage());
       log.error(msg);
       throw new IOException(msg, ex);
     }
@@ -488,13 +499,13 @@ public class S3DataClient implements IRemoteDataClient
   }
 
   /**
-   * Delete all S3 objects matching the provided prefix
-   * @param objKeyPrefix - S3 object key prefix
+   * Delete all S3 objects in the bucket
    * @throws NotFoundException if path not found
    * @throws IOException on error
    */
-  private void deleteAll(@NotNull String objKeyPrefix) throws IOException, NotFoundException
+  private void deleteAllObjectsInBucket() throws IOException, NotFoundException
   {
+    String objKeyPrefix = "";
     try
     {
       // List all objects under objKeyPrefix, deleting each one as we go

@@ -129,7 +129,8 @@ public class FilesApplication extends ResourceConfig
     setApplicationName(TapisConstants.SERVICE_NAME_FILES);
 
     // Perform remaining init steps in try block so we can print a fatal error message if something goes wrong.
-    try {
+    try
+    {
       // Get runtime parameters
       IRuntimeConfig runtimeConfig = RuntimeSettings.get();
 
@@ -153,23 +154,24 @@ public class FilesApplication extends ResourceConfig
       {
         @Override
         protected void configure() {
-//          bind(new SSHConnectionCache(SSHCACHE_MAX_SIZE, SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
           bind(new SSHConnectionCache(SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+          bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+          bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
+          bind(tenantManager).to(TenantManager.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);
           bindAsContract(FilePermsService.class).in(Singleton.class);
           bindAsContract(FilePermsCache.class).in(Singleton.class);
           bindAsContract(FileShareService.class).in(Singleton.class);
-          bind(tenantManager).to(TenantManager.class);
           bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
           bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
           bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
-          bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-          bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
         }
       });
-    } catch (Exception e) {
+    }
+    catch (Exception e)
+    {
       // This is a fatal error
       System.out.println("**** FAILURE TO INITIALIZE: Tapis Files Service ****");
       e.printStackTrace();
@@ -193,6 +195,7 @@ public class FilesApplication extends ResourceConfig
     // Initialize the application container
     FilesApplication config = new FilesApplication();
 
+    // TODO/TBD - adapt from Apps to Files
     // Initialize the service
     // In order to instantiate our service class using HK2 we need to create an application handler
     //   which allows us to get an injection manager which is used to get a locator.
@@ -205,7 +208,7 @@ public class FilesApplication extends ResourceConfig
     FileOpsService svcImpl = locator.getService(FileOpsService.class);
     // Call the main service init method
     // TODO svcImpl ends up null but serviceContext does not, why?
-    // svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
+    // TODO svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
     // For now initialize the service by getting the serviceContext.
     // The provide() method in ServiceContextFactory will initialize the service jwt.
     ServiceContext serviceContext = locator.getService(ServiceContext.class);
