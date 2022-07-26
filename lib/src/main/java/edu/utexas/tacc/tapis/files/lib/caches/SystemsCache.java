@@ -63,7 +63,7 @@ public class SystemsCache
     {
       log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADING", key.getTenantId(), key.getSystemId(), key.getUsername()));
       SystemsClient client = serviceClients.getClient(key.getUsername(), key.getTenantId(), SystemsClient.class);
-      TapisSystem system = client.getSystemWithCredentials(key.getSystemId(), null);
+      TapisSystem system = client.getSystemWithCredentials(key.getSystemId());
       log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADED", key.getTenantId(), key.getSystemId(), key.getUsername(),
                                 system.getDefaultAuthnMethod()));
       return system;

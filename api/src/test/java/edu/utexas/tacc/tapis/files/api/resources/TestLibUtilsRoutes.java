@@ -206,7 +206,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
       try
       {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
-        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(sys);
+        when(systemsClient.getSystemWithCredentials(any())).thenReturn(sys);
         target(String.format("%s/%s/", OPS_ROUTE, SYSTEM_ID))
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -223,7 +223,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetStatInfo(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -247,7 +247,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testLinuxChmod(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE2, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -300,7 +300,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testLinuxChown(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE3, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -358,7 +358,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testLinuxChgrp(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE4, TEST_FILE_SIZE);
     // Get stat info and check file properties

@@ -123,7 +123,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
     testSystem.setOwner("testuser2");
     log.info(getServiceJwt());
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
     try
     {
@@ -154,7 +154,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
     testSystem.setOwner("testuser1");
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
     when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
     FilePermissionResponse response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser2")
@@ -175,7 +175,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
      */
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
     testSystem.setOwner("testuser2");
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
 
     CreatePermissionRequest req = new CreatePermissionRequest();
@@ -197,7 +197,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
      */
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
     testSystem.setOwner("testuser1");
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     CreatePermissionRequest req = new CreatePermissionRequest();
     req.setPermission(Permission.MODIFY);
     req.setUsername("testuser3");
@@ -214,7 +214,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
   {
     testSystem.setOwner("testuser1");
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     CreatePermissionRequest req = new CreatePermissionRequest();
     req.setPermission(Permission.MODIFY);
     req.setUsername("testuser3");
@@ -234,7 +234,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
     // to see what permissions testuser3 has.
     testSystem.setOwner("testuser1");
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     Response response = target("/v3/files/permissions/testSystem/a/")
             .queryParam("username", "testuser3")
             .request()
@@ -251,7 +251,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
     // to see what permissions the API user, testuser1 has.
     testSystem.setOwner("testuser2");
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
 
     when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
     FilePermissionResponse response = target("/v3/files/permissions/testSystem/a/")
@@ -274,7 +274,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
     // to see what permissions the API user, testuser1 has.
     testSystem.setOwner("testuser2");
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
 
     when(skClient.isPermitted(any(), any(), any())).thenReturn(false);
     FilePermissionResponse response = target("/v3/files/permissions/testSystem/a/")
@@ -299,7 +299,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
     // testuser2 is the owner
     // testuser3 is who testuser1 is asking about
     testSystem.setOwner("testuser2");
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
 
     when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
@@ -319,7 +319,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
   {
     testSystem.setOwner("testuser1");
     when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     Response response = target("/v3/files/permissions/testSystem/a/")
             .request()
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))

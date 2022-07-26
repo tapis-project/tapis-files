@@ -261,7 +261,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetContents(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(testSystem);
     when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
     addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1000);
     Response response = target("/v3/files/content/" + testSystem.getId() + "/testfile1.txt")
@@ -280,7 +280,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProviderNoS3", enabled = true)
   public void testZipOutput(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
     addTestFilesToSystem(system, "a/test1.txt", 10 * 1000);
     addTestFilesToSystem(system, "a/b/test2.txt", 10 * 1000);
     addTestFilesToSystem(system, "a/b/test3.txt", 10 * 1000);
@@ -309,7 +309,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testStreamLargeFile(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
     int filesize = 100 * 1000 * 1000;
     addTestFilesToSystem(system, "largetestfile1.txt", filesize);
     Response response = target("/v3/files/content/" + system.getId() + "/largetestfile1.txt")
@@ -333,7 +333,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testNotFound(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
     Response response = target("/v3/files/content/" + system.getId() + "/NOT-THERE.txt")
             .request()
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
@@ -344,7 +344,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetWithRange(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
     addTestFilesToSystem(system, "words.txt", 10 * 1024);
     Response response = target("/v3/files/content/" + system.getId() + "/words.txt")
             .request()
@@ -359,7 +359,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetWithMore(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
     addTestFilesToSystem(system, "words.txt", 10 * 1024);
     Response response = target("/v3/files/content/" + system.getId() + "/words.txt")
             .request()
@@ -376,7 +376,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetContentsHeaders(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(system);
+    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
     // make sure content-type is application/octet-stream and filename is correct
     addTestFilesToSystem(system, "testfile1.txt", 10 * 1024);
 
@@ -395,9 +395,9 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test
   public void testBadRequests() throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(eq("testSystemS3"), any())).thenReturn(testSystemS3);
-    when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
-    when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
+    when(systemsClient.getSystemWithCredentials(eq("testSystemS3"))).thenReturn(testSystemS3);
+    when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"))).thenReturn(testSystemDisabled);
+    when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"))).thenReturn(testSystemSSH);
 //    when(systemsClient.getSystemWithCredentials(eq("testSystemNotExist"), any())).thenThrow(new NotFoundException("Sys not found: testSystemNotExist"));
 
     // Attempt to retrieve a folder

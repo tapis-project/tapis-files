@@ -32,7 +32,7 @@ public class TestSystemsCache {
         TapisSystem testSystem = new TapisSystem();
         testSystem.setId("12345");
         testSystem.setHost("test.edu");
-        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
 
     }
 

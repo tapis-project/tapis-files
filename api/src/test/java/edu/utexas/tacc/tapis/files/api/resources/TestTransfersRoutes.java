@@ -144,7 +144,7 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
         when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(testSystem);
         when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
     }

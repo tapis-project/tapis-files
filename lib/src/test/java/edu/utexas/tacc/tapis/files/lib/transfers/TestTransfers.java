@@ -233,8 +233,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         TapisSystem sourceSystem = systemsPair.getLeft();
         TapisSystem destSystem = systemsPair.getRight();
         SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"))).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"))).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
