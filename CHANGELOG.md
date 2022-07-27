@@ -9,6 +9,17 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.2.3 - 2022-07-??
+
+Incremental improvements and new preview features.
+
+### New features:
+- Support sharedAppCtx for ?????
+
+### Bug fixes:
+- None.
+
+---------------------------------------------------------------------------
 ## 1.2.2 - 2022-07-06
 
 Incremental improvements, new preview features and bug fix.

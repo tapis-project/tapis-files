@@ -187,6 +187,7 @@ public class OperationsApiResource extends BaseFileOpsResource
    * Create a directory
    * @param systemId - id of system
    * @param mkdirRequest - request body containing a path relative to system rootDir
+   * @param sharedAppCtx - Indicates that request is part of a shared app context. Tapis auth bypassed.
    * @param securityContext - user identity
    * @return response
    */
@@ -196,6 +197,7 @@ public class OperationsApiResource extends BaseFileOpsResource
   @Produces(MediaType.APPLICATION_JSON)
   public Response mkdir(@PathParam("systemId") String systemId,
                         @Valid MkdirRequest mkdirRequest,
+                        @QueryParam("sharedAppCtx") @DefaultValue("true") boolean sharedAppCtx,
                         @Context SecurityContext securityContext)
   {
     String opName = "mkdir";
@@ -211,7 +213,7 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Trace this request.
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-                          "path="+mkdirRequest.getPath());
+                          "sharedAppCtx="+sharedAppCtx, "path="+mkdirRequest.getPath());
 
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
@@ -220,7 +222,7 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (FilesExceptionMapper).
-    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath());
+    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedAppCtx);
     TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
     return Response.ok(resp).build();
   }
