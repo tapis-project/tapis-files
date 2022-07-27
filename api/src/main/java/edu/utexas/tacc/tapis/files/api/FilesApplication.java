@@ -207,7 +207,13 @@ public class FilesApplication extends ResourceConfig
     FileOpsService svcImpl = locator.getService(FileOpsService.class);
 
     // Call the main service init method
-// TODO    svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
+    // TODO svcImpl ends up null but serviceContext does not, why?
+    // TODO svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
+    // For now initialize the service by getting the serviceContext.
+    // The provide() method in ServiceContextFactory will initialize the service jwt.
+
+    ServiceContext serviceContext = locator.getService(ServiceContext.class);
+
     // Create and start the server
     final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(baseUri, config, false);
     Collection<NetworkListener> listeners = server.getListeners();

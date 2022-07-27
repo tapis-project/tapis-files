@@ -39,7 +39,7 @@ public interface IFileOpsService
   void upload(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path, InputStream in) throws WebApplicationException;
   void upload(@NotNull IRemoteDataClient client, String path, InputStream in) throws ServiceException;
 
-  void mkdir(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path) throws WebApplicationException;
+  void mkdir(@NotNull ResourceRequestUser rUser, TapisSystem sys, String path, boolean sharedAppCtx) throws WebApplicationException;
   void mkdir(@NotNull IRemoteDataClient client, String path) throws ServiceException;
 
   void moveOrCopy(@NotNull ResourceRequestUser rUser, MoveCopyOperation op, TapisSystem sys, String srcPath, String dstPath)
