@@ -26,7 +26,6 @@ import org.apache.commons.io.IOUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisJSONException;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.schema.JsonValidator;
 import edu.utexas.tacc.tapis.shared.schema.JsonValidatorSpec;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
@@ -84,10 +83,10 @@ public class ShareResource
 
   // **************** Inject Services using HK2 ****************
   @Inject
-  FileShareService svc;
+  private FileShareService svc;
 
   @Inject
-  SystemsCache systemsCache;
+  private SystemsCache systemsCache;
 
   // ************************************************************************
   // *********************** Public Methods *********************************
