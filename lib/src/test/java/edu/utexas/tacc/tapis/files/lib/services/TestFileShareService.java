@@ -7,8 +7,10 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MoveCopyOperation;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -41,15 +43,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /*
  * Test File sharing support.
@@ -58,10 +63,14 @@ import static org.mockito.Mockito.when;
 @Test(groups = {"integration"})
 public class TestFileShareService
 {
-  private final String oboTenant = "oboTenant";
-  private final String oboUser = "oboUser";
+  private final String testUser = "testuser";
+  private final String testUser2 = "testuser2";
+  private final String oboTenant = "dev";
+  private final String oboUser = testUser;
+  private final String oboUser2 = testUser2;
   private final String nullImpersonationId = null;
   private ResourceRequestUser rTestUser;
+  private ResourceRequestUser rTestUser2;
   TapisSystem testSystemNotEnabled;
   TapisSystem testSystemSSH;
   TapisSystem testSystemS3;
@@ -69,6 +78,7 @@ public class TestFileShareService
   TapisSystem testSystemIrods;
   private RemoteDataClientFactory remoteDataClientFactory;
   private FileOpsService fileOpsService;
+  private FileShareService fileShareService;
   private static final Logger log  = LoggerFactory.getLogger(TestFileShareService.class);
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
   private final SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
@@ -84,7 +94,7 @@ public class TestFileShareService
 
     //SSH system with username/password
     Credential creds = new Credential();
-    creds.setAccessKey("testuser");
+    creds.setAccessKey(testUser);
     creds.setPassword("password");
     testSystemSSH = new TapisSystem();
     testSystemSSH.setId("testSystem");
@@ -94,7 +104,7 @@ public class TestFileShareService
     testSystemSSH.setPort(2222);
     testSystemSSH.setRootDir("/data/home/testuser/");
     testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
-    testSystemSSH.setEffectiveUserId("testuser");
+    testSystemSSH.setEffectiveUserId(testUser);
 
     // PKI Keys system
     creds = new Credential();
@@ -108,7 +118,7 @@ public class TestFileShareService
     testSystemPKI.setPort(2222);
     testSystemPKI.setRootDir("/data/home/testuser/");
     testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
-    testSystemPKI.setEffectiveUserId("testuser");
+    testSystemPKI.setEffectiveUserId(testUser);
 
     //S3 system
     creds = new Credential();
@@ -145,16 +155,16 @@ public class TestFileShareService
     testSystemNotEnabled.setPort(2222);
     testSystemNotEnabled.setRootDir("/data/home/testuser/");
     testSystemNotEnabled.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
-    testSystemNotEnabled.setEffectiveUserId("testuser");
+    testSystemNotEnabled.setEffectiveUserId(testUser);
     testSystemNotEnabled.setEnabled(false);
   }
 
   // Data provider for all test systems
-    @DataProvider(name="testSystems")
-    public Object[] testSystemsDataProvider ()
-    {
-      return new TapisSystem[] { testSystemSSH, testSystemS3, testSystemIrods, testSystemPKI };
-    }
+  @DataProvider(name="testSystems")
+  public Object[] testSystemsDataProvider ()
+  {
+    return new TapisSystem[] { testSystemSSH, testSystemS3, testSystemIrods, testSystemPKI };
+  }
 
   // Data provider for all test systems except S3
   // Needed since S3 does not support hierarchical directories and we do not emulate such functionality
@@ -171,6 +181,13 @@ public class TestFileShareService
     return new TapisSystem[] { testSystemNotEnabled };
   }
 
+  // Data provider for single Linux System
+  @DataProvider(name= "testSystemsLinux")
+  public Object[] testSystemsLinux ()
+  {
+    return new TapisSystem[] { testSystemSSH };
+  }
+
   @BeforeSuite
   public void doBeforeSuite()
   {
@@ -183,21 +200,25 @@ public class TestFileShareService
         bind(systemsCache).to(SystemsCache.class).ranked(1);
         bind(permsService).to(FilePermsService.class).ranked(1);
         bind(FileOpsService.class).to(FileOpsService.class).in(Singleton.class);
+        bind(FileShareService.class).to(FileShareService.class).in(Singleton.class);
       }
     });
     remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
     fileOpsService = locator.getService(FileOpsService.class);
+    fileShareService = locator.getService(FileShareService.class);
     rTestUser = new ResourceRequestUser(new AuthenticatedUser(oboUser, oboTenant, TapisThreadContext.AccountType.user.name(),
             null, oboUser, oboTenant, null, null, null));
+    rTestUser2 = new ResourceRequestUser(new AuthenticatedUser(oboUser2, oboTenant, TapisThreadContext.AccountType.user.name(),
+            null, oboUser2, oboTenant, null, null, null));
     }
 
     @BeforeTest()
     public void setUp() throws Exception
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemSSH, "testuser");
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemSSH, testUser);
       fileOpsService.delete(client,"/");
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemS3, "testuser");
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemS3, testUser);
       fileOpsService.delete(client, "/");
     }
 
@@ -205,431 +226,473 @@ public class TestFileShareService
     public void tearDown() throws Exception
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemSSH, "testuser");
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemSSH, testUser);
       fileOpsService.delete(client,"/");
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemS3, "testuser");
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystemS3, testUser);
       fileOpsService.delete(client, "/");
     }
 
-  // Check the getSystemIfEnabled() method
-  @Test(dataProvider = "testSystemsNotEnabled")
-  public void testGetSystemIfEnabled(TapisSystem testSystem) throws Exception
+  // ===============================================
+  // Test basic sharing of a single path
+  // ===============================================
+  @Test(dataProvider = "testSystemsLinux")
+  public void testSharePath(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    when(systemsCache.getSystem(any(), eq("testSystemNotEnabled"), any())).thenReturn(testSystemNotEnabled);
-    when(systemsCache.getSystem(any(), eq("testSystemEnabled"), any())).thenReturn(testSystemSSH);
-    // For an enabled system this should return the system
-    TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemEnabled");
+    when(systemsCache.getSystem(any(), eq("testSystemLinux"), any())).thenReturn(testSystemSSH);
+    // Create file at path
+    String filePathStr = "/dir1/dir2/test1.txt";
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, testUser);
+    fileOpsService.delete(client, "/");
+    InputStream in = Utils.makeFakeFile(10*1024);
+    fileOpsService.upload(client, filePathStr, in);
+
+    // Create set of users for sharing
+    var userSet= Collections.singleton(testUser2);
+
+    // Get the system
+    TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemLinux");
     Assert.assertNotNull(tmpSys);
-    Assert.assertEquals(tmpSys.getId(), testSystemSSH.getId());
-    // For a disabled or missing this should throw NotFound
-    Assert.assertThrows(NotFoundException.class, () ->
-            LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemNotEnabled"));
-    Assert.assertThrows(NotFoundException.class, () ->
-            LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "fakeSystemId"));
+    String sysId = tmpSys.getId();
+
+    // Get shareInfo. Should be empty
+    ShareInfo shareInfo = fileShareService.getShareInfo(rTestUser, sysId, filePathStr);
+    Assert.assertNull(shareInfo);
+    // Share file with testuser2
+    fileShareService.sharePath(rTestUser, sysId, filePathStr, userSet);
+    // Get shareInfo for file. Should be shared with 1 user, testuser2
+    shareInfo = fileShareService.getShareInfo(rTestUser, sysId, filePathStr);
+    Assert.assertNotNull(shareInfo);
+    Assert.assertNotNull(shareInfo.getUserSet());
+    Assert.assertFalse(shareInfo.getUserSet().isEmpty());
+    Assert.assertEquals(shareInfo.getUserSet().size(), 1);
+    Assert.assertTrue(shareInfo.getUserSet().contains(testUser2));
+    // Remove share.
+    fileShareService.unSharePath(rTestUser, sysId, filePathStr, userSet);
+    // Get shareInfo. Should be empty.
+    shareInfo = fileShareService.getShareInfo(rTestUser, sysId, filePathStr);
+    Assert.assertNull(shareInfo);
   }
 
-  @Test(dataProvider = "testSystems")
-  public void testListingPath(TapisSystem testSystem) throws Exception
-  {
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-    InputStream in = Utils.makeFakeFile(10*1024);
-    fileOpsService.upload(client,"test.txt", in);
-    List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0);
-    Assert.assertEquals(listing.size(), 1);
-    fileOpsService.delete(client,"test.txt");
-    Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "test.txt", MAX_LISTING_SIZE, 0); });
-  }
-
-  @Test(dataProvider = "testSystems")
-    public void testListingPathNested(TapisSystem testSystem) throws Exception
-    {
-      when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-      fileOpsService.delete(client, "/");
-      InputStream in = Utils.makeFakeFile(10*1024);
-      fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
-      List<FileInfo> listing = fileOpsService.ls(client,"/dir1/dir2", MAX_LISTING_SIZE, 0);
-      Assert.assertEquals(listing.size(), 1);
-      Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
-    }
-
-
-    @Test(dataProvider = "testSystems")
-    public void testUploadAndDelete(TapisSystem testSystem) throws Exception
-    {
-      when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-      InputStream in = Utils.makeFakeFile(10*1024);
-      fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
-      // List files after upload
-      System.out.println("After upload: ");
-      List<FileInfo> listing = fileOpsService.ls(client,"dir1/dir2/", MAX_LISTING_SIZE, 0);
-      for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-      Assert.assertEquals(listing.size(), 1);
-      Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
-      fileOpsService.delete(client,"/dir1/dir2/test.txt");
-      Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "/dir1/dir2/test.txt", MAX_LISTING_SIZE, 0); });
-    }
-
-    @Test(dataProvider = "testSystemsNoS3")
-    public void testUploadAndDeleteNested(TapisSystem testSystem) throws Exception {
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        InputStream in = Utils.makeFakeFile(10*1024);
-        fileOpsService.upload(client,"a/b/c/test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls(client,"/a/b/c/test.txt", MAX_LISTING_SIZE, 0);
-        Assert.assertEquals(listing.size(), 1);
-        fileOpsService.delete(client,"/a/b/");
-        Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client,"/a/b/c/test.txt", MAX_LISTING_SIZE, 0); });
-    }
-
-    @Test(dataProvider = "testSystems")
-    public void testUploadAndGet(TapisSystem testSystem) throws Exception {
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        fileOpsService.delete(client, "/");
-        InputStream in = Utils.makeFakeFile(100*1024);
-        fileOpsService.upload(client,"test.txt", in);
-
-        List<FileInfo> listing = fileOpsService.ls(client, "/test.txt", MAX_LISTING_SIZE, 0);
-        Assert.assertEquals(listing.get(0).getSize(), 100*1024);
-        InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt", nullImpersonationId);
-        byte[] output = IOUtils.toByteArray(out);
-        Assert.assertEquals(output.length, 100 * 1024);
-    }
-
-  @Test(dataProvider = "testSystems")
-  public void testMoveFile(TapisSystem testSystem) throws Exception {
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-    fileOpsService.delete(client, "/");
-    InputStream in = Utils.makeFakeFile(100*1024);
-    fileOpsService.upload(client,"test1.txt", in);
-    in.close();
-    fileOpsService.moveOrCopy(client, OP_MV, "test1.txt", "test2.txt");
-    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    Assert.assertEquals(listing.size(), 1);
-    Assert.assertEquals(listing.get(0).getName(), "test2.txt");
-  }
-
-  // Test copy and list for all systems
-  // Use no subdirectories so we can include S3 when checking the listing count.
-  @Test(dataProvider = "testSystems")
-  public void testCopyFiles(TapisSystem testSystem) throws Exception
-  {
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-    /*
-        Create the following files and directories:
-          /test1.txt
-          /dir1/test1.txt
-          /dir2/test1.txt
-     */
-    fileOpsService.delete(client, "/");
-    InputStream in = Utils.makeFakeFile(100*1024);
-    fileOpsService.upload(client,"test1.txt", in);
-    in.close();
-    in = Utils.makeFakeFile(100*1024);
-    fileOpsService.upload(client,"/dir1/test1.txt", in);
-    in.close();
-    in = Utils.makeFakeFile(100*1024);
-    fileOpsService.upload(client,"/dir2/test1.txt", in);
-    in.close();
-    // List files before copying
-    System.out.println("Before copying: ");
-    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    /* Now copy files. Should end up with following:
-          /test1.txt
-          /dir1/test1.txt
-          /dir1/test02.txt
-          /dir1/test03.txt
-          /dir1/test04.txt
-          /dir2/test1.txt
-          /dir2/test05.txt
-          /dir2/test06.txt
-          /dir2/test07.txt
-          /dir2/test08.txt
-     */
-    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/dir1/test01.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "dir1/test02.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "/dir1/test03.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "/dir1/test04.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "/dir2/test05.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "/dir2/test06.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "dir2/test07.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "dir2/test08.txt");
-    // Check listing for /dir1 - 5 files
-    System.out.println("After copying: list for /dir1");
-    listing = fileOpsService.ls(client, "/dir1", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    Assert.assertEquals(listing.size(), 5);
-    // Check listing for /dir2 - 5 files
-    System.out.println("After copying: list for /dir2");
-    listing = fileOpsService.ls(client, "/dir2", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    Assert.assertEquals(listing.size(), 5);
-  }
-
-  // Test copy and list for all systems except S3
-  // We have subdirectories so cannot include S3 when checking the listing count.
-  @Test(dataProvider = "testSystemsNoS3")
-  public void testCopyFilesNested(TapisSystem testSystem) throws Exception
-  {
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-    /*
-        Create the following files and directories:
-          /test1.txt
-          /dir1/test1.txt
-          /dir1/dir2/test1.txt
-          /dir2/test1.txt
-     */
-    fileOpsService.delete(client, "/");
-    InputStream in = Utils.makeFakeFile(100*1024);
-    fileOpsService.upload(client,"test1.txt", in);
-    in.close();
-    in = Utils.makeFakeFile(100*1024);
-    fileOpsService.upload(client,"/dir1/test1.txt", in);
-    in.close();
-    in = Utils.makeFakeFile(100*1024);
-    fileOpsService.upload(client,"/dir2/test1.txt", in);
-    in.close();
-    in = Utils.makeFakeFile(100*1024);
-    fileOpsService.upload(client,"/dir1/dir2/test1.txt", in);
-    in.close();
-    // Before copying when listing "/" should have 3 items since listing is not recursive
-    // 2 directories and 1 file
-    System.out.println("Before copying: ");
-    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    Assert.assertEquals(listing.size(), 3);
-    /* Now copy files. Should end up with following:
-          /test1.txt
-          /test01.txt
-          /test02.txt
-          /test03.txt
-          /test04.txt
-          /dir1/test1.txt
-          /dir1/test05.txt
-          /dir1/test06.txt
-          /dir1/test09.txt
-          /dir1/test10.txt
-          /dir1/test11.txt
-          /dir1/test12.txt
-          /dir1/dir2/test1.txt
-          /dir1/dir2/test07.txt
-          /dir1/dir2/test08.txt
-          /dir1/dir2/test13.txt
-          /dir1/dir2/test14.txt
-          /dir1/dir2/test15.txt
-          /dir2/test1.txt
-     */
-    fileOpsService.moveOrCopy(client, OP_CP, "/test1.txt", "/test01.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/test02.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "/test1.txt", "test03.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "test04.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/dir1/test05.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "dir1/test06.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/dir1/dir2/test07.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "dir1/dir2/test08.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "/dir1/test09.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "/dir1/test10.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/dir2/test1.txt", "/dir1/test11.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "dir1/dir2/test1.txt", "/dir1/test12.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/dir2/test1.txt", "/dir1/dir2/test13.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "dir1/dir2/test1.txt", "/dir1/dir2/test14.txt");
-    fileOpsService.moveOrCopy(client, OP_CP, "dir2/test1.txt", "/dir1/dir2/test15.txt");
-    // Check listing for /
-    // 2 directories and 5 files
-    System.out.println("After copying: list for / ");
-    listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    Assert.assertEquals(listing.size(), 7);
-    // Check listing for /dir1
-    // 1 directory and 7 files
-    System.out.println("After copying: list for /dir1");
-    listing = fileOpsService.ls(client, "/dir1", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    Assert.assertEquals(listing.size(), 8);
-    // Check listing for /dir2
-    // 0 directories and 1 file
-    System.out.println("After copying: list for /dir2");
-    listing = fileOpsService.ls(client, "/dir2", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    Assert.assertEquals(listing.size(), 1);
-    // Check listing for /dir1/dir2
-    // 0 directories and 6 files
-    System.out.println("After copying: list for /dir1/dir2");
-    listing = fileOpsService.ls(client, "/dir1/dir2", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    Assert.assertEquals(listing.size(), 6);
-  }
-
-  @Test(dataProvider = "testSystems")
-  public void testListing(TapisSystem testSystem) throws Exception
-  {
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-    fileOpsService.delete(client, "/");
-    InputStream in = Utils.makeFakeFile(10*1024);
-    fileOpsService.upload(client,"dir1/test1.txt", in);
-    in.close();
-    in = Utils.makeFakeFile(10*1024);
-    fileOpsService.upload(client,"dir1/test2.txt", in);
-    in.close();
-    List<FileInfo> listing = fileOpsService.ls(client,"/dir1", MAX_LISTING_SIZE, 0);
-    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
-    Assert.assertEquals(listing.size(), 2);
-    String name1 = listing.get(0).getName();
-    String name2 = listing.get(1).getName();
-    Assert.assertTrue(name1.equals("test1.txt") || name1.equals("test2.txt"));
-    Assert.assertTrue(name2.equals("test1.txt") || name2.equals("test2.txt"));
-  }
-
-  @Test(dataProvider = "testSystems")
-    public void testUploadLargeFile(TapisSystem testSystem) throws Exception
-  {
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        fileOpsService.delete(client, "/");
-        InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
-        fileOpsService.upload(client,"test.txt", in);
-        List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0);
-        Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getName(), "test.txt");
-        Assert.assertEquals(listing.get(0).getSize(), 100 * 1000 * 1024L);
-    }
-
-    @Test(dataProvider = "testSystems")
-    public void testGetBytesByRange(TapisSystem testSystem) throws Exception {
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        InputStream in = Utils.makeFakeFile( 1000 * 1024);
-        fileOpsService.upload(client,"test.txt", in);
-        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId);
-        Assert.assertEquals(result.readAllBytes().length, 1000);
-    }
-
-    @Test(dataProvider = "testSystems")
-    public void testGetZip(TapisSystem testSystem) throws Exception
-    {
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        client.delete("/");
-        fileOpsService.upload(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
-        fileOpsService.upload(client,"a/b/test2.txt", Utils.makeFakeFile(1000 * 1024));
-        fileOpsService.upload(client,"a/b/test3.txt", Utils.makeFakeFile(1000 * 1024));
-
-        File file = File.createTempFile("test", ".zip");
-        OutputStream outputStream = new FileOutputStream(file);
-        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a", nullImpersonationId);
-
-        try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis) )
-        {
-            ZipEntry ze;
-            int count = 0;
-            while ( (ze = zis.getNextEntry()) != null)
-            {
-              log.info(ze.toString());
-              count++;
-            }
-            // S3 will have 3 entries and others should have 4 (3 files + 1 dir)
-            if (client instanceof S3DataClient) Assert.assertEquals(count, 3);
-            else Assert.assertEquals(count, 4);
-        }
-        file.deleteOnExit();
-    }
-
-    @Test(dataProvider = "testSystems")
-    public void testUploadNoAuthz(TapisSystem testSystem) throws Exception {
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        InputStream in = Utils.makeFakeFile(10*1024);
-
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.upload(client,"test.txt", in); });
-    }
-
-    @Test(dataProvider = "testSystems")
-    public void testListingNoAuthz(TapisSystem testSystem) throws Exception
-    {
-      when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(true);
-      when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.READ))).thenReturn(false);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-      client.delete("/");
-      fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
-      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId); });
-    }
-
-  // NoAuthz tests for mkdir, move, copy and delete
-  @Test(dataProvider = "testSystems")
-  public void testNoAuthzMany(TapisSystem testSystem) throws Exception
-  {
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-    // Create directories and files for tests
-    client.delete("/");
-    fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(10*1024));
-    fileOpsService.upload(client,"/a/2.txt", Utils.makeFakeFile(10*1024));
-    fileOpsService.upload(client,"/b/3.txt", Utils.makeFakeFile(10*1024));
-    // Perform the tests
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"newdir"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/newdir"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/a/newdir"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/1.txt","/1new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/1.txt","/a/1new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/a/2.txt","/b/2new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client, OP_CP,"/1.txt","/1new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client, OP_CP,"/1.txt","/a/1new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client, OP_CP,"/a/2.txt","/b/2new.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/1.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a/1.txt"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a"); });
-  }
-
-  @Test(dataProvider = "testSystems")
-    public void testListingRecursive(TapisSystem testSystem) throws Exception
-    {
-      int maxDepth = 5;
-      when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-      client.delete("/");
-      fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(10*1024));
-      fileOpsService.upload(client,"/a/2.txt", Utils.makeFakeFile(10*1024));
-      fileOpsService.upload(client,"/a/b/3.txt", Utils.makeFakeFile(10*1024));
-      fileOpsService.upload(client,"/a/b/c/4.txt", Utils.makeFakeFile(10*1024));
-      fileOpsService.upload(client,"/a/b/c/5.txt", Utils.makeFakeFile(10*1024));
-
-      List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", maxDepth);
-      for (FileInfo fi : listing) { log.info("Test1 found: " + fi.getUrl()); }
-      // S3 doesn't really do folders
-      // Test1 S3 should have 4 entries and others should have 7 (4 files + 3 directories)
-      if (testSystem.getSystemType() == SystemTypeEnum.S3) Assert.assertEquals(listing.size(), maxDepth);
-      else Assert.assertEquals(listing.size(), 8);
-
-      // Test2 S3 should have 3 entries and others should have 5 (3 files + 2 directories)
-      listing = fileOpsService.lsRecursive(client,"/a", maxDepth);
-      for (FileInfo fi : listing) { log.info("Test2 found: " + fi.getUrl()); }
-      // S3 doesn't really do folders
-      // S3 should have 3 entries and others should have 5 (3 files + 2 directories)
-      if (testSystem.getSystemType() == SystemTypeEnum.S3) Assert.assertEquals(listing.size(), 4);
-      else Assert.assertEquals(listing.size(), 6);
-    }
-
-    @Test(dataProvider = "testSystems")
-    public void testZeroByteInsert(TapisSystem testSystem) throws Exception {
-        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
-        client.delete("/");
-        fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(0));
-
-        List<FileInfo> listing = fileOpsService.ls(client,"/", MAX_LISTING_SIZE, 0);
-        // S3 doesn't really do folders?
-      Assert.assertEquals(listing.size(), 1);
-
-    }
+//  // Check the getSystemIfEnabled() method
+//  @Test(dataProvider = "testSystemsNotEnabled")
+//  public void testGetSystemIfEnabled(TapisSystem testSystem) throws Exception
+//  {
+//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//    when(systemsCache.getSystem(any(), eq("testSystemNotEnabled"), any())).thenReturn(testSystemNotEnabled);
+//    when(systemsCache.getSystem(any(), eq("testSystemEnabled"), any())).thenReturn(testSystemSSH);
+//    // For an enabled system this should return the system
+//    TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemEnabled");
+//    Assert.assertNotNull(tmpSys);
+//    Assert.assertEquals(tmpSys.getId(), testSystemSSH.getId());
+//    // For a disabled or missing this should throw NotFound
+//    Assert.assertThrows(NotFoundException.class, () ->
+//            LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemNotEnabled"));
+//    Assert.assertThrows(NotFoundException.class, () ->
+//            LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "fakeSystemId"));
+//  }
+//
+//  @Test(dataProvider = "testSystems")
+//  public void testListingPath(TapisSystem testSystem) throws Exception
+//  {
+//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//    InputStream in = Utils.makeFakeFile(10*1024);
+//    fileOpsService.upload(client,"test.txt", in);
+//    List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0);
+//    Assert.assertEquals(listing.size(), 1);
+//    fileOpsService.delete(client,"test.txt");
+//    Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "test.txt", MAX_LISTING_SIZE, 0); });
+//  }
+//
+//  @Test(dataProvider = "testSystems")
+//    public void testListingPathNested(TapisSystem testSystem) throws Exception
+//    {
+//      when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//      fileOpsService.delete(client, "/");
+//      InputStream in = Utils.makeFakeFile(10*1024);
+//      fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
+//      List<FileInfo> listing = fileOpsService.ls(client,"/dir1/dir2", MAX_LISTING_SIZE, 0);
+//      Assert.assertEquals(listing.size(), 1);
+//      Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
+//    }
+//
+//
+//    @Test(dataProvider = "testSystems")
+//    public void testUploadAndDelete(TapisSystem testSystem) throws Exception
+//    {
+//      when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//      InputStream in = Utils.makeFakeFile(10*1024);
+//      fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
+//      // List files after upload
+//      System.out.println("After upload: ");
+//      List<FileInfo> listing = fileOpsService.ls(client,"dir1/dir2/", MAX_LISTING_SIZE, 0);
+//      for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//      Assert.assertEquals(listing.size(), 1);
+//      Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
+//      fileOpsService.delete(client,"/dir1/dir2/test.txt");
+//      Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "/dir1/dir2/test.txt", MAX_LISTING_SIZE, 0); });
+//    }
+//
+//    @Test(dataProvider = "testSystemsNoS3")
+//    public void testUploadAndDeleteNested(TapisSystem testSystem) throws Exception {
+//        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//        InputStream in = Utils.makeFakeFile(10*1024);
+//        fileOpsService.upload(client,"a/b/c/test.txt", in);
+//        List<FileInfo> listing = fileOpsService.ls(client,"/a/b/c/test.txt", MAX_LISTING_SIZE, 0);
+//        Assert.assertEquals(listing.size(), 1);
+//        fileOpsService.delete(client,"/a/b/");
+//        Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client,"/a/b/c/test.txt", MAX_LISTING_SIZE, 0); });
+//    }
+//
+//    @Test(dataProvider = "testSystems")
+//    public void testUploadAndGet(TapisSystem testSystem) throws Exception {
+//        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//        fileOpsService.delete(client, "/");
+//        InputStream in = Utils.makeFakeFile(100*1024);
+//        fileOpsService.upload(client,"test.txt", in);
+//
+//        List<FileInfo> listing = fileOpsService.ls(client, "/test.txt", MAX_LISTING_SIZE, 0);
+//        Assert.assertEquals(listing.get(0).getSize(), 100*1024);
+//        InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt", nullImpersonationId);
+//        byte[] output = IOUtils.toByteArray(out);
+//        Assert.assertEquals(output.length, 100 * 1024);
+//    }
+//
+//  @Test(dataProvider = "testSystems")
+//  public void testMoveFile(TapisSystem testSystem) throws Exception {
+//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//    fileOpsService.delete(client, "/");
+//    InputStream in = Utils.makeFakeFile(100*1024);
+//    fileOpsService.upload(client,"test1.txt", in);
+//    in.close();
+//    fileOpsService.moveOrCopy(client, OP_MV, "test1.txt", "test2.txt");
+//    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    Assert.assertEquals(listing.size(), 1);
+//    Assert.assertEquals(listing.get(0).getName(), "test2.txt");
+//  }
+//
+//  // Test copy and list for all systems
+//  // Use no subdirectories so we can include S3 when checking the listing count.
+//  @Test(dataProvider = "testSystems")
+//  public void testCopyFiles(TapisSystem testSystem) throws Exception
+//  {
+//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//    /*
+//        Create the following files and directories:
+//          /test1.txt
+//          /dir1/test1.txt
+//          /dir2/test1.txt
+//     */
+//    fileOpsService.delete(client, "/");
+//    InputStream in = Utils.makeFakeFile(100*1024);
+//    fileOpsService.upload(client,"test1.txt", in);
+//    in.close();
+//    in = Utils.makeFakeFile(100*1024);
+//    fileOpsService.upload(client,"/dir1/test1.txt", in);
+//    in.close();
+//    in = Utils.makeFakeFile(100*1024);
+//    fileOpsService.upload(client,"/dir2/test1.txt", in);
+//    in.close();
+//    // List files before copying
+//    System.out.println("Before copying: ");
+//    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    /* Now copy files. Should end up with following:
+//          /test1.txt
+//          /dir1/test1.txt
+//          /dir1/test02.txt
+//          /dir1/test03.txt
+//          /dir1/test04.txt
+//          /dir2/test1.txt
+//          /dir2/test05.txt
+//          /dir2/test06.txt
+//          /dir2/test07.txt
+//          /dir2/test08.txt
+//     */
+//    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/dir1/test01.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "dir1/test02.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "/dir1/test03.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "/dir1/test04.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "/dir2/test05.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "/dir2/test06.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "dir2/test07.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "dir2/test08.txt");
+//    // Check listing for /dir1 - 5 files
+//    System.out.println("After copying: list for /dir1");
+//    listing = fileOpsService.ls(client, "/dir1", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    Assert.assertEquals(listing.size(), 5);
+//    // Check listing for /dir2 - 5 files
+//    System.out.println("After copying: list for /dir2");
+//    listing = fileOpsService.ls(client, "/dir2", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    Assert.assertEquals(listing.size(), 5);
+//  }
+//
+//  // Test copy and list for all systems except S3
+//  // We have subdirectories so cannot include S3 when checking the listing count.
+//  @Test(dataProvider = "testSystemsNoS3")
+//  public void testCopyFilesNested(TapisSystem testSystem) throws Exception
+//  {
+//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//    /*
+//        Create the following files and directories:
+//          /test1.txt
+//          /dir1/test1.txt
+//          /dir1/dir2/test1.txt
+//          /dir2/test1.txt
+//     */
+//    fileOpsService.delete(client, "/");
+//    InputStream in = Utils.makeFakeFile(100*1024);
+//    fileOpsService.upload(client,"test1.txt", in);
+//    in.close();
+//    in = Utils.makeFakeFile(100*1024);
+//    fileOpsService.upload(client,"/dir1/test1.txt", in);
+//    in.close();
+//    in = Utils.makeFakeFile(100*1024);
+//    fileOpsService.upload(client,"/dir2/test1.txt", in);
+//    in.close();
+//    in = Utils.makeFakeFile(100*1024);
+//    fileOpsService.upload(client,"/dir1/dir2/test1.txt", in);
+//    in.close();
+//    // Before copying when listing "/" should have 3 items since listing is not recursive
+//    // 2 directories and 1 file
+//    System.out.println("Before copying: ");
+//    List<FileInfo> listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    Assert.assertEquals(listing.size(), 3);
+//    /* Now copy files. Should end up with following:
+//          /test1.txt
+//          /test01.txt
+//          /test02.txt
+//          /test03.txt
+//          /test04.txt
+//          /dir1/test1.txt
+//          /dir1/test05.txt
+//          /dir1/test06.txt
+//          /dir1/test09.txt
+//          /dir1/test10.txt
+//          /dir1/test11.txt
+//          /dir1/test12.txt
+//          /dir1/dir2/test1.txt
+//          /dir1/dir2/test07.txt
+//          /dir1/dir2/test08.txt
+//          /dir1/dir2/test13.txt
+//          /dir1/dir2/test14.txt
+//          /dir1/dir2/test15.txt
+//          /dir2/test1.txt
+//     */
+//    fileOpsService.moveOrCopy(client, OP_CP, "/test1.txt", "/test01.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/test02.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "/test1.txt", "test03.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "test04.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/dir1/test05.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "dir1/test06.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "/dir1/dir2/test07.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "test1.txt", "dir1/dir2/test08.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/test1.txt", "/dir1/test09.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "dir1/test1.txt", "/dir1/test10.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/dir2/test1.txt", "/dir1/test11.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "dir1/dir2/test1.txt", "/dir1/test12.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "/dir1/dir2/test1.txt", "/dir1/dir2/test13.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "dir1/dir2/test1.txt", "/dir1/dir2/test14.txt");
+//    fileOpsService.moveOrCopy(client, OP_CP, "dir2/test1.txt", "/dir1/dir2/test15.txt");
+//    // Check listing for /
+//    // 2 directories and 5 files
+//    System.out.println("After copying: list for / ");
+//    listing = fileOpsService.ls(client, "/", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    Assert.assertEquals(listing.size(), 7);
+//    // Check listing for /dir1
+//    // 1 directory and 7 files
+//    System.out.println("After copying: list for /dir1");
+//    listing = fileOpsService.ls(client, "/dir1", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    Assert.assertEquals(listing.size(), 8);
+//    // Check listing for /dir2
+//    // 0 directories and 1 file
+//    System.out.println("After copying: list for /dir2");
+//    listing = fileOpsService.ls(client, "/dir2", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    Assert.assertEquals(listing.size(), 1);
+//    // Check listing for /dir1/dir2
+//    // 0 directories and 6 files
+//    System.out.println("After copying: list for /dir1/dir2");
+//    listing = fileOpsService.ls(client, "/dir1/dir2", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    Assert.assertEquals(listing.size(), 6);
+//  }
+//
+//  @Test(dataProvider = "testSystems")
+//  public void testListing(TapisSystem testSystem) throws Exception
+//  {
+//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//    fileOpsService.delete(client, "/");
+//    InputStream in = Utils.makeFakeFile(10*1024);
+//    fileOpsService.upload(client,"dir1/test1.txt", in);
+//    in.close();
+//    in = Utils.makeFakeFile(10*1024);
+//    fileOpsService.upload(client,"dir1/test2.txt", in);
+//    in.close();
+//    List<FileInfo> listing = fileOpsService.ls(client,"/dir1", MAX_LISTING_SIZE, 0);
+//    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+//    Assert.assertEquals(listing.size(), 2);
+//    String name1 = listing.get(0).getName();
+//    String name2 = listing.get(1).getName();
+//    Assert.assertTrue(name1.equals("test1.txt") || name1.equals("test2.txt"));
+//    Assert.assertTrue(name2.equals("test1.txt") || name2.equals("test2.txt"));
+//  }
+//
+//  @Test(dataProvider = "testSystems")
+//    public void testUploadLargeFile(TapisSystem testSystem) throws Exception
+//  {
+//        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//        fileOpsService.delete(client, "/");
+//        InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
+//        fileOpsService.upload(client,"test.txt", in);
+//        List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0);
+//        Assert.assertEquals(listing.size(), 1);
+//        Assert.assertEquals(listing.get(0).getName(), "test.txt");
+//        Assert.assertEquals(listing.get(0).getSize(), 100 * 1000 * 1024L);
+//    }
+//
+//    @Test(dataProvider = "testSystems")
+//    public void testGetBytesByRange(TapisSystem testSystem) throws Exception {
+//        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//        InputStream in = Utils.makeFakeFile( 1000 * 1024);
+//        fileOpsService.upload(client,"test.txt", in);
+//        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId);
+//        Assert.assertEquals(result.readAllBytes().length, 1000);
+//    }
+//
+//    @Test(dataProvider = "testSystems")
+//    public void testGetZip(TapisSystem testSystem) throws Exception
+//    {
+//        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//        client.delete("/");
+//        fileOpsService.upload(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
+//        fileOpsService.upload(client,"a/b/test2.txt", Utils.makeFakeFile(1000 * 1024));
+//        fileOpsService.upload(client,"a/b/test3.txt", Utils.makeFakeFile(1000 * 1024));
+//
+//        File file = File.createTempFile("test", ".zip");
+//        OutputStream outputStream = new FileOutputStream(file);
+//        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a", nullImpersonationId);
+//
+//        try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis) )
+//        {
+//            ZipEntry ze;
+//            int count = 0;
+//            while ( (ze = zis.getNextEntry()) != null)
+//            {
+//              log.info(ze.toString());
+//              count++;
+//            }
+//            // S3 will have 3 entries and others should have 4 (3 files + 1 dir)
+//            if (client instanceof S3DataClient) Assert.assertEquals(count, 3);
+//            else Assert.assertEquals(count, 4);
+//        }
+//        file.deleteOnExit();
+//    }
+//
+//    @Test(dataProvider = "testSystems")
+//    public void testUploadNoAuthz(TapisSystem testSystem) throws Exception {
+//        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
+//        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//        InputStream in = Utils.makeFakeFile(10*1024);
+//
+//        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.upload(client,"test.txt", in); });
+//    }
+//
+//    @Test(dataProvider = "testSystems")
+//    public void testListingNoAuthz(TapisSystem testSystem) throws Exception
+//    {
+//      when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(true);
+//      when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.READ))).thenReturn(false);
+//      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//      client.delete("/");
+//      fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
+//      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId); });
+//    }
+//
+//  // NoAuthz tests for mkdir, move, copy and delete
+//  @Test(dataProvider = "testSystems")
+//  public void testNoAuthzMany(TapisSystem testSystem) throws Exception
+//  {
+//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//    // Create directories and files for tests
+//    client.delete("/");
+//    fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(10*1024));
+//    fileOpsService.upload(client,"/a/2.txt", Utils.makeFakeFile(10*1024));
+//    fileOpsService.upload(client,"/b/3.txt", Utils.makeFakeFile(10*1024));
+//    // Perform the tests
+//    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"newdir"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/newdir"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/a/newdir"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/1.txt","/1new.txt"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/1.txt","/a/1new.txt"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/a/2.txt","/b/2new.txt"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client, OP_CP,"/1.txt","/1new.txt"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client, OP_CP,"/1.txt","/a/1new.txt"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client, OP_CP,"/a/2.txt","/b/2new.txt"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/1.txt"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a/1.txt"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a"); });
+//  }
+//
+//  @Test(dataProvider = "testSystems")
+//    public void testListingRecursive(TapisSystem testSystem) throws Exception
+//    {
+//      int maxDepth = 5;
+//      when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//      client.delete("/");
+//      fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(10*1024));
+//      fileOpsService.upload(client,"/a/2.txt", Utils.makeFakeFile(10*1024));
+//      fileOpsService.upload(client,"/a/b/3.txt", Utils.makeFakeFile(10*1024));
+//      fileOpsService.upload(client,"/a/b/c/4.txt", Utils.makeFakeFile(10*1024));
+//      fileOpsService.upload(client,"/a/b/c/5.txt", Utils.makeFakeFile(10*1024));
+//
+//      List<FileInfo> listing = fileOpsService.lsRecursive(client,"/", maxDepth);
+//      for (FileInfo fi : listing) { log.info("Test1 found: " + fi.getUrl()); }
+//      // S3 doesn't really do folders
+//      // Test1 S3 should have 4 entries and others should have 7 (4 files + 3 directories)
+//      if (testSystem.getSystemType() == SystemTypeEnum.S3) Assert.assertEquals(listing.size(), maxDepth);
+//      else Assert.assertEquals(listing.size(), 8);
+//
+//      // Test2 S3 should have 3 entries and others should have 5 (3 files + 2 directories)
+//      listing = fileOpsService.lsRecursive(client,"/a", maxDepth);
+//      for (FileInfo fi : listing) { log.info("Test2 found: " + fi.getUrl()); }
+//      // S3 doesn't really do folders
+//      // S3 should have 3 entries and others should have 5 (3 files + 2 directories)
+//      if (testSystem.getSystemType() == SystemTypeEnum.S3) Assert.assertEquals(listing.size(), 4);
+//      else Assert.assertEquals(listing.size(), 6);
+//    }
+//
+//    @Test(dataProvider = "testSystems")
+//    public void testZeroByteInsert(TapisSystem testSystem) throws Exception {
+//        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+//        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, "testuser");
+//        client.delete("/");
+//        fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(0));
+//
+//        List<FileInfo> listing = fileOpsService.ls(client,"/", MAX_LISTING_SIZE, 0);
+//        // S3 doesn't really do folders?
+//      Assert.assertEquals(listing.size(), 1);
+//
+//    }
 }
