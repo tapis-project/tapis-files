@@ -1,16 +1,24 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
-import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Stream;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.UriBuilder;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -30,17 +38,11 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.UriBuilder;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Stream;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 

@@ -325,10 +325,12 @@ public class FileOpsService implements IFileOpsService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - path on system relative to system rootDir
+   * @param sharedAppCtx - Indicates that request is part of a shared app context.
    * @throws ForbiddenException - user not authorized
    */
   @Override
-  public void mkdir(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
+  public void mkdir(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                    boolean sharedAppCtx)
           throws WebApplicationException
   {
     String oboTenant = rUser.getOboTenantId();

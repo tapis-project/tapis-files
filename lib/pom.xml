@@ -30,7 +30,6 @@
     </properties -->
 
     <dependencies>
-
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>tapis-shared-api</artifactId>

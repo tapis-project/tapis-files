@@ -137,6 +137,7 @@ public class FilesApplication extends ResourceConfig
       // Set site on which we are running. This is a required runtime parameter.
       siteId = runtimeConfig.getSiteId();
 
+      // Init tenant manager, site admin tenant, JWT filter
       String url = runtimeConfig.getTenantsServiceURL();
       TenantManager tenantManager = TenantManager.getInstance(url);
       tenantManager.getTenants();
