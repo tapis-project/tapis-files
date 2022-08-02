@@ -97,7 +97,7 @@ public class TestFileShareService
     creds.setAccessKey(testUser);
     creds.setPassword("password");
     testSystemSSH = new TapisSystem();
-    testSystemSSH.setId("testSystem");
+    testSystemSSH.setId("testSystemSSH");
     testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
     testSystemSSH.setAuthnCredential(creds);
     testSystemSSH.setHost("localhost");
@@ -182,8 +182,8 @@ public class TestFileShareService
   }
 
   // Data provider for single Linux System
-  @DataProvider(name= "testSystemsLinux")
-  public Object[] testSystemsLinux ()
+  @DataProvider(name= "testSystemsSSH")
+  public Object[] testSystemsSSH ()
   {
     return new TapisSystem[] { testSystemSSH };
   }
@@ -197,10 +197,11 @@ public class TestFileShareService
       protected void configure() {
         bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
         bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
+//        bindAsContract(FileShareService.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
         bind(permsService).to(FilePermsService.class).ranked(1);
         bind(FileOpsService.class).to(FileOpsService.class).in(Singleton.class);
-        bind(FileShareService.class).to(FileShareService.class).in(Singleton.class);
+        bind(new FileShareService(systemsCache)).to(FileShareService.class);
       }
     });
     remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
@@ -235,11 +236,11 @@ public class TestFileShareService
   // ===============================================
   // Test basic sharing of a single path
   // ===============================================
-  @Test(dataProvider = "testSystemsLinux")
+  @Test(dataProvider = "testSystemsSSH")
   public void testSharePath(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    when(systemsCache.getSystem(any(), eq("testSystemLinux"), any())).thenReturn(testSystemSSH);
+    when(systemsCache.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
     // Create file at path
     String filePathStr = "/dir1/dir2/test1.txt";
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, testUser);
@@ -251,7 +252,7 @@ public class TestFileShareService
     var userSet= Collections.singleton(testUser2);
 
     // Get the system
-    TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemLinux");
+    TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemSSH");
     Assert.assertNotNull(tmpSys);
     String sysId = tmpSys.getId();
 

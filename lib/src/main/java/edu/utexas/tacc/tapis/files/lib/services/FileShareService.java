@@ -34,7 +34,8 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 
 /*
- * Service level methods for File sharing operations. Support:
+ * Service level methods for File sharing operations.
+ * Support:
  *   - share/unshare path with users
  *   - share/unshare path with all users in a tenant (i.e. make public)
  *   - retrieve share info for a path
@@ -67,9 +68,10 @@ public class FileShareService
 // TODO/TBD create a sharesCache?
 //  private final SharesCache sharesCache;
 
+  // Use HK2 to inject singletons
+  @Inject
   private final SystemsCache systemsCache;
 
-  // Use HK2 to inject singletons
   @Inject
   private ServiceClients serviceClients;
 
