@@ -64,11 +64,11 @@ public class FileUtilsService implements IFileUtilsService {
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     try {
-      Path relativePath = PathUtils.getRelativePath(path);
       // Check permissions
       LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           relativePath, Permission.READ);
+                           path, Permission.READ);
 
+      Path relativePath = PathUtils.getRelativePath(path);
       // Make the remoteDataClient call
       return sshClient.getStatInfo(relativePath.toString(), followLinks);
 
@@ -104,11 +104,11 @@ public class FileUtilsService implements IFileUtilsService {
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     try {
-      Path relativePath = PathUtils.getRelativePath(path);
       // Check permissions
       LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           relativePath, Permission.MODIFY);
+                              path, Permission.MODIFY);
 
+      Path relativePath = PathUtils.getRelativePath(path);
       // Make the remoteDataClient call
       switch (op) {
         case CHMOD -> nativeLinuxOpResult = sshClient.linuxChmod(relativePath.toString(), arg, recursive);

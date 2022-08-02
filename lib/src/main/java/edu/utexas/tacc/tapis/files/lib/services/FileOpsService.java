@@ -166,10 +166,10 @@ public class FileOpsService implements IFileOpsService
           throws ServiceException
   {
     // Get path relative to system rootDir and protect against ../..
-    Path relativePath = PathUtils.getRelativePath(path);
+    String relPathStr = PathUtils.getRelativePath(path).toString();
     try
     {
-      List<FileInfo> listing = client.ls(relativePath.toString(), limit, offset);
+      List<FileInfo> listing = client.ls(relPathStr, limit, offset);
       listing.forEach(f ->
         {
           String url = String.format("%s/%s", client.getSystemId(), f.getPath());
@@ -184,7 +184,7 @@ public class FileOpsService implements IFileOpsService
     catch (IOException ex)
     {
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "lsWithClient",
-                                   client.getSystemId(), path, ex.getMessage());
+                                   client.getSystemId(), relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -268,20 +268,19 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
-    // Get path relative to system rootDir and protect against ../..
-    Path relativePath = PathUtils.getRelativePath(path);
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
+    String relPathStr = PathUtils.getRelativePath(path).toString();
     try
     {
-      LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, relativePath, Permission.MODIFY);
+      LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, path, Permission.MODIFY);
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
-      upload(client, path, inStrm);
+      upload(client, relPathStr, inStrm);
     }
     catch (IOException | ServiceException ex)
     {
-      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "upload", sysId, path,
+      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "upload", sysId, relPathStr,
                                         ex.getMessage()), ex);
     }
     finally
@@ -302,18 +301,18 @@ public class FileOpsService implements IFileOpsService
     public void upload(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull InputStream inputStream)
             throws ServiceException
     {
-      // Get path relative to system rootDir and protect against ../..
-      Path relativePath = PathUtils.getRelativePath(path);
       LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                              relativePath, Permission.MODIFY);
+                              path, Permission.MODIFY);
+      // Get path relative to system rootDir and protect against ../..
+      String relPathStr = PathUtils.getRelativePath(path).toString();
       try
       {
-        client.upload(relativePath.toString(), inputStream);
+        client.upload(relPathStr, inputStream);
       }
       catch (IOException ex)
       {
         String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "uploadWithClient",
-                                     client.getSystemId(), path, ex.getMessage());
+                                     client.getSystemId(), relPathStr, ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
       }
@@ -336,13 +335,11 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
-    // Get path relative to system rootDir and protect against ../..
-    Path relativePath = PathUtils.getRelativePath(path);
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
     try
     {
-      LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, relativePath, Permission.MODIFY);
+      LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, path, Permission.MODIFY);
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
       mkdir(client, path);
@@ -369,18 +366,18 @@ public class FileOpsService implements IFileOpsService
   @Override
   public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException, ForbiddenException
   {
-    // Get path relative to system rootDir and protect against ../..
-    Path relativePath = PathUtils.getRelativePath(path);
     LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                            relativePath, Permission.MODIFY);
+                            path, Permission.MODIFY);
+    // Get path relative to system rootDir and protect against ../..
+    String relPathStr = PathUtils.getRelativePath(path).toString();
     try
     {
-      client.mkdir(relativePath.toString());
+      client.mkdir(relPathStr);
     }
     catch (IOException ex)
     {
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdirWithClient",
-                                   client.getSystemId(), path, ex.getMessage());
+                                   client.getSystemId(), relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -405,16 +402,13 @@ public class FileOpsService implements IFileOpsService
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       String sysId = sys.getId();
-      // Get paths relative to system rootDir and protect against ../..
-      Path srcRelativePath = PathUtils.getRelativePath(srcPath);
-      Path dstRelativePath = PathUtils.getRelativePath(dstPath);
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
       try
       {
         // Check the source and destination both have MODIFY perm
-        LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, srcRelativePath, Permission.MODIFY);
-        LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, dstRelativePath, Permission.MODIFY);
+        LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, srcPath, Permission.MODIFY);
+        LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, dstPath, Permission.MODIFY);
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
         moveOrCopy(client, op, srcPath, dstPath);
@@ -448,39 +442,39 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = client.getOboTenant();
     String oboUser = client.getOboUser();
     String sysId = client.getSystemId();
-    // Get paths relative to system rootDir and protect against ../..
-    Path srcRelativePath = PathUtils.getRelativePath(srcPath);
-    Path dstRelativePath = PathUtils.getRelativePath(dstPath);
     // Check the source and destination permissions
     Permission srcPerm = Permission.READ;
     if (op.equals(MoveCopyOperation.MOVE)) srcPerm = Permission.MODIFY;
-    LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, srcRelativePath, srcPerm);
-    LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, dstRelativePath, Permission.MODIFY);
+    LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, srcPath, srcPerm);
+    LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, dstPath, Permission.MODIFY);
+    // Get paths relative to system rootDir and protect against ../..
+    String srcRelPathStr = PathUtils.getRelativePath(srcPath).toString();
+    String dstRelPathStr = PathUtils.getRelativePath(dstPath).toString();
     try
     {
-      // Get file info here so we can do some basic checks independent of the system type
-      FileInfo srcFileInfo = client.getFileInfo(srcPath);
+      // Get file info here, so we can do some basic checks independent of the system type
+      FileInfo srcFileInfo = client.getFileInfo(srcRelPathStr);
       // Make sure srcPath exists
       if (srcFileInfo == null)
       {
-        throw new NotFoundException(LibUtils.getMsg("FILES_PATH_NOT_FOUND", oboTenant, oboUser, sysId, srcPath));
+        throw new NotFoundException(LibUtils.getMsg("FILES_PATH_NOT_FOUND", oboTenant, oboUser, sysId, srcRelPathStr));
       }
       // If srcPath and dstPath are the same then throw an exception.
-      if (srcRelativePath.equals(dstRelativePath))
+      if (srcRelPathStr.equals(dstRelPathStr))
       {
-        throw new NotFoundException(LibUtils.getMsg("FILES_SRC_DST_SAME", oboTenant, oboUser, sysId, srcPath));
+        throw new NotFoundException(LibUtils.getMsg("FILES_SRC_DST_SAME", oboTenant, oboUser, sysId, srcRelPathStr));
       }
 
       // Perform the operation
       if (op.equals(MoveCopyOperation.MOVE))
       {
-        client.move(srcRelativePath.toString(), dstRelativePath.toString());
+        client.move(srcRelPathStr, dstRelPathStr);
         // Update permissions in the SK
-        permsService.replacePathPrefix(oboTenant, oboUser, sysId, srcRelativePath.toString(), dstRelativePath.toString());
+        permsService.replacePathPrefix(oboTenant, oboUser, sysId, srcRelPathStr, dstRelPathStr);
       }
       else
       {
-        client.copy(srcRelativePath.toString(), dstRelativePath.toString());
+        client.copy(srcRelPathStr, dstRelPathStr);
       }
     }
     catch (IOException ex)
@@ -508,13 +502,11 @@ public class FileOpsService implements IFileOpsService
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       String sysId = sys.getId();
-      // Get path relative to system rootDir and protect against ../..
-      Path relativePath = PathUtils.getRelativePath(path);
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
       try
       {
-        LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, relativePath, Permission.MODIFY);
+        LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, path, Permission.MODIFY);
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
         delete(client, path);
@@ -541,20 +533,20 @@ public class FileOpsService implements IFileOpsService
   @Override
   public void delete(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException
   {
-    // Get path relative to system rootDir and protect against ../..
-    Path relativePath = PathUtils.getRelativePath(path);
     LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                            relativePath, Permission.MODIFY);
+                            path, Permission.MODIFY);
+    // Get path relative to system rootDir and protect against ../..
+    String relPathStr = PathUtils.getRelativePath(path).toString();
     try
     {
-      client.delete(relativePath.toString());
+      client.delete(relPathStr);
       permsService.removePathPermissionFromAllRoles(client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                                    relativePath.toString());
+                                                    relPathStr);
     }
     catch (IOException ex)
     {
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "deleteWithClient",
-                                   client.getSystemId(), path, ex.getMessage());
+                                   client.getSystemId(), relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -767,16 +759,17 @@ public class FileOpsService implements IFileOpsService
 
     // Get a remoteDataClient to stream contents
     IRemoteDataClient client = null;
+    String relPathStr = relativePath.toString();
     try
     {
       // Get a remoteDataClient to stream contents
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
-      return client.getStream(relativePath.toString());
+      return client.getStream(relPathStr);
     }
     catch (IOException ex)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getStream", sysId, path, ex.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getStream", sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -806,16 +799,17 @@ public class FileOpsService implements IFileOpsService
     checkAuthForRead(rUser, sysId, relativePath, impersonationId);
 
     IRemoteDataClient client = null;
+    String relPathStr = relativePath.toString();
     try
     {
       // Get a remoteDataClient to stream contents
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
-      return client.getBytesByRange(path, startByte, count);
+      return client.getBytesByRange(relPathStr, startByte, count);
     }
     catch (IOException ex)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getBytes", sysId, path, ex.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getBytes", sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -842,21 +836,21 @@ public class FileOpsService implements IFileOpsService
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
-    // Get path relative to system rootDir and protect against ../..
-    Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, relativePath, Permission.READ);
+    LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, path, Permission.READ);
+    // Get path relative to system rootDir and protect against ../..
+    String relPathStr = PathUtils.getRelativePath(path).toString();
     IRemoteDataClient client = null;
     try
     {
       // Get a remoteDataClient to stream contents
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
-      return client.getBytesByRange(path, startByte, startByte + 1023);
+      return client.getBytesByRange(relPathStr, startByte, startByte + 1023);
     }
     catch (IOException ex)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getPaginatedBytes", sysId, path, ex.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getPaginatedBytes", sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -992,6 +986,6 @@ public class FileOpsService implements IFileOpsService
     // Certain services are allowed to impersonate an OBO user for the purposes of authorization
     //   and effectiveUserId resolution.
     String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
-    LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, path, Permission.READ);
+    LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, pathStr, Permission.READ);
   }
 }

@@ -321,7 +321,8 @@ public class ShareResource
     // ---------------------------- Success -------------------------------
     String userListStr = String.join(",", userSet);
     RespBasic resp1 = new RespBasic();
-    msg = ApiUtils.getMsgAuth("FAPI_SHAREU_UPDATED", rUser, opName, systemId, path, userListStr);
+    msg = ApiUtils.getMsgAuth("FAPI_SHARE_U_UPDATED", rUser, opName, systemId, path, userListStr);
+    log.info(msg);
     return Response.status(Status.OK)
             .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
             .build();
@@ -358,7 +359,8 @@ public class ShareResource
 
     // ---------------------------- Success -------------------------------
     RespBasic resp1 = new RespBasic();
-    String msg = ApiUtils.getMsgAuth("FAPI_SHAREP_UPDATED", rUser, opName, systemId, path);
+    String msg = ApiUtils.getMsgAuth("FAPI_SHARE_P_UPDATED", rUser, opName, systemId, path);
+    log.info(msg);
     return Response.status(Status.OK)
             .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
             .build();

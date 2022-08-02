@@ -74,6 +74,20 @@ mvn clean install
 
 The integration tests are configured to use the `test` database created above.
 
+Currently, tests run using mvn from the command line appear to have concurrency issues. They sometimes fail.
+Tests to run manually from IDE:
+ - TestOpsRoutes
+ - TestFileOpsService
+ - TestContentsRoutes
+ - TestLibUtilsRoutes
+ - TestSSHConnectionCache
+ - TestIrodsClient
+ - TestS3Client
+ - TestTransfersRoutes
+ - TestTransfers
+ - TestFileTransfersDAO
+ - TODO: TestFileShareService
+
 ```
 mvn clean install -DskipITs=false -DAPP_ENV=test
 ```

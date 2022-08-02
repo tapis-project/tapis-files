@@ -97,11 +97,8 @@ public class FileShareService
   {
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-    // Get path relative to system rootDir and protect against ../..
-    Path relativePath = PathUtils.getRelativePath(path);
-    String relPathStr = relativePath.toString();
-    // Add "/" to front of relative path, all sharing entries should look like absolute paths.
-    String pathStr = String.format("/%s", relPathStr);
+    // Get path relative to system rootDir and protect against ../.. and make sure starts with /
+    String pathStr = PathUtils.getSKRelativePath(path).toString();
 
     // For convenience/clarity
     String oboUser = rUser.getOboUserId();
@@ -109,6 +106,7 @@ public class FileShareService
 
     // Create SKShareGetSharesParms needed for SK calls.
     var skParms = new SKShareGetSharesParms();
+    skParms.setGrantor(rUser.getOboUserId());
     skParms.setResourceType(RESOURCE_TYPE);
     skParms.setResourceId1(systemId);
 
@@ -165,7 +163,7 @@ public class FileShareService
     }
     catch (TapisClientException e)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, "getShareInfo", systemId, path, relPathStr, e.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, "getShareInfo", systemId, path, pathStr, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
@@ -247,9 +245,8 @@ public class FileShareService
   {
     // Make sure the Tapis System exists and is enabled
     LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-    // Get path relative to system rootDir and protect against ../..
-    Path relativePath = PathUtils.getRelativePath(path);
-    String relPathStr = relativePath.toString();
+    // Get path relative to system rootDir and protect against ../.. and make sure starts with /
+    String pathStr = PathUtils.getSKRelativePath(path).toString();
 
     // For convenience/clarity
     String oboUser = rUser.getOboUserId();
@@ -265,7 +262,7 @@ public class FileShareService
         reqShareResource = new ReqShareResource();
         reqShareResource.setResourceType(RESOURCE_TYPE);
         reqShareResource.setResourceId1(systemId);
-        reqShareResource.setResourceId2(relPathStr);
+        reqShareResource.setResourceId2(pathStr);
         reqShareResource.setGrantor(oboUser);
         reqShareResource.setPrivilege(FileInfo.Permission.READ.name());
       }
@@ -274,7 +271,7 @@ public class FileShareService
         deleteShareParms = new SKShareDeleteShareParms();
         deleteShareParms.setResourceType(RESOURCE_TYPE);
         deleteShareParms.setResourceId1(systemId);
-        deleteShareParms.setResourceId2(relPathStr);
+        deleteShareParms.setResourceId2(pathStr);
       }
     }
 
@@ -300,7 +297,7 @@ public class FileShareService
     }
     catch (TapisClientException e)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, opName, systemId, path, relPathStr, e.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, opName, systemId, path, pathStr, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
