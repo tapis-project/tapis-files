@@ -70,16 +70,13 @@ public class FileShareService
 
   // Use HK2 to inject singletons
   @Inject
-  private final SystemsCache systemsCache;
-
+  private SystemsCache systemsCache;
   @Inject
   private ServiceClients serviceClients;
 
-  @Inject
-  public FileShareService(SystemsCache sysCache)
-  {
-    systemsCache = sysCache;
-  }
+  // Allow these to be filled in to support TestFileShareService
+  void setSystemsCache(SystemsCache c) { systemsCache = c; }
+  void setServiceClients(ServiceClients c) {serviceClients = c; }
 
   // ************************************************************************
   // *********************** Public Methods *********************************
