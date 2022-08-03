@@ -89,6 +89,7 @@ public class FileShareService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
    * @param path - path on system relative to system rootDir
+   * @return shareInfo containing all share information
    * @throws WebApplicationException - on error
    */
   public ShareInfo getShareInfo(ResourceRequestUser rUser, String systemId, String path)
@@ -202,6 +203,69 @@ public class FileShareService
   }
 
   /**
+   * Remove all shares for a path
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param systemId - Tapis system
+   * @param path - path on system relative to system rootDir
+   * @throws WebApplicationException - on error
+   */
+  public void removeAllSharesForPath(ResourceRequestUser rUser, String systemId, String path)
+          throws WebApplicationException
+  {
+    // Make sure the Tapis System exists and is enabled
+    LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    // Get path relative to system rootDir and protect against ../.. and make sure starts with /
+    String pathStr = PathUtils.getSKRelativePath(path).toString();
+
+    // For convenience/clarity
+    String oboUser = rUser.getOboUserId();
+    String oboTenant = rUser.getOboTenantId();
+
+    // Create request objects needed for SK calls.
+    var skGetParms = new SKShareGetSharesParms();
+    skGetParms.setGrantor(rUser.getOboUserId());
+    skGetParms.setResourceType(RESOURCE_TYPE);
+    skGetParms.setResourceId1(systemId);
+    skGetParms.setResourceId2(pathStr);
+
+    var skDeleteParms = new SKShareDeleteShareParms();
+    skDeleteParms.setResourceType(RESOURCE_TYPE);
+    skDeleteParms.setResourceId1(systemId);
+    skDeleteParms.setResourceId2(pathStr);
+    skDeleteParms.setPrivilege(FileInfo.Permission.READ.name());
+
+    // We will be calling SK which can throw TapisClientException. Handle it by converting to WebAppException
+    try
+    {
+      // Remove public sharing
+      skDeleteParms.setGrantee(SKClient.PUBLIC_GRANTEE);
+      getSKClient(oboUser, oboTenant).deleteShare(skDeleteParms);
+
+      // Get all users
+      SkShareList shareList = getSKClient(oboUser, oboTenant).getShares(skGetParms);
+      var userSet = new HashSet<String>();
+      if (shareList != null && shareList.getShares() != null)
+      {
+        for (SkShare skShare : shareList.getShares()) { userSet.add(skShare.getGrantee()); }
+      }
+
+      // For each user remove the share
+      for (String userName : userSet)
+      {
+        skDeleteParms.setGrantee(userName);
+        getSKClient(oboUser, oboTenant).deleteShare(skDeleteParms);
+      }
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, OP_UNSHARE, systemId, path, pathStr, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+  }
+
+  /**
    * Share a path on a system publicly with all users in the tenant.
    * Sharing means grantees effectively have READ permission on the path.
    *
@@ -271,6 +335,7 @@ public class FileShareService
         deleteShareParms.setResourceType(RESOURCE_TYPE);
         deleteShareParms.setResourceId1(systemId);
         deleteShareParms.setResourceId2(pathStr);
+        deleteShareParms.setPrivilege(FileInfo.Permission.READ.name());
       }
     }
 

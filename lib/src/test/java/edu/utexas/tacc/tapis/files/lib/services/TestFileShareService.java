@@ -265,6 +265,7 @@ public class TestFileShareService
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     when(systemsCache.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
     // Cleanup from any previous runs
+    // Note that deleting a file should also remove any shares, so this is actually also a test of unshare
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, testSystem, testUser);
     fileOpsService.delete(client, "/");
     // Create file at path
@@ -280,15 +281,23 @@ public class TestFileShareService
     Assert.assertNotNull(tmpSys);
     String sysId = tmpSys.getId();
 
+    // Cleanup. Need this because fileOpsService.delete(client, path) does not remove shares.
+    //      removal of shares is in fileOpsService.delete(rUser, sys, path)
+    fileShareService.removeAllSharesForPath(rTestUser, sysId, filePathStr);
+
     // Get shareInfo. Should be empty
     ShareInfo shareInfo = fileShareService.getShareInfo(rTestUser, sysId, filePathStr);
-    Assert.assertNull(shareInfo);
+    Assert.assertNotNull(shareInfo);
+    Assert.assertNotNull(shareInfo.getUserSet());
+    Assert.assertFalse(shareInfo.isPublic());
+    Assert.assertTrue(shareInfo.getUserSet().isEmpty());
     // Share file with testuser2
     fileShareService.sharePath(rTestUser, sysId, filePathStr, userSet);
     // Get shareInfo for file. Should be shared with 1 user, testuser2
     shareInfo = fileShareService.getShareInfo(rTestUser, sysId, filePathStr);
     Assert.assertNotNull(shareInfo);
     Assert.assertNotNull(shareInfo.getUserSet());
+    Assert.assertFalse(shareInfo.isPublic());
     Assert.assertFalse(shareInfo.getUserSet().isEmpty());
     Assert.assertEquals(shareInfo.getUserSet().size(), 1);
     Assert.assertTrue(shareInfo.getUserSet().contains(testUser2));
@@ -296,6 +305,9 @@ public class TestFileShareService
     fileShareService.unSharePath(rTestUser, sysId, filePathStr, userSet);
     // Get shareInfo. Should be empty.
     shareInfo = fileShareService.getShareInfo(rTestUser, sysId, filePathStr);
-    Assert.assertNull(shareInfo);
+    Assert.assertNotNull(shareInfo);
+    Assert.assertNotNull(shareInfo.getUserSet());
+    Assert.assertFalse(shareInfo.isPublic());
+    Assert.assertTrue(shareInfo.getUserSet().isEmpty());
   }
 }

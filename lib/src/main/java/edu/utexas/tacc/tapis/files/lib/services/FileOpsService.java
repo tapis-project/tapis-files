@@ -57,7 +57,6 @@ public class FileOpsService implements IFileOpsService
   public enum MoveCopyOperation {MOVE, COPY}
 
   private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
-  private final FilePermsService permsService;
 
   private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
   // 0=systemId, 1=path, 2=tenant
@@ -72,11 +71,11 @@ public class FileOpsService implements IFileOpsService
 
   // **************** Inject Services using HK2 ****************
   @Inject
-  public FileOpsService(FilePermsService svc) { permsService = svc; }
-
+  FilePermsService permsService;
+  @Inject
+  FileShareService shareService;
   @Inject
   SystemsCache systemsCache;
-
   @Inject
   RemoteDataClientFactory remoteDataClientFactory;
 
@@ -487,7 +486,8 @@ public class FileOpsService implements IFileOpsService
   }
 
   /**
-   * Delete a file or directory
+   * Delete a file or directory. Remove all permissions and shares from SK
+   *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - path on system relative to system rootDir
@@ -509,7 +509,10 @@ public class FileOpsService implements IFileOpsService
         LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, path, Permission.MODIFY);
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
+        // Delete files and permissions
         delete(client, path);
+        // Remove shares
+        shareService.removeAllSharesForPath(rUser, sysId, path);
       }
       catch (IOException | ServiceException ex)
       {
@@ -523,7 +526,7 @@ public class FileOpsService implements IFileOpsService
     }
 
   /**
-   * Delete a file or directory using provided client
+   * Delete a file or directory using provided client. Remove all permissions and shares from SK
    * @param client remote data client to use
    * @param path - path on system relative to system rootDir
    * @throws ServiceException - general error
