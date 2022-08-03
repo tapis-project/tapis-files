@@ -14,6 +14,7 @@ public final class UserShareInfo
 {
   private final String username; // user with whom the path is shared
   private final String path; // Path that resulted in the share
+  private final String grantor; // User who granted the share
 
   /* ********************************************************************** */
   /*                           Constructors                                 */
@@ -24,12 +25,14 @@ public final class UserShareInfo
   {
     username = null;
     path = null;
+    grantor = null;
   }
 
-  public UserShareInfo(String username1, String path1)
+  public UserShareInfo(String username1, String path1, String grantor1)
   {
     username = username1;
     path = path1;
+    grantor = grantor1;
   }
 
   /* ********************************************************************** */
@@ -37,6 +40,7 @@ public final class UserShareInfo
   /* ********************************************************************** */
   public String getUsername() { return username; }
   public String getPath() { return path; }
+  public String getGrantor() { return grantor; }
 
   @Override
   public String toString() {return TapisUtils.toString(this);}

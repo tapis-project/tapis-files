@@ -127,8 +127,8 @@ public class FileOpsService implements IFileOpsService
     IRemoteDataClient client = null;
     try
     {
-      // Check for READ permission
-      checkAuthForRead(rUser, sysId, relativePath, impersonationId);
+      // Check for READ permission or share
+      checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
@@ -212,7 +212,7 @@ public class FileOpsService implements IFileOpsService
       try
       {
         // Check for READ permission
-        checkAuthForRead(rUser, sysId, relativePath, impersonationId);
+        checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
@@ -640,7 +640,7 @@ public class FileOpsService implements IFileOpsService
     Path relativePath = PathUtils.getRelativePath(path);
     try
     {
-      checkAuthForRead(rUser, sys.getId(), relativePath, impersonationId);
+      checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
     }
     catch (ServiceException e)
     {
@@ -755,7 +755,7 @@ public class FileOpsService implements IFileOpsService
     // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    checkAuthForRead(rUser, sysId, relativePath, impersonationId);
+    checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
     // Get a remoteDataClient to stream contents
     IRemoteDataClient client = null;
@@ -796,7 +796,7 @@ public class FileOpsService implements IFileOpsService
     // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    checkAuthForRead(rUser, sysId, relativePath, impersonationId);
+    checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
     IRemoteDataClient client = null;
     String relPathStr = relativePath.toString();
@@ -878,7 +878,7 @@ public class FileOpsService implements IFileOpsService
     // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
     // Make sure user has permission for this path
-    checkAuthForRead(rUser, sysId, relativePath, impersonationId);
+    checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
     String cleanedPath = FilenameUtils.normalize(path);
     cleanedPath = StringUtils.removeStart(cleanedPath, "/");
@@ -956,18 +956,20 @@ public class FileOpsService implements IFileOpsService
   }
 
   /**
-   * Confirm that caller or impersonationId has READ permission on path.
+   * Confirm that caller or impersonationId has READ permission or share on path
    * To use impersonationId it must be a service request from a service allowed to impersonate.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param systemId - system containing path
+   * @param system - system containing path
    * @param path - path to the file, dir or object
    * @throws ForbiddenException - oboUserId not authorized to perform operation
    */
-  private void checkAuthForRead(ResourceRequestUser rUser, String systemId, Path path, String impersonationId)
+  private void checkAuthForReadOrShare(ResourceRequestUser rUser, TapisSystem system, Path path, String impersonationId)
           throws ForbiddenException, ServiceException
   {
+    String systemId = system.getId();
     String pathStr = path.toString();
+
     // To impersonate must be a service request from an allowed service.
     if (!StringUtils.isBlank(impersonationId))
     {
@@ -982,10 +984,33 @@ public class FileOpsService implements IFileOpsService
       log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE", rUser, systemId, pathStr, impersonationId));
     }
 
-    // Finally, check for READ perm using oboUser or impersonationId
+    // Finally, check for READ perm or share using oboUser or impersonationId
     // Certain services are allowed to impersonate an OBO user for the purposes of authorization
     //   and effectiveUserId resolution.
     String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
-    LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, pathStr, Permission.READ);
+
+    // If user has READ permission then return
+    //  else if shared then return
+    if (permsService.isPermitted(rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, pathStr, Permission.READ))
+    {
+      return;
+    }
+    else
+    {
+      try
+      {
+        if (shareService.isSharedWithUser(rUser, system, pathStr, oboOrImpersonatedUser)) return;
+      }
+      catch (TapisClientException e)
+      {
+        String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, systemId, pathStr, e.getMessage());
+        log.error(msg, e);
+        throw new ServiceException(msg, e);
+      }
+    }
+    // No READ or share, throw exception
+    String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", rUser.getOboTenantId(), oboOrImpersonatedUser, systemId,
+                                 pathStr, Permission.READ);
+    throw new ForbiddenException(msg);
   }
 }

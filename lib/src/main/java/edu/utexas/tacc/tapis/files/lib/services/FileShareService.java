@@ -74,13 +74,99 @@ public class FileShareService
   @Inject
   private ServiceClients serviceClients;
 
-  // Allow these to be filled in to support TestFileShareService
-  void setSystemsCache(SystemsCache c) { systemsCache = c; }
-  void setServiceClients(ServiceClients c) {serviceClients = c; }
-
   // ************************************************************************
   // *********************** Public Methods *********************************
   // ************************************************************************
+
+  /*
+   * Check to see if a path is shared with a user.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param system - Tapis system
+   * @param path - path on system relative to system rootDir
+   * @return true if shared
+   * @throws TapisClientExcepion - error calling SK
+   */
+  public boolean isSharedWithUser(ResourceRequestUser rUser, TapisSystem system, String path, String user)
+          throws TapisClientException
+  {
+    // Check arguments. Return false if any are not valid.
+    if (rUser == null || system == null || StringUtils.isBlank(user)) return false;
+
+    String pathStr = PathUtils.getSKRelativePath(path).toString();
+
+    // For convenience/clarity
+    String oboUser = rUser.getOboUserId();
+    String oboTenant = rUser.getOboTenantId();
+    String systemId = system.getId();
+
+    // Create SKShareGetSharesParms needed for SK calls.
+    var skParms = new SKShareGetSharesParms();
+    skParms.setResourceType(RESOURCE_TYPE);
+    skParms.setResourceId1(systemId);
+
+    SkShareList skShares;
+    boolean isPublic;
+    String isPublicPath;
+
+//    // Catch client exceptions thrown by SK calls and convert them to WebApplicationException
+//    try
+//    {
+      // First determine if path is publicly shared. Search for share on sys+path to grantee ~public
+      // First check the specific path passed in
+      skParms.setResourceId2(pathStr);
+      skParms.setGrantee(SKClient.PUBLIC_GRANTEE);
+      skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+      // Set isPublic based on result.
+      isPublic = (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty());
+      // If System is of type LINUX and specific path not public then one of the parent directories might be
+      // So check all parent paths.
+      if (SystemTypeEnum.LINUX.equals(system.getSystemType()) && !isPublic)
+      {
+        // The method returns null if no public sharing found in parent paths.
+        isPublicPath = checkForPublicInParentPaths(oboUser, oboTenant, skParms, pathStr);
+        isPublic = !StringUtils.isBlank(isPublicPath);
+      }
+
+      // ============================================
+      // If publicly shared then return true
+      // ============================================
+      if (isPublic) return true;
+
+      // Now check to see if given path is shared directly with given user.
+      skParms.setResourceId2(pathStr);
+      skParms.setGrantee(user);
+      skParms.setIncludePublicGrantees(false);
+      skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+
+      // ====================================================
+      // If specific path shared with user then return true
+      // ====================================================
+      if (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty()) return true;
+
+      // If system is of type LINUX then path may be shared with a user via a parent path
+      if (SystemTypeEnum.LINUX.equals(system.getSystemType()))
+      {
+        // Check parent paths. This is the final check, so simply return
+        return checkForGranteeInParentPaths(rUser.getOboUserId(), rUser.getOboTenantId(), skParms, pathStr);
+      }
+//    }
+//    catch (TapisClientException e)
+//    {
+//      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, "getShareInfo", systemId, path, pathStr, e.getMessage());
+//      log.error(msg, e);
+//      throw new WebApplicationException(msg, e);
+//    }
+//    shareInfo = new ShareInfo(isPublic, isPublicPath, userSet, userShareInfoSet);
+//    return shareInfo;
+
+    // No shares found, path not shared, return false.
+    return false;
+  }
+
+  // =================================================================================
+  //  Basic CRUD methods: get, share, unshare, sharePublic, unsharePublic, removeAll
+  // =================================================================================
 
   /**
    * Get share info for path
@@ -106,7 +192,6 @@ public class FileShareService
 
     // Create SKShareGetSharesParms needed for SK calls.
     var skParms = new SKShareGetSharesParms();
-    skParms.setGrantor(rUser.getOboUserId());
     skParms.setResourceType(RESOURCE_TYPE);
     skParms.setResourceId1(systemId);
 
@@ -149,7 +234,7 @@ public class FileShareService
         for (SkShare skShare : skShares.getShares())
         {
           userSet.add(skShare.getGrantee());
-          UserShareInfo usi = new UserShareInfo(skShare.getGrantee(), pathStr);
+          UserShareInfo usi = new UserShareInfo(skShare.getGrantee(), pathStr, skShare.getGrantor());
           userShareInfoSet.add(usi);
         }
       }
@@ -224,7 +309,6 @@ public class FileShareService
 
     // Create request objects needed for SK calls.
     var skGetParms = new SKShareGetSharesParms();
-    skGetParms.setGrantor(rUser.getOboUserId());
     skGetParms.setResourceType(RESOURCE_TYPE);
     skGetParms.setResourceId1(systemId);
     skGetParms.setResourceId2(pathStr);
@@ -445,13 +529,52 @@ public class FileShareService
         for (SkShare skShare : skShares.getShares())
         {
           userSet.add(skShare.getGrantee());
-          UserShareInfo usi = new UserShareInfo(skShare.getGrantee(), parentPathStr);
+          UserShareInfo usi = new UserShareInfo(skShare.getGrantee(), parentPathStr, skShare.getGrantor());
           userShareInfoSet.add(usi);
         }
       }
       // Get the next parent path to check
       parentPath = parentPath.getParent();
     }
+  }
+
+  /**
+   * If system is of type LINUX then path may be shared with other users via a parent path
+   * So process all parent paths.
+   * The grantee must have already been set in skParms
+   *
+   * @param skParms Parameter set for calling SK with many attributes already set.
+   * @param pathStr normalized path to check
+   * @return true if a parent path is shared with Grantee contained in skParms
+   */
+  private boolean checkForGranteeInParentPaths(String oboUser, String oboTenant, SKShareGetSharesParms skParms,
+                                               String pathStr)
+          throws TapisClientException
+  {
+    // If path is empty or "/" then we are done.
+    // We should never be given an empty string and if it is "/" then there are no parents and the calling routine
+    //   will have already processed it.
+    if (StringUtils.isBlank(pathStr) || "/".equals(pathStr)) return false;
+
+    Path path = Paths.get(pathStr);
+    SkShareList skShares;
+    // walk parent paths up to root
+    Path parentPath = path.getParent();
+    while (parentPath != null)
+    {
+      // Get shares for the path
+      String parentPathStr = parentPath.toString();
+      skParms.setResourceId2(parentPathStr);
+      skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+      // ====================================================
+      // If share found then return true
+      // ====================================================
+      if (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty()) return true;
+      // Get the next parent path to check
+      parentPath = parentPath.getParent();
+    }
+    // No shares found
+    return false;
   }
 
   /**

@@ -119,17 +119,13 @@ public class TestFileShareService
         bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
       }
     });
-    // This does some important init stuff, see FilesApplication.java
+    // Retrieving serviceContext does some important init stuff, see FilesApplication.java
     ServiceContext serviceContext = locator.getService(ServiceContext.class);
     ServiceClients serviceClients = locator.getService(ServiceClients.class);
-    permsService = locator.getService(FilePermsService.class);
     remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
+    permsService = locator.getService(FilePermsService.class);
     fileOpsService = locator.getService(FileOpsService.class);
     fileShareService = locator.getService(FileShareService.class);
-    // Explicitly set systemsCache and serviceClients for FileShareService.
-    // Have not been able to get this to happen via dependency injection.
-    fileShareService.setSystemsCache(systemsCache);
-    fileShareService.setServiceClients(serviceClients);
 
     rTestUser = new ResourceRequestUser(new AuthenticatedUser(testUser, devTenant, TapisThreadContext.AccountType.user.name(),
             null, testUser, devTenant, null, null, null));
@@ -142,7 +138,6 @@ public class TestFileShareService
     @BeforeTest()
     public void setUp() throws Exception
     {
-      // Grant testUser full perms
       permsService.grantPermission(devTenant, testUser, testSystemSSH.getId(), "/", Permission.MODIFY);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH, testUser);
       fileOpsService.delete(client,"/");
@@ -151,6 +146,7 @@ public class TestFileShareService
     @AfterTest()
     public void tearDown() throws Exception
     {
+      permsService.grantPermission(devTenant, testUser, testSystemSSH.getId(), "/", Permission.MODIFY);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH, testUser);
       fileOpsService.delete(client,"/");
     }
@@ -171,16 +167,29 @@ public class TestFileShareService
 
     // Path to file used in testing
     String filePathStr = "/dir1/dir2/test1.txt";
-
-    // Cleanup from any previous runs
-    // Note that deleting a file should also remove any shares, so this is actually also a test of unshare
-    try { fileOpsService.delete(rTestUser, tmpSys, filePathStr); } catch (NotFoundException e) {}
+    // Grant testUser full perms
+    permsService.grantPermission(devTenant, testUser, sysId, filePathStr, Permission.MODIFY);
+    permsService.grantPermission(devTenant, testUser, sysId, filePathStr, Permission.READ);
 
     // Create file at path
     InputStream in = Utils.makeFakeFile(10*1024);
     fileOpsService.upload(rTestUser, tmpSys, filePathStr, in);
 
-    // TODO Check that testUser can get the file and testUser2 cannot
+    // Clean up any previous shares
+    fileShareService.removeAllSharesForPath(rTestUser, sysId, filePathStr);
+
+    // isSharedWithUser should return false
+    Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
+
+    // Check that testUser can see the file and testUser2 cannot
+    fileOpsService.ls(rTestUser, tmpSys, filePathStr, 1, 0, null);
+    boolean pass = false;
+    try
+    {
+      fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, null);
+    }
+    catch (ForbiddenException e) { pass = true; }
+    Assert.assertTrue(pass, "User testUser2 should not be able to list path");
 
     // Create set of users for sharing
     var userSet= Collections.singleton(testUser2);
@@ -201,6 +210,14 @@ public class TestFileShareService
     Assert.assertFalse(shareInfo.getUserSet().isEmpty());
     Assert.assertEquals(shareInfo.getUserSet().size(), 1);
     Assert.assertTrue(shareInfo.getUserSet().contains(testUser2));
+
+    // isSharedWithUser should return true
+    Assert.assertTrue(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
+
+    // Check that testUser and testUser2 can now see the file
+    fileOpsService.ls(rTestUser, tmpSys, filePathStr, 1, 0, null);
+    fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, null);
+
     // Remove share.
     fileShareService.unSharePath(rTestUser, sysId, filePathStr, userSet);
     // Get shareInfo. Should be empty.
@@ -209,5 +226,18 @@ public class TestFileShareService
     Assert.assertNotNull(shareInfo.getUserSet());
     Assert.assertFalse(shareInfo.isPublic());
     Assert.assertTrue(shareInfo.getUserSet().isEmpty());
+
+    // isSharedWithUser should return false
+    Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
+
+    // Check that once again testUser can see the file and testUser2 cannot
+    fileOpsService.ls(rTestUser, tmpSys, filePathStr, 1, 0, null);
+    pass = false;
+    try
+    {
+      fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, null);
+    }
+    catch (ForbiddenException e) { pass = true; }
+    Assert.assertTrue(pass, "User testUser2 should not be able to list path");
   }
 }
