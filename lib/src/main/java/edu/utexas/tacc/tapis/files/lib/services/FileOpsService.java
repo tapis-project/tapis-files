@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -74,8 +73,6 @@ public class FileOpsService implements IFileOpsService
   FilePermsService permsService;
   @Inject
   FileShareService shareService;
-  @Inject
-  SystemsCache systemsCache;
   @Inject
   RemoteDataClientFactory remoteDataClientFactory;
 

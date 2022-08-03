@@ -24,7 +24,6 @@ import javax.inject.Inject;
 @Service
 public class FilePermsService
 {
-  private final FilePermsCache permsCache;
   private static final IRuntimeConfig settings = RuntimeSettings.get();
   private static final Logger log = LoggerFactory.getLogger(FilePermsService.class);
 
@@ -33,12 +32,8 @@ public class FilePermsService
 
   @Inject
   private ServiceClients serviceClients;
-
   @Inject
-  public FilePermsService(FilePermsCache permsCache) {
-    this.permsCache = permsCache;
-  }
-
+  private FilePermsCache permsCache;
 
   private static final String svcUserName = TapisConstants.SERVICE_NAME_FILES;
   private String siteId = null;
