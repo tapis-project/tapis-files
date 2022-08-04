@@ -6,7 +6,8 @@ import java.util.Set;
 import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
 
 /**
- * Share information for a file path
+ * Share information for a file path.
+ * Used to collect together all sharing records associated with a path.
  *
  * This class is intended to represent an immutable object.
  * Please keep it immutable.
@@ -15,8 +16,8 @@ public final class ShareInfo
 {
   private final boolean isPublic; // Indicates if path is shared publicly for all users in the tenant
   private final String isPublicPath; // Path that resulted in specified path being shared publicly
-  private final Set<String> userSet; // Set of users with whom the path is shared.
-  private final Set<UserShareInfo> userShareInfoSet; // List of additional share information for each user
+  private final Set<String> userSet; // Set of users who have user-specific share grants.
+  private final Set<UserShareInfo> userShareInfoSet; // List of additional share information for each user-specific share
 
   /* ********************************************************************** */
   /*                           Constructors                                 */

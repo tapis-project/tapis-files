@@ -23,6 +23,9 @@ import java.nio.file.Path;
 /*
  * Service level methods for FileUtils.
  *   Uses an SSHDataClient to perform top level service operations.
+ *
+ * NOTE: Paths stored in SK for permissions and shares always relative to rootDir and always start with /
+ *
  * Annotate as an hk2 Service so that default scope for DI is singleton
  */
 @Service

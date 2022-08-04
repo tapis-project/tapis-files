@@ -28,6 +28,8 @@ import javax.ws.rs.*;
  * JAX-RS REST resource for Tapis File permissions (Tapis permissions, not native permissions).
  * jax-rs annotations map HTTP verb + endpoint to method invocation and map query parameters.
  *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
+ *
+ * NOTE: Paths stored in SK for permissions and shares always relative to rootDir and always start with /
  */
 @Path("/v3/files/permissions")
 public class PermissionsApiResource

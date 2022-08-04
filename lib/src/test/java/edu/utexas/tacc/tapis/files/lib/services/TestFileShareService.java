@@ -175,10 +175,11 @@ public class TestFileShareService
     InputStream in = Utils.makeFakeFile(10*1024);
     fileOpsService.upload(rTestUser, tmpSys, filePathStr, in);
 
-    // Clean up any previous shares
-    fileShareService.removeAllSharesForPath(rTestUser, sysId, filePathStr);
+    // Clean up any previous shares using recurse=true
+//TODO    fileShareService.removeAllSharesForPath(rTestUser, sysId, filePathStr, true);
 
     // isSharedWithUser should return false
+//    Assert.assertNull(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
     Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
 
     // Check that testUser can see the file and testUser2 cannot
@@ -212,6 +213,7 @@ public class TestFileShareService
     Assert.assertTrue(shareInfo.getUserSet().contains(testUser2));
 
     // isSharedWithUser should return true
+//    Assert.assertNotNull(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
     Assert.assertTrue(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
 
     // Check that testUser and testUser2 can now see the file
@@ -228,6 +230,7 @@ public class TestFileShareService
     Assert.assertTrue(shareInfo.getUserSet().isEmpty());
 
     // isSharedWithUser should return false
+//    Assert.assertNull(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
     Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
 
     // Check that once again testUser can see the file and testUser2 cannot

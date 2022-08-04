@@ -18,6 +18,9 @@ import java.util.List;
 
 /*
  * Interface for File Operations Service
+ *
+ * NOTE: Paths stored in SK for permissions and shares always relative to rootDir and always start with /
+ *
  * Annotate as an hk2 Contract in case we have multiple implementations
  */
 @Contract

@@ -44,6 +44,7 @@ import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
  *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
  * Annotations map HTTP verb + endpoint to method invocation and map query parameters.
  *
+ * NOTE: Paths stored in SK for permissions and shares always relative to rootDir and always start with /
  * Shares are stored in the Security Kernel
  */
 @Path("/v3/files")
@@ -84,9 +85,6 @@ public class ShareResource
   // **************** Inject Services using HK2 ****************
   @Inject
   private FileShareService svc;
-
-  @Inject
-  private SystemsCache systemsCache;
 
   // ************************************************************************
   // *********************** Public Methods *********************************
@@ -221,6 +219,54 @@ public class ShareResource
                                     @Context SecurityContext securityContext)
   {
     return postUpdatePublicShare(OP_UNSHARE_PATH_PUBLIC, systemId, path, securityContext);
+  }
+
+  /**
+   * Remove all shares for a path and all of sub-paths. Will also remove public share.
+   *
+   * @param systemId - id of system
+   * @param path - path on system relative to system rootDir
+   * @param recurse - if true include all sub-paths as well
+   * @param securityContext - user identity
+   * @return basic response
+   */
+  @POST
+  @Path("/unshare_all/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response unSharePathAll(@PathParam("systemId") String systemId,
+                              @PathParam("path") String path,
+                              @QueryParam("recurse") @DefaultValue("false") boolean recurse,
+                              @Context SecurityContext securityContext)
+  {
+    String opName = "unSharePathAll";
+    // ------------------------- Retrieve and validate thread context -------------------------
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+    if (resp != null) return resp;
+
+    // Create a user that collects together tenant, user and request information needed by the service call
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
+                          "systemId="+systemId, "path="+path, "recurse="+recurse);
+
+    // ------------------------- Perform the operation -------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    svc.removeAllSharesForPath(rUser, systemId, path, recurse);
+
+    // ---------------------------- Success -------------------------------
+    RespBasic resp1 = new RespBasic();
+    String msg = ApiUtils.getMsgAuth("FAPI_SHARE_DEL_ALL", rUser, systemId, path);
+    log.info(msg);
+    return Response.status(Status.OK)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+            .build();
   }
 
   // ************************************************************************

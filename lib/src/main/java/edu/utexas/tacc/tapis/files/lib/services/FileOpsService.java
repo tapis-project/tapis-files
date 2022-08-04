@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
+import edu.utexas.tacc.tapis.files.lib.models.UserShareInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
@@ -508,8 +509,8 @@ public class FileOpsService implements IFileOpsService
         client.reserve();
         // Delete files and permissions
         delete(client, path);
-        // Remove shares
-        shareService.removeAllSharesForPath(rUser, sysId, path);
+        // Remove shares with recurse=true
+        shareService.removeAllSharesForPath(rUser, sysId, path, true);
       }
       catch (IOException | ServiceException ex)
       {
@@ -957,6 +958,8 @@ public class FileOpsService implements IFileOpsService
 
   /**
    * Confirm that caller or impersonationId has READ permission or share on path
+   * If it is allowed due to READ permission then return null
+   * If it is allowed due to a share then return the UserShareInfo which contains the grantor.
    * To use impersonationId it must be a service request from a service allowed to impersonate.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
@@ -964,6 +967,7 @@ public class FileOpsService implements IFileOpsService
    * @param path - path to the file, dir or object
    * @throws ForbiddenException - oboUserId not authorized to perform operation
    */
+//  private UserShareInfo checkAuthForReadOrShare(ResourceRequestUser rUser, TapisSystem system, Path path, String impersonationId)
   private void checkAuthForReadOrShare(ResourceRequestUser rUser, TapisSystem system, Path path, String impersonationId)
           throws ForbiddenException, ServiceException
   {
@@ -994,12 +998,15 @@ public class FileOpsService implements IFileOpsService
     if (permsService.isPermitted(rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, pathStr, Permission.READ))
     {
       return;
+//      return null;
     }
     else
     {
       try
       {
         if (shareService.isSharedWithUser(rUser, system, pathStr, oboOrImpersonatedUser)) return;
+//        UserShareInfo si =  shareService.isSharedWithUser(rUser, system, pathStr, oboOrImpersonatedUser);
+//        if (si != null) return si;
       }
       catch (TapisClientException e)
       {

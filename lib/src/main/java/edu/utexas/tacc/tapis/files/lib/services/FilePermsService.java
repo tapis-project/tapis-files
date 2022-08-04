@@ -21,6 +21,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
+/*
+ * Service level methods for Tapis File permissions.
+ * NOTE: Paths stored in SK for permissions and shares always relative to rootDir and always start with /
+ */
 @Service
 public class FilePermsService
 {
