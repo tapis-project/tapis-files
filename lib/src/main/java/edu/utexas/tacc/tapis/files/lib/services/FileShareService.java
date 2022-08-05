@@ -5,6 +5,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
 import javax.inject.Inject;
+import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotSupportedException;
 import javax.ws.rs.WebApplicationException;
 import java.util.Set;
@@ -87,6 +88,8 @@ public class FileShareService
   /*
    * Check to see if a path is shared with a user.
    *
+   * NOTE: No permission checking
+   * NOTE: We do not set grantor when checking.
    * NOTE: This method is not called by an api resource, so it does not throw WebApplicationException.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
@@ -155,15 +158,6 @@ public class FileShareService
       // Check parent paths. This is the final check, so simply return
       return checkForGranteeInParentPaths(rUser.getOboUserId(), rUser.getOboTenantId(), skParms, pathStr);
     }
-//    }
-//    catch (TapisClientException e)
-//    {
-//      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, "getShareInfo", systemId, path, pathStr, e.getMessage());
-//      log.error(msg, e);
-//      throw new WebApplicationException(msg, e);
-//    }
-//    shareInfo = new ShareInfo(isPublic, isPublicPath, userSet, userShareInfoSet);
-//    return shareInfo;
 
     // No shares found, path not shared, return false.
     return false;
@@ -256,6 +250,8 @@ public class FileShareService
    * Get share info for path
    * Sharing means grantees effectively have READ permission on the path.
    *
+   * Requesting user must have READ permission.
+   *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
    * @param path - path on system relative to system rootDir
@@ -265,6 +261,7 @@ public class FileShareService
   public ShareInfo getShareInfo(ResourceRequestUser rUser, String systemId, String path)
           throws WebApplicationException
   {
+    String opName = "getShareInfo";
     // Make sure the Tapis System exists and is enabled
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
     // Get path relative to system rootDir and protect against ../.. and make sure starts with /
@@ -273,6 +270,43 @@ public class FileShareService
     // For convenience/clarity
     String oboUser = rUser.getOboUserId();
     String oboTenant = rUser.getOboTenantId();
+
+    // TODO
+    // User must be system owner or have READ permission or share for path
+    // TODO at some point need to support a way for a user to see which files are shared with them.
+    //   but they probably should be limited to seeing only their own information, so they should not get
+    //   the full ShareInfo details.
+    //  So for now limit this method to only users who have READ permission.
+//    try
+//    {
+//      if (!permsService.isPermitted(oboTenant, oboUser, systemId, pathStr, FileInfo.Permission.READ) &&
+//            !isSharedWithUser(rUser, sys, pathStr, rUser.getOboUserId()))
+//      {
+//        String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, FileInfo.Permission.READ);
+//        throw new ForbiddenException(msg);
+//
+//      }
+//      LibUtils.checkPermitted(permsService, oboTenant, oboUser, systemId, pathStr, FileInfo.Permission.READ);
+//    }
+//    catch (ServiceException ex)
+//    {
+//      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, pathStr,
+//              ex.getMessage()), ex);
+//    }
+    // User must be system owner or have READ permission
+    try
+    {
+      // If not the owner check for READ permission
+      if (sys.getOwner() != null && !sys.getOwner().equals(oboUser))
+      {
+        LibUtils.checkPermitted(permsService, oboTenant, oboUser, systemId, pathStr, FileInfo.Permission.READ);
+      }
+    }
+    catch (ServiceException ex)
+    {
+      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, pathStr,
+              ex.getMessage()), ex);
+    }
 
     // Create SKShareGetSharesParms needed for SK calls.
     var skParms = new SKShareGetSharesParms();
@@ -348,6 +382,7 @@ public class FileShareService
   /**
    * Share a path with one or more users
    * Sharing means grantees effectively have READ permission on the path.
+   * Only System owner may share file paths.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
@@ -407,6 +442,7 @@ public class FileShareService
 
   /**
    * TODO Remove all share access for a path on a system including public.
+   * Must be system owner
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
@@ -419,7 +455,7 @@ public class FileShareService
   {
     String opName = "removeAllSharesForPath";
     // Make sure the Tapis System exists and is enabled
-    LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
     // Get path relative to system rootDir and protect against ../.. and make sure starts with /
     String pathStr = PathUtils.getSKRelativePath(path).toString();
 
@@ -427,15 +463,11 @@ public class FileShareService
     String oboUser = rUser.getOboUserId();
     String oboTenant = rUser.getOboTenantId();
 
-    // Check permission
-    try
+    // User must be system owner
+    if (sys.getOwner() == null || !sys.getOwner().equals(oboUser))
     {
-      LibUtils.checkPermitted(permsService, oboTenant, oboUser, systemId, pathStr, FileInfo.Permission.MODIFY);
-    }
-    catch (ServiceException ex)
-    {
-      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, pathStr,
-              ex.getMessage()), ex);
+      String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, opName);
+      throw new ForbiddenException(msg);
     }
 
     //TODO
@@ -497,7 +529,7 @@ public class FileShareService
           throws WebApplicationException
   {
     // Make sure the Tapis System exists and is enabled
-    LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
     // Get path relative to system rootDir and protect against ../.. and make sure starts with /
     String pathStr = PathUtils.getSKRelativePath(path).toString();
 
@@ -505,15 +537,11 @@ public class FileShareService
     String oboUser = rUser.getOboUserId();
     String oboTenant = rUser.getOboTenantId();
 
-    // Check permission
-    try
+    // User must be system owner
+    if (sys.getOwner() == null || !sys.getOwner().equals(oboUser))
     {
-      LibUtils.checkPermitted(permsService, oboTenant, oboUser, systemId, pathStr, FileInfo.Permission.MODIFY);
-    }
-    catch (ServiceException ex)
-    {
-      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, pathStr,
-                                                             ex.getMessage()), ex);
+      String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, opName);
+      throw new ForbiddenException(msg);
     }
 
     // Create request object needed for SK calls.
