@@ -65,6 +65,7 @@ public class FileShareService
   private static final String OP_UNSHARE = "unSharePath";
   private static final String RESOURCE_TYPE = "file";
   private static final Set<String> publicUserSet = Collections.singleton(SKClient.PUBLIC_GRANTEE); // "~public"
+  private static final String SK_WILDCARD = "%";
 
   // ************************************************************************
   // *********************** Fields *****************************************
@@ -441,7 +442,7 @@ public class FileShareService
   }
 
   /**
-   * TODO Remove all share access for a path on a system including public.
+   * Remove all share access for a path on a system including public.
    * Must be system owner
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
@@ -470,50 +471,42 @@ public class FileShareService
       throw new ForbiddenException(msg);
     }
 
-    //TODO
-    throw new WebApplicationException("NOT IMPLEMENTED");
+    // Create request objects needed for SK calls.
+    var skGetParms = new SKShareGetSharesParms();
+    skGetParms.setResourceType(RESOURCE_TYPE);
+    skGetParms.setResourceId1(systemId);
+    skGetParms.setResourceId2(pathStr);
 
-    // TODO
-//    // Create request objects needed for SK calls.
-//    var skGetParms = new SKShareGetSharesParms();
-//    skGetParms.setResourceType(RESOURCE_TYPE);
-//    skGetParms.setResourceId1(systemId);
-//    skGetParms.setResourceId2(pathStr);
-//
-//    var skDeleteParms = new SKShareDeleteShareParms();
-//    skDeleteParms.setResourceType(RESOURCE_TYPE);
-//    skDeleteParms.setResourceId1(systemId);
-//    skDeleteParms.setResourceId2(pathStr);
-//    skDeleteParms.setPrivilege(FileInfo.Permission.READ.name());
-//
-//    // We will be calling SK which can throw TapisClientException. Handle it by converting to WebAppException
-//    try
-//    {
-//      // Remove public sharing
-//      skDeleteParms.setGrantee(SKClient.PUBLIC_GRANTEE);
-//      getSKClient(oboUser, oboTenant).deleteShare(skDeleteParms);
-//
-//      // Get all users
-//      SkShareList shareList = getSKClient(oboUser, oboTenant).getShares(skGetParms);
-//      var userSet = new HashSet<String>();
-//      if (shareList != null && shareList.getShares() != null)
-//      {
-//        for (SkShare skShare : shareList.getShares()) { userSet.add(skShare.getGrantee()); }
-//      }
-//
-//      // For each user remove the share
-//      for (String userName : userSet)
-//      {
-//        skDeleteParms.setGrantee(userName);
-//        getSKClient(oboUser, oboTenant).deleteShare(skDeleteParms);
-//      }
-//    }
-//    catch (TapisClientException e)
-//    {
-//      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, OP_UNSHARE, systemId, path, pathStr, e.getMessage());
-//      log.error(msg, e);
-//      throw new WebApplicationException(msg, e);
-//    }
+    var skDeleteParms = new SKShareDeleteShareParms();
+    skDeleteParms.setResourceType(RESOURCE_TYPE);
+    skDeleteParms.setResourceId1(systemId);
+    skDeleteParms.setPrivilege(FileInfo.Permission.READ.name());
+    String pathToRemove = pathStr;
+    // If recursive add "%" to the end of the path
+    if (recurse) pathToRemove = String.format("%s%s", pathStr,SK_WILDCARD);
+    skDeleteParms.setResourceId2(pathToRemove);
+
+    // We will be calling SK which can throw TapisClientException. Handle it by converting to WebAppException
+    try
+    {
+      // Get all shares for the path and it's sub-paths
+      SkShareList shareList = getSKClient(oboUser, oboTenant).getShares(skGetParms);
+      // Remove share for every entry in the list
+      if (shareList != null && shareList.getShares() != null)
+      {
+        for (SkShare skShare : shareList.getShares())
+        {
+          skDeleteParms.setGrantee(skShare.getGrantee());
+          getSKClient(oboUser, oboTenant).deleteShare(skDeleteParms);
+        }
+      }
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, OP_UNSHARE, systemId, path, pathStr, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
   }
 
   // ************************************************************************

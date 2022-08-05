@@ -274,6 +274,7 @@ public class TestFileShareService
     permsService.grantPermission(devTenant, testUser2, sysId, filePathStr, Permission.READ);
 
     // Remove share from any previous failed run.
+    fileShareService.removeAllSharesForPath(rTestUser1, sysId, filePathStr, true);
     // NOTE: If previous test failure resulted in share grants by user not system owner then
     //         it cannot be removed this way because SK uses oboUser to set grantor when removing a share.
     //         To clean up must remove perm check in FileShareService, add code here to remove shares
@@ -341,6 +342,13 @@ public class TestFileShareService
 
     // isSharedWithUser should return false
     Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser1, tmpSys, filePathStr, testUser2));
+    Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser1, tmpSys, filePathStr, testUser3));
+
+    // Simple test of removeAllShares
+    // Share with testUser3
+    fileShareService.sharePath(rTestUser1, sysId, filePathStr, userSet);
+    Assert.assertTrue(fileShareService.isSharedWithUser(rTestUser1, tmpSys, filePathStr, testUser3));
+    fileShareService.removeAllSharesForPath(rTestUser1, sysId, filePathStr, false);
     Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser1, tmpSys, filePathStr, testUser3));
   }
 }
