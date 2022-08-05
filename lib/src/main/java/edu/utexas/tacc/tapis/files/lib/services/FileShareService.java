@@ -472,19 +472,14 @@ public class FileShareService
     }
 
     // Create request objects needed for SK calls.
+    String pathToSearch = pathStr;
+    // If recursive add "%" to the end of the path to search
+    if (recurse) pathToSearch = String.format("%s%s", pathStr, SK_WILDCARD);
+
     var skGetParms = new SKShareGetSharesParms();
     skGetParms.setResourceType(RESOURCE_TYPE);
     skGetParms.setResourceId1(systemId);
-    skGetParms.setResourceId2(pathStr);
-
-    var skDeleteParms = new SKShareDeleteShareParms();
-    skDeleteParms.setResourceType(RESOURCE_TYPE);
-    skDeleteParms.setResourceId1(systemId);
-    skDeleteParms.setPrivilege(FileInfo.Permission.READ.name());
-    String pathToRemove = pathStr;
-    // If recursive add "%" to the end of the path
-    if (recurse) pathToRemove = String.format("%s%s", pathStr,SK_WILDCARD);
-    skDeleteParms.setResourceId2(pathToRemove);
+    skGetParms.setResourceId2(pathToSearch);
 
     // We will be calling SK which can throw TapisClientException. Handle it by converting to WebAppException
     try
@@ -496,8 +491,7 @@ public class FileShareService
       {
         for (SkShare skShare : shareList.getShares())
         {
-          skDeleteParms.setGrantee(skShare.getGrantee());
-          getSKClient(oboUser, oboTenant).deleteShare(skDeleteParms);
+          if (skShare.getId() != null) getSKClient(oboUser, oboTenant).deleteShareById(skShare.getId());
         }
       }
     }
