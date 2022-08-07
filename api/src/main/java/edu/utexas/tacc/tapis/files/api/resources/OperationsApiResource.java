@@ -197,7 +197,7 @@ public class OperationsApiResource extends BaseFileOpsResource
   @Produces(MediaType.APPLICATION_JSON)
   public Response mkdir(@PathParam("systemId") String systemId,
                         @Valid MkdirRequest mkdirRequest,
-                        @QueryParam("sharedAppCtx") @DefaultValue("true") boolean sharedAppCtx,
+                        @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
                         @Context SecurityContext securityContext)
   {
     String opName = "mkdir";

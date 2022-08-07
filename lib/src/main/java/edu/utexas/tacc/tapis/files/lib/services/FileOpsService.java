@@ -68,6 +68,7 @@ public class FileOpsService implements IFileOpsService
   private static final String JOBS_SERVICE = TapisConstants.SERVICE_NAME_JOBS;
 
   public static final Set<String> SVCLIST_IMPERSONATE = new HashSet<>(Set.of(JOBS_SERVICE));
+  private static final Set<String> SVCLIST_SHAREDAPPCTX = new HashSet<>(Set.of(JOBS_SERVICE));
 
   // **************** Inject Services using HK2 ****************
   @Inject
@@ -329,14 +330,20 @@ public class FileOpsService implements IFileOpsService
                     boolean sharedAppCtx)
           throws WebApplicationException
   {
+    String opName = "mkdir";
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
+
+    // If sharedAppCtx set confirm that it is allowed
+    if (sharedAppCtx) checkSharedAppCtxAllowed(rUser, opName, sysId, path);
+
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
     try
     {
-      LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, path, Permission.MODIFY);
+      // If not skipping auth then check auth
+      if (!sharedAppCtx) LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, path, Permission.MODIFY);
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
       mkdir(client, path);
@@ -1019,5 +1026,29 @@ public class FileOpsService implements IFileOpsService
     String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", rUser.getOboTenantId(), oboOrImpersonatedUser, systemId,
                                  pathStr, Permission.READ);
     throw new ForbiddenException(msg);
+  }
+
+  /**
+   * Confirm that caller is allowed to set sharedAppCtx.
+   * Must be a service request from a service in the allowed list.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param opName - operation name
+   * @param sysId - name of the system
+   * @param pathStr - path involved in operation
+   * @throws NotAuthorizedException - user not authorized to perform operation
+   */
+  private void checkSharedAppCtxAllowed(ResourceRequestUser rUser, String opName, String sysId, String pathStr)
+          throws ForbiddenException
+  {
+    // If a service request the username will be the service name. E.g. files, jobs, streams, etc
+    String svcName = rUser.getJwtUserId();
+    if (!rUser.isServiceRequest() || !SVCLIST_SHAREDAPPCTX.contains(svcName))
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDAPPCTX", rUser, opName, sysId, pathStr);
+      throw new ForbiddenException(msg);
+    }
+    // An allowed service is skipping auth, log it
+    log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDAPPCTX", rUser, opName, sysId, pathStr));
   }
 }
