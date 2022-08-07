@@ -5,7 +5,8 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
-import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
+//import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
@@ -49,7 +50,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
   private static final Logger log = LoggerFactory.getLogger(UtilsLinuxApiResource.class);
 
   @Inject
-  IFileUtilsService fileUtilsService;
+  FileUtilsService fileUtilsService;
 
   @GET
   @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.

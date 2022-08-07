@@ -1,4 +1,4 @@
 -- ------------------------------------------------------------------------------------------------------
 -- Sharing supported by storing records in SK. Table *shares* not needed.
 -- ------------------------------------------------------------------------------------------------------
-DROP TABLE IF NOT EXISTS shares;
+DROP TABLE IF EXISTS shares;

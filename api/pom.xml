@@ -22,6 +22,11 @@
             <version>${project.parent.version}</version>
         </dependency>
         <dependency>
+            <groupId>edu.utexas.tacc.tapis</groupId>
+            <artifactId>tapis-files-migrations</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
         </dependency>

@@ -29,7 +29,8 @@ import java.nio.file.Path;
  * Annotate as an hk2 Service so that default scope for DI is singleton
  */
 @Service
-public class FileUtilsService implements IFileUtilsService {
+public class FileUtilsService // implements IFileUtilsService {
+{
 
   private static final Logger log = LoggerFactory.getLogger(FileUtilsService.class);
   private final FilePermsService permsService;
@@ -56,7 +57,7 @@ public class FileUtilsService implements IFileUtilsService {
    * @throws NotFoundException - path not found
    * @throws NotAuthorizedException - user not authorized to operate on path
    */
-  @Override
+//  @Override
   public FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String path, boolean followLinks)
           throws ServiceException, NotFoundException, NotAuthorizedException
   {
@@ -94,7 +95,7 @@ public class FileUtilsService implements IFileUtilsService {
    * @throws ServiceException - General problem
    * @throws NotAuthorizedException - user not authorized to operate on path
    */
-  @Override
+//  @Override
   public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
                                      @NotNull String arg, boolean recursive)
           throws TapisException, ServiceException, NotAuthorizedException

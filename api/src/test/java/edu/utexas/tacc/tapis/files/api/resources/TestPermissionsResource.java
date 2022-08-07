@@ -8,8 +8,10 @@ import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -33,6 +35,7 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import javax.inject.Singleton;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import java.util.HashMap;
@@ -107,6 +110,8 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
                 bind(serviceClients).to(ServiceClients.class);
                 bind(new TenantCacheFactory().provide()).to(TenantManager.class);
                 bindAsContract(SystemsCache.class);
+                bindAsContract(FileOpsService.class).in(Singleton.class);
+                bindAsContract(FileShareService.class).in(Singleton.class);
                 bindAsContract(FilePermsService.class);
                 bindAsContract(FilePermsCache.class);
                 bind(serviceContext).to(ServiceContext.class);

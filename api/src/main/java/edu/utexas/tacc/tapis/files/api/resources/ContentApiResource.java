@@ -2,7 +2,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+//import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
@@ -69,7 +70,7 @@ public class ContentApiResource extends BaseFileOpsResource
   private Request _request;
 
   @Inject
-  IFileOpsService fileOpsService;
+  FileOpsService fileOpsService;
 
   /**
    * Start an async data stream that can be used to receive contents of a file

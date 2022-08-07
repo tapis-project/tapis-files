@@ -45,7 +45,7 @@ public class ParentTaskTransferService
     private final RemoteDataClientFactory remoteDataClientFactory;
     private final FilePermsService permsService;
     private final SystemsCache systemsCache;
-    private final IFileOpsService fileOpsService;
+    private final FileOpsService fileOpsService;
     private static final Logger log = LoggerFactory.getLogger(ParentTaskTransferService.class);
 
   /* *********************************************************************** */
@@ -55,10 +55,11 @@ public class ParentTaskTransferService
     @Inject
     public ParentTaskTransferService(TransfersService transfersService,
                                      FileTransfersDAO dao,
-                                     IFileOpsService fileOpsService,
+                                     FileOpsService fileOpsService,
                                      FilePermsService permsService,
                                      RemoteDataClientFactory remoteDataClientFactory,
-                                     SystemsCache systemsCache) {
+                                     SystemsCache systemsCache)
+    {
         this.transfersService = transfersService;
         this.dao = dao;
         this.fileOpsService = fileOpsService;

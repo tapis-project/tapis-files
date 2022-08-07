@@ -6,9 +6,16 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MoveCopyOperation;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -175,15 +182,22 @@ public class TestFileOpsService
   @BeforeSuite
   public void doBeforeSuite()
   {
+    IRuntimeConfig runtimeConfig = RuntimeSettings.get();
+    TenantManager tenantManager = TenantManager.getInstance(runtimeConfig.getTenantsServiceURL());
+    tenantManager.getTenants();
     ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
     ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
       @Override
       protected void configure() {
         bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+        bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
+        bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
         bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
+        bindAsContract(FileOpsService.class).in(Singleton.class);
+        bindAsContract(FileShareService.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
         bind(permsService).to(FilePermsService.class).ranked(1);
-        bind(FileOpsService.class).to(FileOpsService.class).in(Singleton.class);
+        bind(tenantManager).to(TenantManager.class);
       }
     });
     remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);

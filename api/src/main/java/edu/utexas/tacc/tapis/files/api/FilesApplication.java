@@ -9,10 +9,8 @@ import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
-import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -156,9 +154,9 @@ public class FilesApplication extends ResourceConfig
         @Override
         protected void configure() {
           bind(new SSHConnectionCache(SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-          bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-          bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
           bind(tenantManager).to(TenantManager.class);
+          bindAsContract(FileOpsService.class).in(Singleton.class);
+          bindAsContract(FileUtilsService.class).in(Singleton.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);
@@ -196,7 +194,6 @@ public class FilesApplication extends ResourceConfig
     // Initialize the application container
     FilesApplication config = new FilesApplication();
 
-    // TODO/TBD - adapt from Apps to Files
     // Initialize the service
     // In order to instantiate our service class using HK2 we need to create an application handler
     //   which allows us to get an injection manager which is used to get a locator.
@@ -207,14 +204,13 @@ public class FilesApplication extends ResourceConfig
     InjectionManager im = handler.getInjectionManager();
     ServiceLocator locator = im.getInstance(ServiceLocator.class);
     FileOpsService svcImpl = locator.getService(FileOpsService.class);
+
     // Call the main service init method
-    // TODO svcImpl ends up null but serviceContext does not, why?
-    // TODO svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
-    // For now initialize the service by getting the serviceContext.
-    // The provide() method in ServiceContextFactory will initialize the service jwt.
-    ServiceContext serviceContext = locator.getService(ServiceContext.class);
+    System.out.println("Initializing service");
+    svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
 
     // Create and start the server
+    System.out.println("Starting http server");
     final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(baseUri, config, false);
     Collection<NetworkListener> listeners = server.getListeners();
     for (NetworkListener listener : listeners)

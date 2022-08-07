@@ -11,10 +11,9 @@ import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService.NativeLinuxOperation;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -151,8 +150,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
                 bindAsContract(SystemsCache.class).in(Singleton.class);
-                bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-                bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
+                bindAsContract(FileOpsService.class).in(Singleton.class);
+                bindAsContract(FileUtilsService.class).in(Singleton.class);
+                bindAsContract(FileShareService.class).in(Singleton.class);
                 bindAsContract(RemoteDataClientFactory.class);
                 bind(serviceContext).to(ServiceContext.class);
               }

@@ -9,7 +9,7 @@ import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+//import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
@@ -48,7 +48,7 @@ public class TransfersApp
       @Override
       protected void configure()
       {
-        bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+        bind(FileOpsService.class).in(Singleton.class);
         bind(FileUtilsService.class).to(FileUtilsService.class);
         bind(FileTransfersDAO.class).to(FileTransfersDAO.class);
         bind(new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);

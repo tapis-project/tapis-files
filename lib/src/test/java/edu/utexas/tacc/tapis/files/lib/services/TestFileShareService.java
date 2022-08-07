@@ -110,9 +110,9 @@ public class TestFileShareService
       protected void configure() {
         bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
         bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
+        bindAsContract(FileOpsService.class).in(Singleton.class);
         bindAsContract(FileShareService.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
-        bind(FileOpsService.class).to(FileOpsService.class).in(Singleton.class);
         bind(FilePermsService.class).to(FilePermsService.class).in(Singleton.class);
         bind(FilePermsCache.class).to(FilePermsCache.class).in(Singleton.class);
         bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);

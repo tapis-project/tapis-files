@@ -10,7 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -192,11 +192,12 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
                 bind(serviceClients).to(ServiceClients.class);
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
+                bindAsContract(FileOpsService.class).in(Singleton.class);
+                bindAsContract(FileShareService.class).in(Singleton.class);
                 bindAsContract(SystemsCache.class);
                 bindAsContract(FilePermsService.class);
                 bind(serviceContext).to(ServiceContext.class);
                 bind(systemsCache).to(SystemsCache.class);
-                bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
                 bind(remoteDataClientFactory).to(RemoteDataClientFactory.class);
                 bind(sshConnectionCache).to(SSHConnectionCache.class);
               }
