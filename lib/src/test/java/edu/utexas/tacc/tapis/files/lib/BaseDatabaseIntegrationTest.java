@@ -9,6 +9,7 @@ import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
@@ -190,9 +191,10 @@ public class BaseDatabaseIntegrationTest
         bind(serviceClients).to(ServiceClients.class);
         bind(serviceContext).to(ServiceContext.class);
         bindAsContract(RemoteDataClientFactory.class);
-        bindAsContract(FileUtilsService.class);
         bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-        bind(FileOpsService.class).in(Singleton.class);
+        bindAsContract(FileOpsService.class).in(Singleton.class);
+        bindAsContract(FileShareService.class).in(Singleton.class);
+        bindAsContract(FileUtilsService.class);
       }
     });
     log.info(locator.toString());
