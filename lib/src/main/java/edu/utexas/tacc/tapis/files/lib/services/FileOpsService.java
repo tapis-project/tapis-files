@@ -59,7 +59,7 @@ import java.util.zip.ZipOutputStream;
  * Annotate as an hk2 Service so that default scope for Dependency Injection is singleton
  */
 @Service
-public class FileOpsService// implements IFileOpsService
+public class FileOpsService
 {
   public static final int MAX_LISTING_SIZE = 1000;
 
@@ -125,7 +125,6 @@ public class FileOpsService// implements IFileOpsService
    * @return Collection of FileInfo objects
    * @throws NotFoundException - requested path not found
    */
-  //@Override
   public List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
                            long limit, long offset, String impersonationId)
           throws WebApplicationException
@@ -169,7 +168,6 @@ public class FileOpsService// implements IFileOpsService
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    */
-  //@Override
   public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String path, long limit, long offset)
           throws ServiceException
   {
@@ -209,7 +207,6 @@ public class FileOpsService// implements IFileOpsService
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-    //@Override
     public List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
                                       @NotNull String path, int depth, String impersonationId)
             throws WebApplicationException
@@ -268,7 +265,6 @@ public class FileOpsService// implements IFileOpsService
    * @param inStrm  data stream to be used when creating file
    * @throws ForbiddenException - user not authorized
    */
-  //@Override
   public void upload(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
                      @NotNull InputStream inStrm)
           throws WebApplicationException
@@ -305,7 +301,6 @@ public class FileOpsService// implements IFileOpsService
    * @throws ServiceException - general error
    * @throws ForbiddenException - user not authorized
    */
-    //@Override
     public void upload(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull InputStream inputStream)
             throws ServiceException
     {
@@ -335,7 +330,6 @@ public class FileOpsService// implements IFileOpsService
    * @param sharedAppCtx - Indicates that request is part of a shared app context.
    * @throws ForbiddenException - user not authorized
    */
-  //@Override
   public void mkdir(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
                     boolean sharedAppCtx)
           throws WebApplicationException
@@ -377,7 +371,6 @@ public class FileOpsService// implements IFileOpsService
    * @throws ServiceException - general error
    * @throws ForbiddenException - user not authorized
    */
-  //@Override
   public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException, ForbiddenException
   {
     LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
@@ -407,7 +400,6 @@ public class FileOpsService// implements IFileOpsService
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-    //@Override
     public void moveOrCopy(@NotNull ResourceRequestUser rUser, @NotNull MoveCopyOperation op, @NotNull TapisSystem sys,
                            String srcPath, String dstPath)
             throws WebApplicationException
@@ -448,7 +440,6 @@ public class FileOpsService// implements IFileOpsService
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-  //@Override
   public void moveOrCopy(@NotNull IRemoteDataClient client,  @NotNull MoveCopyOperation op, String srcPath, String dstPath)
           throws ServiceException
   {
@@ -510,7 +501,6 @@ public class FileOpsService// implements IFileOpsService
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-    //@Override
     public void delete(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path)
             throws WebApplicationException
     {
@@ -548,7 +538,6 @@ public class FileOpsService// implements IFileOpsService
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-  //@Override
   public void delete(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException
   {
     LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
