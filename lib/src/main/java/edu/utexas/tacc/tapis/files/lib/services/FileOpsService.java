@@ -1,8 +1,12 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import com.zaxxer.hikari.HikariDataSource;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
@@ -12,12 +16,14 @@ import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.flywaydb.core.Flyway;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
+import javax.sql.DataSource;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
@@ -99,10 +106,9 @@ public class FileOpsService// implements IFileOpsService
     // Initialize service context and site info
     siteId = siteId1;
     siteAdminTenantId = siteAdminTenantId1;
-//  TODO
     serviceContext.initServiceJWT(siteId, APPS_SERVICE, svcPassword);
-    // Make sure DB is present and updated to latest version using flyway
-//    dao.migrateDB();
+    // Make sure DB is present and updated using flyway
+    migrateDB();
   }
 
   // ----------------------------------------------------------------------------------------------------
@@ -1054,5 +1060,19 @@ public class FileOpsService// implements IFileOpsService
     }
     // An allowed service is skipping auth, log it
     log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDAPPCTX", rUser, opName, sysId, pathStr));
+  }
+
+
+  /*
+   * Use datasource from Hikari connection pool to execute the flyway migration.
+   */
+  private void migrateDB()
+  {
+    Flyway flyway = Flyway.configure().dataSource(HikariConnectionPool.getDataSource()).load();
+    // TODO remove workaround if possible. Figure out how to deploy X.Y.Z-SNAPSHOT repeatedly.
+    // Use repair as workaround to avoid checksum error during develop/deploy of SNAPSHOT versions when it is not
+    // a true migration.
+    flyway.repair();
+    flyway.migrate();
   }
 }

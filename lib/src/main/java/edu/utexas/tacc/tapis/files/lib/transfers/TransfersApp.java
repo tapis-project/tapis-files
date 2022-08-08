@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 //import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
@@ -41,17 +42,18 @@ public class TransfersApp
 
   public static void main(String[] args)
   {
-    log.info("Starting transfers application.");
+    log.info("Starting transfers worker application.");
     // Initialize bindings for HK2 dependency injection
     ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
     ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
       @Override
       protected void configure()
       {
-        bind(FileOpsService.class).in(Singleton.class);
-        bind(FileUtilsService.class).to(FileUtilsService.class);
-        bind(FileTransfersDAO.class).to(FileTransfersDAO.class);
         bind(new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+        bindAsContract(FileOpsService.class).in(Singleton.class);
+        bindAsContract(FileUtilsService.class).in(Singleton.class);
+        bindAsContract(FileShareService.class).in(Singleton.class);
+        bindAsContract(FileTransfersDAO.class);
         bindAsContract(RemoteDataClientFactory.class);
         bindAsContract(SystemsCache.class).in(Singleton.class);
         bindAsContract(TransfersService.class).in(Singleton.class);

@@ -16,6 +16,7 @@ Incremental improvements and preview of new feature.
 ### New features:
 - Support sharing of a path with one or more users. Includes support for sharing with all users in a tenant.
 - Support sharedAppCtx for mkdir operation and transfer requests (srcSharedAppCtx, destSharedAppCtx).
+- Perform DB migration at service startup.
 
 ### Bug fixes:
 - None.

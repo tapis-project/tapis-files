@@ -7,8 +7,8 @@ public class TransferTaskRequestElement
   private TransferURI sourceURI;
   private TransferURI destinationURI;
   private boolean optional;
-  private boolean srcSharedAppCtx;
-  private boolean destSharedAppCtx;
+  private boolean srcSharedAppCtx = false;
+  private boolean destSharedAppCtx = false;
 
   @NotBlank
   public TransferURI getSourceURI() { return sourceURI; }
