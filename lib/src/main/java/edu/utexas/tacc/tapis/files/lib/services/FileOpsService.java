@@ -1,22 +1,17 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import com.zaxxer.hikari.HikariDataSource;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
-import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
-import edu.utexas.tacc.tapis.files.lib.models.UserShareInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -31,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
-import javax.sql.DataSource;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
@@ -44,7 +38,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ServiceConfigurationError;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;

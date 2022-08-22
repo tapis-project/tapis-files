@@ -73,6 +73,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
 
   private final List<TapisSystem> testSystems = new ArrayList<>();
   private final List<TapisSystem> testSystemsNoS3 = new ArrayList<>();
+  private final List<TapisSystem> testSystemsIRODS = new ArrayList<>();
 
   // mocking out the services
   private ServiceClients serviceClients;
@@ -92,12 +93,12 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     creds.setAccessKey("testuser");
     creds.setPassword("password");
     TapisSystem testSystemSSH = new TapisSystem();
+    testSystemSSH.setId("testSystem");
     testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
     testSystemSSH.setOwner("testuser1");
     testSystemSSH.setHost("localhost");
     testSystemSSH.setPort(2222);
     testSystemSSH.setRootDir("/data/home/testuser/");
-    testSystemSSH.setId("testSystem");
     testSystemSSH.setEffectiveUserId("testuser");
     testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     testSystemSSH.setAuthnCredential(creds);
@@ -106,12 +107,12 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     creds.setAccessKey("user");
     creds.setAccessSecret("password");
     TapisSystem testSystemS3 = new TapisSystem();
+    testSystemS3.setId("testSystem");
     testSystemS3.setSystemType(SystemTypeEnum.S3);
     testSystemS3.setOwner("testuser1");
     testSystemS3.setHost("http://localhost");
     testSystemS3.setPort(9000);
     testSystemS3.setBucketName("test");
-    testSystemS3.setId("testSystem");
     testSystemS3.setRootDir("/");
     testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
     testSystemS3.setAuthnCredential(creds);
@@ -120,7 +121,9 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     creds.setAccessKey("dev");
     creds.setAccessSecret("dev");
     TapisSystem testSystemIrods = new TapisSystem();
+    testSystemIrods.setId("testSystem");
     testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
+    testSystemIrods.setOwner("testuser1");
     testSystemIrods.setHost("localhost");
     testSystemIrods.setPort(1247);
     testSystemIrods.setRootDir("/tempZone/home/dev/");
@@ -133,6 +136,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     testSystems.add(testSystemIrods);
     testSystemsNoS3.add(testSystemSSH);
     testSystemsNoS3.add(testSystemIrods);
+    testSystemsIRODS.add(testSystemIrods);
   }
 
   @Override
@@ -231,6 +235,9 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   {
     return testSystemsNoS3.toArray();
   }
+
+  @DataProvider(name="testSystemsProviderIRODS")
+  public Object[] testSystemsProviderIRODS() { return testSystemsIRODS.toArray(); }
 
   @Test(dataProvider = "testSystemsProvider")
   public void testGetList(TapisSystem testSystem) throws Exception

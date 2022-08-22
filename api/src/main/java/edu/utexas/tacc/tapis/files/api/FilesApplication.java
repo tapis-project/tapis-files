@@ -69,7 +69,6 @@ import java.util.concurrent.TimeUnit;
 public class FilesApplication extends ResourceConfig
 {
   // SSHConnection cache settings
-  public static final long SSHCACHE_MAX_SIZE = 100;
   public static final long SSHCACHE_TIMEOUT_MINUTES = 5;
 
   // We must be running on a specific site and this will never change
@@ -87,16 +86,19 @@ public class FilesApplication extends ResourceConfig
     // TODO: Some of these class registrations are also in BaseResourceConfig but cannot delete
     //       BaseResourceConfig yet because it is used in 5 test classes. Review Systems and Apps code to see if
     //       BaseResourceConfig can be deleted or if these registrations should be removed and the Base used instead.
+
     // Needed for properly returning timestamps
     // Also allows for setting a breakpoint when response is being constructed.
     register(ObjectMapperContextResolver.class);
 
     // Need this for some reason for multipart forms/ uploads
     register(MultiPartFeature.class);
+
     // Serialization
     register(JacksonFeature.class);
+
     // ExceptionMappers, need both because ValidationMapper is a custom Jersey thing and
-    // can't be implemented in a generic mapper
+    // cannot be implemented in a generic mapper
     register(FilesExceptionMapper.class);
     register(ValidationExceptionMapper.class);
 
@@ -126,7 +128,7 @@ public class FilesApplication extends ResourceConfig
     // Set the application name. Note that this has no impact on base URL
     setApplicationName(TapisConstants.SERVICE_NAME_FILES);
 
-    // Perform remaining init steps in try block so we can print a fatal error message if something goes wrong.
+    // Perform remaining init steps in try block, so we can print a fatal error message if something goes wrong.
     try
     {
       // Get runtime parameters
@@ -179,7 +181,7 @@ public class FilesApplication extends ResourceConfig
   }
 
   /**
-   * Embedded Grizzly HTTP server
+   * Main method to init service and start embedded Grizzly HTTP server
    */
   public static void main(String[] args) throws Exception
   {
