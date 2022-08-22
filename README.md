@@ -76,7 +76,7 @@ The integration tests are configured to use the `test` database created above.
 
 Currently, tests run using mvn from the command line appear to have concurrency issues. They sometimes fail.
 Tests to run manually from IDE:
- - TestTransfers (approx 17 minutes, intermittent fails - test10Files, testDoesTransferAtRoot, ...)
+ - TestTransfers (approx 17 minutes, intermittent fails - test10Files, testDoesTransferAtRoot, testMultipleChildren, testNestedDirectories, testSameSystemForSourceAndDest)
  -   intermittent failures succeed when run individually from IDE
  - TestOpsRoutes (1.5 minutes)
  - TestFileOpsService (1 minute)
