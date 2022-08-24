@@ -1,23 +1,21 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import javax.inject.Inject;
+import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.NotFoundException;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Delivery;
-import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
-import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
-import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -38,17 +36,22 @@ import reactor.rabbitmq.Sender;
 import reactor.rabbitmq.SenderOptions;
 import reactor.util.retry.RetrySpec;
 
-import javax.inject.Inject;
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.WebApplicationException;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
+import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 
 import static reactor.rabbitmq.BindingSpecification.binding;
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SHAREDAPPCTX;
 
 @Service
 public class TransfersService
@@ -226,20 +229,31 @@ public class TransfersService
      * Creates the associated TransferTaskParents in the table transfer_tasks_parent
      *   using the provided elements list creates the
      *
-     * @param username Obo username
-     * @param tenantId tenantId
+     * @param rUser - ResourceRequestUser containing tenant, user and request info
      * @param tag      Optional identifier
      * @param elements List of requested paths to transfer
      * @return TransferTask The TransferTask that has been saved to the DB
      * @throws ServiceException Saving to DB fails
+     * @throws ForbiddenException - user not authorized, only certain services authorized
      */
-    public TransferTask createTransfer(@NotNull String username, @NotNull String tenantId, String tag,
+    public TransferTask createTransfer(@NotNull ResourceRequestUser rUser, String tag,
                                        List<TransferTaskRequestElement> elements)
             throws ServiceException
     {
+      String opName = "createTransfer";
+      // First check for srcSharedAppCtx or destSharedAppCtx in the request elements.
+      // Only certain services may set these to true.
+      if (elements != null)
+      {
+        for (TransferTaskRequestElement e : elements)
+        {
+          // This method will throw ForbiddenException if not allowed.
+          checkSharedAppCtxAllowed(rUser, opName, tag, e);
+        }
+      }
       TransferTask task = new TransferTask();
-      task.setTenantId(tenantId);
-      task.setUsername(username);
+      task.setTenantId(rUser.getOboTenantId());
+      task.setUsername(rUser.getOboUserId());
       task.setStatus(TransferTaskStatus.ACCEPTED);
       task.setTag(tag);
       try
@@ -250,7 +264,7 @@ public class TransfersService
       }
       catch (DAOException | ServiceException e)
       {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR6", tenantId, username, "createTransfer", tag, e.getMessage());
+        String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_ERR6", rUser, "createTransfer", tag, e.getMessage());
         throw new ServiceException(msg, e);
       }
     }
@@ -452,5 +466,34 @@ public class TransfersService
       return Mono.just(controlMessage);
     }
     catch (IOException ex) { return Mono.empty(); }
+  }
+
+  /**
+   * Confirm that caller is allowed to set sharedAppCtx.
+   * Must be a service request from a service in the allowed list.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param opName - operation name
+   * @param tag - txfr task tag
+   * @param e - Transfer task element to check
+   * @throws ForbiddenException - user not authorized to perform operation
+   */
+  private void checkSharedAppCtxAllowed(ResourceRequestUser rUser, String opName, String tag,
+                                        TransferTaskRequestElement e)
+          throws ForbiddenException
+  {
+    // If nothing to check or sharedAppCtx not true then we are done.
+    if (e == null) return;
+    if (!e.isSrcSharedAppCtx() && !e.isDestSharedAppCtx()) return;
+
+    // If a service request the username will be the service name. E.g. files, jobs, streams, etc
+    String svcName = rUser.getJwtUserId();
+    if (!rUser.isServiceRequest() || !SVCLIST_SHAREDAPPCTX.contains(svcName))
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDAPPCTX_TXFR", rUser, opName, tag);
+      throw new ForbiddenException(msg);
+    }
+    // An allowed service is skipping auth, log it
+    log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDAPPCTX_TXFR", rUser, opName, tag));
   }
 }

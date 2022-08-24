@@ -702,4 +702,23 @@ public class FileTransfersDAO {
                 "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
     }
+
+  /*
+   * Delete all tasks associated with given user.
+   * This method should only ever be called by Test code
+   */
+  void deleteAllTasksForUser(@NotNull String tenantId,  @NotNull String userName) throws DAOException
+  {
+    try (Connection connection = HikariConnectionPool.getConnection())
+    {
+      String stmt = FileTransfersDAOStatements.DELETE_ALL_TRANSFER_TASKS_FOR_USER;
+      QueryRunner runner = new QueryRunner();
+
+      runner.execute(connection, stmt, tenantId, userName);
+    }
+    catch (SQLException ex)
+    {
+      throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR5", tenantId, userName, ex.getMessage()), ex);
+    }
+  }
 }

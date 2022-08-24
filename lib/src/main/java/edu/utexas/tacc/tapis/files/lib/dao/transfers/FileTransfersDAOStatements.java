@@ -194,6 +194,9 @@ public class FileTransfersDAOStatements {
         """
             UPDATE transfer_tasks_child set bytes_transferred = ? WHERE id = ?
         """;
-
-
+  //language=SQL
+  public static final String DELETE_ALL_TRANSFER_TASKS_FOR_USER =
+          """
+              DELETE FROM transfer_tasks WHERE tenant_id = ? AND username = ?;
+          """;
 }

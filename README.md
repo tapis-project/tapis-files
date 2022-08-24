@@ -87,7 +87,7 @@ Tests to run manually from IDE:
  - TestIrodsClient (10 seconds)
  - TestS3Client (5 seconds)
  - TestTransfersRoutes (5 seconds)
- - TestFileTransfersDAO (5 seconds, fail - testGetAllForUser. TODO fix)
+ - TestFileTransfersDAO (5 seconds)
 
 ```
 mvn clean install -DskipITs=false -DAPP_ENV=test

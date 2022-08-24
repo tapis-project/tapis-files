@@ -63,7 +63,7 @@ import java.util.concurrent.TimeUnit;
  *     This has been found to be a more robust scheme for keeping startup working for both
  *     running in an IDE and standalone.
  *
- * For all logging use println or similar so we do not have a dependency on a logging subsystem.
+ * For all logging use println or similar, so we do not have a dependency on a logging subsystem.
  */
 @ApplicationPath("/")
 public class FilesApplication extends ResourceConfig

@@ -70,7 +70,7 @@ public class FileOpsService
   private static final String JOBS_SERVICE = TapisConstants.SERVICE_NAME_JOBS;
 
   public static final Set<String> SVCLIST_IMPERSONATE = new HashSet<>(Set.of(JOBS_SERVICE));
-  private static final Set<String> SVCLIST_SHAREDAPPCTX = new HashSet<>(Set.of(JOBS_SERVICE));
+  public static final Set<String> SVCLIST_SHAREDAPPCTX = new HashSet<>(Set.of(JOBS_SERVICE));
 
   // **************** Inject Services using HK2 ****************
   @Inject
@@ -332,7 +332,8 @@ public class FileOpsService
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
 
-    // If sharedAppCtx set confirm that it is allowed
+    // If sharedAppCtx set, confirm that it is allowed
+    // This method will throw ForbiddenException if not allowed.
     if (sharedAppCtx) checkSharedAppCtxAllowed(rUser, opName, sysId, path);
 
     // Reserve a client connection, use it to perform the operation and then release it
@@ -1043,7 +1044,6 @@ public class FileOpsService
     // An allowed service is skipping auth, log it
     log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDAPPCTX", rUser, opName, sysId, pathStr));
   }
-
 
   /*
    * Use datasource from Hikari connection pool to execute the flyway migration.
