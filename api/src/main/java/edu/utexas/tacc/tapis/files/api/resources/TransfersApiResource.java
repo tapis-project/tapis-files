@@ -89,7 +89,6 @@ public class  TransfersApiResource
                                          @Context SecurityContext securityContext)
   {
     String opName = "getRecentTransferTasks";
-    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
@@ -97,28 +96,34 @@ public class  TransfersApiResource
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "limit="+limit, "offset="+offset);
+
     try
     {
-      List<TransferTask> tasks = transfersService.getRecentTransfers(user.getTenantId(), user.getName(), limit, offset);
+      List<TransferTask> tasks = transfersService.getRecentTransfers(rUser.getOboTenantId(), rUser.getOboUserId(), limit, offset);
       TapisResponse<List<TransferTask>> resp = TapisResponse.createSuccessResponse(tasks);
       return Response.ok(resp).build();
     }
     catch (ServiceException e)
     {
-      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
   }
 
   @GET
-  @Path("/{transferTaskId}/")
+  @Path("/{transferTaskId}")
   @Produces(MediaType.APPLICATION_JSON)
   public Response getTransferTask(@PathParam("transferTaskId") @ValidUUID String transferTaskId,
                                   @Context SecurityContext securityContext)
   {
     String opName = "getTransferTask";
-    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
@@ -126,18 +131,25 @@ public class  TransfersApiResource
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId="+transferTaskId);
+
     try
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
-      if (task == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
-      isPermitted(task, user.getOboUser(), user.getOboTenantId());
+      if (task == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_TXFR_NOT_FOUND", rUser, transferTaskUUID));
+      isPermitted(task, rUser.getOboUserId(), rUser.getOboTenantId());
       TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
       return Response.ok(resp).build();
     }
     catch (ServiceException e)
     {
-      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
@@ -151,14 +163,13 @@ public class  TransfersApiResource
    * @return response containing transfer task history.
    */
   @GET
-  @Path("/{transferTaskId}/details/")
+  @Path("/{transferTaskId}/details")
   @Produces(MediaType.APPLICATION_JSON)
   public Response getTransferTaskDetails(@PathParam("transferTaskId") @ValidUUID String transferTaskId,
                                          @QueryParam("impersonationId") String impersonationId,
                                          @Context SecurityContext securityContext)
   {
     String opName = "getTransferTaskHistory";
-    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
@@ -178,7 +189,7 @@ public class  TransfersApiResource
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskDetails(transferTaskUUID);
-      if (task == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
+      if (task == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_TXFR_NOT_FOUND", rUser, transferTaskUUID));
 
       // Check permission taking into account impersonationId
       // Must be a service to use impersonationId
@@ -199,13 +210,13 @@ public class  TransfersApiResource
       // Certain services are allowed to impersonate an OBO user for the purposes of authorization
       String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
 
-      isPermitted(task, oboOrImpersonatedUser, user.getOboTenantId());
+      isPermitted(task, oboOrImpersonatedUser, rUser.getOboTenantId());
       TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
       return Response.ok(resp).build();
     }
     catch (ServiceException ex)
     {
-      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
     }
@@ -218,14 +229,19 @@ public class  TransfersApiResource
                                      @Context SecurityContext securityContext)
   {
     String opName = "cancelTransferTask";
-    // Create a user that collects together tenant, user and request information needed by service calls
-    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
     Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId="+transferTaskId);
 
     try
     {
@@ -253,14 +269,15 @@ public class  TransfersApiResource
                                      @Context SecurityContext securityContext)
   {
     String opName = "createTransferTask";
-    // Create a user that collects together tenant, user and request information needed by service calls
-    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
     Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
     if (log.isTraceEnabled())
