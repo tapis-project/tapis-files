@@ -23,10 +23,14 @@ import java.nio.file.Path;
 /*
  * Service level methods for FileUtils.
  *   Uses an SSHDataClient to perform top level service operations.
+ *
+ * NOTE: Paths stored in SK for permissions and shares always relative to rootDir and always start with /
+ *
  * Annotate as an hk2 Service so that default scope for DI is singleton
  */
 @Service
-public class FileUtilsService implements IFileUtilsService {
+public class FileUtilsService
+{
 
   private static final Logger log = LoggerFactory.getLogger(FileUtilsService.class);
   private final FilePermsService permsService;
@@ -53,7 +57,6 @@ public class FileUtilsService implements IFileUtilsService {
    * @throws NotFoundException - path not found
    * @throws NotAuthorizedException - user not authorized to operate on path
    */
-  @Override
   public FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String path, boolean followLinks)
           throws ServiceException, NotFoundException, NotAuthorizedException
   {
@@ -64,11 +67,11 @@ public class FileUtilsService implements IFileUtilsService {
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     try {
-      Path relativePath = PathUtils.getRelativePath(path);
       // Check permissions
       LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           relativePath, Permission.READ);
+                           path, Permission.READ);
 
+      Path relativePath = PathUtils.getRelativePath(path);
       // Make the remoteDataClient call
       return sshClient.getStatInfo(relativePath.toString(), followLinks);
 
@@ -91,7 +94,6 @@ public class FileUtilsService implements IFileUtilsService {
    * @throws ServiceException - General problem
    * @throws NotAuthorizedException - user not authorized to operate on path
    */
-  @Override
   public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
                                      @NotNull String arg, boolean recursive)
           throws TapisException, ServiceException, NotAuthorizedException
@@ -104,11 +106,11 @@ public class FileUtilsService implements IFileUtilsService {
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     try {
-      Path relativePath = PathUtils.getRelativePath(path);
       // Check permissions
       LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           relativePath, Permission.MODIFY);
+                              path, Permission.MODIFY);
 
+      Path relativePath = PathUtils.getRelativePath(path);
       // Make the remoteDataClient call
       switch (op) {
         case CHMOD -> nativeLinuxOpResult = sshClient.linuxChmod(relativePath.toString(), arg, recursive);

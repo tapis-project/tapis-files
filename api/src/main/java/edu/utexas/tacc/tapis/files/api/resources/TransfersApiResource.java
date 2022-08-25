@@ -218,7 +218,8 @@ public class  TransfersApiResource
                                      @Context SecurityContext securityContext)
   {
     String opName = "cancelTransferTask";
-    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
@@ -230,8 +231,8 @@ public class  TransfersApiResource
     {
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
-      if (task == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_TXFR_NOT_FOUND", user, transferTaskUUID));
-      isPermitted(task, user.getOboUser(), user.getOboTenantId());
+      if (task == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_TXFR_NOT_FOUND", rUser, transferTaskUUID));
+      isPermitted(task, rUser.getOboUserId(), rUser.getOboTenantId());
       transfersService.cancelTransfer(task);
       TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);
       resp.setMessage("Transfer deleted.");
@@ -239,7 +240,7 @@ public class  TransfersApiResource
     }
     catch (ServiceException e)
     {
-      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, e.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
@@ -251,18 +252,15 @@ public class  TransfersApiResource
   public Response createTransferTask(@Valid TransferTaskRequest transferTaskRequest,
                                      @Context SecurityContext securityContext)
   {
-    log.info("TRANSFER CREATING");
     String opName = "createTransferTask";
-    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
     Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
-
-    // Create a user that collects together tenant, user and request information needed by service calls
-    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
     if (log.isTraceEnabled())
@@ -276,12 +274,9 @@ public class  TransfersApiResource
     try
     {
       // Create the txfr task
-      TransferTask task = transfersService.createTransfer(user.getOboUser(), user.getOboTenantId(),
-                                                          transferTaskRequest.getTag(),
-                                                          transferTaskRequest.getElements());
+      TransferTask task = transfersService.createTransfer(rUser, transferTaskRequest.getTag(), transferTaskRequest.getElements());
       TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
       resp.setMessage("Transfer created.");
-      log.info("TRANSFER SAVED");
       // Trace details of the created txfr task.
       if (log.isTraceEnabled()) log.trace(task.toString());
 
@@ -289,7 +284,7 @@ public class  TransfersApiResource
     }
     catch (ServiceException ex)
     {
-      String msg = LibUtils.getMsgAuth("FILES_TXFR_ERR", user, opName, ex.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
     }

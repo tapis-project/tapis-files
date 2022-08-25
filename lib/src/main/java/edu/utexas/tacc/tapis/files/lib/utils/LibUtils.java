@@ -149,20 +149,22 @@ public class LibUtils
 
   /**
    * Standard perms check and throw given obo tenant+user, system, path, perm required.
+   * Path can be the non-normalized path provided as part of the user request.
+   * It will be normalized here. OK if already a normalized relative path.
    * @param svc - Perms service
    * @param oboTenant - obo tenant
    * @param oboUser - obo user
    * @param systemId - system
-   * @param pathToCheck - path to check
+   * @param pathToCheck - path provided as part of request
    * @param perm - perm to check for
    * @throws NotAuthorizedException - perm check failed
    * @throws ServiceException - other exceptions
    */
   public static void checkPermitted(FilePermsService svc, String oboTenant, String oboUser, String systemId,
-                                    Path pathToCheck, Permission perm)
+                                    String pathToCheck, Permission perm)
           throws ForbiddenException, ServiceException
   {
-    if (!svc.isPermitted(oboTenant, oboUser, systemId, pathToCheck.toString(), perm))
+    if (!svc.isPermitted(oboTenant, oboUser, systemId, PathUtils.getSKRelativePath(pathToCheck).toString(), perm))
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, perm);
       throw new ForbiddenException(msg);

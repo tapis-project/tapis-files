@@ -3,10 +3,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
-import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
@@ -34,7 +32,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
@@ -43,7 +40,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
@@ -80,7 +76,7 @@ public class OperationsApiResource extends BaseFileOpsResource
   private Request _request;
 
   @Inject
-  IFileOpsService fileOpsService;
+  FileOpsService fileOpsService;
 
   /**
    * List files at path.
@@ -197,7 +193,7 @@ public class OperationsApiResource extends BaseFileOpsResource
   @Produces(MediaType.APPLICATION_JSON)
   public Response mkdir(@PathParam("systemId") String systemId,
                         @Valid MkdirRequest mkdirRequest,
-                        @QueryParam("sharedAppCtx") @DefaultValue("true") boolean sharedAppCtx,
+                        @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
                         @Context SecurityContext securityContext)
   {
     String opName = "mkdir";

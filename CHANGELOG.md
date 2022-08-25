@@ -9,12 +9,14 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.2.3 - 2022-07-??
+## 1.2.3 - 2022-08-24
 
-Incremental improvements and new preview features.
+Incremental improvements and preview of new feature.
 
 ### New features:
-- Support sharedAppCtx for ?????
+- Support sharing of a path with one or more users. Includes support for sharing with all users in a tenant.
+- Support sharedAppCtx for mkdir operation and transfer requests (srcSharedAppCtx, destSharedAppCtx).
+- Perform DB migration at service startup.
 
 ### Bug fixes:
 - None.

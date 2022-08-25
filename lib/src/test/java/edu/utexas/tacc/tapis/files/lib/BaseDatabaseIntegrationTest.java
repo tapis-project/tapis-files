@@ -9,8 +9,8 @@ import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
@@ -76,7 +76,7 @@ public class BaseDatabaseIntegrationTest
   protected TransfersService transfersService;
   protected ChildTaskTransferService childTaskTransferService;
   protected ParentTaskTransferService parentTaskTransferService;
-  protected IFileOpsService fileOpsService;
+  protected FileOpsService fileOpsService;
   protected FileUtilsService fileUtilsService;
 
   public BaseDatabaseIntegrationTest() throws Exception
@@ -190,16 +190,17 @@ public class BaseDatabaseIntegrationTest
         bind(serviceClients).to(ServiceClients.class);
         bind(serviceContext).to(ServiceContext.class);
         bindAsContract(RemoteDataClientFactory.class);
-        bindAsContract(FileUtilsService.class);
         bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-        bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
+        bindAsContract(FileOpsService.class).in(Singleton.class);
+        bindAsContract(FileShareService.class).in(Singleton.class);
+        bindAsContract(FileUtilsService.class);
       }
     });
     log.info(locator.toString());
     remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
     transfersService = locator.getService(TransfersService.class);
     log.info(transfersService.toString());
-    fileOpsService = locator.getService(IFileOpsService.class);
+    fileOpsService = locator.getService(FileOpsService.class);
     childTaskTransferService = locator.getService(ChildTaskTransferService.class);
     parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
     fileUtilsService = locator.getService(FileUtilsService.class);

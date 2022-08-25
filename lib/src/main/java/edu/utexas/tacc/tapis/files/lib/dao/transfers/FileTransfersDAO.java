@@ -99,6 +99,8 @@ public class FileTransfersDAO {
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
             task.setOptional(rs.getBoolean("optional"));
+            task.setSrcSharedAppCtx(rs.getBoolean("src_shared_app_ctx"));
+            task.setDestSharedAppCtx(rs.getBoolean("dest_shared_app_ctx"));
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             task.setErrorMessage(rs.getString("error_message"));
@@ -192,6 +194,8 @@ public class FileTransfersDAO {
             insertParentTaskStmnt.setString(5, element.getDestinationURI().toString());
             insertParentTaskStmnt.setString(6, TransferTaskStatus.ACCEPTED.name());
             insertParentTaskStmnt.setBoolean(7, element.isOptional());
+            insertParentTaskStmnt.setBoolean(8, element.isSrcSharedAppCtx());
+            insertParentTaskStmnt.setBoolean(9, element.isDestSharedAppCtx());
             insertParentTaskStmnt.addBatch();
           }
           insertParentTaskStmnt.executeBatch();
@@ -500,7 +504,9 @@ public class FileTransfersDAO {
                 task.getSourceURI().toString(),
                 task.getDestinationURI().toString(),
                 task.getStatus().name(),
-                task.isOptional()
+                task.isOptional(),
+                task.isSrcSharedAppCtx(),
+                task.isDestSharedAppCtx()
                 );
             return insertedTask;
         } catch (SQLException ex) {
@@ -696,4 +702,23 @@ public class FileTransfersDAO {
                 "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
         }
     }
+
+  /*
+   * Delete all tasks associated with given user.
+   * This method should only ever be called by Test code
+   */
+  void deleteAllTasksForUser(@NotNull String tenantId,  @NotNull String userName) throws DAOException
+  {
+    try (Connection connection = HikariConnectionPool.getConnection())
+    {
+      String stmt = FileTransfersDAOStatements.DELETE_ALL_TRANSFER_TASKS_FOR_USER;
+      QueryRunner runner = new QueryRunner();
+
+      runner.execute(connection, stmt, tenantId, userName);
+    }
+    catch (SQLException ex)
+    {
+      throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR5", tenantId, userName, ex.getMessage()), ex);
+    }
+  }
 }

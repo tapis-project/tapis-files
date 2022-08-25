@@ -2,10 +2,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
-import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -19,13 +17,11 @@ import javax.inject.Inject;
 import javax.servlet.ServletContext;
 import javax.validation.constraints.Min;
 import javax.ws.rs.BadRequestException;
-import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.AsyncResponse;
 import javax.ws.rs.container.Suspended;
 import javax.ws.rs.core.Application;
@@ -69,7 +65,7 @@ public class ContentApiResource extends BaseFileOpsResource
   private Request _request;
 
   @Inject
-  IFileOpsService fileOpsService;
+  FileOpsService fileOpsService;
 
   /**
    * Start an async data stream that can be used to receive contents of a file

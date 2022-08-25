@@ -11,6 +11,9 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.tuple.Pair;
@@ -54,8 +57,12 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     private final String nullImpersonationId = null;
     private String childQ;
     private String parentQ;
+    private ResourceRequestUser rTestUser =
+        new ResourceRequestUser(new AuthenticatedUser("testuser", "dev", TapisThreadContext.AccountType.user.name(),
+                                                      null, "testuser", "dev", null, null, null));
 
-    public TestTransfers() throws Exception {
+
+  public TestTransfers() throws Exception {
         super();
     }
 
@@ -123,7 +130,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         // Task should be FAILED after the pipeline runs
         StepVerifier
@@ -154,7 +161,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "testTag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "testTag", elements);
 
         Assert.assertEquals(t1.getTag(), "testTag");
     }
@@ -176,7 +183,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         // Task should be STAGED after the pipeline runs
         StepVerifier
@@ -209,9 +216,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
-        TransferTask t2 = transfersService.createTransfer("testuser", "dev", "tag", elements);
-        TransferTask t3 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
+        TransferTask t2 = transfersService.createTransfer(rTestUser, "tag", elements);
+        TransferTask t3 = transfersService.createTransfer(rTestUser, "tag", elements);
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         StepVerifier
             .create(tasks)
@@ -233,8 +240,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         TapisSystem sourceSystem = systemsPair.getLeft();
         TapisSystem destSystem = systemsPair.getRight();
         SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"), any())).thenReturn(sourceSystem);
-        when(systemsClient.getSystemWithCredentials(eq("destSystem"), any())).thenReturn(destSystem);
+        when(systemsClient.getSystemWithCredentials(eq("sourceSystem"))).thenReturn(sourceSystem);
+        when(systemsClient.getSystemWithCredentials(eq("destSystem"))).thenReturn(destSystem);
         when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
@@ -243,7 +250,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         StepVerifier
@@ -281,7 +288,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/b");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         StepVerifier
             .create(tasks)
@@ -319,7 +326,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/dest/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
@@ -362,7 +369,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
@@ -435,7 +442,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/program.exe");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
@@ -488,7 +495,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     element.setDestinationURI("tapis://destSystem/b/");
     List<TransferTaskRequestElement> elements = new ArrayList<>();
     elements.add(element);
-    TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+    TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
     Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
     tasks.subscribe();
@@ -552,7 +559,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         tasks.subscribe();
         Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
 
-        for (var i=0; i<300; i++) { transfersService.createTransfer("testuser", "dev", "tag", elements); }
+        for (var i=0; i<300; i++) { transfersService.createTransfer(rTestUser, "tag", elements); }
         AtomicInteger counter = new AtomicInteger();
         stream
             .subscribe( (t)->{
@@ -591,7 +598,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/b/input.html");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
@@ -649,7 +656,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/transferred");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
@@ -708,7 +715,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/b/fileCopy.txt");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
@@ -775,7 +782,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
       element.setDestinationURI("tapis://destSystem/b/1.txt");
       element.setOptional(true);
       elements.add(element);
-      TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+      TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
       Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
       tasks.subscribe();
       Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
@@ -813,7 +820,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
         TransferTaskParent parent = t1.getParentTasks().get(0);
         List<TransferTaskChild> kids = new ArrayList<>();
         for (String path : new String[]{"/NOT-THERE/1.txt", "/a/2.txt"})
@@ -861,7 +868,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
@@ -897,7 +904,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
@@ -945,7 +952,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         element.setDestinationURI("tapis://destSystem/b/");
         List<TransferTaskRequestElement> elements = new ArrayList<>();
         elements.add(element);
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
         tasks.subscribe();
@@ -1004,7 +1011,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         elements.add(element);
         Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
 
-        TransferTask t1 = transfersService.createTransfer("testuser", "dev", "tag", elements);
+        TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
         StepVerifier.create(tasks)
             .assertNext((parent)-> { Assert.assertEquals(parent.getStatus(), TransferTaskStatus.STAGED); })
             .then(()-> {

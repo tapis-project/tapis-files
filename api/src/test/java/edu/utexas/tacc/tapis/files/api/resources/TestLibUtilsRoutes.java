@@ -11,10 +11,9 @@ import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService.NativeLinuxOperation;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -151,8 +150,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
                 bindAsContract(SystemsCache.class).in(Singleton.class);
-                bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-                bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
+                bindAsContract(FileOpsService.class).in(Singleton.class);
+                bindAsContract(FileUtilsService.class).in(Singleton.class);
+                bindAsContract(FileShareService.class).in(Singleton.class);
                 bindAsContract(RemoteDataClientFactory.class);
                 bind(serviceContext).to(ServiceContext.class);
               }
@@ -206,7 +206,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
       try
       {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
-        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(sys);
+        when(systemsClient.getSystemWithCredentials(any())).thenReturn(sys);
         target(String.format("%s/%s/", OPS_ROUTE, SYSTEM_ID))
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -223,7 +223,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetStatInfo(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -247,7 +247,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testLinuxChmod(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE2, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -300,7 +300,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testLinuxChown(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE3, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -358,7 +358,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testLinuxChgrp(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE4, TEST_FILE_SIZE);
     // Get stat info and check file properties

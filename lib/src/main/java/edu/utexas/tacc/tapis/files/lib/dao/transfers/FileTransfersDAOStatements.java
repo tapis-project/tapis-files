@@ -170,8 +170,8 @@ public class FileTransfersDAOStatements {
     //language=SQL
     public static final String INSERT_PARENT_TASK =
         "INSERT into transfer_tasks_parent " +
-            "(tenant_id, task_id, username, source_uri, destination_uri, status, optional)" +
-            "values (?, ?, ?, ?, ?, ?, ?)" +
+            "(tenant_id, task_id, username, source_uri, destination_uri, status, optional, src_shared_app_ctx, dest_shared_app_ctx)" +
+            "values (?, ?, ?, ?, ?, ?, ?, ?, ?)" +
             "RETURNING *";
 
     //language=SQL
@@ -194,6 +194,9 @@ public class FileTransfersDAOStatements {
         """
             UPDATE transfer_tasks_child set bytes_transferred = ? WHERE id = ?
         """;
-
-
+  //language=SQL
+  public static final String DELETE_ALL_TRANSFER_TASKS_FOR_USER =
+          """
+              DELETE FROM transfer_tasks WHERE tenant_id = ? AND username = ?;
+          """;
 }

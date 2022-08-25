@@ -117,6 +117,7 @@ public class SSHDataClient implements ISSHDataClient
     long startIdx = Math.max(offset, 0);
     List<FileInfo> filesList = new ArrayList<>();
     List<DirEntry> dirEntries = new ArrayList<>();
+    // Get path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(path).toString();
     Path absolutePath = PathUtils.getAbsolutePath(rootDir, relPathStr);
     SSHSftpClient sftpClient = connectionHolder.getSftpClient();
@@ -257,6 +258,7 @@ public class SSHDataClient implements ISSHDataClient
   @Override
   public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
   {
+    // Get paths relative to system rootDir and protect against ../..
     String relOldPathStr = PathUtils.getRelativePath(srcPath).toString();
     String relNewPathStr = PathUtils.getRelativePath(dstPath).toString();
     Path absoluteOldPath = PathUtils.getAbsolutePath(rootDir, relOldPathStr);
@@ -302,6 +304,7 @@ public class SSHDataClient implements ISSHDataClient
   @Override
   public void copy(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
   {
+    // Get paths relative to system rootDir and protect against ../..
     String relOldPathStr = PathUtils.getRelativePath(srcPath).toString();
     String relNewPathStr = PathUtils.getRelativePath(dstPath).toString();
     Path absoluteOldPath = PathUtils.getAbsolutePath(rootDir, relOldPathStr);
@@ -357,6 +360,7 @@ public class SSHDataClient implements ISSHDataClient
   @Override
   public void delete(@NotNull String path) throws IOException, NotFoundException
   {
+    // Get path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(path).toString();
     SSHSftpClient sftpClient = connectionHolder.getSftpClient();
     try  {
@@ -483,6 +487,7 @@ public class SSHDataClient implements ISSHDataClient
     String opName = followLinks ? "lstat" : "stat";
     // Path should have already been normalized and checked but for safety and security do it
     //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
+    // Get path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(path).toString();
     String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relativePathStr).toString();
     Attributes sftpAttrs;
@@ -679,6 +684,7 @@ public class SSHDataClient implements ISSHDataClient
     }
     // Path should have already been normalized and checked but for safety and security do it
     //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
+    // Get path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(path).toString();
     String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relativePathStr).toString();
 
@@ -718,6 +724,7 @@ public class SSHDataClient implements ISSHDataClient
   {
     FileInfo fileInfo = new FileInfo();
     // Process the relative path string and make sure it is not empty.
+    // Get path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(path).toString();
     Path absolutePath = PathUtils.getAbsolutePath(rootDir, relativePathStr);
     try

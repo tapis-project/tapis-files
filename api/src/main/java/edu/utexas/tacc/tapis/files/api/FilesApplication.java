@@ -7,11 +7,10 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
-import edu.utexas.tacc.tapis.files.lib.services.IFileOpsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
-import edu.utexas.tacc.tapis.files.lib.services.IFileUtilsService;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -64,13 +63,12 @@ import java.util.concurrent.TimeUnit;
  *     This has been found to be a more robust scheme for keeping startup working for both
  *     running in an IDE and standalone.
  *
- * For all logging use println or similar so we do not have a dependency on a logging subsystem.
+ * For all logging use println or similar, so we do not have a dependency on a logging subsystem.
  */
 @ApplicationPath("/")
 public class FilesApplication extends ResourceConfig
 {
   // SSHConnection cache settings
-  public static final long SSHCACHE_MAX_SIZE = 100;
   public static final long SSHCACHE_TIMEOUT_MINUTES = 5;
 
   // We must be running on a specific site and this will never change
@@ -88,16 +86,19 @@ public class FilesApplication extends ResourceConfig
     // TODO: Some of these class registrations are also in BaseResourceConfig but cannot delete
     //       BaseResourceConfig yet because it is used in 5 test classes. Review Systems and Apps code to see if
     //       BaseResourceConfig can be deleted or if these registrations should be removed and the Base used instead.
+
     // Needed for properly returning timestamps
     // Also allows for setting a breakpoint when response is being constructed.
     register(ObjectMapperContextResolver.class);
 
     // Need this for some reason for multipart forms/ uploads
     register(MultiPartFeature.class);
+
     // Serialization
     register(JacksonFeature.class);
+
     // ExceptionMappers, need both because ValidationMapper is a custom Jersey thing and
-    // can't be implemented in a generic mapper
+    // cannot be implemented in a generic mapper
     register(FilesExceptionMapper.class);
     register(ValidationExceptionMapper.class);
 
@@ -114,8 +115,8 @@ public class FilesApplication extends ResourceConfig
     register(ContentApiResource.class);
     register(TransfersApiResource.class);
     register(PermissionsApiResource.class);
-    register(ShareApiResource.class);
-    register(FilesResource.class);
+    register(ShareResource.class);
+    register(GeneralResource.class);
     register(OperationsApiResource.class);
     register(UtilsLinuxApiResource.class);
 
@@ -127,7 +128,7 @@ public class FilesApplication extends ResourceConfig
     // Set the application name. Note that this has no impact on base URL
     setApplicationName(TapisConstants.SERVICE_NAME_FILES);
 
-    // Perform remaining init steps in try block so we can print a fatal error message if something goes wrong.
+    // Perform remaining init steps in try block, so we can print a fatal error message if something goes wrong.
     try
     {
       // Get runtime parameters
@@ -155,14 +156,15 @@ public class FilesApplication extends ResourceConfig
         @Override
         protected void configure() {
           bind(new SSHConnectionCache(SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-          bind(FileOpsService.class).to(IFileOpsService.class).in(Singleton.class);
-          bind(FileUtilsService.class).to(IFileUtilsService.class).in(Singleton.class);
+          bind(tenantManager).to(TenantManager.class);
+          bindAsContract(FileOpsService.class).in(Singleton.class);
+          bindAsContract(FileUtilsService.class).in(Singleton.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);
           bindAsContract(FilePermsService.class).in(Singleton.class);
           bindAsContract(FilePermsCache.class).in(Singleton.class);
-          bind(tenantManager).to(TenantManager.class);
+          bindAsContract(FileShareService.class).in(Singleton.class);
           bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
           bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
           bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
@@ -179,7 +181,7 @@ public class FilesApplication extends ResourceConfig
   }
 
   /**
-   * Embedded Grizzly HTTP server
+   * Main method to init service and start embedded Grizzly HTTP server
    */
   public static void main(String[] args) throws Exception
   {
@@ -194,7 +196,6 @@ public class FilesApplication extends ResourceConfig
     // Initialize the application container
     FilesApplication config = new FilesApplication();
 
-    // TODO/TBD - adapt from Apps to Files
     // Initialize the service
     // In order to instantiate our service class using HK2 we need to create an application handler
     //   which allows us to get an injection manager which is used to get a locator.
@@ -207,14 +208,11 @@ public class FilesApplication extends ResourceConfig
     FileOpsService svcImpl = locator.getService(FileOpsService.class);
 
     // Call the main service init method
-    // TODO svcImpl ends up null but serviceContext does not, why?
-    // TODO svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
-    // For now initialize the service by getting the serviceContext.
-    // The provide() method in ServiceContextFactory will initialize the service jwt.
-
-    ServiceContext serviceContext = locator.getService(ServiceContext.class);
+    System.out.println("Initializing service");
+    svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
 
     // Create and start the server
+    System.out.println("Starting http server");
     final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(baseUri, config, false);
     Collection<NetworkListener> listeners = server.getListeners();
     for (NetworkListener listener : listeners)

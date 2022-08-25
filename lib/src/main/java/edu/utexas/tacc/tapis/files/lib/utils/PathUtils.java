@@ -19,6 +19,9 @@ import java.nio.file.Paths;
  *  - a trailing slash will be retained
  *  - if provided path is null or empty or resolving double dot steps results in no parent path
  *    then the relativePath becomes a single / resulting in the relativePath being the same as the system's rootDir.
+ *
+ * NOTE: Paths stored in SK for permissions and shares always relative to rootDir and always start with /
+ *
  */
 public class PathUtils
 {
@@ -68,6 +71,23 @@ public class PathUtils
     Path relativePath = getRelativePath(path);
     // Return constructed absolute path
     return Paths.get(rdir, relativePath.toString());
+  }
+
+  /**
+   * Construct a normalized path intended for use in Security Kernel.
+   *
+   *  NOTE: Paths stored in SK for permissions and shares always relative to rootDir and always start with /
+   *
+   * This is intended to be relative to a system's rootDir based on a path provided by a user.
+   * The only difference between this and getRelativePath() is this method ensures there is a prepended /
+   * @param path path provided by user
+   * @return Path - normalized path with prepended /
+   */
+  public static Path getSKRelativePath(String path)
+  {
+    String pathStr = getRelativePath(path).toString();
+    pathStr = StringUtils.prependIfMissing(pathStr, "/");
+    return Paths.get(pathStr);
   }
 
   /**
