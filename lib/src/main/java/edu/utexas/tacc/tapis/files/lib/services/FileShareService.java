@@ -115,6 +115,7 @@ public class FileShareService
     // Create SKShareGetSharesParms needed for SK calls.
     var skParms = new SKShareGetSharesParms();
     skParms.setResourceType(RESOURCE_TYPE);
+    skParms.setTenant(system.getTenant());
     skParms.setResourceId1(systemId);
 
     SkShareList skShares;
@@ -190,11 +191,12 @@ public class FileShareService
     String oboUser = rUser.getOboUserId();
     String oboTenant = rUser.getOboTenantId();
     String systemId = system.getId();
-//
-//    // Create SKShareGetSharesParms needed for SK calls.
-//    var skParms = new SKShareGetSharesParms();
-//    skParms.setResourceType(RESOURCE_TYPE);
-//    skParms.setResourceId1(systemId);
+
+    // Create SKShareGetSharesParms needed for SK calls.
+    var skParms = new SKShareGetSharesParms();
+    skParms.setResourceType(RESOURCE_TYPE);
+    skParms.setTenant(system.getTenant());
+    skParms.setResourceId1(systemId);
 //
 //    SkShareList skShares;
 //    boolean isPublic;
@@ -312,6 +314,7 @@ public class FileShareService
     // Create SKShareGetSharesParms needed for SK calls.
     var skParms = new SKShareGetSharesParms();
     skParms.setResourceType(RESOURCE_TYPE);
+    skParms.setTenant(sys.getTenant());
     skParms.setResourceId1(systemId);
 
     ShareInfo shareInfo;
@@ -444,6 +447,7 @@ public class FileShareService
   /**
    * Remove all share access for a path on a system including public.
    * Must be system owner
+   * Retrieve all shares and use deleteShareById.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
@@ -478,6 +482,7 @@ public class FileShareService
 
     var skGetParms = new SKShareGetSharesParms();
     skGetParms.setResourceType(RESOURCE_TYPE);
+    skGetParms.setTenant(sys.getTenant());
     skGetParms.setResourceId1(systemId);
     skGetParms.setResourceId2(pathToSearch);
 
@@ -491,7 +496,7 @@ public class FileShareService
       {
         for (SkShare skShare : shareList.getShares())
         {
-          if (skShare.getId() != null) getSKClient(oboUser, oboTenant).deleteShareById(skShare.getId());
+          if (skShare.getId() != null) getSKClient(oboUser, oboTenant).deleteShareById(skShare.getId(), sys.getTenant());
         }
       }
     }
@@ -540,15 +545,18 @@ public class FileShareService
       {
         reqShareResource = new ReqShareResource();
         reqShareResource.setResourceType(RESOURCE_TYPE);
+        reqShareResource.setTenant(sys.getTenant());
+        reqShareResource.setGrantor(oboUser);
         reqShareResource.setResourceId1(systemId);
         reqShareResource.setResourceId2(pathStr);
-        reqShareResource.setGrantor(oboUser);
         reqShareResource.setPrivilege(FileInfo.Permission.READ.name());
       }
       case OP_UNSHARE ->
       {
         deleteShareParms = new SKShareDeleteShareParms();
         deleteShareParms.setResourceType(RESOURCE_TYPE);
+        deleteShareParms.setTenant(sys.getTenant());
+        deleteShareParms.setGrantor(oboUser);
         deleteShareParms.setResourceId1(systemId);
         deleteShareParms.setResourceId2(pathStr);
         deleteShareParms.setPrivilege(FileInfo.Permission.READ.name());

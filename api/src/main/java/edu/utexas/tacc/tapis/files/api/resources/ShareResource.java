@@ -13,7 +13,6 @@ import javax.ws.rs.core.Response.Status;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import edu.utexas.tacc.tapis.files.api.responses.RespShareInfo;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
