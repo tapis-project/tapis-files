@@ -148,7 +148,7 @@ public class LibUtils
   }
 
   /**
-   * Standard perms check and throw given obo tenant+user, system, path, perm required.
+   * Standard perms check and throw, given obo tenant+user, system, path, perm required.
    * Path can be the non-normalized path provided as part of the user request.
    * It will be normalized here. OK if already a normalized relative path.
    * @param svc - Perms service
@@ -167,6 +167,30 @@ public class LibUtils
     if (!svc.isPermitted(oboTenant, oboUser, systemId, PathUtils.getSKRelativePath(pathToCheck).toString(), perm))
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, perm);
+      throw new ForbiddenException(msg);
+    }
+  }
+
+  /**
+   * Perms check and throw, given obo tenant+user, system, path, perm required.
+   * Path can be the non-normalized path provided as part of the user request.
+   * It will be normalized here. OK if already a normalized relative path.
+   * @param svc - Perms service
+   * @param oboTenant - obo tenant
+   * @param oboUser - obo user
+   * @param systemId - system
+   * @param pathToCheck - path provided as part of request
+   * @throws NotAuthorizedException - perm check failed
+   * @throws ServiceException - other exceptions
+   */
+  public static void checkPermittedReadOrModify(FilePermsService svc, String oboTenant, String oboUser, String systemId,
+                                                String pathToCheck)
+          throws ForbiddenException, ServiceException
+  {
+    if (!svc.isPermitted(oboTenant, oboUser, systemId, PathUtils.getSKRelativePath(pathToCheck).toString(), Permission.READ)
+        && !svc.isPermitted(oboTenant, oboUser, systemId, PathUtils.getSKRelativePath(pathToCheck).toString(), Permission.MODIFY))
+    {
+      String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, Permission.READ);
       throw new ForbiddenException(msg);
     }
   }

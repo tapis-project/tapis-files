@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
-import javax.ws.rs.NotSupportedException;
 import javax.ws.rs.WebApplicationException;
 import java.util.Set;
 

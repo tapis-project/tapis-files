@@ -87,6 +87,7 @@ public class TestFileShareService
     testSystemSSH = new TapisSystem();
     testSystemSSH.setId("testSystemSSH");
     testSystemSSH.setOwner(testUser1);
+    testSystemSSH.setTenant(devTenant);
     testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
     testSystemSSH.setAuthnCredential(creds);
     testSystemSSH.setHost("localhost");
