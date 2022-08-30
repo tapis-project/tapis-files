@@ -160,6 +160,8 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
     app.register(OperationsApiResource.class);
     app.register(UtilsLinuxApiResource.class);
+    FilePermsService.setSiteAdminTenantId("admin");
+    FileShareService.setSiteAdminTenantId("admin");
     return app;
   }
 

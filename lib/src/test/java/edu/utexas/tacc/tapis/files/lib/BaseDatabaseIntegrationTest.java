@@ -204,6 +204,8 @@ public class BaseDatabaseIntegrationTest
     childTaskTransferService = locator.getService(ChildTaskTransferService.class);
     parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
     fileUtilsService = locator.getService(FileUtilsService.class);
+    FilePermsService.setSiteAdminTenantId("admin");
+    FileShareService.setSiteAdminTenantId("admin");
   }
 
   @DataProvider

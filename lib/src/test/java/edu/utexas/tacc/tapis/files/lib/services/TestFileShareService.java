@@ -61,6 +61,7 @@ public class TestFileShareService
   private final String testUser2 = "testuser2";
   private final String testUser3 = "testuser3";
   private final String devTenant = "dev";
+  private final String siteId = "tacc";
   private final String nullImpersonationId = null;
   private ResourceRequestUser rTestUser1;
   private ResourceRequestUser rTestUser2;
@@ -87,6 +88,7 @@ public class TestFileShareService
     testSystemSSH = new TapisSystem();
     testSystemSSH.setId("testSystemSSH");
     testSystemSSH.setOwner(testUser1);
+    testSystemSSH.setTenant(devTenant);
     testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
     testSystemSSH.setAuthnCredential(creds);
     testSystemSSH.setHost("localhost");
@@ -133,7 +135,9 @@ public class TestFileShareService
             null, testUser2, devTenant, null, null, null));
     rTestUser3 = new ResourceRequestUser(new AuthenticatedUser(testUser3, devTenant, TapisThreadContext.AccountType.user.name(),
             null, testUser3, devTenant, null, null, null));
-    }
+    FilePermsService.setSiteAdminTenantId("admin");
+    FileShareService.setSiteAdminTenantId("admin");
+  }
 
     @BeforeTest()
     public void setUp() throws Exception
@@ -176,7 +180,7 @@ public class TestFileShareService
     fileOpsService.upload(rTestUser1, tmpSys, filePathStr, in);
 
     // Clean up any previous shares using recurse=true
-//TODO    fileShareService.removeAllSharesForPath(rTestUser, sysId, filePathStr, true);
+    fileShareService.removeAllSharesForPath(rTestUser1, sysId, filePathStr, true);
 
     // isSharedWithUser should return false
 //    Assert.assertNull(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));

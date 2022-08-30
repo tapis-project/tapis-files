@@ -100,6 +100,8 @@ public class FileOpsService
     siteId = siteId1;
     siteAdminTenantId = siteAdminTenantId1;
     serviceContext.initServiceJWT(siteId, APPS_SERVICE, svcPassword);
+    FileShareService.setSiteAdminTenantId(siteAdminTenantId1);
+    FilePermsService.setSiteAdminTenantId(siteAdminTenantId1);
     // Make sure DB is present and updated using flyway
     migrateDB();
   }
@@ -108,7 +110,7 @@ public class FileOpsService
   // ------------- Support for FileOps
   // ----------------------------------------------------------------------------------------------------
   /**
-   * List files at path using given limit and offset
+   * Non-recursive list of files at path using given limit and offset
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - path on system relative to system rootDir
@@ -131,7 +133,7 @@ public class FileOpsService
     IRemoteDataClient client = null;
     try
     {
-      // Check for READ permission or share
+      // Check for READ/MODIFY permission or share
       checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
@@ -190,7 +192,7 @@ public class FileOpsService
   }
 
   /**
-   * Recursive list files at path. Max possible depth = MAX_RECURSION(20)
+   * Recursive list of files at path. Max possible depth = MAX_RECURSION(20)
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - path on system relative to system rootDir
@@ -213,7 +215,7 @@ public class FileOpsService
       IRemoteDataClient client = null;
       try
       {
-        // Check for READ permission
+        // Check for READ/MODIFY permission or share
         checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
@@ -441,10 +443,17 @@ public class FileOpsService
     String oboTenant = client.getOboTenant();
     String oboUser = client.getOboUser();
     String sysId = client.getSystemId();
-    // Check the source and destination permissions
-    Permission srcPerm = Permission.READ;
-    if (op.equals(MoveCopyOperation.MOVE)) srcPerm = Permission.MODIFY;
-    LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, srcPath, srcPerm);
+    // Check permission for source. If Copy only need READ/MODIFY, if Move then must have MODIFY
+    // TODO: What about a shared path? Cannot use checkForReadOrShared here without significant refactoring of code.
+    if (op.equals(MoveCopyOperation.COPY))
+    {
+      LibUtils.checkPermittedReadOrModify(permsService, oboTenant, oboUser, sysId, srcPath);
+    }
+    else
+    {
+      LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, srcPath, Permission.MODIFY);
+    }
+    // Check permission for destination
     LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, dstPath, Permission.MODIFY);
     // Get paths relative to system rootDir and protect against ../..
     String srcRelPathStr = PathUtils.getRelativePath(srcPath).toString();
@@ -641,6 +650,7 @@ public class FileOpsService
     Path relativePath = PathUtils.getRelativePath(path);
     try
     {
+      // Check for READ/MODIFY permission or share
       checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
     }
     catch (ServiceException e)
@@ -755,7 +765,7 @@ public class FileOpsService
     String sysId = sys.getId();
     // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
-    // Make sure user has permission for this path
+    // Check for READ/MODIFY permission or share
     checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
     // Get a remoteDataClient to stream contents
@@ -796,7 +806,7 @@ public class FileOpsService
     String sysId = sys.getId();
     // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
-    // Make sure user has permission for this path
+    // Check for READ/MODIFY permission or share
     checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
     IRemoteDataClient client = null;
@@ -878,7 +888,7 @@ public class FileOpsService
     String sysId = sys.getId();
     // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
-    // Make sure user has permission for this path
+    // Check for READ/MODIFY permission or share
     checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
     String cleanedPath = FilenameUtils.normalize(path);
@@ -957,9 +967,9 @@ public class FileOpsService
   }
 
   /**
-   * Confirm that caller or impersonationId has READ permission or share on path
-   * If it is allowed due to READ permission then return null
-   * If it is allowed due to a share then return the UserShareInfo which contains the grantor.
+   * Confirm that caller or impersonationId has READ/MODIFY permission or share on path
+   * TODO/TBD: If it is allowed due to READ or MODIFY permission then return null
+   *   If it is allowed due to a share then return the UserShareInfo which contains the grantor.
    * To use impersonationId it must be a service request from a service allowed to impersonate.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
@@ -993,9 +1003,10 @@ public class FileOpsService
     //   and effectiveUserId resolution.
     String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
 
-    // If user has READ permission then return
+    // If user has READ or MODIFY permission then return
     //  else if shared then return
-    if (permsService.isPermitted(rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, pathStr, Permission.READ))
+    if (permsService.isPermitted(rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, pathStr, Permission.READ) ||
+        permsService.isPermitted(rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, pathStr, Permission.MODIFY))
     {
       return;
 //      return null;

@@ -204,6 +204,8 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
             });
 
     app.register(ContentApiResource.class);
+    FilePermsService.setSiteAdminTenantId("admin");
+    FileShareService.setSiteAdminTenantId("admin");
     return app;
   }
 

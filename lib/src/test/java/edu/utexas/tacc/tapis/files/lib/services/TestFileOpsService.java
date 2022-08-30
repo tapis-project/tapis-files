@@ -229,7 +229,9 @@ public class TestFileOpsService
 
     rTestUser = new ResourceRequestUser(new AuthenticatedUser(testUser, devTenant, TapisThreadContext.AccountType.user.name(),
             null, testUser, devTenant, null, null, null));
-    }
+    FilePermsService.setSiteAdminTenantId("admin");
+    FileShareService.setSiteAdminTenantId("admin");
+  }
 
     @BeforeTest()
     public void setUp() throws Exception
@@ -601,6 +603,10 @@ public class TestFileOpsService
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
       client.delete("/");
       fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
+      // MODIFY should imply read so ls should work
+      fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId);
+      // Without MODIFY or READ should fail
+      when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(false);
       Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId); });
     }
 

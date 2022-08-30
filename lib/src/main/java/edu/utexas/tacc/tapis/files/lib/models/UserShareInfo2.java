@@ -6,6 +6,7 @@ import java.util.Objects;
 
 /**
  * TODO Additional user specific share information for a file path
+ *      see method getShareInfo in FileShareService.java.
  *
  * This class is intended to represent an immutable object.
  * Please keep it immutable.

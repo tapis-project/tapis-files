@@ -6,11 +6,12 @@ import java.util.Collections;
 import java.util.HashSet;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
-import javax.ws.rs.NotSupportedException;
 import javax.ws.rs.WebApplicationException;
 import java.util.Set;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -61,6 +62,7 @@ public class FileShareService
   // Tracing.
   private static final Logger log = LoggerFactory.getLogger(FileShareService.class);
 
+  private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
   private static final String OP_SHARE = "sharePath";
   private static final String OP_UNSHARE = "unSharePath";
   private static final String RESOURCE_TYPE = "file";
@@ -82,9 +84,13 @@ public class FileShareService
   @Inject
   private ServiceClients serviceClients;
 
+  private static String siteAdminTenantId;
+
   // ************************************************************************
   // *********************** Public Methods *********************************
   // ************************************************************************
+
+  public static void setSiteAdminTenantId(String s) { siteAdminTenantId = s; }
 
   /*
    * Check to see if a path is shared with a user.
@@ -115,6 +121,7 @@ public class FileShareService
     // Create SKShareGetSharesParms needed for SK calls.
     var skParms = new SKShareGetSharesParms();
     skParms.setResourceType(RESOURCE_TYPE);
+    skParms.setTenant(system.getTenant());
     skParms.setResourceId1(systemId);
 
     SkShareList skShares;
@@ -125,7 +132,7 @@ public class FileShareService
     // First check the specific path passed in
     skParms.setResourceId2(pathStr);
     skParms.setGrantee(SKClient.PUBLIC_GRANTEE);
-    skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+    skShares = getSKClient().getShares(skParms);
     // Set isPublic based on result.
     isPublic = (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty());
     // If System is of type LINUX and specific path not public then one of the parent directories might be
@@ -146,7 +153,7 @@ public class FileShareService
     skParms.setResourceId2(pathStr);
     skParms.setGrantee(user);
     skParms.setIncludePublicGrantees(false);
-    skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+    skShares = getSKClient().getShares(skParms);
 
     // ====================================================
     // If specific path shared with user then return true
@@ -190,11 +197,12 @@ public class FileShareService
     String oboUser = rUser.getOboUserId();
     String oboTenant = rUser.getOboTenantId();
     String systemId = system.getId();
-//
-//    // Create SKShareGetSharesParms needed for SK calls.
-//    var skParms = new SKShareGetSharesParms();
-//    skParms.setResourceType(RESOURCE_TYPE);
-//    skParms.setResourceId1(systemId);
+
+    // Create SKShareGetSharesParms needed for SK calls.
+    var skParms = new SKShareGetSharesParms();
+    skParms.setResourceType(RESOURCE_TYPE);
+    skParms.setTenant(system.getTenant());
+    skParms.setResourceId1(systemId);
 //
 //    SkShareList skShares;
 //    boolean isPublic;
@@ -204,7 +212,7 @@ public class FileShareService
 //    // First check the specific path passed in
 //    skParms.setResourceId2(pathStr);
 //    skParms.setGrantee(SKClient.PUBLIC_GRANTEE);
-//    skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+//    skShares = getSKClient().getShares(skParms);
 //    // Set isPublic based on result.
 //    isPublic = (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty());
 //    // If System is of type LINUX and specific path not public then one of the parent directories might be
@@ -225,7 +233,7 @@ public class FileShareService
 //    skParms.setResourceId2(pathStr);
 //    skParms.setGrantee(user);
 //    skParms.setIncludePublicGrantees(false);
-//    skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+//    skShares = getSKClient().getShares(skParms);
 //
 //    // ====================================================
 //    // If specific path shared with user then return true
@@ -312,6 +320,7 @@ public class FileShareService
     // Create SKShareGetSharesParms needed for SK calls.
     var skParms = new SKShareGetSharesParms();
     skParms.setResourceType(RESOURCE_TYPE);
+    skParms.setTenant(sys.getTenant());
     skParms.setResourceId1(systemId);
 
     ShareInfo shareInfo;
@@ -328,7 +337,7 @@ public class FileShareService
       // First check the specific path passed in
       skParms.setResourceId2(pathStr);
       skParms.setGrantee(SKClient.PUBLIC_GRANTEE);
-      skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+      skShares = getSKClient().getShares(skParms);
       // Set isPublic based on result.
       isPublic = (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty());
       // If specific path is public then we know isPublicPath
@@ -352,7 +361,7 @@ public class FileShareService
       skParms.setResourceId2(pathStr);
       skParms.setGrantee(null);
       skParms.setIncludePublicGrantees(false);
-      skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+      skShares = getSKClient().getShares(skParms);
       if (skShares != null && skShares.getShares() != null)
       {
         for (SkShare skShare : skShares.getShares())
@@ -444,6 +453,7 @@ public class FileShareService
   /**
    * Remove all share access for a path on a system including public.
    * Must be system owner
+   * Retrieve all shares and use deleteShareById.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
@@ -478,6 +488,7 @@ public class FileShareService
 
     var skGetParms = new SKShareGetSharesParms();
     skGetParms.setResourceType(RESOURCE_TYPE);
+    skGetParms.setTenant(sys.getTenant());
     skGetParms.setResourceId1(systemId);
     skGetParms.setResourceId2(pathToSearch);
 
@@ -485,13 +496,13 @@ public class FileShareService
     try
     {
       // Get all shares for the path and it's sub-paths
-      SkShareList shareList = getSKClient(oboUser, oboTenant).getShares(skGetParms);
+      SkShareList shareList = getSKClient().getShares(skGetParms);
       // Remove share for every entry in the list
       if (shareList != null && shareList.getShares() != null)
       {
         for (SkShare skShare : shareList.getShares())
         {
-          if (skShare.getId() != null) getSKClient(oboUser, oboTenant).deleteShareById(skShare.getId());
+          if (skShare.getId() != null) getSKClient().deleteShareById(skShare.getId(), sys.getTenant());
         }
       }
     }
@@ -540,15 +551,18 @@ public class FileShareService
       {
         reqShareResource = new ReqShareResource();
         reqShareResource.setResourceType(RESOURCE_TYPE);
+        reqShareResource.setTenant(sys.getTenant());
+        reqShareResource.setGrantor(oboUser);
         reqShareResource.setResourceId1(systemId);
         reqShareResource.setResourceId2(pathStr);
-        reqShareResource.setGrantor(oboUser);
         reqShareResource.setPrivilege(FileInfo.Permission.READ.name());
       }
       case OP_UNSHARE ->
       {
         deleteShareParms = new SKShareDeleteShareParms();
         deleteShareParms.setResourceType(RESOURCE_TYPE);
+        deleteShareParms.setTenant(sys.getTenant());
+        deleteShareParms.setGrantor(oboUser);
         deleteShareParms.setResourceId1(systemId);
         deleteShareParms.setResourceId2(pathStr);
         deleteShareParms.setPrivilege(FileInfo.Permission.READ.name());
@@ -565,12 +579,12 @@ public class FileShareService
           case OP_SHARE ->
           {
             reqShareResource.setGrantee(userName);
-            getSKClient(oboUser, oboTenant).shareResource(reqShareResource);
+            getSKClient().shareResource(reqShareResource);
           }
           case OP_UNSHARE ->
           {
             deleteShareParms.setGrantee(userName);
-            getSKClient(oboUser, oboTenant).deleteShare(deleteShareParms);
+            getSKClient().deleteShare(deleteShareParms);
           }
         }
       }
@@ -611,7 +625,7 @@ public class FileShareService
       String parentPathStr = parentPath.toString();
       skParms.setResourceId2(parentPathStr);
       // Note: leave getSKClient in the loop since the svc jwt might expire.
-      skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+      skShares = getSKClient().getShares(skParms);
       // If any found then we are done
       if (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty())
       {
@@ -655,7 +669,7 @@ public class FileShareService
       String parentPathStr = parentPath.toString();
       skParms.setResourceId2(parentPathStr);
       // Note: leave getSKClient in the loop since the svc jwt might expire.
-      skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+      skShares = getSKClient().getShares(skParms);
       if (skShares != null && skShares.getShares() != null)
       {
         for (SkShare skShare : skShares.getShares())
@@ -697,7 +711,7 @@ public class FileShareService
       // Get shares for the path
       String parentPathStr = parentPath.toString();
       skParms.setResourceId2(parentPathStr);
-      skShares = getSKClient(oboUser, oboTenant).getShares(skParms);
+      skShares = getSKClient().getShares(skParms);
       // ====================================================
       // If share found then return true
       // ====================================================
@@ -707,6 +721,18 @@ public class FileShareService
     }
     // No shares found
     return false;
+  }
+
+
+  /**
+   * Get Security Kernel client with obo tenant and user set to the service tenant and user.
+   * I.e. this is a client where the service calls SK as itself.
+   * @return SK client
+   * @throws TapisClientException - for Tapis related exceptions
+   */
+  private SKClient getSKClient() throws TapisClientException
+  {
+    return getSKClient(SERVICE_NAME, siteAdminTenantId);
   }
 
   /**

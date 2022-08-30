@@ -131,6 +131,8 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
                 }
             });
         app.register(TransfersApiResource.class);
+      FilePermsService.setSiteAdminTenantId("admin");
+      FileShareService.setSiteAdminTenantId("admin");
         return app;
     }
 
