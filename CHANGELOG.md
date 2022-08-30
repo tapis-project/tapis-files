@@ -9,7 +9,7 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.2.3 - 2022-08-24
+## 1.2.3 - 2022-08-30
 
 Incremental improvements and preview of new feature.
 
@@ -19,7 +19,7 @@ Incremental improvements and preview of new feature.
 - Perform DB migration at service startup.
 
 ### Bug fixes:
-- None.
+- Update so MODIFY permission implies READ.
 
 ---------------------------------------------------------------------------
 ## 1.2.2 - 2022-07-06

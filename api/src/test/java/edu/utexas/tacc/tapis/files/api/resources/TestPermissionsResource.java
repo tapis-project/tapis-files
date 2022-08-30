@@ -119,6 +119,8 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
             });
 
     app.register(PermissionsApiResource.class);
+    FilePermsService.setSiteAdminTenantId("admin");
+    FileShareService.setSiteAdminTenantId("admin");
     return app;
   }
 

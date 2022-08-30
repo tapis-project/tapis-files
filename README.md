@@ -76,8 +76,6 @@ The integration tests are configured to use the `test` database created above.
 
 Currently, tests run using mvn from the command line appear to have concurrency issues. They sometimes fail.
 Tests to run manually from IDE:
- - TestTransfers (approx 17 minutes, intermittent fails - test10Files, testDoesTransferAtRoot, testMultipleChildren, testNestedDirectories, testSameSystemForSourceAndDest)
- -   intermittent failures succeed when run individually from IDE
  - TestOpsRoutes (1.5 minutes)
  - TestFileOpsService (1 minute)
  - TestFileShareService (1 minute)
@@ -88,6 +86,8 @@ Tests to run manually from IDE:
  - TestS3Client (5 seconds)
  - TestTransfersRoutes (5 seconds)
  - TestFileTransfersDAO (5 seconds)
+ - TestTransfers (approx 17 minutes, intermittent fails - test10Files, testDoesTransferAtRoot, testMultipleChildren, testNestedDirectories, testSameSystemForSourceAndDest)
+ -   intermittent failures succeed when run individually from IDE
 
 ```
 mvn clean install -DskipITs=false -DAPP_ENV=test

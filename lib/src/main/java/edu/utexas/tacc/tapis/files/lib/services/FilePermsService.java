@@ -12,7 +12,6 @@ import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
-import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -39,9 +38,10 @@ public class FilePermsService
   @Inject
   private FilePermsCache permsCache;
 
-  private static final String svcUserName = TapisConstants.SERVICE_NAME_FILES;
-  private String siteId = null;
-  private String svcTenantName = null;
+  private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
+  private static String siteAdminTenantId;
+
+  public static void setSiteAdminTenantId(String s) { siteAdminTenantId = s; }
 
   public void grantPermission(String tenantId, String username, String systemId, String path, Permission perm)
           throws ServiceException
@@ -155,16 +155,10 @@ public class FilePermsService
    */
   private SKClient getSKClient() throws TapisClientException
   {
-    // Init if necessary
-    if (siteId == null)
-    {
-      siteId = RuntimeSettings.get().getSiteId();
-      svcTenantName = TenantManager.getInstance().getSiteAdminTenantId(siteId);
-    }
-    try { return serviceClients.getClient(svcUserName, svcTenantName, SKClient.class); }
+    try { return serviceClients.getClient(SERVICE_NAME, siteAdminTenantId, SKClient.class); }
     catch (Exception e)
     {
-      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, svcTenantName, svcUserName);
+      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, siteAdminTenantId, SERVICE_NAME);
       throw new TapisClientException(msg, e);
     }
   }

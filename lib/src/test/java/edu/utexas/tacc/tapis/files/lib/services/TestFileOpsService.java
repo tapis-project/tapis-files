@@ -229,7 +229,9 @@ public class TestFileOpsService
 
     rTestUser = new ResourceRequestUser(new AuthenticatedUser(testUser, devTenant, TapisThreadContext.AccountType.user.name(),
             null, testUser, devTenant, null, null, null));
-    }
+    FilePermsService.setSiteAdminTenantId("admin");
+    FileShareService.setSiteAdminTenantId("admin");
+  }
 
     @BeforeTest()
     public void setUp() throws Exception

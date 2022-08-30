@@ -80,6 +80,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   private SKClient skClient;
   private SystemsCache systemsCache;
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
+  private static final String SITE_ID = "tacc";
 
   /**
    * Private constructor
@@ -173,6 +174,8 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
               }
             });
     app.register(OperationsApiResource.class);
+    FilePermsService.setSiteAdminTenantId("admin");
+    FileShareService.setSiteAdminTenantId("admin");
     return app;
   }
 

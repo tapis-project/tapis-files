@@ -100,6 +100,8 @@ public class FileOpsService
     siteId = siteId1;
     siteAdminTenantId = siteAdminTenantId1;
     serviceContext.initServiceJWT(siteId, APPS_SERVICE, svcPassword);
+    FileShareService.setSiteAdminTenantId(siteAdminTenantId1);
+    FilePermsService.setSiteAdminTenantId(siteAdminTenantId1);
     // Make sure DB is present and updated using flyway
     migrateDB();
   }
