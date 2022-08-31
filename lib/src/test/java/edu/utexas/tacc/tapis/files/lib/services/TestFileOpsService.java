@@ -98,6 +98,7 @@ public class TestFileOpsService
     creds.setAccessKey(testUser);
     creds.setPassword("password");
     testSystemSSH = new TapisSystem();
+    testSystemSSH.setTenant(devTenant);
     testSystemSSH.setId("testSystem");
     testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
     testSystemSSH.setAuthnCredential(creds);
@@ -112,6 +113,7 @@ public class TestFileOpsService
     creds.setPublicKey(publicKey);
     creds.setPrivateKey(privateKey);
     testSystemPKI = new TapisSystem();
+    testSystemPKI.setTenant(devTenant);
     testSystemPKI.setId("testSystem");
     testSystemPKI.setSystemType(SystemTypeEnum.LINUX);
     testSystemPKI.setAuthnCredential(creds);
@@ -126,6 +128,7 @@ public class TestFileOpsService
     creds.setAccessKey("user");
     creds.setAccessSecret("password");
     testSystemS3 = new TapisSystem();
+    testSystemS3.setTenant(devTenant);
     testSystemS3.setId("testSystem");
     testSystemS3.setSystemType(SystemTypeEnum.S3);
     testSystemS3.setHost("http://localhost");
@@ -140,6 +143,7 @@ public class TestFileOpsService
     creds.setAccessKey("dev");
     creds.setAccessSecret("dev");
     testSystemIrods = new TapisSystem();
+    testSystemIrods.setTenant(devTenant);
     testSystemIrods.setId("testSystem");
     testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
     testSystemIrods.setHost("localhost");
