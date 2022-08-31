@@ -330,7 +330,7 @@ public class FileOpsService
           throws WebApplicationException
   {
     // Trace the call
-    log.trace(LibUtils.getMsgAuthR("FILES_OP_MKDIR", rUser, sys.getId(), path, sharedAppCtx));
+    log.debug(LibUtils.getMsgAuthR("FILES_OP_MKDIR", rUser, sys.getId(), path, sharedAppCtx));
     String opName = "mkdir";
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
@@ -1065,7 +1065,7 @@ public class FileOpsService
       throw new ForbiddenException(msg);
     }
     // An allowed service is skipping auth, log it
-    log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDAPPCTX", rUser, opName, sysId, pathStr));
+    log.debug(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDAPPCTX", rUser, opName, sysId, pathStr));
   }
 
   /*
