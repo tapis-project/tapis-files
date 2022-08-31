@@ -329,6 +329,8 @@ public class FileOpsService
                     boolean sharedAppCtx)
           throws WebApplicationException
   {
+    // Trace the call
+    log.trace(LibUtils.getMsgAuthR("FILES_OP_MKDIR", rUser, sys.getId(), path, sharedAppCtx));
     String opName = "mkdir";
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
@@ -346,7 +348,7 @@ public class FileOpsService
       if (!sharedAppCtx) LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, path, Permission.MODIFY);
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
-      mkdir(client, path);
+      mkdir(client, path, sharedAppCtx);
     }
     catch (IOException | ServiceException ex)
     {
@@ -359,18 +361,28 @@ public class FileOpsService
     }
   }
 
+  // Convenience wrapper for use in test classes.
+  public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path)
+          throws ServiceException, ForbiddenException
+  {
+    mkdir(client, path, false);
+  }
+
   /**
    * Create a directory at provided path using provided client.
    * Intermediate directories in the path will be created as necessary.
    * @param client remote data client to use
    * @param path - path on system relative to system rootDir
+   * @param sharedAppCtx - Indicates that request is part of a shared app context.
    * @throws ServiceException - general error
    * @throws ForbiddenException - user not authorized
    */
-  public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path) throws ServiceException, ForbiddenException
+  public void mkdir(@NotNull IRemoteDataClient client, @NotNull String path, boolean sharedAppCtx)
+          throws ServiceException, ForbiddenException
   {
-    LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                            path, Permission.MODIFY);
+    if (!sharedAppCtx)
+      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                              path, Permission.MODIFY);
     // Get path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(path).toString();
     try
