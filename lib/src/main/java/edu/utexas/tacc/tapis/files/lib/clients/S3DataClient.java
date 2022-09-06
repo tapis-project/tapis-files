@@ -112,14 +112,48 @@ public class S3DataClient implements IRemoteDataClient
       if (region == null) reg = Region.US_EAST_1;
       else reg = Region.of(region);
 
-      String accessKey = "";
-      String accessSecret = "";
-      if (system.getAuthnCredential() != null)
+      // If we do not have credentials it is an error
+      if (system.getAuthnCredential() == null)
       {
-        accessKey = system.getAuthnCredential().getAccessKey();
-        accessSecret = system.getAuthnCredential().getAccessSecret();
+        String msg = LibUtils.getMsg("FILES_CLIENT_S3_ERR", oboTenant, oboUser, system.getId(), bucket, "No credentials");
+        log.warn(msg);
+        throw new IOException(msg);
       }
-      AwsCredentials credentials = AwsBasicCredentials.create(accessKey, accessSecret);
+      String accessKey = system.getAuthnCredential().getAccessKey();
+      String accessSecret = system.getAuthnCredential().getAccessSecret();
+      // If access key or secret is blank it is an error
+      if (StringUtils.isBlank(accessKey))
+      {
+        String msg = LibUtils.getMsg("FILES_CLIENT_S3_ERR", oboTenant, oboUser, system.getId(), bucket, "Blank accessKey");
+        log.warn(msg);
+        throw new IOException(msg);
+      }
+      if (StringUtils.isBlank(accessSecret))
+      {
+        String msg = LibUtils.getMsg("FILES_CLIENT_S3_ERR", oboTenant, oboUser, system.getId(), bucket, "Blank accessSecret");
+        log.warn(msg);
+        throw new IOException(msg);
+      }
+      AwsCredentials credentials = null;
+      // We catch Exception here because AwsBasicCredentials.create() throws various exceptions.
+      try
+      {
+        credentials = AwsBasicCredentials.create(accessKey, accessSecret);
+      }
+      catch (Exception e)
+      {
+        String msg = LibUtils.getMsg("FILES_CLIENT_S3_ERR", oboTenant, oboUser, system.getId(), bucket, e.getMessage());
+        log.warn(msg);
+        throw new IOException(msg);
+      }
+      // If AWS returned null for credentials we cannot go on
+      if (credentials == null)
+      {
+        String msg = LibUtils.getMsg("FILES_CLIENT_S3_ERR", oboTenant, oboUser, system.getId(), bucket,
+                                    "AwsBasicCredentials.create returned null");
+        log.warn(msg);
+        throw new IOException(msg);
+      }
       S3ClientBuilder builder = S3Client.builder()
               .region(reg)
               .credentialsProvider(StaticCredentialsProvider.create(credentials));
@@ -137,12 +171,13 @@ public class S3DataClient implements IRemoteDataClient
       // Build the client
       client = builder.build();
     }
-    catch (URISyntaxException e)
+    catch (Exception e)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_S3_ERR", oboTenant, oboUser, system.getId(), bucket, e.getMessage());
       log.error(msg);
       throw new IOException(msg, e);
     }
+    log.debug(LibUtils.getMsg("FILES_CLIENT_S3_BUILT", oboTenant, oboUser, system.getId(), bucket));
   }
 
   /**
