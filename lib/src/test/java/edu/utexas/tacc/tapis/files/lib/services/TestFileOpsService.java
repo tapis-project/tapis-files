@@ -72,6 +72,7 @@ public class TestFileOpsService
   private final String devTenant = "dev";
   private final String testUser = "testuser";
   private final String nullImpersonationId = null;
+  private final boolean sharedAppCtxFalse = false;
   private ResourceRequestUser rTestUser;
   TapisSystem testSystemNotEnabled;
   TapisSystem testSystemSSH;
@@ -608,10 +609,10 @@ public class TestFileOpsService
       client.delete("/");
       fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
       // MODIFY should imply read so ls should work
-      fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId);
+      fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedAppCtxFalse);
       // Without MODIFY or READ should fail
       when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(false);
-      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId); });
+      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedAppCtxFalse); });
     }
 
   // NoAuthz tests for mkdir, move, copy and delete

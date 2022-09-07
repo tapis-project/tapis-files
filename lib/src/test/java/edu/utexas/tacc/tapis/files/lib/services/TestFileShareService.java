@@ -63,6 +63,7 @@ public class TestFileShareService
   private final String devTenant = "dev";
   private final String siteId = "tacc";
   private final String nullImpersonationId = null;
+  private final boolean sharedAppCtxFalse = false;
   private ResourceRequestUser rTestUser1;
   private ResourceRequestUser rTestUser2;
   private ResourceRequestUser rTestUser3;
@@ -187,11 +188,11 @@ public class TestFileShareService
     Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
 
     // Check that testUser can see the file and testUser2 cannot
-    fileOpsService.ls(rTestUser1, tmpSys, filePathStr, 1, 0, null);
+    fileOpsService.ls(rTestUser1, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
     boolean pass = false;
     try
     {
-      fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, null);
+      fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
     }
     catch (ForbiddenException e) { pass = true; }
     Assert.assertTrue(pass, "User testUser2 should not be able to list path");
@@ -221,8 +222,8 @@ public class TestFileShareService
     Assert.assertTrue(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
 
     // Check that testUser and testUser2 can now see the file
-    fileOpsService.ls(rTestUser1, tmpSys, filePathStr, 1, 0, null);
-    fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, null);
+    fileOpsService.ls(rTestUser1, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
+    fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
 
     // Remove share.
     fileShareService.unSharePath(rTestUser1, sysId, filePathStr, userSet);
@@ -238,11 +239,11 @@ public class TestFileShareService
     Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
 
     // Check that once again testUser can see the file and testUser2 cannot
-    fileOpsService.ls(rTestUser1, tmpSys, filePathStr, 1, 0, null);
+    fileOpsService.ls(rTestUser1, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
     pass = false;
     try
     {
-      fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, null);
+      fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
     }
     catch (ForbiddenException e) { pass = true; }
     Assert.assertTrue(pass, "User testUser2 should not be able to list path");
