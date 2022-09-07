@@ -42,27 +42,28 @@ import java.util.stream.Collectors;
 
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
-public class IrodsDataClient implements IRemoteDataClient {
+public class IrodsDataClient implements IRemoteDataClient
+{
+  private static final Logger log = LoggerFactory.getLogger(IrodsDataClient.class);
+  private final String oboTenantId;
+  private final String oboUsername;
+  private final TapisSystem system;
+  private final String irodsZone;
+  private final String homeDir;
+  private final String rootDir;
+  private static final String DEFAULT_RESC = "";
+  private static final int MAX_BYTES_PER_CHUNK = 1000000;
 
-    private static final Logger log = LoggerFactory.getLogger(IrodsDataClient.class);
-    private final String oboTenantId;
-    private final String oboUsername;
-    private final TapisSystem system;
-    private final String irodsZone;
-    private final String homeDir;
-    private final String rootDir;
-    private static final String DEFAULT_RESC = "";
-    private static final int MAX_BYTES_PER_CHUNK = 1000000;
-
-    public IrodsDataClient(@NotNull String oboTenantId, @NotNull String oboUsername, @NotNull TapisSystem system) {
-        this.oboTenantId = oboTenantId;
-        this.oboUsername = oboUsername;
-        this.system = system;
-        this.rootDir = system.getRootDir();
-        Path tmpPath = Paths.get(system.getRootDir());
-        this.irodsZone = tmpPath.subpath(0, 1).toString();
-        this.homeDir = Paths.get("/",irodsZone, "home", oboUsername).toString();
-    }
+  public IrodsDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1)
+  {
+    oboTenantId = oboTenant1;
+    oboUsername = oboUser1;
+    system = system1;
+    rootDir = system1.getRootDir();
+    Path tmpPath = Paths.get(rootDir);
+    irodsZone = tmpPath.subpath(0, 1).toString();
+    homeDir = Paths.get("/", irodsZone, "home", oboUser1).toString();
+  }
 
   @Override
   public void reserve() {}
@@ -70,19 +71,19 @@ public class IrodsDataClient implements IRemoteDataClient {
   public void release() {}
 
   @Override
-    public String getOboTenant() {
-        return oboTenantId;
-    }
+  public String getOboTenant() {
+    return oboTenantId;
+  }
 
-    @Override
-    public String getOboUser() {
-        return oboUsername;
-    }
+  @Override
+  public String getOboUser() {
+    return oboUsername;
+  }
 
-    @Override
-    public String getSystemId() {
-        return system.getId();
-    }
+  @Override
+  public String getSystemId() {
+    return system.getId();
+  }
 
     @Override
     public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {

@@ -117,24 +117,29 @@ public class FileOpsService
    * @param limit - pagination limit
    * @param offset - pagination offset
    * @param impersonationId - use provided Tapis username instead of oboUser
+   * @param sharedAppCtx - Indicates that request is part of a shared app context.
    * @return Collection of FileInfo objects
    * @throws NotFoundException - requested path not found
    */
   public List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                           long limit, long offset, String impersonationId)
+                           long limit, long offset, String impersonationId, boolean sharedAppCtx)
           throws WebApplicationException
   {
+    String opName = "ls";
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     String sysId = sys.getId();
     // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
+    // If sharedAppCtx set, confirm that it is allowed
+    // This method will throw ForbiddenException if not allowed.
+    if (sharedAppCtx) checkSharedAppCtxAllowed(rUser, opName, sysId, path);
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
     try
     {
-      // Check for READ/MODIFY permission or share
-      checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
+      // If not skipping then check for READ/MODIFY permission or share
+      if (!sharedAppCtx) checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
@@ -198,25 +203,31 @@ public class FileOpsService
    * @param path - path on system relative to system rootDir
    * @param depth - maximum depth for recursion
    * @param impersonationId - use provided Tapis username instead of oboUser
+   * @param sharedAppCtx - Indicates that request is part of a shared app context.
    * @return Collection of FileInfo objects
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-    public List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
-                                      @NotNull String path, int depth, String impersonationId)
+    public List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                                      int depth, String impersonationId, boolean sharedAppCtx)
             throws WebApplicationException
     {
+      String opName = "lsRecursive";
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       String sysId = sys.getId();
       // Get path relative to system rootDir and protect against ../..
       Path relativePath = PathUtils.getRelativePath(path);
+      // If sharedAppCtx set, confirm that it is allowed
+      // This method will throw ForbiddenException if not allowed.
+      if (sharedAppCtx) checkSharedAppCtxAllowed(rUser, opName, sysId, path);
+
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
       try
       {
-        // Check for READ/MODIFY permission or share
-        checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
+        // If not skipping then check for READ/MODIFY permission or share
+        if (!sharedAppCtx) checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
