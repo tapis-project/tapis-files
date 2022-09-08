@@ -235,8 +235,9 @@ public class FileOpsService
       }
       catch (IOException | ServiceException ex)
       {
-        throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "lsRecursive", sysId, path,
-                                          ex.getMessage()), ex);
+        String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "lsRecursive", sysId, path, ex.getMessage());
+        log.error(msg, ex);
+        throw new WebApplicationException(msg, ex);
       }
       finally
       {
@@ -290,8 +291,9 @@ public class FileOpsService
     }
     catch (IOException | ServiceException ex)
     {
-      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "upload", sysId, relPathStr,
-                                        ex.getMessage()), ex);
+      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "upload", sysId, relPathStr, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
     }
     finally
     {
@@ -363,8 +365,9 @@ public class FileOpsService
     }
     catch (IOException | ServiceException ex)
     {
-      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "mkdir", sysId, path,
-                                        ex.getMessage()), ex);
+      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "mkdir", sysId, path, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
     }
     finally
     {
@@ -441,6 +444,7 @@ public class FileOpsService
       catch (IOException | ServiceException ex)
       {
         String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, sysId, srcPath, ex.getMessage());
+        log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
       }
       finally
@@ -488,12 +492,16 @@ public class FileOpsService
       // Make sure srcPath exists
       if (srcFileInfo == null)
       {
-        throw new NotFoundException(LibUtils.getMsg("FILES_PATH_NOT_FOUND", oboTenant, oboUser, sysId, srcRelPathStr));
+        String msg = LibUtils.getMsg("FILES_PATH_NOT_FOUND", oboTenant, oboUser, sysId, srcRelPathStr);
+        log.warn(msg);
+        throw new NotFoundException(msg);
       }
       // If srcPath and dstPath are the same then throw an exception.
       if (srcRelPathStr.equals(dstRelPathStr))
       {
-        throw new NotFoundException(LibUtils.getMsg("FILES_SRC_DST_SAME", oboTenant, oboUser, sysId, srcRelPathStr));
+        String msg = LibUtils.getMsg("FILES_SRC_DST_SAME", oboTenant, oboUser, sysId, srcRelPathStr);
+        log.warn(msg);
+        throw new NotFoundException(msg);
       }
 
       // Perform the operation
@@ -547,8 +555,9 @@ public class FileOpsService
       }
       catch (IOException | ServiceException ex)
       {
-        throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "delete", sysId, path,
-                                          ex.getMessage()), ex);
+        String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "delete", sysId, path, ex.getMessage());
+        log.error(msg, ex);
+        throw new WebApplicationException(msg, ex);
       }
       finally
       {
@@ -612,7 +621,9 @@ public class FileOpsService
       }
       catch (Exception e)
       {
-        throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+        String msg = LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage());
+        log.error(msg, e);
+        throw new WebApplicationException(msg, e);
       }
     };
     return outStream;
@@ -644,7 +655,9 @@ public class FileOpsService
     }
     catch (Exception e)
     {
-      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+      String msg = LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
     }
     finally
     {
@@ -678,7 +691,9 @@ public class FileOpsService
     }
     catch (ServiceException e)
     {
-      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+      String msg = LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
     }
 
     StreamingOutput outStream = output -> {
@@ -694,7 +709,9 @@ public class FileOpsService
       }
       catch (Exception e)
       {
-        throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+        String msg = LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage());
+        log.error(msg, e);
+        throw new WebApplicationException(msg, e);
       }
       finally
       {
@@ -729,7 +746,9 @@ public class FileOpsService
       }
       catch (Exception e)
       {
-        throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage()), e);
+        String msg = LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), path, e.getMessage());
+        log.error(msg, e);
+        throw new WebApplicationException(msg, e);
       }
       finally
       {
@@ -757,7 +776,9 @@ public class FileOpsService
 ////      getZip(client, output, path);
 ////      getZip(output, path);
 ////      } catch (Exception e) {
-////        throw new WebApplicationException(Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path), e);
+////        String msg = Utils.getMsgAuth("FILES_CONT_ZIP_ERR", user, systemId, path);
+////        log.error(msg, e);
+////        throw new WebApplicationException(msg, e);
 ////      }
 //    };
 //    String newName = FilenameUtils.removeExtension(filename) + ".zip";
@@ -1015,6 +1036,7 @@ public class FileOpsService
       if (!rUser.isServiceRequest() || !SVCLIST_IMPERSONATE.contains(svcName))
       {
         String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_IMPERSONATE", rUser, systemId, pathStr, impersonationId);
+        log.warn(msg);
         throw new ForbiddenException(msg);
       }
       // An allowed service is impersonating, log it
@@ -1052,6 +1074,7 @@ public class FileOpsService
     // No READ or share, throw exception
     String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", rUser.getOboTenantId(), oboOrImpersonatedUser, systemId,
                                  pathStr, Permission.READ);
+    log.warn(msg);
     throw new ForbiddenException(msg);
   }
 
@@ -1073,6 +1096,7 @@ public class FileOpsService
     if (!rUser.isServiceRequest() || !SVCLIST_SHAREDAPPCTX.contains(svcName))
     {
       String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDAPPCTX", rUser, opName, sysId, pathStr);
+      log.warn(msg);
       throw new ForbiddenException(msg);
     }
     // An allowed service is skipping auth, log it

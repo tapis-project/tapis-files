@@ -189,8 +189,10 @@ public class ChildTaskTransferService
     }
     catch (DAOException ex)
     {
-      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-              "stepOne", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                                   "stepOne", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
     }
   }
 
@@ -222,8 +224,10 @@ public class ChildTaskTransferService
     }
     catch (DAOException ex)
     {
-      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-              "stepTwoA", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                                   "stepTwoA", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
     }
 
     String sourcePath;
@@ -267,8 +271,10 @@ public class ChildTaskTransferService
     }
     catch (IOException | ServiceException ex)
     {
-      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-              "stepTwoB", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                                   "stepTwoB", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
     }
 
     // If we have a directory to create, just do that and return the task child
@@ -317,7 +323,7 @@ public class ChildTaskTransferService
         {
           String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                   "chmod", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
-          log.error(msg);
+          log.error(msg, ex);
           throw new ServiceException(msg, ex);
         }
       }
@@ -358,8 +364,10 @@ public class ChildTaskTransferService
     }
     catch (DAOException ex)
     {
-      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-              "stepThree", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                                   "stepThree", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
     }
   }
 
@@ -381,8 +389,10 @@ public class ChildTaskTransferService
     }
     catch (DAOException ex)
     {
-      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-              "stepFour", taskChild.getId(), taskChild.getUuid(), ex.getMessage()), ex);
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                                   "stepFour", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
     }
     return taskChild;
   }
@@ -515,17 +525,21 @@ public class ChildTaskTransferService
     }
     catch (ExecutionException ex)
     {
+      String msg = ex.getCause().getMessage();
+      log.error(msg, ex);
       if (ex.getCause() instanceof IOException)
       {
-        throw new IOException(ex.getCause().getMessage(), ex.getCause());
+        throw new IOException(msg, ex.getCause());
       }
       else if (ex.getCause() instanceof ServiceException)
       {
-        throw new ServiceException(ex.getCause().getMessage(), ex.getCause());
+        throw new ServiceException(msg, ex.getCause());
       }
       else
       {
-        throw new RuntimeException("TODO", ex);
+        // TODO: See if we can never reach this point.
+        // This msg had been "TODO" and did show up for one of the sharedAppCtx use cases.
+        throw new RuntimeException(msg, ex);
       }
     }
     catch (CancellationException ex)

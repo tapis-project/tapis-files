@@ -167,6 +167,7 @@ public class LibUtils
     if (!svc.isPermitted(oboTenant, oboUser, systemId, PathUtils.getSKRelativePath(pathToCheck).toString(), perm))
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, perm);
+      log.warn(msg);
       throw new ForbiddenException(msg);
     }
   }
@@ -191,6 +192,7 @@ public class LibUtils
         && !svc.isPermitted(oboTenant, oboUser, systemId, PathUtils.getSKRelativePath(pathToCheck).toString(), Permission.MODIFY))
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, Permission.READ);
+      log.warn(msg);
       throw new ForbiddenException(msg);
     }
   }
@@ -203,7 +205,11 @@ public class LibUtils
   public static void checkEnabled(AuthenticatedUser authenticatedUser, TapisSystem sys) throws BadRequestException
   {
     if (sys.getEnabled() == null || !sys.getEnabled())
-      throw new BadRequestException(getMsgAuth("FILES_SYS_NOTENABLED", authenticatedUser, sys.getId()));
+    {
+      String msg = getMsgAuth("FILES_SYS_NOTENABLED", authenticatedUser, sys.getId());
+      log.warn(msg);
+      throw new BadRequestException(msg);
+    }
   }
 
   /**
@@ -220,15 +226,24 @@ public class LibUtils
     try
     {
       sys = systemsCache.getSystem(rUser.getOboTenantId(), systemId, rUser.getOboUserId());
-      if (sys == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
+      if (sys == null)
+      {
+        String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId);
+        log.warn(msg);
+        throw new NotFoundException(msg);
+      }
       if (sys.getEnabled() == null || !sys.getEnabled())
       {
-        throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTENABLED", rUser, systemId));
+        String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTENABLED", rUser, systemId);
+        log.warn(msg);
+        throw new NotFoundException(msg);
       }
     }
     catch (ServiceException ex)
     {
-      throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
+      String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId);
+      log.warn(msg);
+      throw new NotFoundException(msg);
     }
     return sys;
   }

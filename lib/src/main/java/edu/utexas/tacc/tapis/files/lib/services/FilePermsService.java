@@ -58,6 +58,7 @@ public class FilePermsService
     catch (TapisClientException ex)
     {
       String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, pathStr, ex.getMessage());
+      log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
   }
@@ -71,7 +72,9 @@ public class FilePermsService
    * @param newPath - new path
    * @throws ServiceException when SK client throws a TapisClientException
    */
-  public void replacePathPrefix(String tenantId, String username, String systemId, String oldPath, String newPath) throws ServiceException {
+  public void replacePathPrefix(String tenantId, String username, String systemId, String oldPath, String newPath)
+          throws ServiceException
+  {
     try {
       // TODO: use getSKRelativePath()?
       oldPath = StringUtils.prependIfMissing(oldPath, "/");
@@ -80,6 +83,7 @@ public class FilePermsService
       log.debug(String.valueOf(modified));
     } catch (TapisClientException ex) {
       String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "grant", systemId, oldPath, ex.getMessage());
+      log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
   }
@@ -113,6 +117,7 @@ public class FilePermsService
     catch (TapisClientException ex)
     {
       String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, pathStr, ex.getMessage());
+      log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
   }
@@ -141,6 +146,7 @@ public class FilePermsService
       }
     } catch (TapisClientException ex) {
       String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
+      log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
   }
@@ -159,6 +165,7 @@ public class FilePermsService
     catch (Exception e)
     {
       String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, siteAdminTenantId, SERVICE_NAME);
+      log.error(msg, e);
       throw new TapisClientException(msg, e);
     }
   }

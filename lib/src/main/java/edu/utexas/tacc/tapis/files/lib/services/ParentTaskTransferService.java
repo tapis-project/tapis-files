@@ -124,7 +124,13 @@ public class ParentTaskTransferService
     if (parentTask.isTerminal()) return parentTask;
 
     // Check permission
-    if (!isPermitted(parentTask)) throw new ForbiddenException();
+    if (!isPermitted(parentTask))
+    {
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", parentTask.getTenantId(), parentTask.getUsername(),
+                                   "doParentStepOneA", parentTask.getId(), parentTask.getUuid());
+      log.warn(msg);
+      throw new ForbiddenException(msg);
+    }
 
     // Update the top level task first, if it is not already updated with the startTime
     try
@@ -145,8 +151,10 @@ public class ParentTaskTransferService
     }
     catch (DAOException ex)
     {
-      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-              "doParentStepOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage()), ex);
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+                                   "doParentStepOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
     }
 
     // Process the source URI
@@ -163,6 +171,7 @@ public class ParentTaskTransferService
         {
           String msg = LibUtils.getMsg("FILES_TXFR_SYS_NOTENABLED", parentTask.getTenantId(),
                   parentTask.getUsername(), parentTask.getId(), parentTask.getUuid(), sourceSystem.getId());
+          log.error(msg);
           throw new ServiceException(msg);
         }
         sourceClient = remoteDataClientFactory.getRemoteDataClient(parentTask.getTenantId(), parentTask.getUsername(),
@@ -211,8 +220,10 @@ public class ParentTaskTransferService
     }
     catch (DAOException | TapisException | IOException e)
     {
-      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-              "doParentStepOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage()), e);
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+                                   "doParentStepOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage());
+      log.error(msg, e);
+      throw new ServiceException(msg, e);
     }
     return parentTask;
   }
@@ -336,7 +347,7 @@ public class ParentTaskTransferService
     {
       message.nack(false);
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR11", ex.getMessage());
-      log.error(msg);
+      log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
   }

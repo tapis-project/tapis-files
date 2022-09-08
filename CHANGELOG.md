@@ -15,6 +15,8 @@ Incremental improvements and preview of new feature.
 
 ### New features:
 - Support sharedAppCtx for listFiles operation.
+- Add warning messages for when permission is denied.
+- Add error messages for service exceptions.
 
 ### Bug fixes:
 - None.
