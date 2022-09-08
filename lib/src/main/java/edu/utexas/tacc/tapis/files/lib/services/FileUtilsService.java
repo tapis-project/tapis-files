@@ -91,26 +91,39 @@ public class FileUtilsService
    * @param op - operation to perform
    * @param arg - argument for operation
    * @param recursive - flag indicating if operation should be applied recursively for directories
+   * @param sharedAppCtx - Indicates that request is part of a shared app context.
    * @return - result of running the command
    * @throws ServiceException - General problem
    * @throws NotAuthorizedException - user not authorized to operate on path
    */
   public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
-                                     @NotNull String arg, boolean recursive)
+                                     @NotNull String arg, boolean recursive, boolean sharedAppCtx)
           throws TapisException, ServiceException, NotAuthorizedException
   {
     NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
-    if (!(client instanceof ISSHDataClient)) {
+    if (!(client instanceof ISSHDataClient))
+    {
       String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
+                                   ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
       log.error(msg);
       throw new IllegalArgumentException(msg);
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
-    try {
-      // Check permissions
-      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                              path, Permission.MODIFY);
+    try
+    {
+      // If not skipping due to sharedAppCtx then check permissions
+      if (!sharedAppCtx)
+      {
+        LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                                path, Permission.MODIFY);
+      }
+      else
+      {
+        // Log that we have skipped the perm check
+        String msg = LibUtils.getMsg("FILES_AUTH_SHAREDAPPCTX2", client.getOboTenant(), client.getOboUser(), op.name(),
+                                     client.getSystemId(), path);
+        log.warn(msg);
+      }
 
       Path relativePath = PathUtils.getRelativePath(path);
       // Make the remoteDataClient call

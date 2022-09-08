@@ -435,7 +435,10 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         //Add some files to transfer
         int FILESIZE = 10 * 1000 * 1024;
         fileOpsService.upload(sourceClient, "program.exe", Utils.makeFakeFile(FILESIZE));
-        fileUtilsService.linuxOp(sourceClient, "/program.exe", FileUtilsService.NativeLinuxOperation.CHMOD, "755", false);
+        boolean recurseFalse = false;
+        boolean sharedAppCtxFalse = false;
+        fileUtilsService.linuxOp(sourceClient, "/program.exe", FileUtilsService.NativeLinuxOperation.CHMOD, "755",
+                                 recurseFalse, sharedAppCtxFalse);
 
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://sourceSystem/program.exe");

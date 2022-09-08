@@ -166,7 +166,7 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepOne(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
-    log.info("***** DOING stepOne ****");
+    log.info("***** DOING stepOne **** {}", taskChild);
     try
     {
       // Make sure it hasn't been cancelled already
@@ -307,9 +307,10 @@ public class ChildTaskTransferService
       destClient.upload(destURL.getPath(), observableInputStream);
     }
 
-    //If its an executable file on a posix system, chmod it to be +x. For HTTP inputs, there is no sourceSystem, so we have to check that.
+    //If it is an executable file on a posix system, chmod it to be +x.
+    // We check sourceSystem!=null because for HTTP inputs, there is no sourceSystem.
     if (sourceSystem != null && Objects.equals(sourceSystem.getSystemType(), SystemTypeEnum.LINUX)
-            && Objects.equals(destSystem.getSystemType(), SystemTypeEnum.LINUX))
+                             && Objects.equals(destSystem.getSystemType(), SystemTypeEnum.LINUX))
     {
       List<FileInfo> itemListing = sourceClient.ls(sourcePath);
       FileInfo item = itemListing.get(0);
@@ -317,9 +318,15 @@ public class ChildTaskTransferService
       {
         try
         {
-          fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700", false);
+          // Before calling linuxOp, we need to know if we are in a sharedAppCtx
+          // So the linuxOp will skip the perm check
+          TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
+          boolean isDestShared = parentTask.isDestSharedAppCtx();
+          boolean recurseFalse = false;
+          fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700",
+                                   recurseFalse, isDestShared);
         }
-        catch (TapisException ex)
+        catch (TapisException | DAOException ex)
         {
           String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                   "chmod", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
@@ -350,7 +357,7 @@ public class ChildTaskTransferService
   private TransferTaskChild stepThree(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
     // If it cancelled/failed somehow, just push it through unchanged.
-    log.info("DOING step3 {}", taskChild);
+    log.info("***** DOING stepThree **** {}", taskChild);
     if (taskChild.isTerminal()) return taskChild;
     try
     {
@@ -537,8 +544,6 @@ public class ChildTaskTransferService
       }
       else
       {
-        // TODO: See if we can never reach this point.
-        // This msg had been "TODO" and did show up for one of the sharedAppCtx use cases.
         throw new RuntimeException(msg, ex);
       }
     }
