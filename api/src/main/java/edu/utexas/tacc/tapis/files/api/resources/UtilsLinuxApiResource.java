@@ -106,8 +106,9 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
       if (client == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
 
       // Make the service call
-      NativeLinuxOpResult nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(),
-              request.getArgument(), recursive);
+      boolean sharedAppCtxFalse = false;
+      NativeLinuxOpResult nativeLinuxOpResult =
+              fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(), recursive, sharedAppCtxFalse);
 
       TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse("ok", nativeLinuxOpResult);
       return Response.ok(resp).build();
