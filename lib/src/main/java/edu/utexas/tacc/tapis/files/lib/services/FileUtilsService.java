@@ -63,6 +63,7 @@ public class FileUtilsService
     if (!(client instanceof ISSHDataClient)) {
       String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                 ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
+      log.error(msg);
       throw new IllegalArgumentException(msg);
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
@@ -102,6 +103,7 @@ public class FileUtilsService
     if (!(client instanceof ISSHDataClient)) {
       String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                 ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
+      log.error(msg);
       throw new IllegalArgumentException(msg);
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;

@@ -128,8 +128,10 @@ public class TransfersService
       }
       catch (DAOException ex)
       {
-        throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR2", tenantId, username,
-                                                "isPermitted", transferTaskUuid, ex.getMessage()), ex);
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR2", tenantId, username,
+                                     "isPermitted", transferTaskUuid, ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
       }
     }
 
@@ -144,84 +146,128 @@ public class TransfersService
                 parent.setChildren(children);
             }
             return task;
-        } catch (DAOException ex) {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR3",
-                "getTransferTaskDetails", uuid, ex.getMessage()), ex);
+        }
+        catch (DAOException ex)
+        {
+          String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskDetails", uuid, ex.getMessage());
+          log.error(msg, ex);
+          throw new ServiceException(msg, ex);
         }
     }
 
-    public TransferTaskChild getChildTaskByUUID(UUID uuid) throws ServiceException {
-        try {
-            return dao.getChildTaskByUUID(uuid);
-        } catch (DAOException e) {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", null, null,
-                "getChildTaskByUUID", null, uuid, e.getMessage()), e);
-        }
+    public TransferTaskChild getChildTaskByUUID(UUID uuid) throws ServiceException
+    {
+      try
+      {
+        return dao.getChildTaskByUUID(uuid);
+      }
+      catch (DAOException e)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", null, null, "getChildTaskByUUID", null, uuid, e.getMessage());
+        log.error(msg, e);
+        throw new ServiceException(msg, e);
+      }
     }
 
-    public List<TransferTaskChild> getAllChildrenTasks(TransferTask task) throws ServiceException {
-        try {
-            return dao.getAllChildren(task);
-        } catch (DAOException e) {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                "getAllChildrenTasks", task.getId(), task.getUuid(), e.getMessage()), e);
-        }
+    public List<TransferTaskChild> getAllChildrenTasks(TransferTask task)
+            throws ServiceException
+    {
+      try
+      {
+        return dao.getAllChildren(task);
+      }
+      catch (DAOException e)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+                                     "getAllChildrenTasks", task.getId(), task.getUuid(), e.getMessage());
+        log.error(msg, e);
+        throw new ServiceException(msg, e);
+      }
     }
 
-    public List<TransferTask> getRecentTransfers(String tenantId, String username, int limit, int offset) throws ServiceException {
-        limit = Math.min(limit, 1000);
-        offset = Math.max(0, offset);
-        try {
-            return dao.getRecentTransfersForUser(tenantId, username, limit, offset);
-        } catch (DAOException ex) {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR5", tenantId, username,
-                "getRecentTransfers", ex.getMessage()), ex);
-        }
+    public List<TransferTask> getRecentTransfers(String tenantId, String username, int limit, int offset)
+            throws ServiceException
+    {
+      limit = Math.min(limit, 1000);
+      offset = Math.max(0, offset);
+      try
+      {
+        return dao.getRecentTransfersForUser(tenantId, username, limit, offset);
+      }
+      catch (DAOException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR5", tenantId, username, "getRecentTransfers", ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
     }
 
-    public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
-        try {
-            TransferTask task = dao.getTransferTaskByUUID(taskUUID);
-            if (task == null) {
-                throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskByUUID", taskUUID));
-            }
-            List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
-            task.setParentTasks(parents);
-
-            return task;
-        } catch (DAOException ex) {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR3",
-                "getTransferTaskByUUID", taskUUID, ex.getMessage()), ex);
+    public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID) throws ServiceException, NotFoundException
+    {
+      try
+      {
+        TransferTask task = dao.getTransferTaskByUUID(taskUUID);
+        if (task == null)
+        {
+          String msg = LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskByUUID", taskUUID);
+          log.error(msg);
+          throw new NotFoundException(msg);
         }
+        List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
+        task.setParentTasks(parents);
+        return task;
+      }
+      catch (DAOException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskByUUID", taskUUID, ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
     }
 
-    public TransferTask getTransferTaskById(@NotNull int id) throws ServiceException, NotFoundException {
-        try {
-            TransferTask task = dao.getTransferTaskByID(id);
-            if (task == null) {
-                throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskById", id));
-            }
-            List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
-            task.setParentTasks(parents);
-
-            return task;
-        } catch (DAOException ex) {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR4",
-                "getTransferTaskById", id, ex.getMessage()), ex);
+    public TransferTask getTransferTaskById(@NotNull int id) throws ServiceException, NotFoundException
+    {
+      try
+      {
+        TransferTask task = dao.getTransferTaskByID(id);
+        if (task == null)
+        {
+          String msg = LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskById", id);
+          log.error(msg);
+          throw new NotFoundException(msg);
         }
+        List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
+        task.setParentTasks(parents);
+        return task;
+      }
+      catch (DAOException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR4", "getTransferTaskById", id, ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
     }
 
-    public TransferTaskParent getTransferTaskParentByUUID(@NotNull UUID taskUUID) throws ServiceException, NotFoundException {
-        try {
-            TransferTaskParent task = dao.getTransferTaskParentByUUID(taskUUID);
-            if (task == null) {
-                throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskParentByUUID", taskUUID));
-            }
-            return task;
-        } catch (DAOException ex) {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskParentByUUID", taskUUID,
-                ex.getMessage()), ex);
+    public TransferTaskParent getTransferTaskParentByUUID(@NotNull UUID taskUUID)
+            throws ServiceException, NotFoundException
+    {
+      try
+      {
+        TransferTaskParent task = dao.getTransferTaskParentByUUID(taskUUID);
+        if (task == null)
+        {
+          String msg = LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskParentByUUID", taskUUID);
+          log.error(msg);
+          throw new NotFoundException(msg);
         }
+        return task;
+      }
+      catch (DAOException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskParentByUUID", taskUUID, ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
     }
 
     /**
@@ -265,6 +311,7 @@ public class TransfersService
       catch (DAOException | ServiceException e)
       {
         String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_ERR6", rUser, "createTransfer", tag, e.getMessage());
+        log.error(msg, e);
         throw new ServiceException(msg, e);
       }
     }
@@ -275,47 +322,51 @@ public class TransfersService
      */
     public TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException
     {
-        try { return dao.insertChildTask(task); }
-        catch (DAOException ex)
-        {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                "createTransferTaskChild", task.getId(), task.getUuid(), ex.getMessage()), ex);
-        }
+      try { return dao.insertChildTask(task); }
+      catch (DAOException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+                                     "createTransferTaskChild", task.getId(), task.getUuid(), ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
     }
 
     public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException
     {
-        try
-        {
-            dao.cancelTransfer(task);
-            TransferControlAction action = new TransferControlAction();
-            action.setAction(TransferControlAction.ControlAction.CANCEL);
-            action.setCreated(Instant.now());
-            action.setTenantId(task.getTenantId());
-            action.setTaskId(task.getId());
-            publishControlMessage(action);
-        }
-        catch (DAOException ex)
-        {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage()), ex);
-        }
+      try
+      {
+        dao.cancelTransfer(task);
+        TransferControlAction action = new TransferControlAction();
+        action.setAction(TransferControlAction.ControlAction.CANCEL);
+        action.setCreated(Instant.now());
+        action.setTenantId(task.getTenantId());
+        action.setTaskId(task.getId());
+        publishControlMessage(action);
+      }
+      catch (DAOException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+                                     "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
     }
 
     public void publishControlMessage(@NotNull TransferControlAction action) throws ServiceException
     {
-        try
-        {
-            String m = mapper.writeValueAsString(action);
-            OutboundMessage message = new OutboundMessage(CONTROL_EXCHANGE, "#", m.getBytes());
-            Flux<OutboundMessageResult> confirms = sender.sendWithPublishConfirms(Mono.just(message));
-            confirms.subscribe();
-        }
-        catch ( JsonProcessingException e)
-        {
-            log.info(e.getMessage());
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR_PUBLISH_MESSAGE"));
-        }
+      try
+      {
+        String m = mapper.writeValueAsString(action);
+        OutboundMessage message = new OutboundMessage(CONTROL_EXCHANGE, "#", m.getBytes());
+        Flux<OutboundMessageResult> confirms = sender.sendWithPublishConfirms(Mono.just(message));
+        confirms.subscribe();
+      }
+      catch (JsonProcessingException e)
+      {
+        log.error(e.getMessage(), e);
+        throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR_PUBLISH_MESSAGE"));
+      }
     }
 
     /**
@@ -341,18 +392,19 @@ public class TransfersService
 
     public void publishChildMessage(TransferTaskChild childTask) throws ServiceException
     {
-        try
-        {
-            String m = mapper.writeValueAsString(childTask);
-            OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
-
-            sender.send(Mono.just(message)).subscribe();
-        }
-        catch (JsonProcessingException ex)
-        {
-            throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", childTask.getTenantId(), childTask.getUsername(),
-                "publishChildMessage", childTask.getId(), childTask.getUuid(), ex.getMessage()), ex);
-        }
+      try
+      {
+        String m = mapper.writeValueAsString(childTask);
+        OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
+        sender.send(Mono.just(message)).subscribe();
+      }
+      catch (JsonProcessingException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", childTask.getTenantId(), childTask.getUsername(),
+                                     "publishChildMessage", childTask.getId(), childTask.getUuid(), ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
     }
 
     /**
@@ -452,9 +504,10 @@ public class TransfersService
     }
     catch (Exception e)
     {
-      log.info(e.getMessage());
-      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-              "publishParentTaskMessage", task.getId(), task.getUuid(), e.getMessage()), e);
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
+                                   "publishParentTaskMessage", task.getId(), task.getUuid(), e.getMessage());
+      log.error(msg, e);
+      throw new ServiceException(msg, e);
     }
   }
 
@@ -491,6 +544,7 @@ public class TransfersService
     if (!rUser.isServiceRequest() || !SVCLIST_SHAREDAPPCTX.contains(svcName))
     {
       String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDAPPCTX_TXFR", rUser, opName, tag);
+      log.warn(msg);
       throw new ForbiddenException(msg);
     }
     // An allowed service is skipping auth, log it

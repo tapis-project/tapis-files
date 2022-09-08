@@ -292,6 +292,7 @@ public class FileShareService
 //            !isSharedWithUser(rUser, sys, pathStr, rUser.getOboUserId()))
 //      {
 //        String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, FileInfo.Permission.READ);
+//        log.warn(msg);
 //        throw new ForbiddenException(msg);
 //
 //      }
@@ -299,6 +300,7 @@ public class FileShareService
 //    }
 //    catch (ServiceException ex)
 //    {
+//      log.error(msg, ex);
 //      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, pathStr,
 //              ex.getMessage()), ex);
 //    }
@@ -313,8 +315,9 @@ public class FileShareService
     }
     catch (ServiceException ex)
     {
-      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, pathStr,
-              ex.getMessage()), ex);
+      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, pathStr, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
     }
 
     // Create SKShareGetSharesParms needed for SK calls.
@@ -478,6 +481,7 @@ public class FileShareService
     if (sys.getOwner() == null || !sys.getOwner().equals(oboUser))
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, opName);
+      log.warn(msg);
       throw new ForbiddenException(msg);
     }
 
@@ -539,6 +543,7 @@ public class FileShareService
     if (sys.getOwner() == null || !sys.getOwner().equals(oboUser))
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, opName);
+      log.warn(msg);
       throw new ForbiddenException(msg);
     }
 
@@ -750,6 +755,7 @@ public class FileShareService
     catch (Exception e)
     {
       String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, oboTenant, oboUser);
+      log.error(msg, e);
       throw new TapisClientException(msg, e);
     }
   }
