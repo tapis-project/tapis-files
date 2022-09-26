@@ -7,7 +7,7 @@ public class RuntimeSettings {
     static class BaseConfig implements IRuntimeConfig{
 
         protected String hostName = settings.get("TAPIS_LOCAL_NODE_NAME", "devHost");
-        protected String siteId = settings.get("tapis.side.id", "tacc");
+        protected String siteId = settings.get("TAPIS_SITE_ID", ""); // Site ID must be set in environment
         protected String dbHost = settings.get("DB_HOST", "localhost");
         protected String dbName = settings.get("DB_NAME", "dev");
         protected String dbUsername = settings.get("DB_USERNAME", "dev");
