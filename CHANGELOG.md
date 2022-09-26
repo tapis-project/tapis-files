@@ -17,14 +17,14 @@ Incremental improvements and preview of new feature.
 - Support sharedAppCtx for getContents operation.
 
 ### Bug fixes:
-- None.
+- Remove hard coded default value for TAPIS_SITE_ID. Site ID must now be set in the environment at service start.
 
 ---------------------------------------------------------------------------
 ## 1.2.4 - 2022-09-08
 
 Incremental improvements and preview of new feature.
 
-### New features:
+### New features
 - Support sharedAppCtx for listFiles operation.
 - Add warning messages for when permission is denied.
 - Add error messages for service exceptions.
