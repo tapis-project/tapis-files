@@ -410,7 +410,7 @@ public class S3DataClient implements IRemoteDataClient
     }
     catch (NoSuchKeyException ex)
     {
-      throw new NotFoundException();
+      throw new NotFoundException(String.format("Object key not found: %s",objKey));
     }
     catch (S3Exception ex)
     {

@@ -42,6 +42,8 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import static edu.utexas.tacc.tapis.files.lib.models.TransferURI.TAPIS_PROTOCOL;
+
 /*
  * Service level methods for File Operations.
  *  -  Each public method uses provided IRemoteDataClient and other service library classes to perform all top level
@@ -55,6 +57,7 @@ import java.util.zip.ZipOutputStream;
 public class FileOpsService
 {
   public static final int MAX_LISTING_SIZE = 1000;
+  public static final int MAX_RECURSION = 20;
 
   public enum MoveCopyOperation {MOVE, COPY}
 
@@ -62,8 +65,7 @@ public class FileOpsService
 
   private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
   // 0=systemId, 1=path, 2=tenant
-  private final String TAPIS_FILES_URL_FORMAT = "tapis://{0}/{1}?tenant={2}";
-  private static final int MAX_RECURSION = 20;
+  private final String TAPIS_FILES_URL_FORMAT = String.format("%s{0}/{1}?tenant={2}", TAPIS_PROTOCOL);
 
   private static final String SYSTEMS_SERVICE = TapisConstants.SERVICE_NAME_SYSTEMS;
   private static final String APPS_SERVICE = TapisConstants.SERVICE_NAME_APPS;
@@ -180,7 +182,7 @@ public class FileOpsService
         {
           String url = String.format("%s/%s", client.getSystemId(), f.getPath());
           url = StringUtils.replace(url, "//", "/");
-          f.setUrl("tapis://" + url);
+          f.setUrl(TAPIS_PROTOCOL + url);
           // Ensure there is a leading slash
           f.setPath(StringUtils.prependIfMissing(f.getPath(), "/"));
         }

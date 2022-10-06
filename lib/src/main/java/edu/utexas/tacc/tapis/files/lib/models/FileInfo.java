@@ -159,11 +159,13 @@ public class FileInfo
 
     @Override
     public String toString() {
-      return "class FileInfo {\n" +
+      return "FileInfo {\n" +
              "    lastModified: " + toIndentedString(lastModified) + "\n" +
              "    name: " + toIndentedString(name) + "\n" +
              "    path: " + toIndentedString(path) + "\n" +
+             "    url:  " + toIndentedString(url) + "\n" +
              "    size: " + toIndentedString(size) + "\n" +
+             "    type: " + toIndentedString(type) + "\n" +
              "}";
     }
 

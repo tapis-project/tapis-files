@@ -32,30 +32,30 @@ public class TransferTaskChild extends TransferTaskParent
      *  @param transferTaskParent The TransferTask from which to derive this child
      * @param fileInfo The path to the single file in the source system
      */
-    public TransferTaskChild(@NotNull TransferTaskParent transferTaskParent, @NotNull FileInfo fileInfo) throws TapisException {
+    public TransferTaskChild(@NotNull TransferTaskParent transferTaskParent, @NotNull FileInfo fileInfo) throws TapisException
+    {
+      // TODO But what if srcSystem is of type S3 and it is a directory? We do not support transfer of directories
+      TransferURI sourceUri = transferTaskParent.getSourceURI();
+      TransferURI destUri = transferTaskParent.getDestinationURI();
 
-        TransferURI sourceURL = transferTaskParent.getSourceURI();
-        TransferURI destURL =transferTaskParent.getDestinationURI();
+      // TODO/TBD: Using this appears to be the cause of a bug when the source system is of type S3
+      //  If the source system is of type S3 then we do not support directory transfer, so we
+      //    should not call relativizePaths
+      Path destPath = PathUtils.relativizePaths(sourceUri.getPath(), fileInfo.getPath(), destUri.getPath());
 
-        Path destPath = PathUtils.relativizePaths(
-            sourceURL.getPath(),
-            fileInfo.getPath(),
-            destURL.getPath()
-        );
+      TransferURI newSourceUri = new TransferURI(sourceUri, fileInfo.getPath());
+      TransferURI newDestUri = new TransferURI(destUri, destPath.toString());
 
-        TransferURI newSourceURL = new TransferURI(sourceURL.getProtocol(), sourceURL.getSystemId(), fileInfo.getPath());
-        TransferURI newDestURL = new TransferURI(destURL.getProtocol(), destURL.getSystemId(), destPath.toString());
-
-        this.setParentTaskId(transferTaskParent.getId());
-        this.setTaskId(transferTaskParent.getTaskId());
-        this.setSourceURI(newSourceURL.toString());
-        this.setDestinationURI(newDestURL.toString());
-        this.setStatus(TransferTaskStatus.ACCEPTED.name());
-        this.setTenantId(transferTaskParent.getTenantId());
-        this.setUsername(transferTaskParent.getUsername());
-        this.setBytesTransferred(0L);
-        this.setTotalBytes(fileInfo.getSize());
-        this.setDir(fileInfo.isDir());
+      this.setParentTaskId(transferTaskParent.getId());
+      this.setTaskId(transferTaskParent.getTaskId());
+      this.setSourceURI(newSourceUri.toString());
+      this.setDestinationURI(newDestUri.toString());
+      this.setStatus(TransferTaskStatus.ACCEPTED.name());
+      this.setTenantId(transferTaskParent.getTenantId());
+      this.setUsername(transferTaskParent.getUsername());
+      this.setBytesTransferred(0L);
+      this.setTotalBytes(fileInfo.getSize());
+      this.setDir(fileInfo.isDir());
     }
 
     public int getParentTaskId() {

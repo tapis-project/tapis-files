@@ -13,6 +13,9 @@ import java.util.UUID;
 
 public class TransferTaskParent
 {
+  private static final Set<TransferTaskStatus> TERMINAL_STATES = new HashSet<>(Set.of(TransferTaskStatus.COMPLETED,
+          TransferTaskStatus.FAILED, TransferTaskStatus.FAILED_OPT, TransferTaskStatus.CANCELLED, TransferTaskStatus.PAUSED));
+
   protected int id;
   protected String tenantId;
   protected String username;
@@ -215,13 +218,7 @@ public class TransferTaskParent
   @JsonIgnore
   public boolean isTerminal()
   {
-    Set<TransferTaskStatus> terminalStates = new HashSet<>();
-    terminalStates.add(TransferTaskStatus.COMPLETED);
-    terminalStates.add(TransferTaskStatus.FAILED);
-    terminalStates.add(TransferTaskStatus.FAILED_OPT);
-    terminalStates.add(TransferTaskStatus.CANCELLED);
-    terminalStates.add(TransferTaskStatus.PAUSED);
-    return terminalStates.contains(status);
+    return TERMINAL_STATES.contains(status);
   }
 
   @Override

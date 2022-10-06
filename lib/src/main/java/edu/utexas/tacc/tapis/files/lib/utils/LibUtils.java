@@ -1,25 +1,24 @@
 package edu.utexas.tacc.tapis.files.lib.utils;
 
+import java.text.MessageFormat;
+import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.NotAuthorizedException;
+import javax.ws.rs.NotFoundException;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.ForbiddenException;
-import javax.ws.rs.NotAuthorizedException;
-import javax.ws.rs.NotFoundException;
-import java.nio.file.Path;
-import java.text.MessageFormat;
-import java.util.Locale;
-import java.util.ResourceBundle;
 
 /*
    Utility class containing general use static methods.
@@ -246,5 +245,17 @@ public class LibUtils
       throw new NotFoundException(msg);
     }
     return sys;
+  }
+
+  /**
+   * Construct message containing list of errors for
+   */
+  public static String getListOfTxfrErrors(ResourceRequestUser rUser, String txfrTaskTag, List<String> msgList)
+  {
+    var sb = new StringBuilder(LibUtils.getMsgAuthR("FILES_TXFR_ERRORLIST", rUser, txfrTaskTag));
+    sb.append(System.lineSeparator());
+    if (msgList == null || msgList.isEmpty()) return sb.toString();
+    for (String msg : msgList) { sb.append("  ").append(msg).append(System.lineSeparator()); }
+    return sb.toString();
   }
 }

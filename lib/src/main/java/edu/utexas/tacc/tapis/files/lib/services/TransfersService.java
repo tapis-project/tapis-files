@@ -4,11 +4,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +19,12 @@ import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Delivery;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -50,29 +59,38 @@ import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 
+import static edu.utexas.tacc.tapis.files.lib.models.TransferURI.HTTP_PROTOCOL_PREFIX;
 import static reactor.rabbitmq.BindingSpecification.binding;
+import static edu.utexas.tacc.tapis.files.lib.models.TransferURI.TAPIS_PROTOCOL;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SHAREDAPPCTX;
 
 @Service
 public class TransfersService
 {
   private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
-  private final String TRANSFERS_EXCHANGE = "tapis.files";
-  private String PARENT_QUEUE = "tapis.files.transfers.parent";
-  private String CHILD_QUEUE = "tapis.files.transfers.child";
-  private String CONTROL_EXCHANGE = "tapis.files.transfers.control";
-  private static final int MAX_RETRIES = 5;
+  private static final String TRANSFERS_EXCHANGE = "tapis.files";
+  private static String PARENT_QUEUE = "tapis.files.transfers.parent";
+  private static String CHILD_QUEUE = "tapis.files.transfers.child";
+  private static String CONTROL_EXCHANGE = "tapis.files.transfers.control";
   private final Receiver receiver;
   private final Sender sender;
 
   private final FileTransfersDAO dao;
+  private final SystemsCache systemsCache;
 
   private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]
-        { TransferTaskStatus.FAILED, TransferTaskStatus.CANCELLED, TransferTaskStatus.COMPLETED};
+  {
+    TransferTaskStatus.FAILED, TransferTaskStatus.CANCELLED, TransferTaskStatus.COMPLETED
+  };
+
   private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
 
+  /*
+   * Constructor for service.
+   * Note that this is never invoked explicitly. Arguments of constructor are initialized via Dependency Injection.
+   */
   @Inject
-  public TransfersService(FileTransfersDAO dao1)
+  public TransfersService(FileTransfersDAO dao1, SystemsCache systemsCache1)
   {
     ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
     ReceiverOptions receiverOptions = new ReceiverOptions()
@@ -86,6 +104,7 @@ public class TransfersService
     receiver = RabbitFlux.createReceiver(receiverOptions);
     sender = RabbitFlux.createSender(senderOptions);
     dao = dao1;
+    systemsCache = systemsCache1;
     init();
   }
 
@@ -273,7 +292,7 @@ public class TransfersService
     /**
      * Creates the top level TransferTask in table transfer_tasks
      * Creates the associated TransferTaskParents in the table transfer_tasks_parent
-     *   using the provided elements list creates the
+     *   using the provided elements list.
      *
      * @param rUser - ResourceRequestUser containing tenant, user and request info
      * @param tag      Optional identifier
@@ -287,21 +306,29 @@ public class TransfersService
             throws ServiceException
     {
       String opName = "createTransfer";
-      // First check for srcSharedAppCtx or destSharedAppCtx in the request elements.
-      // Only certain services may set these to true.
-      if (elements != null)
+      // Make sure we have at least one element for transfer.
+      if (elements == null || elements.isEmpty())
       {
-        for (TransferTaskRequestElement e : elements)
-        {
-          // This method will throw ForbiddenException if not allowed.
-          checkSharedAppCtxAllowed(rUser, opName, tag, e);
-        }
+        String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_NO_ELEMENTS", rUser, "createTransfer", tag);
+        throw new ServiceException(msg);
       }
+
+      // Validate the request. Check that all Tapis systems exist and are enabled.
+      // Check that transfer between system types is supported.
+      validateRequest(rUser, tag, elements);
+
+      // Create and init the transfer task
       TransferTask task = new TransferTask();
       task.setTenantId(rUser.getOboTenantId());
       task.setUsername(rUser.getOboUserId());
       task.setStatus(TransferTaskStatus.ACCEPTED);
       task.setTag(tag);
+
+      // Check for srcSharedAppCtx or destSharedAppCtx in the request elements.
+      // Only certain services may set these to true. May throw ForbiddenException.
+      for (TransferTaskRequestElement e : elements) { checkSharedAppCtxAllowed(rUser, opName, tag, e); }
+
+      // Persist the transfer task
       try
       {
         TransferTask newTask = dao.createTransferTask(task, elements);
@@ -311,7 +338,6 @@ public class TransfersService
       catch (DAOException | ServiceException e)
       {
         String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_ERR6", rUser, "createTransfer", tag, e.getMessage());
-        log.error(msg, e);
         throw new ServiceException(msg, e);
       }
     }
@@ -506,7 +532,6 @@ public class TransfersService
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
                                    "publishParentTaskMessage", task.getId(), task.getUuid(), e.getMessage());
-      log.error(msg, e);
       throw new ServiceException(msg, e);
     }
   }
@@ -549,5 +574,133 @@ public class TransfersService
     }
     // An allowed service is skipping auth, log it
     log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDAPPCTX_TXFR", rUser, opName, tag));
+  }
+
+  /**
+   * Check that all source and destination systems referenced in a TransferRequest exist and are enabled
+   * Check that based on the src and dst system types we support the transfer
+   *
+   * @param rUser - AuthenticatedUser, contains user info needed to fetch systems
+   */
+  private void validateRequest(ResourceRequestUser rUser, String tag, List<TransferTaskRequestElement> elements)
+          throws ServiceException
+  {
+    var errMessages = new ArrayList<String>();
+
+    // For any Tapis systems make sure they exist and are enabled.
+    validateSystemsAreEnabled(rUser, elements, errMessages);
+
+    // Check that we support transfers between each pair of systems
+    validateSystemsForTxfrSupport(rUser, elements, errMessages);
+
+    // If we have any errors log a message and return BAD_REQUEST response.
+    if (!errMessages.isEmpty())
+    {
+      // Construct message reporting all errors
+      String allErrors = LibUtils.getListOfTxfrErrors(rUser, tag, errMessages);
+      log.error(allErrors);
+      throw new ServiceException(allErrors);
+    }
+  }
+
+  /**
+   * Make sure system exists and is enabled
+   * For any not found or not enabled add a message to the list of error messages.
+   *
+   * @param rUser - AuthenticatedUser, contains user info needed to fetch systems
+   * @param sysId system to check
+   * @param errMessages - List where error message are being collected
+   */
+  private void validateSystemForTxfr(ResourceRequestUser rUser, String sysId, List<String> errMessages)
+  {
+    try { LibUtils.getSystemIfEnabled(rUser, systemsCache, sysId); }
+    catch (NotFoundException e)
+    {
+      errMessages.add(e.getMessage());
+    }
+  }
+
+  /*
+   * Make sure we support transfers between each pair of systems in a transfer request
+   *   - If one is GLOBUS then both must be GLOBUS
+   *   - dstSys must use tapis protocol (http/s not supported)
+   * For any combinations not supported add a message to the list of error messages.
+   *
+   * @param rUser - AuthenticatedUser, contains user info needed to fetch systems
+   * @param txfrElements - List of transfer elements
+   * @param errMessages - List where error message are being collected
+   */
+  private void validateSystemsForTxfrSupport(ResourceRequestUser rUser, List<TransferTaskRequestElement> txfrElements,
+                                             List<String> errMessages)
+  {
+    // Check each pair of systems
+    for (TransferTaskRequestElement txfrElement : txfrElements)
+    {
+      TransferURI srcUri = txfrElement.getSourceURI();
+      TransferURI dstUri = txfrElement.getDestinationURI();
+      String srcId = srcUri.getSystemId();
+      String dstId = dstUri.getSystemId();
+
+      // Get any Tapis systems. If protocol is http/s then leave as null.
+      // For protocol tapis:// get each system. These should already be in the cache due to a previous check, see validateSystems()
+      TapisSystem srcSys = null, dstSys = null;
+      try
+      {
+        if (!StringUtils.isBlank(srcId) && srcUri.isTapisProtocol())
+          srcSys = systemsCache.getSystem(rUser.getOboTenantId(), srcId, rUser.getOboUserId());
+        if (!StringUtils.isBlank(dstId) && dstUri.isTapisProtocol())
+          dstSys = systemsCache.getSystem(rUser.getOboTenantId(), dstId, rUser.getOboUserId());
+      }
+      catch (ServiceException e)
+      {
+        // In theory this will not happen due to previous check, see validateSystems()
+        errMessages.add(e.getMessage());
+      }
+
+      // If srcSys is GLOBUS and dstSys is not then we do not support it
+      if ((srcSys != null && SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType())) &&
+              (dstSys == null || !SystemTypeEnum.GLOBUS.equals(dstSys.getSystemType())))
+      {
+        errMessages.add(LibUtils.getMsg("FILES_TXFR_GLOBUS_NOTSUPPORTED", srcUri, dstUri));
+      }
+      // If dstSys is GLOBUS and srcSys is not then we do not support it
+      if ((dstSys != null && SystemTypeEnum.GLOBUS.equals(dstSys.getSystemType())) &&
+              (srcSys == null || !SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType())))
+      {
+        errMessages.add(LibUtils.getMsg("FILES_TXFR_GLOBUS_NOTSUPPORTED", srcUri, dstUri));
+      }
+      // If dstUri is not tapis protocol we do not support it
+      if (!dstUri.isTapisProtocol())
+      {
+        errMessages.add(LibUtils.getMsg("FILES_TXFR_DST_NOTSUPPORTED", srcUri, dstUri));
+      }
+    }
+  }
+
+  /*
+   * For any Tapis systems make sure they exist and are enabled.
+   * For any not found or not enabled add a message to the list of error messages.
+   *
+   * @param rUser - AuthenticatedUser, contains user info needed to fetch systems
+   * @param txfrElements - List of transfer elements
+   * @param errMessages - List where error message are being collected
+   */
+  private void validateSystemsAreEnabled(ResourceRequestUser rUser, List<TransferTaskRequestElement> txfrElements,
+                                         List<String> errMessages)
+  {
+    // Collect full set of Tapis systems involved. Protocol is tapis:// in the URI
+    var allSystems = new HashSet<String>();
+    for (TransferTaskRequestElement txfrElement : txfrElements)
+    {
+      TransferURI srcUri = txfrElement.getSourceURI();
+      TransferURI dstUri = txfrElement.getDestinationURI();
+      String srcId = srcUri.getSystemId();
+      String dstId = dstUri.getSystemId();
+      if (!StringUtils.isBlank(srcId) && srcUri.isTapisProtocol()) allSystems.add(srcId);
+      if (!StringUtils.isBlank(dstId) && dstUri.isTapisProtocol()) allSystems.add(dstId);
+    }
+
+    // Make sure each system exists and is enabled
+    for (String sysId : allSystems) { validateSystemForTxfr(rUser, sysId, errMessages); }
   }
 }

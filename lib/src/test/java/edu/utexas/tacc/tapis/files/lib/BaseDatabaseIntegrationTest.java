@@ -57,9 +57,13 @@ import java.util.concurrent.TimeUnit;
 public class BaseDatabaseIntegrationTest
 {
   private static final Logger log = LoggerFactory.getLogger(BaseDatabaseIntegrationTest.class);
-  protected TapisSystem testSystemS3;
+  protected final String devTenant = "dev";
+  protected final String testUser = "testuser";
+  private final String nullImpersonationId = null;
+
+  protected TapisSystem testSystemS3, testSystemS3a, testSystemS3b;
   protected TapisSystem testSystemPKI;
-  protected TapisSystem testSystemSSH;
+  protected TapisSystem testSystemSSH, testSystemSSHa, testSystemSSHb;
   protected TapisSystem testSystemIrods;
   protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairs;
   protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairsNoS3;
@@ -83,20 +87,43 @@ public class BaseDatabaseIntegrationTest
   {
     String privateKey = IOUtils.toString(this.getClass().getResourceAsStream("/test-machine"),StandardCharsets.UTF_8);
     String publicKey = IOUtils.toString(this.getClass().getResourceAsStream("/test-machine.pub"),StandardCharsets.UTF_8);
-
-    //SSH system with username/password
     Credential creds = new Credential();
-    creds.setAccessKey("testuser");
+
+    //SSH systems with username/password
     creds.setPassword("password");
     testSystemSSH = new TapisSystem();
+    testSystemSSH.setTenant(devTenant);
+    testSystemSSH.setId("testSystemSSH");
     testSystemSSH.setSystemType(SystemTypeEnum.LINUX);
     testSystemSSH.setAuthnCredential(creds);
     testSystemSSH.setHost("localhost");
     testSystemSSH.setPort(2222);
     testSystemSSH.setRootDir("/data/home/testuser/");
-    testSystemSSH.setId("testSystemSSH");
-    testSystemSSH.setEffectiveUserId("testuser");
+    testSystemSSH.setEffectiveUserId(testUser);
     testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+    // =================
+    creds.setPassword("password");
+    testSystemSSHa = new TapisSystem();
+    testSystemSSHa.setTenant(devTenant);
+    testSystemSSHa.setId("testSystemSSHa");
+    testSystemSSHa.setSystemType(SystemTypeEnum.LINUX);
+    testSystemSSHa.setAuthnCredential(creds);
+    testSystemSSHa.setHost("localhost");
+    testSystemSSHa.setPort(2222);
+    testSystemSSHa.setRootDir("/data/home/testuser");
+    testSystemSSHa.setEffectiveUserId(testUser);
+    testSystemSSHa.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+    // =================
+    testSystemSSHb = new TapisSystem();
+    testSystemSSHb.setTenant(devTenant);
+    testSystemSSHb.setId("testSystemSSHb");
+    testSystemSSHb.setSystemType(SystemTypeEnum.LINUX);
+    testSystemSSHb.setAuthnCredential(creds);
+    testSystemSSHb.setHost("localhost");
+    testSystemSSHb.setPort(2222);
+    testSystemSSHb.setRootDir("/data/home/testuser");
+    testSystemSSHb.setEffectiveUserId(testUser);
+    testSystemSSHb.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
 
     // PKI Keys system. The docker-compose file for development spins up 2 ssh containers,
     // one for the username/passwd system, and this separate container for the PKI ssh tests.
@@ -104,34 +131,61 @@ public class BaseDatabaseIntegrationTest
     creds.setPublicKey(publicKey);
     creds.setPrivateKey(privateKey);
     testSystemPKI = new TapisSystem();
+    testSystemPKI.setTenant(devTenant);
+    testSystemPKI.setId("testSystemPKI");
     testSystemPKI.setSystemType(SystemTypeEnum.LINUX);
     testSystemPKI.setAuthnCredential(creds);
     testSystemPKI.setHost("localhost");
     testSystemPKI.setPort(2223);
     testSystemPKI.setRootDir("/data/home/testuser/");
-    testSystemPKI.setId("testSystemPKI");
-    testSystemPKI.setEffectiveUserId("testuser");
+    testSystemPKI.setEffectiveUserId(testUser);
     testSystemPKI.setDefaultAuthnMethod(AuthnEnum.PKI_KEYS);
 
-    //S3 system
+    //S3 systems
     creds = new Credential();
     creds.setAccessKey("user");
     creds.setAccessSecret("password");
     testSystemS3 = new TapisSystem();
+    testSystemS3.setTenant(devTenant);
+    testSystemS3.setId("testSystemS3");
     testSystemS3.setSystemType(SystemTypeEnum.S3);
-    testSystemS3.setTenant("dev");
+    testSystemS3.setTenant(devTenant);
     testSystemS3.setHost("http://localhost");
     testSystemS3.setBucketName("test");
-    testSystemS3.setId("testSystemS3");
     testSystemS3.setPort(9000);
     testSystemS3.setAuthnCredential(creds);
     testSystemS3.setRootDir("/");
     testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    // =================
+    testSystemS3a = new TapisSystem();
+    testSystemS3a.setTenant(devTenant);
+    testSystemS3a.setId("testSystemS3a");
+    testSystemS3a.setSystemType(SystemTypeEnum.S3);
+    testSystemS3a.setTenant(devTenant);
+    testSystemS3a.setHost("http://localhost");
+    testSystemS3a.setBucketName("test");
+    testSystemS3a.setPort(9000);
+    testSystemS3a.setAuthnCredential(creds);
+    testSystemS3a.setRootDir("/data/home/s3a");
+    testSystemS3a.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    // =================
+    testSystemS3b = new TapisSystem();
+    testSystemS3b.setTenant(devTenant);
+    testSystemS3b.setId("testSystemS3b");
+    testSystemS3b.setSystemType(SystemTypeEnum.S3);
+    testSystemS3b.setTenant(devTenant);
+    testSystemS3b.setHost("http://localhost");
+    testSystemS3b.setBucketName("test");
+    testSystemS3b.setPort(9000);
+    testSystemS3b.setAuthnCredential(creds);
+    testSystemS3b.setRootDir("/data/home/s3b");
+    testSystemS3b.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
     // IRODs system
     testSystemIrods = new TapisSystem();
-    testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
+    testSystemIrods.setTenant(devTenant);
     testSystemIrods.setId("testSystemIrods");
+    testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
     testSystemIrods.setHost("localhost");
     testSystemIrods.setPort(1247);
     testSystemIrods.setRootDir("/tempZone/home/dev/");

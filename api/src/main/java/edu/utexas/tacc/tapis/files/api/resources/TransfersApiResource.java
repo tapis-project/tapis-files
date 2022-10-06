@@ -283,10 +283,6 @@ public class  TransfersApiResource
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "txfrTaskRequestTag="+transferTaskRequest.getTag());
 
-    // Make sure source and destination systems exist, are enabled, and we support transfers between the systems.
-    resp1 = validateSystems(transferTaskRequest, rUser);
-    if (resp1 != null) return resp1;
-
     // ---------------------------- Make service call -------------------------------
     try
     {
@@ -310,120 +306,6 @@ public class  TransfersApiResource
   // ************************************************************************
   // *********************** Private Methods ********************************
   // ************************************************************************
-
-  /**
-   * Check that all source and destination systems referenced in a TransferRequest exist and are enabled
-   *   and that based on the src and dst system types we support the transfer
-   *
-   * @param transferTaskRequest - Request to check
-   * @param rUser - AuthenticatedUser, contains user info needed to fetch systems
-   * @return null if all OK, BAD_REQUEST response if there are any missing or disabled systems
-   */
-  private Response validateSystems(TransferTaskRequest transferTaskRequest, ResourceRequestUser rUser)
-  {
-    var txfrElements = transferTaskRequest.getElements();
-    // If no transferTask elements we are done
-    if (txfrElements.isEmpty()) return null;
-
-    // Collect full set of systems involved
-    var allSystems = new HashSet<String>();
-    for (TransferTaskRequestElement txfrElement : txfrElements)
-    {
-      String srcId = txfrElement.getSourceURI().getSystemId();
-      String dstId = txfrElement.getDestinationURI().getSystemId();
-      if (!StringUtils.isBlank(srcId)) allSystems.add(srcId);
-      if (!StringUtils.isBlank(dstId)) allSystems.add(dstId);
-    }
-
-    var errMessages = new ArrayList<String>();
-    // Make sure each system exists and is enabled
-    for (String sysId : allSystems) { validateSystemForTxfr(sysId, rUser, errMessages); }
-
-    // Check that we support transfers between each pair of systems
-    validateSystemsForTxfrSupport(txfrElements, rUser, errMessages);
-
-    // If we have any errors log a message and return BAD_REQUEST response.
-    if (!errMessages.isEmpty())
-    {
-      // Construct message reporting all errors
-      String allErrors = getListOfErrors(rUser, transferTaskRequest.getTag(), errMessages);
-      log.error(allErrors);
-      return Response.status(Response.Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(allErrors, true)).build();
-    }
-    return null;
-  }
-
-  /**
-   * Make sure system exists and is enabled
-   * @param sysId system to check
-   * @param rUser - AuthenticatedUser, contains user info needed to fetch systems
-   * @param errMessages - List where error message are being collected
-   */
-  private void validateSystemForTxfr(String sysId, ResourceRequestUser rUser, List<String> errMessages)
-  {
-    try
-    {
-      LibUtils.getSystemIfEnabled(rUser, systemsCache, sysId);
-    }
-    catch (NotFoundException e)
-    {
-      // Unable to locate system or it is not enabled
-      errMessages.add(e.getMessage());
-    }
-  }
-
-  /**
-   * Make sure we support transfers between each pair of systems in a transfer request
-   * @param txfrElements - List of transfer elements
-   * @param rUser - AuthenticatedUser, contains user info needed to fetch systems
-   * @param errMessages - List where error message are being collected
-   */
-  private void validateSystemsForTxfrSupport(List<TransferTaskRequestElement> txfrElements, ResourceRequestUser rUser,
-                                             List<String> errMessages)
-  {
-    // Check each pair of systems
-    for (TransferTaskRequestElement txfrElement : txfrElements)
-    {
-      String srcId = txfrElement.getSourceURI().getSystemId();
-      String dstId = txfrElement.getDestinationURI().getSystemId();
-      // Get each system. These should already be in the cache due to a previous check, see validateSystems()
-      TapisSystem srcSys = null, dstSys = null;
-      try
-      {
-        srcSys = systemsCache.getSystem(rUser.getOboTenantId(), srcId, rUser.getOboUserId());
-        dstSys = systemsCache.getSystem(rUser.getOboTenantId(), dstId, rUser.getOboUserId());
-      }
-      catch (ServiceException e)
-      {
-        // In theory this will not happen due to previous check, see validateSystems()
-        errMessages.add(e.getMessage());
-      }
-      // If one is GLOBUS and the other is not then we do not support it
-      if (srcSys != null && dstSys != null)
-      {
-        if (
-            (SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType()) && !SystemTypeEnum.GLOBUS.equals(dstSys.getSystemType()))
-             || (!SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType()) && SystemTypeEnum.GLOBUS.equals(dstSys.getSystemType()))
-           )
-        {
-          errMessages.add(LibUtils.getMsg("FILES_TXFR_GLOBUS_NOTSUPPORTED", txfrElement.getSourceURI().toString(),
-                                          txfrElement.getDestinationURI().toString()));
-        }
-      }
-    }
-  }
-
-  /**
-   * Construct message containing list of errors
-   */
-  private static String getListOfErrors(ResourceRequestUser rUser, String txfrTaskTag, List<String> msgList)
-  {
-    var sb = new StringBuilder(LibUtils.getMsgAuthR("FILES_TXFR_ERRORLIST", rUser, txfrTaskTag));
-    sb.append(System.lineSeparator());
-    if (msgList == null || msgList.isEmpty()) return sb.toString();
-    for (String msg : msgList) { sb.append("  ").append(msg).append(System.lineSeparator()); }
-    return sb.toString();
-  }
 
   /**
    * Check that user has permission to access and act on the task

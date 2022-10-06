@@ -39,10 +39,7 @@ public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
       dao.deleteAllTasksForUser(testTenant, testUser1);
       dao.deleteAllTasksForUser(testTenant, testUser2);
     }
-    catch (Exception e)
-    {
-
-    }
+    catch (Exception e) { }
   }
 
   @Test
@@ -150,10 +147,10 @@ public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
     task.setUsername(userName);
     task.setStatus(TransferTaskStatus.ACCEPTED.name());
     List<TransferTaskRequestElement> elements = new ArrayList<>();
-    TransferTaskRequestElement element = new TransferTaskRequestElement();
-    element.setDestinationURI("tapis://sourceSystem/path");
-    element.setSourceURI("tapis://destSystem/path");
-    elements.add(element);
+    TransferTaskRequestElement element1 = new TransferTaskRequestElement();
+    element1.setDestinationURI("tapis://sourceSystem/path");
+    element1.setSourceURI("tapis://destSystem/path");
+    elements.add(element1);
 
     TransferTaskRequestElement element2 = new TransferTaskRequestElement();
     element2.setDestinationURI("tapis://sourceSystem2/path");
