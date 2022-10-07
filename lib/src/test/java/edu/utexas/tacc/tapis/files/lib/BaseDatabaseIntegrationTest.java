@@ -178,7 +178,7 @@ public class BaseDatabaseIntegrationTest
     testSystemS3b.setBucketName("test");
     testSystemS3b.setPort(9000);
     testSystemS3b.setAuthnCredential(creds);
-    testSystemS3b.setRootDir("/data/home/s3b");
+    testSystemS3b.setRootDir("/");
     testSystemS3b.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
     // IRODs system

@@ -204,6 +204,8 @@ public class ParentTaskTransferService
         // Fetch systems, they are needed during child task creation. Also, this ensures they exist and are available
         srcSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId);
         dstSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, dstId);
+        boolean srcIsS3 = SystemTypeEnum.S3.equals(srcSystem.getSystemType());
+        boolean dstIsS3 = SystemTypeEnum.S3.equals(dstSystem.getSystemType());
 
         // Establish client
         srcClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, srcSystem, taskUser);
@@ -221,7 +223,7 @@ public class ParentTaskTransferService
         //TODO: Retries will break this, should delete anything in the DB if it is a retry?
         List<FileInfo> fileListing;
         // For S3 we take this to be a single object at the srcPath. So we do not do a full listing.
-        if (SystemTypeEnum.S3.equals(srcSystem.getSystemType()))
+        if (srcIsS3)
         {
           fileListing = Collections.singletonList(fileInfo);
         }
@@ -231,7 +233,6 @@ public class ParentTaskTransferService
         }
 
         // Create child tasks for each file or object to be transferred.
-        boolean dstIsS3 = SystemTypeEnum.S3.equals(dstSystem.getSystemType());
         List<TransferTaskChild> children = new ArrayList<>();
         long totalBytes = 0;
         for (FileInfo f : fileListing)
@@ -256,7 +257,7 @@ public class ParentTaskTransferService
       }
       else
       {
-        // Handle all non-tapis protocols, http/s
+        // Handle all non-tapis protocols. These are http:// and https://
         // Create a single child task and update parent task status
         TransferTaskChild task = new TransferTaskChild();
         task.setSourceURI(parentTask.getSourceURI());

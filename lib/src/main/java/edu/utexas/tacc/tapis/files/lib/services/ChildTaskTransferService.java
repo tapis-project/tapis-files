@@ -206,6 +206,7 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException
   {
+    boolean srcIsLinux = false, dstIsLinux = false;
     //If we are cancelled/failed we can skip the transfer
     if (taskChild.isTerminal()) return taskChild;
 
@@ -215,7 +216,7 @@ public class ChildTaskTransferService
     IRemoteDataClient destClient;
     log.info("***** DOING stepTwo **** {}", taskChild);
 
-    //SubStep 1: Update task in DB to IN_PROGRESS and increment the retries on this particular task
+    // Update task in DB to IN_PROGRESS and increment the retries on this particular task
     try
     {
       taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
@@ -234,11 +235,12 @@ public class ChildTaskTransferService
     TransferURI destURL = taskChild.getDestinationURI();
     TransferURI sourceURL = taskChild.getSourceURI();
 
+    // Initialize source path and client
     if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://"))
     {
-      sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
       //This should be the full string URL such as http://google.com
       sourcePath = sourceURL.toString();
+      sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
     }
     else
     {
@@ -251,11 +253,12 @@ public class ChildTaskTransferService
                 taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), sourceSystem.getId());
         throw new ServiceException(msg);
       }
+      srcIsLinux = SystemTypeEnum.LINUX.equals(sourceSystem.getSystemType());
       sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
               sourceSystem, taskChild.getUsername());
     }
 
-    //SubStep 2: Get clients for source / dest
+    // Initialize destination client
     try
     {
       destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
@@ -263,11 +266,13 @@ public class ChildTaskTransferService
       if (destSystem.getEnabled() == null || !destSystem.getEnabled())
       {
         String msg = LibUtils.getMsg("FILES_TXFR_SYS_NOTENABLED", taskChild.getTenantId(),
-                taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), destSystem.getId());
+                                     taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), destSystem.getId());
+        log.error(msg);
         throw new ServiceException(msg);
       }
+      dstIsLinux = SystemTypeEnum.LINUX.equals(destSystem.getSystemType());
       destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
-              destSystem, taskChild.getUsername());
+                                                               destSystem, taskChild.getUsername());
     }
     catch (IOException | ServiceException ex)
     {
@@ -277,7 +282,7 @@ public class ChildTaskTransferService
       throw new ServiceException(msg, ex);
     }
 
-    // If we have a directory to create, just do that and return the task child
+    // If destination is a directory, create the directory and return
     if (taskChild.isDir())
     {
       destClient.mkdir(destURL.getPath());
@@ -291,7 +296,7 @@ public class ChildTaskTransferService
     // TODO/TBD: Or, maybe the txfr will be initiated synchronously and all we will need to do here is
     //           use the externalTransferId to monitor the progress and update the status.
 
-    //SubStep 4: Stream the file contents to dest. While the InputStream is open,
+    // Stream the file contents to destination. While the InputStream is open,
     // we put a tap on it and send events that get grouped into 100 ms intervals. Progress
     // on the child tasks are updated during the reading of the source input stream.
     try (InputStream sourceStream = sourceClient.getStream(sourcePath);
@@ -307,13 +312,11 @@ public class ChildTaskTransferService
       destClient.upload(destURL.getPath(), observableInputStream);
     }
 
-    //If it is an executable file on a posix system, chmod it to be +x.
-    // We check sourceSystem!=null because for HTTP inputs, there is no sourceSystem.
-    if (sourceSystem != null && Objects.equals(sourceSystem.getSystemType(), SystemTypeEnum.LINUX)
-                             && Objects.equals(destSystem.getSystemType(), SystemTypeEnum.LINUX))
+    // If it is an executable file on a posix system going to a posix system, chmod it to be +x.
+    // Note: sourceSystem will be null and srcIsLinux will be false if source is http/s.
+    if (sourceSystem != null && srcIsLinux && dstIsLinux)
     {
-      List<FileInfo> itemListing = sourceClient.ls(sourcePath);
-      FileInfo item = itemListing.get(0);
+      FileInfo item = sourceClient.getFileInfo(sourcePath);
       if (!item.isDir() && item.getNativePermissions().contains("x"))
       {
         try
@@ -329,14 +332,14 @@ public class ChildTaskTransferService
         catch (TapisException | DAOException ex)
         {
           String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                  "chmod", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+                                       "chmod", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
           log.error(msg, ex);
           throw new ServiceException(msg, ex);
         }
       }
     }
 
-    //The ChildTransferTask gets updated in another thread so we look it up again here before passing it on
+    //The ChildTransferTask gets updated in another thread, so we look it up again here before passing it on
     try
     {
       taskChild = dao.getTransferTaskChild(taskChild.getUuid());

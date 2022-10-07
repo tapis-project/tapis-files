@@ -164,88 +164,108 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.mkdir(clientSSHa, "ssha");
     fileOpsService.mkdir(clientSSHb, "sshb");
 
-    // Create a set of file paths that can represent a posix directory structure or a list of S3 keys
-    List<String> filePaths =
-            new ArrayList<>(List.of("file0.txt",
-                                    "file1.txt",
-                                    "a/file1a.txt",
-                                    "a/file2a.txt",
-                                    "a/b/file1b.txt",
-                                    "a/b/file2b.txt"));
-
-    // LINUX to LINUX
-    // Test txfr of a directory that contains several files in a sub-dir to a sub-dir on another system
-    // Add some objects to system SSHa.
+    printListing(clientS3a, testSystemS3a, "/");
+    printListing(clientS3b, testSystemS3b, "/");
+//    // Create a set of file paths that can represent a posix directory structure or a list of S3 keys
+//    List<String> filePaths =
+//            new ArrayList<>(List.of("file0.txt",
+//                                    "file1.txt",
+//                                    "a/file1a.txt",
+//                                    "a/file2a.txt",
+//                                    "a/b/file1b.txt",
+//                                    "a/b/file2b.txt"));
+//
+//    // LINUX to LINUX
+//    // Test txfr of a directory that contains several files in a sub-dir to a sub-dir on another system
+//    // Add some objects to system SSHa.
+//    System.out.println("********************************************************************************************");
+//    System.out.println("************    LINUX to LINUX                               *******************************");
+//    System.out.println("********************************************************************************************");
+//    fileOpsService.upload(clientSSHa, "ssha/test0.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/test1.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/test2.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/file0_1.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/dir1/file1_1.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_1.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_2.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_3.txt", Utils.makeFakeFile(FILESIZE));
+//    printListing(clientSSHa, testSystemSSHa, "/ssha");
+//
+//    // Now txfr SSHa:ssha/a/b to SSHb:sshb/ssh_b_dir3_from_ssh_a_slash_b
+//    // After txfr destination path should have 7 entries in destination dir /sshb/ssh_b_dir3_from_ssh_a_slash_b:
+//    //   /file0_1.txt
+//    //   /dir1
+//    //   /dir1/file1_1.txt
+//    //   /dir2
+//    //   /dir2/file2_1.txt
+//    //   /dir2/file2_1.txt
+//    //   /dir2/file2_1.txt
+//    runTxfr(testSystemSSHa, "ssha/a/b", testSystemSSHb, "sshb/dir_from_ssh_a_slash_b", 7, clientSSHb);
+//
+//    // S3 to LINUX
+//    // ===============
+//    // NOTE:
+//    //   minio does not support creating an object if the prefix already exists as an object.
+//    //     For example, trying this:
+//    //       fileOpsService.upload(clientS3a, "/a/s3_a", Utils.makeFakeFile(0));
+//    //       fileOpsService.upload(clientS3a, "/a/s3_a/file1.txt", Utils.makeFakeFile(FILESIZE));
+//    //     Results in:
+//    //       software.amazon.awssdk.services.s3.model.S3Exception: Object-prefix is already an object, please choose a different object-prefix name. (Service: S3, Status Code: 400, Request ID: 171A5C4FFC0E9613)
+//    //   minio also does not allow this:
+//    //       fileOpsService.upload(clientS3a, "/a/s3_a/file1.txt", Utils.makeFakeFile(FILESIZE));
+//    //       fileOpsService.upload(clientS3a, "/a/s3_a", Utils.makeFakeFile(0));
+//    //     Results in:
+//    //       software.amazon.awssdk.services.s3.model.S3Exception: Object name already exists as a directory. (Service: S3, Status Code: 409, Request ID: 171A5C36A6694AC6)
+//    System.out.println("********************************************************************************************");
+//    System.out.println("************    S3 to LINUX                                  *******************************");
+//    System.out.println("********************************************************************************************");
+//
+//    //Add some objects to system S3a.
+//    fileOpsService.upload(clientS3a, "a/b/file1.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientS3a, "a/b/file2.txt", Utils.makeFakeFile(FILESIZE));
+//    printListing(clientS3a, testSystemS3a, "/");
+//
+//    // Now txfr /a/s3_afile1.txt from S3a to SSHa. Only one new file should be created. It should be named "file_from_s3a.txt"
+//    runTxfr(testSystemS3a, "a/b/file1.txt", testSystemSSHa, "ssha/s3a_txfr/file_from_s3a.txt", 1, clientSSHa);
+//    printListing(clientSSHa, testSystemSSHa, "/ssha/s3a_txfr");
+//
+//    // LINUX to S3
+//    // Test txfr of a directory that contains several files and an empty directory to a system of type S3
+//    // In addition to the files and directories created on SSHa previously, create an empty directory
+//    // Since it is a directory this entry should not be transferred to the S3 system
+//    System.out.println("********************************************************************************************");
+//    System.out.println("************    LINUX to S3                                  *******************************");
+//    System.out.println("********************************************************************************************");
+//    fileOpsService.mkdir(clientSSHa, "ssha/a/b/dir3");
+//    printListing(clientSSHa, testSystemSSHa, "/ssha");
+//
+//    // Now txfr /a SSHa to S3b.
+//    // After txfr destination path should have 5 entries in destination dir files_from_ssha
+//    //   /file0_1.txt
+//    //   /dir1/file1_1.txt
+//    //   /dir2/file2_1.txt
+//    //   /dir2/file2_1.txt
+//    //   /dir2/file2_1.txt
+//    runTxfr(testSystemSSHa, "ssha/a/b", testSystemS3b, "files_from_ssha/", 5, clientS3b);
+//    printListing(clientS3b, testSystemS3b, "/");
+//
+    // S3 to S3
     System.out.println("********************************************************************************************");
-    System.out.println("************    LINUX to LINUX                               *******************************");
-    System.out.println("********************************************************************************************");
-    fileOpsService.upload(clientSSHa, "ssha/test0.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/test1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/test2.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/file0_1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/dir1/file1_1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_2.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_3.txt", Utils.makeFakeFile(FILESIZE));
-    printListing(clientSSHa, testSystemSSHa, "/ssha");
-
-    // Now txfr SSHa:ssha/a/b to SSHb:sshb/ssh_b_dir3_from_ssh_a_slash_b
-    // After txfr destination path should have 7 entries in destination dir /sshb/ssh_b_dir3_from_ssh_a_slash_b:
-    //   /file0_1.txt
-    //   /dir1
-    //   /dir1/file1_1.txt
-    //   /dir2
-    //   /dir2/file2_1.txt
-    //   /dir2/file2_1.txt
-    //   /dir2/file2_1.txt
-    runTxfr(testSystemSSHa, "ssha/a/b", testSystemSSHb, "sshb/ssh_b_dir3_from_ssh_a_slash_b", 7, clientSSHb);
-
-    // S3 to LINUX
-    // ===============
-    // NOTE:
-    //   minio does not support creating an object if the prefix already exists as an object.
-    //     For example, trying this:
-    //       fileOpsService.upload(clientS3a, "/a/s3_a", Utils.makeFakeFile(0));
-    //       fileOpsService.upload(clientS3a, "/a/s3_a/file1.txt", Utils.makeFakeFile(FILESIZE));
-    //     Results in:
-    //       software.amazon.awssdk.services.s3.model.S3Exception: Object-prefix is already an object, please choose a different object-prefix name. (Service: S3, Status Code: 400, Request ID: 171A5C4FFC0E9613)
-    //   minio also does not allow this:
-    //       fileOpsService.upload(clientS3a, "/a/s3_a/file1.txt", Utils.makeFakeFile(FILESIZE));
-    //       fileOpsService.upload(clientS3a, "/a/s3_a", Utils.makeFakeFile(0));
-    //     Results in:
-    //       software.amazon.awssdk.services.s3.model.S3Exception: Object name already exists as a directory. (Service: S3, Status Code: 409, Request ID: 171A5C36A6694AC6)
-    System.out.println("********************************************************************************************");
-    System.out.println("************    S3 to LINUX                                  *******************************");
+    System.out.println("************    S3 to S3                                     *******************************");
     System.out.println("********************************************************************************************");
 
-    //Add some objects to system S3a.
-    fileOpsService.upload(clientS3a, "a/b/file1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientS3a, "a/b/file2.txt", Utils.makeFakeFile(FILESIZE));
+    //Add an object to system S3a.
+    fileOpsService.upload(clientS3a, "a/b/file3.txt", Utils.makeFakeFile(FILESIZE));
     printListing(clientS3a, testSystemS3a, "/");
 
-    // Now txfr /a/s3_afile1.txt from S3a to SSHa. Only one new file should be created. It should be named "file_from_s3a.txt"
-    runTxfr(testSystemS3a, "a/b/file1.txt", testSystemSSHa, "ssha/s3a_txfr/file_from_s3a.txt", 1, clientSSHa);
-    printListing(clientSSHa, testSystemSSHa, "/ssha/s3a_txfr");
-
-    // LINUX to S3
-    // Test txfr of a directory that contains several files and an empty directory to a system of type S3
-    // In addition to the files and directories created on SSHa previously, create an empty directory
-    // Since it is a directory this entry should not be transferred to the S3 system
-    System.out.println("********************************************************************************************");
-    System.out.println("************    LINUX to S3                                  *******************************");
-    System.out.println("********************************************************************************************");
-    fileOpsService.mkdir(clientSSHa, "ssha/a/b/dir3");
-    printListing(clientSSHa, testSystemSSHa, "/ssha");
-
-    // Now txfr /a SSHa to S3b.
-    // After txfr destination path should have 5 entries in destination dir files_from_ssha
-    //   /file0_1.txt
-    //   /dir1/file1_1.txt
-    //   /dir2/file2_1.txt
-    //   /dir2/file2_1.txt
-    //   /dir2/file2_1.txt
-    runTxfr(testSystemSSHa, "ssha/a/b", testSystemS3b, "files_from_ssha/", 5, clientS3b);
+    // Now txfr /a/b/file3.txt from S3a to S3b.
+    runTxfr(testSystemS3a, "a/b/file3.txt", testSystemS3b, "a/b/c/file_from_s3a_file3.txt", 1, clientS3b);
+//    printListing(clientS3b, testSystemS3b, "/a");
     printListing(clientS3b, testSystemS3b, "/");
+    // TODO/TBD: There should be only one object on s3b, for some reason 2 are getting created.
+    //           Both source path (a/b/file3.txt) and destination path (a/b/c/file_from_s3a_file3.txt) are created on testSystemS3b
+    List<FileInfo> listing = fileOpsService.lsRecursive(clientS3b, "/", MAX_RECURSION);
+    Assert.assertEquals(listing.size(), 1);
   }
 
   @Test(dataProvider = "testSystemsDataProvider")
