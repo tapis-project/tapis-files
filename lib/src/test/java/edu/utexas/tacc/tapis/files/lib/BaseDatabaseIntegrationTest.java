@@ -166,7 +166,7 @@ public class BaseDatabaseIntegrationTest
     testSystemS3a.setBucketName("test");
     testSystemS3a.setPort(9000);
     testSystemS3a.setAuthnCredential(creds);
-    testSystemS3a.setRootDir("/data/home/s3a");
+    testSystemS3a.setRootDir("/");
     testSystemS3a.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
     // =================
     testSystemS3b = new TapisSystem();

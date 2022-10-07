@@ -4,11 +4,14 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,14 +129,20 @@ public class ParentTaskTransferService
     log.debug("***** DOING doParentStepOne ****");
     log.debug(parentTask.toString());
 
+    // Extract some values for convenience and clarity
+    String taskTenant = parentTask.getTenantId();
+    String taskUser = parentTask.getUsername();
+    int parentId = parentTask.getId();
+    int parentTaskId = parentTask.getTaskId();
+    UUID parentUuid = parentTask.getUuid();
+
     // If already in a terminal state then return
     if (parentTask.isTerminal()) return parentTask;
 
     // Check permission
     if (!isPermitted(parentTask))
     {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", parentTask.getTenantId(), parentTask.getUsername(),
-                                   "doParentStepOneA", parentTask.getId(), parentTask.getUuid());
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", taskTenant, taskUser, "doParentStepOneA", parentId, parentUuid);
       log.warn(msg);
       throw new ForbiddenException(msg);
     }
@@ -157,8 +166,8 @@ public class ParentTaskTransferService
     }
     catch (DAOException ex)
     {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-                                   "doParentStepOneA", parentTask.getId(), parentTask.getUuid(), ex.getMessage());
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskTenant, taskUser, "doParentStepOneA",
+                                   parentId, parentUuid, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -166,11 +175,9 @@ public class ParentTaskTransferService
     // =======================================================================
     // Now for the main work of creating the child tasks and publishing them
     // =======================================================================
-    String taskTenant = parentTask.getTenantId();
-    String taskUser = parentTask.getUsername();
-    // Create a ResourceRequestUser. Some library calls use this for logging identity info
+    // Create a ResourceRequestUser. Some library calls use this, mainly as convenient wrapper for logging identity info
     AuthenticatedUser aUser = new AuthenticatedUser(taskUser, taskTenant, TapisThreadContext.AccountType.user.name(),
-            null, taskUser, taskTenant, null, null, null);
+                                                    null, taskUser, taskTenant, null, null, null);
     ResourceRequestUser rUser = new ResourceRequestUser(aUser);
 
     // Process the source URI
@@ -178,20 +185,40 @@ public class ParentTaskTransferService
     TapisSystem sourceSystem = null;
     IRemoteDataClient sourceClient;
     String srcId = sourceURI.getSystemId();
-    // If source uses tapis:// protocol make sure the system exists and is available
-    if (sourceURI.isTapisProtocol()) sourceSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId);
+    String srcPath = sourceURI.getPath();
 
     try
     {
       if (sourceURI.isTapisProtocol())
       {
         // Handle protocol tapis://
-        sourceClient = remoteDataClientFactory.getRemoteDataClient(parentTask.getTenantId(), parentTask.getUsername(),
-                                                                   sourceSystem, parentTask.getUsername());
+        // Make sure source system exists and is available
+        sourceSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId);
+
+        // Establish client
+        sourceClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, sourceSystem, taskUser);
+
+        // Check that src path exists. If not found it is an error.
+        FileInfo fileInfo = sourceClient.getFileInfo(srcPath);
+        if (fileInfo == null)
+        {
+          String msg = LibUtils.getMsg("FILES_TXFR_SVC_SRCPATH_NOTFOUND", taskTenant, taskUser, parentId, parentUuid, srcPath);
+          log.error(msg);
+          throw new ServiceException(msg);
+        }
+
         // Get a listing of all files to be transferred
-        // For 
         //TODO: Retries will break this, should delete anything in the DB if it is a retry?
-        List<FileInfo> fileListing = fileOpsService.lsRecursive(sourceClient, sourceURI.getPath(), 10);
+        List<FileInfo> fileListing;
+        // For S3 we take this to be a single object at the srcPath. So we do not do a full listing.
+        if (SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
+        {
+          fileListing = Collections.singletonList(fileInfo);
+        }
+        else
+        {
+          fileListing = fileOpsService.lsRecursive(sourceClient, srcPath, FileOpsService.MAX_RECURSION);
+        }
         // Create child tasks for each file or object to be transferred.
         List<TransferTaskChild> children = new ArrayList<>();
         long totalBytes = 0;
@@ -201,7 +228,7 @@ public class ParentTaskTransferService
           // Only include the bytes from entries that are not directories. Posix folders are --usually-- 4bytes but not always, so
           // it can make some weird totals that don't really make sense.
           if (!f.isDir()) totalBytes += f.getSize();
-          TransferTaskChild child = new TransferTaskChild(parentTask, f);
+          TransferTaskChild child = new TransferTaskChild(parentTask, f, sourceSystem);
           log.debug("Adding child task: " + child);
           children.add(child);
         }
@@ -215,12 +242,12 @@ public class ParentTaskTransferService
       }
       else
       {
-        // Handle all other protocols, http/s
+        // Handle all non-tapis protocols, http/s
         // Create a single child task and update parent task status
         TransferTaskChild task = new TransferTaskChild();
         task.setSourceURI(parentTask.getSourceURI());
-        task.setParentTaskId(parentTask.getId());
-        task.setTaskId(parentTask.getTaskId());
+        task.setParentTaskId(parentId);
+        task.setTaskId(parentTaskId);
         task.setDestinationURI(parentTask.getDestinationURI());
         task.setStatus(TransferTaskStatus.ACCEPTED);
         task.setTenantId(parentTask.getTenantId());
@@ -233,8 +260,8 @@ public class ParentTaskTransferService
     }
     catch (DAOException | TapisException | IOException e)
     {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
-                                   "doParentStepOneB", parentTask.getId(), parentTask.getUuid(), e.getMessage());
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskTenant, taskUser, "doParentStepOneB",
+                                   parentId, parentUuid, e.getMessage());
       log.error(msg, e);
       throw new ServiceException(msg, e);
     }

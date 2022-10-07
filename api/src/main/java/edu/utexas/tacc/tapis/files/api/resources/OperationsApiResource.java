@@ -45,6 +45,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_RECURSION;
+
 /*
  * JAX-RS REST resource for Tapis File operations (list, mkdir, delete, moveCopy, upload)
  * jax-rs annotations map HTTP verb + endpoint to method invocation and map query parameters.
@@ -53,7 +55,6 @@ import java.util.List;
 @Path("/v3/files/ops")
 public class OperationsApiResource extends BaseFileOpsResource
 {
-  private static final int MAX_RECURSION_DEPTH = 10;
   private static final Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
   private final String className = getClass().getSimpleName();
   // Always return a nicely formatted response
@@ -80,7 +81,7 @@ public class OperationsApiResource extends BaseFileOpsResource
 
   /**
    * List files at path.
-   *  If recursion is specified max depth is MAX_RECURSION_DEPTH (10)
+   *  If recursion is specified max depth is MAX_RECURSION = 20
    * @param systemId - id of system
    * @param path - path on system relative to system rootDir
    * @param limit - pagination limit
@@ -130,7 +131,7 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (FilesExceptionMapper).
-    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION_DEPTH, impersonationId, sharedAppCtx);
+    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedAppCtx);
     else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedAppCtx);
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());

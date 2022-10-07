@@ -142,6 +142,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   @Test
   public void testLinux_S3() throws Exception
   {
+    int FILESIZE = 10 * 1024;
     // Init mocking to return values appropriate to the test
     when(systemsCache.getSystem(any(), eq(testSystemSSHa.getId()), any())).thenReturn(testSystemSSHa);
     when(systemsCache.getSystem(any(), eq(testSystemSSHb.getId()), any())).thenReturn(testSystemSSHb);
@@ -162,35 +163,35 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.delete(clientS3b, "/");
     fileOpsService.mkdir(clientSSHa, "ssha");
     fileOpsService.mkdir(clientSSHb, "sshb");
+    // TODO needed?
+    fileOpsService.mkdir(clientSSHa, "ssha/s3a_txfr");
 
-
-    // LINUX to LINUX
-    // Test txfr of a directory that contains several files in a sub-dir to a sub-dir on another system
-    //Add some objects to system SSHa.
-    int FILESIZE = 10 * 1024;
-    fileOpsService.upload(clientSSHa, "ssha/test0.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/test1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/test2.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/file0_1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/dir1/file1_1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_2.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_3.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientSSHa, "ssha/a/ssh_a_2/dir2/test3.txt", Utils.makeFakeFile(FILESIZE));
-    printListing(clientSSHa, testSystemSSHa, "/ssha");
-    printListing(clientSSHb, testSystemSSHb, "/sshb");
-
-    // Now txfr /a/ssh_a SSHa to SSHb.
-    // After txfr destination path should have 7 entries in destination dir /sshb/ssh_b_dir3_from_ssh_a_slash_b:
-    //   /file0_1.txt
-    //   /dir1
-    //   /dir1/file1_1.txt
-    //   /dir2
-    //   /dir2/file2_1.txt
-    //   /dir2/file2_1.txt
-    //   /dir2/file2_1.txt
-    runTxfr(testSystemSSHa, "ssha/a/b", testSystemSSHb, "sshb/ssh_b_dir3_from_ssh_a_slash_b", 7, clientSSHb);
-
+//    // LINUX to LINUX
+//    // Test txfr of a directory that contains several files in a sub-dir to a sub-dir on another system
+//    //Add some objects to system SSHa.
+//    fileOpsService.upload(clientSSHa, "ssha/test0.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/test1.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/test2.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/file0_1.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/dir1/file1_1.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_1.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_2.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_3.txt", Utils.makeFakeFile(FILESIZE));
+//    fileOpsService.upload(clientSSHa, "ssha/a/ssh_a_2/dir2/test3.txt", Utils.makeFakeFile(FILESIZE));
+//    printListing(clientSSHa, testSystemSSHa, "/ssha");
+//    printListing(clientSSHb, testSystemSSHb, "/sshb");
+//
+//    // Now txfr /a/ssh_a SSHa to SSHb.
+//    // After txfr destination path should have 7 entries in destination dir /sshb/ssh_b_dir3_from_ssh_a_slash_b:
+//    //   /file0_1.txt
+//    //   /dir1
+//    //   /dir1/file1_1.txt
+//    //   /dir2
+//    //   /dir2/file2_1.txt
+//    //   /dir2/file2_1.txt
+//    //   /dir2/file2_1.txt
+//    runTxfr(testSystemSSHa, "ssha/a/b", testSystemSSHb, "sshb/ssh_b_dir3_from_ssh_a_slash_b", 7, clientSSHb);
+//
     // S3 to LINUX
     // ===============
     // NOTE:
@@ -213,7 +214,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
 
     // Now txfr /a/s3_afile1.txt from S3a to SSHa. Only one new file should be created. It should be named "file_from_s3a"
     runTxfr(testSystemS3a, "a/b/file1.txt", testSystemSSHa, "ssha/s3a_txfr/file_from_s3a.txt", 1, clientSSHa);
-    printListing(clientS3a, testSystemSSHa, "/ssha/s3a_txfr");
+    printListing(clientSSHa, testSystemSSHa, "/ssha/s3a_txfr");
   }
 
   @Test(dataProvider = "testSystemsDataProvider")
@@ -942,7 +943,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
       fileInfo.setPath(path);
       fileInfo.setSize(10 * 1024);
       fileInfo.setType(FileInfo.FILETYPE_FILE);
-      TransferTaskChild child = new TransferTaskChild(parent, fileInfo);
+      TransferTaskChild child = new TransferTaskChild(parent, fileInfo, sourceSystem);
       child = transfersService.createTransferTaskChild(child);
       transfersService.publishChildMessage(child);
       kids.add(child);
@@ -1198,6 +1199,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
 
   private void printTransferTask(TransferTask task)
   {
+    System.out.println("================================================================");
     System.out.println("Txfr task with Id: " + task.getId());
     for (TransferTaskParent pt :  task.getParentTasks())
     {
@@ -1209,7 +1211,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
         System.out.println("Child task: " + child.toString());
       }
     }
-
+    System.out.println("================================================================");
   }
 
   /*
