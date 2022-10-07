@@ -181,25 +181,35 @@ public class ParentTaskTransferService
     ResourceRequestUser rUser = new ResourceRequestUser(aUser);
 
     // Process the source URI
-    TransferURI sourceURI = parentTask.getSourceURI();
-    TapisSystem sourceSystem = null;
-    IRemoteDataClient sourceClient;
-    String srcId = sourceURI.getSystemId();
-    String srcPath = sourceURI.getPath();
+    TransferURI srcUri = parentTask.getSourceURI();
+    TransferURI dstUri = parentTask.getDestinationURI();
+    TapisSystem srcSystem, dstSystem;
+    IRemoteDataClient srcClient;
+    String srcId = srcUri.getSystemId();
+    String srcPath = srcUri.getPath();
+    String dstId = dstUri.getSystemId();
 
     try
     {
-      if (sourceURI.isTapisProtocol())
+      if (srcUri.isTapisProtocol())
       {
         // Handle protocol tapis://
-        // Make sure source system exists and is available
-        sourceSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId);
+        // Destination must also be tapis protocol. Checked early on, but check again in case it slipped through.
+        if (!dstUri.isTapisProtocol())
+        {
+          String msg = LibUtils.getMsg("FILES_TXFR_DST_NOTSUPPORTED", srcUri, dstUri);
+          log.error(msg);
+          throw new ServiceException(msg);
+        }
+        // Fetch systems, they are needed during child task creation. Also, this ensures they exist and are available
+        srcSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId);
+        dstSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, dstId);
 
         // Establish client
-        sourceClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, sourceSystem, taskUser);
+        srcClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, srcSystem, taskUser);
 
         // Check that src path exists. If not found it is an error.
-        FileInfo fileInfo = sourceClient.getFileInfo(srcPath);
+        FileInfo fileInfo = srcClient.getFileInfo(srcPath);
         if (fileInfo == null)
         {
           String msg = LibUtils.getMsg("FILES_TXFR_SVC_SRCPATH_NOTFOUND", taskTenant, taskUser, parentId, parentUuid, srcPath);
@@ -211,24 +221,28 @@ public class ParentTaskTransferService
         //TODO: Retries will break this, should delete anything in the DB if it is a retry?
         List<FileInfo> fileListing;
         // For S3 we take this to be a single object at the srcPath. So we do not do a full listing.
-        if (SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
+        if (SystemTypeEnum.S3.equals(srcSystem.getSystemType()))
         {
           fileListing = Collections.singletonList(fileInfo);
         }
         else
         {
-          fileListing = fileOpsService.lsRecursive(sourceClient, srcPath, FileOpsService.MAX_RECURSION);
+          fileListing = fileOpsService.lsRecursive(srcClient, srcPath, FileOpsService.MAX_RECURSION);
         }
+
         // Create child tasks for each file or object to be transferred.
+        boolean dstIsS3 = SystemTypeEnum.S3.equals(dstSystem.getSystemType());
         List<TransferTaskChild> children = new ArrayList<>();
         long totalBytes = 0;
         for (FileInfo f : fileListing)
         {
           log.debug("Processing file for child task. File: " + f);
+          // If destination is of type S3 we skip directories
+          if (dstIsS3 && f.isDir()) continue;
           // Only include the bytes from entries that are not directories. Posix folders are --usually-- 4bytes but not always, so
           // it can make some weird totals that don't really make sense.
           if (!f.isDir()) totalBytes += f.getSize();
-          TransferTaskChild child = new TransferTaskChild(parentTask, f, sourceSystem);
+          TransferTaskChild child = new TransferTaskChild(parentTask, f, srcSystem);
           log.debug("Adding child task: " + child);
           children.add(child);
         }

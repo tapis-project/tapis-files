@@ -45,7 +45,7 @@ public class TransferTaskChild extends TransferTaskParent
     // If the source system is of type S3 then we should not call relativizePaths because we do not support directory transfer
     if (sourceSystem != null && SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
     {
-      // Ignore source path. Always create  file or object at destination path.
+      // Ignore source path. Always create file or object at destination path.
 //      runTxfr(testSystemS3a, "a/b/file1.txt", testSystemSSHa, "ssha/s3a_txfr/file_from_s3a.txt", 1, clientSSHa);
       // TODO How best to construct the destination path? The source is an S3 object that in principal might not look
       //      anything like a path. What do we want to create a destination? Does it change if destination is S3 vs Linux? probably
