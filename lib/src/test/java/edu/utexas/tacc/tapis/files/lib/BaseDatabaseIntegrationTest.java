@@ -60,6 +60,9 @@ public class BaseDatabaseIntegrationTest
   protected final String devTenant = "dev";
   protected final String testUser = "testuser";
   private final String nullImpersonationId = null;
+  private static final String bucketName = "test-bucket";
+  private static final String bucketName1 = "test-bucket1";
+  private static final String bucketName2 = "test-bucket2";
 
   protected TapisSystem testSystemS3, testSystemS3a, testSystemS3b;
   protected TapisSystem testSystemPKI;
@@ -151,10 +154,9 @@ public class BaseDatabaseIntegrationTest
     testSystemS3.setSystemType(SystemTypeEnum.S3);
     testSystemS3.setTenant(devTenant);
     testSystemS3.setHost("http://localhost");
-    testSystemS3.setBucketName("test");
+    testSystemS3.setBucketName(bucketName);
     testSystemS3.setPort(9000);
     testSystemS3.setAuthnCredential(creds);
-    testSystemS3.setRootDir("/");
     testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
     // =================
     testSystemS3a = new TapisSystem();
@@ -163,10 +165,9 @@ public class BaseDatabaseIntegrationTest
     testSystemS3a.setSystemType(SystemTypeEnum.S3);
     testSystemS3a.setTenant(devTenant);
     testSystemS3a.setHost("http://localhost");
-    testSystemS3a.setBucketName("test");
+    testSystemS3a.setBucketName(bucketName1);
     testSystemS3a.setPort(9000);
     testSystemS3a.setAuthnCredential(creds);
-    testSystemS3a.setRootDir("/");
     testSystemS3a.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
     // =================
     testSystemS3b = new TapisSystem();
@@ -175,10 +176,9 @@ public class BaseDatabaseIntegrationTest
     testSystemS3b.setSystemType(SystemTypeEnum.S3);
     testSystemS3b.setTenant(devTenant);
     testSystemS3b.setHost("http://localhost");
-    testSystemS3b.setBucketName("test");
+    testSystemS3b.setBucketName(bucketName2);
     testSystemS3b.setPort(9000);
     testSystemS3b.setAuthnCredential(creds);
-    testSystemS3b.setRootDir("/");
     testSystemS3b.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
     // IRODs system
@@ -281,23 +281,27 @@ public class BaseDatabaseIntegrationTest
   }
 
   @BeforeTest
-  public void createTestBucket()
+  public void createTestBuckets()
   {
+    CreateBucketRequest createBucketRequest;
     Region region = Region.US_WEST_2;
-    String bucket = "test";
     AwsCredentials credentials = AwsBasicCredentials.create("user", "password" );
-    S3Client s3 = S3Client.builder()
-            .region(region)
-            .credentialsProvider(StaticCredentialsProvider.create(credentials))
-            .endpointOverride(URI.create("http://localhost:9000"))
+    S3Client s3 = S3Client.builder().region(region).credentialsProvider(StaticCredentialsProvider.create(credentials))
+            .endpointOverride(URI.create("http://localhost:9000")).build();
+
+    createBucketRequest = CreateBucketRequest.builder().bucket(bucketName)
+            .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
             .build();
-    CreateBucketRequest createBucketRequest =
-            CreateBucketRequest.builder()
-                    .bucket(bucket)
-                    .createBucketConfiguration(CreateBucketConfiguration.builder()
-                            .locationConstraint(region.id())
-                            .build())
-                    .build();
+    try { s3.createBucket(createBucketRequest); } catch (BucketAlreadyOwnedByYouException ex) { }
+
+    createBucketRequest = CreateBucketRequest.builder().bucket(bucketName1)
+            .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
+            .build();
+    try { s3.createBucket(createBucketRequest); } catch (BucketAlreadyOwnedByYouException ex) { }
+
+    createBucketRequest = CreateBucketRequest.builder().bucket(bucketName2)
+            .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
+            .build();
     try { s3.createBucket(createBucketRequest); } catch (BucketAlreadyOwnedByYouException ex) { }
   }
 }
