@@ -9,6 +9,17 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.2.6 - 2022-10-??
+
+Incremental improvements and bug fix.
+
+### New features:
+- Review and refactor transfer code. Additional integration tests.
+
+### Bug fixes:
+- Fix issue with S3 to LINUX transfer. Destination path was being constructed incorrectly.
+
+---------------------------------------------------------------------------
 ## 1.2.5 - 2022-09-26
 
 Incremental improvements and preview of new feature.

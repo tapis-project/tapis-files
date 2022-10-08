@@ -396,7 +396,6 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
     fileOpsService.upload(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
     fileOpsService.upload(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
@@ -441,20 +440,27 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   }
 
   @Test(dataProvider = "testSystemsDataProvider")
-  public void failsTransferWhenParentFails(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
+  public void testFailsTransferWhenParentFails(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
-    when(systemsClient.getSystemWithCredentials(eq("sourceSystem"))).thenReturn(sourceSystem);
-    when(systemsClient.getSystemWithCredentials(eq("destSystem"))).thenReturn(destSystem);
-    when(serviceClients.getClient(anyString(), anyString(), eq(SystemsClient.class))).thenReturn(systemsClient);
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    TransferTaskRequestElement element = new TransferTaskRequestElement();
-    element.setSourceURI("tapis://sourceSystem/");
-    element.setDestinationURI("tapis://destSystem/");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
+
+    fileOpsService.upload(sourceClient,"a/1.txt", Utils.makeFakeFile(10 * 1024));
+
+    // Set up a txfr that will fail. Source path does not exist
     List<TransferTaskRequestElement> elements = new ArrayList<>();
+    TransferTaskRequestElement element = new TransferTaskRequestElement();
+    element.setSourceURI("tapis://sourceSystem/a/2.txt");
+    element.setDestinationURI("tapis://destSystem/b/2.txt");
     elements.add(element);
     TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
