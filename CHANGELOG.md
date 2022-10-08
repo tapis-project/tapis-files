@@ -14,7 +14,7 @@ https://tapis-project.github.io/live-docs
 Incremental improvements and bug fix.
 
 ### New features:
-- Review and refactor transfer code. Additional integration tests.
+- Review, refactor and strengthen transfer code. Additional integration tests.
 
 ### Bug fixes:
 - Fix issue with S3 to LINUX transfer. Destination path was being constructed incorrectly.

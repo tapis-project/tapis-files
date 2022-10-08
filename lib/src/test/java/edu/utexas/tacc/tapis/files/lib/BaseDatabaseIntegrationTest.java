@@ -62,8 +62,9 @@ public class BaseDatabaseIntegrationTest
   private static final String bucketName = "test-bucket";
   private static final String bucketName1 = "test-bucket1";
   private static final String bucketName2 = "test-bucket2";
+  private static final String bucketName3 = "test-bucket3";
 
-  protected TapisSystem testSystemS3, testSystemS3a, testSystemS3b;
+  protected TapisSystem testSystemS3, testSystemS3a, testSystemS3b, testSystemS3c;
   protected TapisSystem testSystemPKI;
   protected TapisSystem testSystemSSH, testSystemSSHa, testSystemSSHb;
   protected TapisSystem testSystemIrods, testSystemIRODSa, testSystemIRODSb;
@@ -179,6 +180,18 @@ public class BaseDatabaseIntegrationTest
     testSystemS3b.setPort(9000);
     testSystemS3b.setAuthnCredential(creds);
     testSystemS3b.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    // =================
+    testSystemS3c = new TapisSystem();
+    testSystemS3c.setTenant(devTenant);
+    testSystemS3c.setId("testSystemS3c");
+    testSystemS3c.setSystemType(SystemTypeEnum.S3);
+    testSystemS3c.setTenant(devTenant);
+    testSystemS3c.setHost("http://localhost");
+    testSystemS3c.setBucketName(bucketName3);
+    testSystemS3c.setPort(9000);
+    testSystemS3c.setRootDir("/data2");
+    testSystemS3c.setAuthnCredential(creds);
+    testSystemS3c.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
     // IRODs systems
     Credential irodsCred = new Credential();
@@ -319,6 +332,11 @@ public class BaseDatabaseIntegrationTest
     try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}
 
     createBucketReq = CreateBucketRequest.builder().bucket(bucketName2)
+            .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
+            .build();
+    try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}
+
+    createBucketReq = CreateBucketRequest.builder().bucket(bucketName3)
             .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
             .build();
     try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}
