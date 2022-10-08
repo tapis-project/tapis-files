@@ -59,7 +59,6 @@ public class BaseDatabaseIntegrationTest
   private static final Logger log = LoggerFactory.getLogger(BaseDatabaseIntegrationTest.class);
   protected final String devTenant = "dev";
   protected final String testUser = "testuser";
-  private final String nullImpersonationId = null;
   private static final String bucketName = "test-bucket";
   private static final String bucketName1 = "test-bucket1";
   private static final String bucketName2 = "test-bucket2";
@@ -283,25 +282,25 @@ public class BaseDatabaseIntegrationTest
   @BeforeTest
   public void createTestBuckets()
   {
-    CreateBucketRequest createBucketRequest;
+    CreateBucketRequest createBucketReq;
     Region region = Region.US_WEST_2;
     AwsCredentials credentials = AwsBasicCredentials.create("user", "password" );
     S3Client s3 = S3Client.builder().region(region).credentialsProvider(StaticCredentialsProvider.create(credentials))
             .endpointOverride(URI.create("http://localhost:9000")).build();
 
-    createBucketRequest = CreateBucketRequest.builder().bucket(bucketName)
+    createBucketReq = CreateBucketRequest.builder().bucket(bucketName)
             .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
             .build();
-    try { s3.createBucket(createBucketRequest); } catch (BucketAlreadyOwnedByYouException ex) { }
+    try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}
 
-    createBucketRequest = CreateBucketRequest.builder().bucket(bucketName1)
+    createBucketReq = CreateBucketRequest.builder().bucket(bucketName1)
             .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
             .build();
-    try { s3.createBucket(createBucketRequest); } catch (BucketAlreadyOwnedByYouException ex) { }
+    try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}
 
-    createBucketRequest = CreateBucketRequest.builder().bucket(bucketName2)
+    createBucketReq = CreateBucketRequest.builder().bucket(bucketName2)
             .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
             .build();
-    try { s3.createBucket(createBucketRequest); } catch (BucketAlreadyOwnedByYouException ex) { }
+    try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}
   }
 }

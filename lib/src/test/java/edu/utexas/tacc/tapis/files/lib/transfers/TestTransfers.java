@@ -16,6 +16,7 @@ import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.tuple.Pair;
 import org.mockito.Mockito;
@@ -285,6 +286,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
@@ -317,6 +321,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -331,11 +338,24 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Assert.assertEquals(t1.getTag(), "testTag");
   }
 
+  // Note we skip S3 when it is the source because only 1 path is transferred in that case
   @Test(dataProvider = "testSystemsDataProvider")
   public void testUpdatesTransferSize(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
+
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
+    // Note we skip S3 when it is the source because only 1 path is transferred in that case
+    // This test does not make sense for S3 as source. There will always be 1 element per parent task so the parent
+    //    task transfer size will never need updating.
+    if (SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
+    {
+      System.out.println(("Source is of type S3. Test does not apply."));
+      return;
+    }
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -344,16 +364,17 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.upload(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
     fileOpsService.upload(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
 
-    TransferTaskRequestElement element = new TransferTaskRequestElement();
+    List<TransferTaskRequestElement> elements = new ArrayList<>();
+    TransferTaskRequestElement element;
+    element = new TransferTaskRequestElement();
     element.setSourceURI("tapis://sourceSystem/");
     element.setDestinationURI("tapis://destSystem/");
-    List<TransferTaskRequestElement> elements = new ArrayList<>();
     elements.add(element);
+
     TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
     Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
     // Task should be STAGED after the pipeline runs
-    StepVerifier
-            .create(tasks)
+    StepVerifier.create(tasks)
             .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.STAGED))
             .thenCancel()
             .verify(Duration.ofSeconds(5));
@@ -368,6 +389,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -377,17 +401,34 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.upload(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
     fileOpsService.upload(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
 
-    TransferTaskRequestElement element = new TransferTaskRequestElement();
-    element.setSourceURI("tapis://sourceSystem/");
-    element.setDestinationURI("tapis://destSystem/");
     List<TransferTaskRequestElement> elements = new ArrayList<>();
-    elements.add(element);
+    TransferTaskRequestElement element;
+    // When source is of type S3 only one path is transferred, so create 2 elements for that case
+    if (SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
+    {
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/1.txt");
+      element.setDestinationURI("tapis://destSystem/1.txt");
+      elements.add(element);
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/2.txt");
+      element.setDestinationURI("tapis://destSystem/2.txt");
+      elements.add(element);
+    }
+    else
+    {
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/");
+      element.setDestinationURI("tapis://destSystem/");
+      elements.add(element);
+    }
+
     TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
+    // These next 2 tasks must be created for test to pass. Why?
     TransferTask t2 = transfersService.createTransfer(rTestUser, "tag", elements);
     TransferTask t3 = transfersService.createTransfer(rTestUser, "tag", elements);
     Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
-    StepVerifier
-            .create(tasks)
+    StepVerifier.create(tasks)
             .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.STAGED))
             .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.STAGED))
             .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.STAGED))
@@ -397,7 +438,6 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
 
     // should be 2, one for each file created in the setUp method above;
     Assert.assertEquals(children.size(), 2);
-
   }
 
   @Test(dataProvider = "testSystemsDataProvider")
@@ -434,13 +474,14 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Assert.assertEquals(children.size(), 0);
   }
 
-  @Test(dataProvider = "testSystemsDataProvider")
+  @Test(dataProvider = "testSystemsDataProviderNoS3")
   public void testMultipleChildren(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -477,8 +518,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -516,8 +558,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -533,19 +576,35 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.upload(sourceClient, "a/1.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(sourceClient, "a/2.txt", Utils.makeFakeFile(FILESIZE));
 
-    TransferTaskRequestElement element = new TransferTaskRequestElement();
-    element.setSourceURI("tapis://sourceSystem/a/");
-    element.setDestinationURI("tapis://destSystem/b/");
+    TransferTaskRequestElement element;
     List<TransferTaskRequestElement> elements = new ArrayList<>();
-    elements.add(element);
+    // When source is of type S3 only one path is transferred, so create 2 elements for that case
+    if (SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
+    {
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/a/1.txt");
+      element.setDestinationURI("tapis://destSystem/b/1.txt");
+      elements.add(element);
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/a/2.txt");
+      element.setDestinationURI("tapis://destSystem/b/2.txt");
+      elements.add(element);
+    }
+    else
+    {
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/a/");
+      element.setDestinationURI("tapis://destSystem/b/");
+      elements.add(element);
+    }
+
     TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
     Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
     tasks.subscribe();
     Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
 // StepVerify is part of reactor test framework (takes over stream and you can examine/assert it)
-    StepVerifier
-            .create(stream)
+    StepVerifier.create(stream)
 // Each item as it comes out of the stream should be in the completed state, have correct # bytes, etc.
 // This is the 1st item
             .assertNext(k->{
@@ -585,14 +644,21 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Assert.assertEquals(listing.size(), 2);
   }
 
-  @Test(dataProvider = "testSystemsDataProvider", enabled = false)
-  public void testTransferExecutable(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
+  // This test only applies for LINUX to LINUX
+  @Test
+  public void testTransferExecutable() throws Exception
   {
-    TapisSystem sourceSystem = systemsPair.getLeft();
-    TapisSystem destSystem = systemsPair.getRight();
+    TapisSystem sourceSystem = testSystemSSH;
+    TapisSystem destSystem = testSystemPKI;
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
+    // Init mocking to return values appropriate to the test
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
+    // Create data clients for each system.
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
     IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     // Double check that the files really are in the destination
@@ -600,14 +666,13 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.delete(destClient, "/");
     fileOpsService.delete(sourceClient, "/");
 
-
     //Add some files to transfer
     int FILESIZE = 10 * 1000 * 1024;
     fileOpsService.upload(sourceClient, "program.exe", Utils.makeFakeFile(FILESIZE));
     boolean recurseFalse = false;
     boolean sharedAppCtxFalse = false;
     fileUtilsService.linuxOp(sourceClient, "/program.exe", FileUtilsService.NativeLinuxOperation.CHMOD, "755",
-            recurseFalse, sharedAppCtxFalse);
+                             recurseFalse, sharedAppCtxFalse);
 
     TransferTaskRequestElement element = new TransferTaskRequestElement();
     element.setSourceURI("tapis://sourceSystem/program.exe");
@@ -619,8 +684,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
     tasks.subscribe();
     Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
-    StepVerifier
-            .create(stream)
+    StepVerifier.create(stream)
             .assertNext(k->{
               Assert.assertEquals(k.getStatus(), TransferTaskStatus.COMPLETED);
               Assert.assertNotNull(k.getStartTime());
@@ -645,8 +709,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -706,8 +771,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -755,7 +821,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsListDataProvider")
   public void testHttpSource(TapisSystem testSystem) throws Exception
   {
-    log.info("destinationSystem: {}", testSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* HTTP to %s\n", testSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("testSystem"), any())).thenReturn(testSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
@@ -811,8 +879,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -869,8 +938,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -941,8 +1011,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -976,8 +1047,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -1022,13 +1094,14 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
             .verify(Duration.ofSeconds(10));
   }
 
-  @Test(dataProvider = "testSystemsDataProvider")
+  @Test(dataProvider = "testSystemsDataProviderNoS3")
   public void test10Files(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -1065,37 +1138,54 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = testSystem;
     TapisSystem destSystem = testSystem;
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
     IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
 
     //Add some files to transfer
     fileOpsService.upload(sourceClient, "a/1.txt", Utils.makeFakeFile(10000 * 1024));
     fileOpsService.upload(sourceClient, "a/2.txt", Utils.makeFakeFile(10000 * 1024));
 
-    TransferTaskRequestElement element = new TransferTaskRequestElement();
-    element.setSourceURI("tapis://sourceSystem/a/");
-    element.setDestinationURI("tapis://destSystem/b/");
     List<TransferTaskRequestElement> elements = new ArrayList<>();
-    elements.add(element);
+    TransferTaskRequestElement element;
+    // When source is of type S3 only one path is transferred, so create 2 elements for that case
+    if (SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
+    {
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/a/1.txt");
+      element.setDestinationURI("tapis://destSystem/b/1.txt");
+      elements.add(element);
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/a/2.txt");
+      element.setDestinationURI("tapis://destSystem/b/2.txt");
+      elements.add(element);
+    }
+    else
+    {
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/a/");
+      element.setDestinationURI("tapis://destSystem/b/");
+      elements.add(element);
+    }
     TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
     Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
     tasks.subscribe();
 
     Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
-    StepVerifier
-            .create(stream)
+    StepVerifier.create(stream)
             .assertNext(t-> { Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED); })
             .assertNext(t-> { Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED); })
             .thenCancel()
             .verify(Duration.ofSeconds(5));
 
+    printListing(destClient, destSystem, "/");
     List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
     Assert.assertEquals(listing.size(), 2);
     t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
@@ -1109,8 +1199,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -1164,8 +1255,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     TapisSystem sourceSystem = systemsPair.getLeft();
     TapisSystem destSystem = systemsPair.getRight();
-    log.info("srcSystem: {}", sourceSystem.getId());
-    log.info("dstSystem: {}", destSystem.getId());
+    System.out.println("********************************************************************************************");
+    System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
+    System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -1331,4 +1423,26 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Assert.assertEquals(t1.getTotalTransfers(), numExpected);
     Assert.assertEquals(t1.getCompleteTransfers(), numExpected);
   }
+// TODO
+//  List<TransferTaskRequestElement> elements = new ArrayList<>();
+//  TransferTaskRequestElement element;
+//  // When source is of type S3 only one path is transferred, so create 2 elements for that case
+//    if (SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
+//  {
+//    element = new TransferTaskRequestElement();
+//    element.setSourceURI("tapis://sourceSystem/1.txt");
+//    element.setDestinationURI("tapis://destSystem/1.txt");
+//    elements.add(element);
+//    element = new TransferTaskRequestElement();
+//    element.setSourceURI("tapis://sourceSystem/2.txt");
+//    element.setDestinationURI("tapis://destSystem/2.txt");
+//    elements.add(element);
+//  }
+//    else
+//  {
+//    element = new TransferTaskRequestElement();
+//    element.setSourceURI("tapis://sourceSystem/");
+//    element.setDestinationURI("tapis://destSystem/");
+//    elements.add(element);
+//  }
 }
