@@ -1218,19 +1218,34 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.upload(sourceClient,"/a/7.txt", Utils.makeFakeFile(10000 * 1024));
     fileOpsService.upload(sourceClient,"/a/8.txt", Utils.makeFakeFile(10000 * 1024));
 
-    TransferTaskRequestElement element = new TransferTaskRequestElement();
-    element.setSourceURI("tapis://sourceSystem/a/");
-    element.setDestinationURI("tapis://destSystem/b/");
     List<TransferTaskRequestElement> elements = new ArrayList<>();
-    elements.add(element);
+    TransferTaskRequestElement element;
+    // When source is of type S3 only one path is transferred, so create multiple elements for that case
+    if (SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
+    {
+      for (int i = 1; i<=8; i++)
+      {
+        element = new TransferTaskRequestElement();
+        element.setSourceURI(String.format("tapis://sourceSystem/a/%d.txt", i));
+        element.setDestinationURI(String.format("tapis://destSystem/b/%d.txt", i));
+        elements.add(element);
+      }
+    }
+    else
+    {
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/a/");
+      element.setDestinationURI("tapis://destSystem/b/");
+      elements.add(element);
+    }
+
     TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
 
     Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
     tasks.subscribe();
 
     Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
-    StepVerifier
-            .create(stream)
+    StepVerifier.create(stream)
             .assertNext(t-> { Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED); })
             .assertNext(t-> { Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED); })
             .assertNext(t-> { Assert.assertEquals(t.getStatus(),TransferTaskStatus.COMPLETED); })
@@ -1276,11 +1291,27 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.upload(sourceClient, "a/file4.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(sourceClient, "a/file5.txt", Utils.makeFakeFile(FILESIZE));
 
-    TransferTaskRequestElement element = new TransferTaskRequestElement();
-    element.setSourceURI("tapis://sourceSystem/a/");
-    element.setDestinationURI("tapis://destSystem/b/");
     List<TransferTaskRequestElement> elements = new ArrayList<>();
-    elements.add(element);
+    TransferTaskRequestElement element;
+    // When source is of type S3 only one path is transferred, so create multiple elements for that case
+    if (SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
+    {
+      for (int i = 1; i<=5; i++)
+      {
+        element = new TransferTaskRequestElement();
+        element.setSourceURI(String.format("tapis://sourceSystem/a/file%d.txt", i));
+        element.setDestinationURI(String.format("tapis://destSystem/b/file%d.txt", i));
+        elements.add(element);
+      }
+    }
+    else
+    {
+      element = new TransferTaskRequestElement();
+      element.setSourceURI("tapis://sourceSystem/a/");
+      element.setDestinationURI("tapis://destSystem/b/");
+      elements.add(element);
+    }
+
     Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
 
     TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
