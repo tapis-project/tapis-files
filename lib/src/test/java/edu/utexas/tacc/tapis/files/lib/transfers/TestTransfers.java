@@ -56,14 +56,11 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
 
   private String childQ;
   private String parentQ;
-  private ResourceRequestUser rTestUser =
+  private final ResourceRequestUser rTestUser =
           new ResourceRequestUser(new AuthenticatedUser(testUser, devTenant, TapisThreadContext.AccountType.user.name(),
                                                         null, testUser, devTenant, null, null, null));
 
-  public TestTransfers() throws Exception
-  {
-    super();
-  }
+  public TestTransfers() throws Exception { super(); }
 
   @BeforeMethod
   public void setUpQueues()
@@ -80,17 +77,13 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     log.info("Deleting Queue: {}", childQ);
     transfersService.deleteQueue(childQ)
             .subscribeOn(Schedulers.boundedElastic())
-            .subscribe(
-                    (m)-> log.info("Deleted queue {}", childQ),
-                    (err)->log.error(err.getMessage(), err)
-            );
+            .subscribe((m)-> log.info("Deleted queue {}", childQ),
+                       (err)->log.error(err.getMessage(), err));
     log.info("Deleting Queue: {}", parentQ);
     transfersService.deleteQueue(parentQ)
             .subscribeOn(Schedulers.boundedElastic())
-            .subscribe(
-                    (m)-> log.info("Deleted queue {}", parentQ),
-                    (err)-> log.error(err.getMessage(), err)
-            );
+            .subscribe((m)-> log.info("Deleted queue {}", parentQ),
+                       (err)-> log.error(err.getMessage(), err));
   }
 
   @BeforeMethod
@@ -143,6 +136,12 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   public void testLinux_S3() throws Exception
   {
     int FILESIZE = 10 * 1024;
+    List<FileInfo> listing;
+
+    // Source systems are always the "a" versions: testSystemSSHa, testSystemS3a
+    //   and destination systems are the "b" versions.
+    // After each transfer test the destination system is reset.
+
     // Init mocking to return values appropriate to the test
     when(systemsCache.getSystem(any(), eq(testSystemSSHa.getId()), any())).thenReturn(testSystemSSHa);
     when(systemsCache.getSystem(any(), eq(testSystemSSHb.getId()), any())).thenReturn(testSystemSSHb);
@@ -151,10 +150,10 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     // Create data clients for each system.
-    IRemoteDataClient clientSSHa = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSHa, "testuser");
-    IRemoteDataClient clientSSHb = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSHb, "testuser");
-    IRemoteDataClient clientS3a = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3a, "testuser");
-    IRemoteDataClient clientS3b = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3b, "testuser");
+    IRemoteDataClient clientSSHa = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSHa, testUser);
+    IRemoteDataClient clientSSHb = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSHb, testUser);
+    IRemoteDataClient clientS3a = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3a, testUser);
+    IRemoteDataClient clientS3b = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3b, testUser);
 
     // Cleanup and create top level directories
     fileOpsService.delete(clientSSHa, "/");
@@ -165,7 +164,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.mkdir(clientSSHb, "sshb");
 
     // Create a set of file paths that can represent a posix directory structure or a list of S3 keys
-    // TODO/TBD: Use this for each test. Might be able to automate some of the verification.
+    // TODO/TBD: Use this for each test. Might be able to automate some of the verification or setup.
     List<String> filePaths = new ArrayList<>(List.of("file0.txt",
                                                      "file1.txt",
                                                      "a/file1a.txt",
@@ -175,12 +174,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
                                                      "a/b/c/file1c.txt",
                                                      "a/b/c/file2c.txt"));
 
-    // LINUX to LINUX
-    // Test txfr of a directory that contains several files in a sub-dir to a sub-dir on another system
-    // Add some objects to system SSHa.
-    System.out.println("********************************************************************************************");
-    System.out.println("************    LINUX to LINUX                               *******************************");
-    System.out.println("********************************************************************************************");
+    // Create files and directories on source systems
     fileOpsService.upload(clientSSHa, "ssha/test0.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(clientSSHa, "ssha/a/test1.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(clientSSHa, "ssha/a/test2.txt", Utils.makeFakeFile(FILESIZE));
@@ -189,6 +183,15 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_1.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_2.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_3.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientS3a, "a/b/file1.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientS3a, "a/b/file2.txt", Utils.makeFakeFile(FILESIZE));
+
+    // LINUX to LINUX
+    // Test txfr of a directory that contains several files in a sub-dir to a sub-dir on another system
+    // Add some objects to system SSHa.
+    System.out.println("********************************************************************************************");
+    System.out.println("************    LINUX to LINUX                               *******************************");
+    System.out.println("********************************************************************************************");
     printListing(clientSSHa, testSystemSSHa, "/ssha");
 
     // Now txfr SSHa:ssha/a/b to SSHb:sshb/ssh_b_dir3_from_ssh_a_slash_b
@@ -202,10 +205,10 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     //   /dir2/file2_1.txt
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemSSHb, "sshb/dir_from_ssh_a_slash_b", 7, clientSSHb);
     printListing(clientSSHb, testSystemSSHa, "/sshb");
-    List<FileInfo> listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", MAX_RECURSION);
     Assert.assertEquals(listing.size(), 8);
     // Reset destination system.
-    fileOpsService.delete(clientSSHb, "/");
+    fileOpsService.delete(clientSSHb, "/sshb");
     fileOpsService.mkdir(clientSSHb, "sshb");
 
     // S3 to LINUX
@@ -226,9 +229,6 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("************    S3 to LINUX                                  *******************************");
     System.out.println("********************************************************************************************");
 
-    //Add some objects to system S3a.
-    fileOpsService.upload(clientS3a, "a/b/file1.txt", Utils.makeFakeFile(FILESIZE));
-    fileOpsService.upload(clientS3a, "a/b/file2.txt", Utils.makeFakeFile(FILESIZE));
     printListing(clientS3a, testSystemS3a, "/");
 
     // Now txfr /a/s3_afile1.txt from S3a to SSHb. Only one new file should be created. It should be named "file_from_s3a.txt"
@@ -237,7 +237,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", MAX_RECURSION);
     Assert.assertEquals(listing.size(), 2);
     // Reset destination system.
-    fileOpsService.delete(clientSSHb, "/");
+    fileOpsService.delete(clientSSHb, "/sshb");
     fileOpsService.mkdir(clientSSHb, "sshb");
 
     // LINUX to S3
@@ -248,7 +248,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("************    LINUX to S3                                  *******************************");
     System.out.println("********************************************************************************************");
     fileOpsService.mkdir(clientSSHa, "ssha/a/b/dir3");
-    printListing(clientSSHa, testSystemSSHa, "/ssha");
+    printListing(clientSSHa, testSystemSSHa, "/");
 
     // Now txfr /a SSHa to S3b.
     // After txfr destination path should have 5 entries in destination dir files_from_ssha
@@ -260,7 +260,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemS3b, "files_from_ssha/", 5, clientS3b);
     printListing(clientS3b, testSystemS3b, "/");
     listing = fileOpsService.lsRecursive(clientS3b, "/", MAX_RECURSION);
-    Assert.assertEquals(listing.size(), 1);
+    Assert.assertEquals(listing.size(), 5);
     // Reset destination system.
     fileOpsService.delete(clientS3b, "/");
 
@@ -340,7 +340,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
     fileOpsService.upload(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
     fileOpsService.upload(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
 
@@ -373,7 +373,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
     fileOpsService.upload(sourceClient,"1.txt", Utils.makeFakeFile(10 * 1024));
     fileOpsService.upload(sourceClient,"2.txt", Utils.makeFakeFile(10 * 1024));
 
@@ -445,8 +445,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     fileOpsService.upload(sourceClient,"a/1.txt", Utils.makeFakeFile(10 * 1024));
     fileOpsService.upload(sourceClient,"a/2.txt", Utils.makeFakeFile(10 * 1024));
 
@@ -483,8 +483,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
 
     fileOpsService.upload(sourceClient,"a/1.txt", Utils.makeFakeFile(10 * 1024));
     fileOpsService.upload(sourceClient,"a/2.txt", Utils.makeFakeFile(10 * 1024));
@@ -522,8 +522,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     // Double check that the files really are in the destination
     //wipe out the dest folder just in case
     fileOpsService.delete(destClient, "/");
@@ -593,8 +593,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     // Double check that the files really are in the destination
     //wipe out the dest folder just in case
     fileOpsService.delete(destClient, "/");
@@ -651,8 +651,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     // Double check that the files really are in the destination
     //wipe out the dest folder just in case
     fileOpsService.delete(destClient, "/");
@@ -712,8 +712,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     // Double check that the files really are in the destination
     //wipe out the dest folder just in case
     fileOpsService.delete(destClient, "/");
@@ -816,8 +816,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     // Double check that the files really are in the destination
     //wipe out the dest folder just in case
     fileOpsService.delete(destClient, "/");
@@ -875,8 +875,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     // Double check that the files really are in the destination
     //wipe out the dest folder just in case
     fileOpsService.delete(destClient, "/");
@@ -947,8 +947,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     //wipe out the dest folder just in case
     fileOpsService.delete(destClient, "/");
 
@@ -982,8 +982,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
 
     //wipe out the dest folder just in case
     fileOpsService.delete(destClient, "/");
@@ -1033,8 +1033,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     //Add 10 files to transfer
     for (var i=0; i<10; i++)
     {
@@ -1071,8 +1071,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
 
     //Add some files to transfer
     fileOpsService.upload(sourceClient, "a/1.txt", Utils.makeFakeFile(10000 * 1024));
@@ -1115,8 +1115,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
     //Add some files to transfer
     fileOpsService.upload(sourceClient,"/a/1.txt", Utils.makeFakeFile(10000 * 1024));
     fileOpsService.upload(sourceClient,"/a/2.txt", Utils.makeFakeFile(10000 * 1024));
@@ -1170,8 +1170,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
-    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, "testuser");
-    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, "testuser");
+    IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
+    IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
 
     //wipe out the dest folder just in case
     fileOpsService.delete(destClient, "/");
