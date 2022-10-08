@@ -66,7 +66,7 @@ public class BaseDatabaseIntegrationTest
   protected TapisSystem testSystemS3, testSystemS3a, testSystemS3b;
   protected TapisSystem testSystemPKI;
   protected TapisSystem testSystemSSH, testSystemSSHa, testSystemSSHb;
-  protected TapisSystem testSystemIrods;
+  protected TapisSystem testSystemIrods, testSystemIRODSa, testSystemIRODSb;
   protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairs;
   protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairsNoS3;
   protected List<TapisSystem> testSystems;
@@ -180,7 +180,10 @@ public class BaseDatabaseIntegrationTest
     testSystemS3b.setAuthnCredential(creds);
     testSystemS3b.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
-    // IRODs system
+    // IRODs systems
+    Credential irodsCred = new Credential();
+    irodsCred.setAccessKey("dev");
+    irodsCred.setAccessSecret("dev");
     testSystemIrods = new TapisSystem();
     testSystemIrods.setTenant(devTenant);
     testSystemIrods.setId("testSystemIrods");
@@ -189,10 +192,27 @@ public class BaseDatabaseIntegrationTest
     testSystemIrods.setPort(1247);
     testSystemIrods.setRootDir("/tempZone/home/dev/");
     testSystemIrods.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
-    creds = new Credential();
-    creds.setAccessKey("dev");
-    creds.setAccessSecret("dev");
-    testSystemIrods.setAuthnCredential(creds);
+    testSystemIrods.setAuthnCredential(irodsCred);
+    // =================
+    testSystemIRODSa = new TapisSystem();
+    testSystemIRODSa.setTenant(devTenant);
+    testSystemIRODSa.setId("testSystemIRODSa");
+    testSystemIRODSa.setSystemType(SystemTypeEnum.IRODS);
+    testSystemIRODSa.setHost("localhost");
+    testSystemIRODSa.setPort(1247);
+    testSystemIRODSa.setRootDir("/tempZone/home/dev/");
+    testSystemIRODSa.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    testSystemIRODSa.setAuthnCredential(irodsCred);
+    // =================
+    testSystemIRODSb = new TapisSystem();
+    testSystemIRODSb.setTenant(devTenant);
+    testSystemIRODSb.setId("testSystemIRODSb");
+    testSystemIRODSb.setSystemType(SystemTypeEnum.IRODS);
+    testSystemIRODSb.setHost("localhost");
+    testSystemIRODSb.setPort(1247);
+    testSystemIRODSb.setRootDir("/tempZone/home/dev/");
+    testSystemIRODSb.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    testSystemIRODSb.setAuthnCredential(irodsCred);
 
     testSystems = Arrays.asList(testSystemSSH, testSystemS3, testSystemPKI, testSystemIrods);
     testSystemsPairs = new ArrayList<>();

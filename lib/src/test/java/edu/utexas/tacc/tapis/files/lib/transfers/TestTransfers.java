@@ -114,27 +114,27 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   }
 
   /*
-   * Test transfers between Linux and S3.
+   * Test transfers between LINUX, S3 and IRODS.
    * Use explicit systems rather than a data provider, so we can verify the behavior in detail.
    * We want to explicitly test each case:
-   * LINUX to LINUX
+   * LINUX to LINUX/IRODS
    *   Transfer of a directory is supported. A recursive listing is made for the directory on the LINUX *sourceUri* system
    *   and the files and directory structure are replicated on the LINUX *destinationUri* system.
-   * S3 to LINUX
+   * S3 to LINUX/IRODS
    *   Transfer of a directory is not supported. The content of the object from the S3 *sourceUri* system is used to
    *   create a single file on the LINUX *destinationUri* system.
-   * LINUX to S3
+   * LINUX/IRODS to S3
    *   Transfer of a directory is supported. A recursive listing is made for the directory on the LINUX *sourceUri* system
    *   and for each entry that is not a directory an object is created on the S3 *destinationUri* system.
    * S3 to S3
    *   Transfer of a directory is not supported. The content of the object from the S3 *sourceUri* system is used to
    *   create a single object on the S3 *destinationUri* system.
-   * HTTP/S to LINUX or S3
+   * HTTP/S to LINUX, IRODS or S3
    *  Transfer of a directory is not supported. The content of the object from *sourceUri* URL is used to create a
    *  single file or object on the *destinationUri* system.
    */
   @Test
-  public void testLinux_S3() throws Exception
+  public void testLinux_S3_Irods() throws Exception
   {
     int FILESIZE = 10 * 1024;
     List<FileInfo> listing;
@@ -146,6 +146,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // Init mocking to return values appropriate to the test
     when(systemsCache.getSystem(any(), eq(testSystemSSHa.getId()), any())).thenReturn(testSystemSSHa);
     when(systemsCache.getSystem(any(), eq(testSystemSSHb.getId()), any())).thenReturn(testSystemSSHb);
+    when(systemsCache.getSystem(any(), eq(testSystemIRODSa.getId()), any())).thenReturn(testSystemIRODSa);
+    when(systemsCache.getSystem(any(), eq(testSystemIRODSb.getId()), any())).thenReturn(testSystemIRODSb);
     when(systemsCache.getSystem(any(), eq(testSystemS3a.getId()), any())).thenReturn(testSystemS3a);
     when(systemsCache.getSystem(any(), eq(testSystemS3b.getId()), any())).thenReturn(testSystemS3b);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
@@ -153,16 +155,22 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // Create data clients for each system.
     IRemoteDataClient clientSSHa = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSHa, testUser);
     IRemoteDataClient clientSSHb = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSHb, testUser);
+    IRemoteDataClient clientIRODSa = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemIRODSa, testUser);
+    IRemoteDataClient clientIRODSb = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemIRODSb, testUser);
     IRemoteDataClient clientS3a = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3a, testUser);
     IRemoteDataClient clientS3b = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3b, testUser);
 
     // Cleanup and create top level directories
     fileOpsService.delete(clientSSHa, "/");
     fileOpsService.delete(clientSSHb, "/");
+    fileOpsService.delete(clientIRODSa, "/");
+    fileOpsService.delete(clientIRODSb, "/");
     fileOpsService.delete(clientS3a, "/");
     fileOpsService.delete(clientS3b, "/");
     fileOpsService.mkdir(clientSSHa, "ssha");
     fileOpsService.mkdir(clientSSHb, "sshb");
+    fileOpsService.mkdir(clientIRODSa, "irodsa");
+    fileOpsService.mkdir(clientIRODSb, "irodsb");
 
     // Create a set of file paths that can represent a posix directory structure or a list of S3 keys
     // TODO/TBD: Use this for each test. Might be able to automate some of the verification or setup.
@@ -184,6 +192,14 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_1.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_2.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(clientSSHa, "ssha/a/b/dir2/file2_3.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientIRODSa, "irodsa/test0.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientIRODSa, "irodsa/a/test1.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientIRODSa, "irodsa/a/test2.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientIRODSa, "irodsa/a/b/file0_1.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientIRODSa, "irodsa/a/b/dir1/file1_1.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientIRODSa, "irodsa/a/b/dir2/file2_1.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientIRODSa, "irodsa/a/b/dir2/file2_2.txt", Utils.makeFakeFile(FILESIZE));
+    fileOpsService.upload(clientIRODSa, "irodsa/a/b/dir2/file2_3.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(clientS3a, "a/b/file1.txt", Utils.makeFakeFile(FILESIZE));
     fileOpsService.upload(clientS3a, "a/b/file2.txt", Utils.makeFakeFile(FILESIZE));
 
@@ -194,7 +210,6 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("************    LINUX to LINUX                               *******************************");
     System.out.println("********************************************************************************************");
     printListing(clientSSHa, testSystemSSHa, "/ssha");
-
     // Now txfr SSHa:ssha/a/b to SSHb:sshb/ssh_b_dir3_from_ssh_a_slash_b
     // After txfr destination path should have 7 entries in destination dir /sshb/ssh_b_dir3_from_ssh_a_slash_b:
     //   /file0_1.txt
@@ -211,6 +226,19 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // Reset destination system.
     fileOpsService.delete(clientSSHb, "/sshb");
     fileOpsService.mkdir(clientSSHb, "sshb");
+
+    // LINUX to IRODS
+    // Test txfr of a directory that contains several files in a sub-dir to a sub-dir on another system
+    // Surce system SSHa already set up.
+    System.out.println("********************************************************************************************");
+    System.out.println("************    LINUX to IRODS                               *******************************");
+    System.out.println("********************************************************************************************");
+    runTxfr(testSystemSSHa, "ssha/a/b", testSystemIRODSb, "irodsb/dir_from_ssh_a_slash_b", 7, clientIRODSb);
+    listing = fileOpsService.lsRecursive(clientIRODSb, "/irodsb", MAX_RECURSION);
+    Assert.assertEquals(listing.size(), 8);
+    // Reset destination system.
+    fileOpsService.delete(clientIRODSb, "/irodsb");
+    fileOpsService.mkdir(clientIRODSb, "irodsb");
 
     // S3 to LINUX
     // ===============
@@ -229,17 +257,29 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.println("************    S3 to LINUX                                  *******************************");
     System.out.println("********************************************************************************************");
-
     printListing(clientS3a, testSystemS3a, "/");
 
     // Now txfr /a/s3_afile1.txt from S3a to SSHb. Only one new file should be created. It should be named "file_from_s3a.txt"
-    runTxfr(testSystemS3a, "a/b/file1.txt", testSystemSSHb, "sshb/s3b_txfr/file_from_s3a.txt", 1, clientSSHb);
-    printListing(clientSSHb, testSystemSSHb, "/sshb/s3b_txfr");
+    runTxfr(testSystemS3a, "a/b/file1.txt", testSystemSSHb, "sshb/s3_txfr/file_from_s3a.txt", 1, clientSSHb);
+    printListing(clientSSHb, testSystemSSHb, "/sshb/s3_txfr");
     listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", MAX_RECURSION);
     Assert.assertEquals(listing.size(), 2);
     // Reset destination system.
     fileOpsService.delete(clientSSHb, "/sshb");
     fileOpsService.mkdir(clientSSHb, "sshb");
+
+    // S3 to IRODS
+    System.out.println("********************************************************************************************");
+    System.out.println("************    S3 to IRODS                                  *******************************");
+    System.out.println("********************************************************************************************");
+    // Now txfr /a/s3_afile1.txt from S3a to IRODSb. Only one new file should be created. It should be named "file_from_s3a.txt"
+    runTxfr(testSystemS3a, "a/b/file1.txt", testSystemIRODSb, "irodsb/s3_txfr/file_from_s3a.txt", 1, clientIRODSb);
+    printListing(clientIRODSb, testSystemIRODSb, "/irodsb/s3_txfr");
+    listing = fileOpsService.lsRecursive(clientIRODSb, "/irodsb", MAX_RECURSION);
+    Assert.assertEquals(listing.size(), 2);
+    // Reset destination system.
+    fileOpsService.delete(clientIRODSb, "/irodsb");
+    fileOpsService.mkdir(clientIRODSb, "irodsb");
 
     // LINUX to S3
     // Test txfr of a directory that contains several files and an empty directory to a system of type S3
@@ -259,6 +299,27 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     //   /dir2/file2_1.txt
     //   /dir2/file2_1.txt
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemS3b, "files_from_ssha/", 5, clientS3b);
+    printListing(clientS3b, testSystemS3b, "/");
+    listing = fileOpsService.lsRecursive(clientS3b, "/", MAX_RECURSION);
+    Assert.assertEquals(listing.size(), 5);
+    // Reset destination system.
+    fileOpsService.delete(clientS3b, "/");
+
+    // IRODS to S3
+    System.out.println("********************************************************************************************");
+    System.out.println("************    IRODS to S3                                  *******************************");
+    System.out.println("********************************************************************************************");
+    fileOpsService.mkdir(clientIRODSa, "irodsa/a/b/dir3");
+    printListing(clientIRODSa, testSystemIRODSa, "/");
+
+    // Now txfr /a IRODSa to S3b.
+    // After txfr destination path should have 5 entries in destination dir files_from_irodsa
+    //   /file0_1.txt
+    //   /dir1/file1_1.txt
+    //   /dir2/file2_1.txt
+    //   /dir2/file2_1.txt
+    //   /dir2/file2_1.txt
+    runTxfr(testSystemIRODSa, "irodsa/a/b", testSystemS3b, "files_from_irodsa/", 5, clientS3b);
     printListing(clientS3b, testSystemS3b, "/");
     listing = fileOpsService.lsRecursive(clientS3b, "/", MAX_RECURSION);
     Assert.assertEquals(listing.size(), 5);
