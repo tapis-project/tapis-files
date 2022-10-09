@@ -253,7 +253,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
             .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
             .get(FileListResponse.class);
     FileInfo file = response.getResult().get(0);
-    Assert.assertEquals(file.getPath(), "/testfile1.txt");
+    Assert.assertEquals(file.getPath(), "testfile1.txt");
     Assert.assertEquals(file.getName(), "testfile1.txt");
     Assert.assertEquals(file.getSize(), 10 * 1024);
     Assert.assertNotNull(file.getUrl());
@@ -350,7 +350,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
 
         List<FileInfo> listing = doListing(testSystem.getId(), "/filestest/sample1.txt", getJwtForUser("dev", "testuser1"));
         Assert.assertEquals(listing.size(), 1);
-        Assert.assertEquals(listing.get(0).getPath(), "/filestest/sample1.txt");
+        Assert.assertEquals(listing.get(0).getPath(), "filestest/sample1.txt");
     }
 
   @Test(dataProvider = "testSystemsProvider")
@@ -370,7 +370,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
 
     List<FileInfo> listing = doListing(testSystem.getId(), "/dir2/sample2.txt", getJwtForUser("dev", "testuser1"));
     Assert.assertEquals(listing.size(), 1);
-    Assert.assertEquals(listing.get(0).getPath(), "/dir2/sample2.txt");
+    Assert.assertEquals(listing.get(0).getPath(), "dir2/sample2.txt");
   }
 
   @Test(dataProvider = "testSystemsProviderNoS3")
@@ -391,7 +391,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
 
     List<FileInfo> listing = doListing(testSystem.getId(), "/dir2/sample1.txt", getJwtForUser("dev", "testuser1"));
     Assert.assertEquals(listing.size(), 1);
-    Assert.assertEquals(listing.get(0).getPath(), "/dir2/sample1.txt");
+    Assert.assertEquals(listing.get(0).getPath(), "dir2/sample1.txt");
   }
 
    @Test(dataProvider = "testSystemsProvider")
@@ -431,7 +431,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
       System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath());
     }
     Assert.assertEquals(listing.size(), 1);
-    Assert.assertEquals(listing.get(0).getPath(), "/testfile2.txt");
+    Assert.assertEquals(listing.get(0).getPath(), "testfile2.txt");
   }
 
   @Test(dataProvider = "testSystemsProviderNoS3")
@@ -453,7 +453,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
 
     List<FileInfo> listing = doListing(testSystem.getId(), "dir1/testfile1.txt", getJwtForUser("dev", "testuser1"));
     Assert.assertEquals(listing.size(), 1);
-    Assert.assertEquals(listing.get(0).getPath(), "/dir1/testfile1.txt");
+    Assert.assertEquals(listing.get(0).getPath(), "dir1/testfile1.txt");
   }
 
     @Test(dataProvider = "testSystemsProviderNoS3")

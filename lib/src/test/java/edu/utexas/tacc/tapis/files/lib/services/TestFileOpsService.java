@@ -299,7 +299,7 @@ public class TestFileOpsService
       fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
       List<FileInfo> listing = fileOpsService.ls(client,"/dir1/dir2", MAX_LISTING_SIZE, 0);
       Assert.assertEquals(listing.size(), 1);
-      Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
+      Assert.assertEquals(listing.get(0).getPath(), "dir1/dir2/test.txt");
     }
 
 
@@ -315,7 +315,7 @@ public class TestFileOpsService
       List<FileInfo> listing = fileOpsService.ls(client,"dir1/dir2/", MAX_LISTING_SIZE, 0);
       for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
       Assert.assertEquals(listing.size(), 1);
-      Assert.assertEquals(listing.get(0).getPath(), "/dir1/dir2/test.txt");
+      Assert.assertEquals(listing.get(0).getPath(), "dir1/dir2/test.txt");
       fileOpsService.delete(client,"/dir1/dir2/test.txt");
       Assert.assertThrows(NotFoundException.class, ()-> { fileOpsService.ls(client, "/dir1/dir2/test.txt", MAX_LISTING_SIZE, 0); });
     }

@@ -235,10 +235,9 @@ public class S3DataClient implements IRemoteDataClient
 
     Stream<S3Object> response = listWithIterator(absoluteKey, maxKeys);
     List<FileInfo> files = new ArrayList<>();
-    response.skip(offset).limit(limit).forEach((S3Object x) -> files.add(new FileInfo(x)));
+    response.skip(offset).limit(limit).forEach((S3Object x) -> files.add(new FileInfo(x, system.getId(), rootDir)));
 
-    // For s3 at least, if the listing is empty it could just be not found, which should really throw
-    // a NotFoundException
+    // For s3 at least, if the listing is empty it could just be not found, which should really throw NotFoundException
     if (files.isEmpty()) doesExist(absoluteKey);
     return files;
   }
@@ -384,7 +383,7 @@ public class S3DataClient implements IRemoteDataClient
       String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
       Stream<S3Object> response = listWithIterator(absoluteKey, 1);
       List<FileInfo> files = new ArrayList<>();
-      response.limit(1).forEach((S3Object x) -> files.add(new FileInfo(x)));
+      response.limit(1).forEach((S3Object x) -> files.add(new FileInfo(x, system.getId(), rootDir)));
       if (!files.isEmpty()) fileInfo = files.get(0);
     }
     catch (NoSuchKeyException ex) { fileInfo = null; }
@@ -410,7 +409,7 @@ public class S3DataClient implements IRemoteDataClient
     }
     catch (NoSuchKeyException ex)
     {
-      throw new NotFoundException();
+      throw new NotFoundException(String.format("Object key not found: %s",objKey));
     }
     catch (S3Exception ex)
     {

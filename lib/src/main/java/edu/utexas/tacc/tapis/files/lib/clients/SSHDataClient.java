@@ -757,6 +757,7 @@ public class SSHDataClient implements ISSHDataClient
       {
         fileInfo.setPath(Paths.get(relativePathStr, entryPath.toString()).toString());
       }
+      fileInfo.setUrl(PathUtils.getTapisUrlFromPath(fileInfo.getPath(), systemId));
     }
     catch (IOException e)
     {

@@ -13,6 +13,9 @@ import java.util.UUID;
 
 public class TransferTaskParent
 {
+  private static final Set<TransferTaskStatus> TERMINAL_STATES = new HashSet<>(Set.of(TransferTaskStatus.COMPLETED,
+          TransferTaskStatus.FAILED, TransferTaskStatus.FAILED_OPT, TransferTaskStatus.CANCELLED, TransferTaskStatus.PAUSED));
+
   protected int id;
   protected String tenantId;
   protected String username;
@@ -61,12 +64,8 @@ public class TransferTaskParent
    * @return uuid
    **/
   @JsonProperty("uuid")
-  public UUID getUuid() {
-    return uuid;
-  }
-  public void setUuid(UUID uuid) {
-    this.uuid = uuid;
-  }
+  public UUID getUuid() { return uuid; }
+  public void setUuid(UUID uuid) { this.uuid = uuid; }
 
   public void setId(int id) {
     this.id = id;
@@ -129,23 +128,13 @@ public class TransferTaskParent
     destinationURI = t;
   }
 
-  public int getTaskId() {
-    return taskId;
-  }
-  public void setTaskId(int i) {
-    taskId = i;
-  }
+  public int getTaskId() { return taskId; }
+  public void setTaskId(int i) { taskId = i; }
 
-  public int getId() {
-    return id;
-  }
+  public int getId() { return id; }
 
-  public long getTotalBytes() {
-    return totalBytes;
-  }
-  public void setTotalBytes(long l) {
-    totalBytes = l;
-  }
+  public long getTotalBytes() { return totalBytes; }
+  public void setTotalBytes(long l) { totalBytes = l; }
 
   public long getBytesTransferred() {
     return bytesTransferred;
@@ -154,14 +143,10 @@ public class TransferTaskParent
     bytesTransferred = l;
   }
 
-  public String getTenantId() {
-    return tenantId;
-  }
+  public String getTenantId() { return tenantId; }
   public void setTenantId(String s) { tenantId = s; }
 
-  public String getUsername() {
-    return username;
-  }
+  public String getUsername() { return username; }
   public void setUsername(String s) { username = s; }
 
   public boolean isOptional() { return optional; }
@@ -173,12 +158,8 @@ public class TransferTaskParent
   public boolean isDestSharedAppCtx() { return destSharedAppCtx; }
   public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; }
 
-  public List<TransferTaskChild> getChildren() {
-    return children;
-  }
-  public void setChildren(List<TransferTaskChild> tlist) {
-    children = tlist;
-  }
+  public List<TransferTaskChild> getChildren() { return children; }
+  public void setChildren(List<TransferTaskChild> tlist) { children = tlist; }
 
   /**
    * The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED
@@ -215,13 +196,7 @@ public class TransferTaskParent
   @JsonIgnore
   public boolean isTerminal()
   {
-    Set<TransferTaskStatus> terminalStates = new HashSet<>();
-    terminalStates.add(TransferTaskStatus.COMPLETED);
-    terminalStates.add(TransferTaskStatus.FAILED);
-    terminalStates.add(TransferTaskStatus.FAILED_OPT);
-    terminalStates.add(TransferTaskStatus.CANCELLED);
-    terminalStates.add(TransferTaskStatus.PAUSED);
-    return terminalStates.contains(status);
+    return TERMINAL_STATES.contains(status);
   }
 
   @Override

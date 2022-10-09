@@ -39,10 +39,7 @@ public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
       dao.deleteAllTasksForUser(testTenant, testUser1);
       dao.deleteAllTasksForUser(testTenant, testUser2);
     }
-    catch (Exception e)
-    {
-
-    }
+    catch (Exception e) { }
   }
 
   @Test
@@ -102,7 +99,7 @@ public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
     fileInfo.setSize(1000);
     fileInfo.setType(FileInfo.FILETYPE_FILE);
 
-    TransferTaskChild child = new TransferTaskChild(parent, fileInfo);
+    TransferTaskChild child = new TransferTaskChild(parent, fileInfo, null);
     child = dao.insertChildTask(child);
 
     child.setRetries(10);
@@ -128,7 +125,7 @@ public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
     fileInfo.setSize(1000);
 
     //create 3 children on the first parent
-    TransferTaskChild child = new TransferTaskChild(parent, fileInfo);
+    TransferTaskChild child = new TransferTaskChild(parent, fileInfo, null);
     dao.insertChildTask(child);
     dao.insertChildTask(child);
     dao.insertChildTask(child);
@@ -150,10 +147,10 @@ public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
     task.setUsername(userName);
     task.setStatus(TransferTaskStatus.ACCEPTED.name());
     List<TransferTaskRequestElement> elements = new ArrayList<>();
-    TransferTaskRequestElement element = new TransferTaskRequestElement();
-    element.setDestinationURI("tapis://sourceSystem/path");
-    element.setSourceURI("tapis://destSystem/path");
-    elements.add(element);
+    TransferTaskRequestElement element1 = new TransferTaskRequestElement();
+    element1.setDestinationURI("tapis://sourceSystem/path");
+    element1.setSourceURI("tapis://destSystem/path");
+    elements.add(element1);
 
     TransferTaskRequestElement element2 = new TransferTaskRequestElement();
     element2.setDestinationURI("tapis://sourceSystem2/path");
