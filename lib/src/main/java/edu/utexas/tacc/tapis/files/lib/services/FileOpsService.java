@@ -180,11 +180,9 @@ public class FileOpsService
       List<FileInfo> listing = client.ls(relPathStr, limit, offset);
       listing.forEach(f ->
         {
-          String url = String.format("%s/%s", client.getSystemId(), f.getPath());
-          url = StringUtils.replace(url, "//", "/");
-          f.setUrl(TAPIS_PROTOCOL + url);
-          // Ensure there is a leading slash
-          f.setPath(StringUtils.prependIfMissing(f.getPath(), "/"));
+          f.setUrl(PathUtils.getTapisUrlFromPath(f.getPath(), client.getSystemId()));
+          // Ensure there is no leading slash
+          f.setPath(StringUtils.removeStart(f.getPath(), "/"));
         }
       );
       return listing;

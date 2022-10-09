@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -332,7 +333,8 @@ public class IrodsDataClient implements IRemoteDataClient
       fileInfo.setName(collection.getName());
       Path tmpPath = Paths.get(collection.getPath());
       Path relPath = rootDirPath.relativize(tmpPath);
-      fileInfo.setPath(relPath.toString());
+      fileInfo.setPath(StringUtils.removeStart(relPath.toString(), "/"));
+      fileInfo.setUrl(PathUtils.getTapisUrlFromPath(fileInfo.getPath(), system.getId()));
       fileInfo.setLastModified(Instant.ofEpochSecond(collection.lastModified()));
       if (collection.isFile()) fileInfo.setType(FileInfo.FILETYPE_FILE);
       else fileInfo.setType(FileInfo.FILETYPE_DIR);

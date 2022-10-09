@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static edu.utexas.tacc.tapis.files.lib.models.TransferURI.TAPIS_PROTOCOL;
+
 /*
  *
  * Utility class containing general use static methods for handling paths.
@@ -106,6 +108,32 @@ public class PathUtils
     // Return constructed absolute path
     String absolutePathStr = Paths.get(rdir, relativePath.toString()).toString();
     return StringUtils.removeStart(absolutePathStr, "/");
+  }
+
+  /**
+   * Construct a path to use for FileInfo given an S3 key and the system rootDir.
+   * @param keyStr S3 object key
+   * @return key as a path relative to rootDir
+   */
+  public static String getFileInfoPathFromS3Key(String keyStr, String rootDir)
+  {
+    keyStr = StringUtils.prependIfMissing(keyStr, "/");
+    if (StringUtils.isBlank(rootDir)) return keyStr;
+    keyStr = StringUtils.removeStart(keyStr, rootDir);
+    return StringUtils.removeStart(keyStr, "/");
+  }
+
+  /**
+   * Construct a FileInfo Url to use for FileInfo given FileInfo path and system Id.
+   * @param path FileInfo path
+   * @param systemId system id
+   * @return url using the tapis:// protocol
+   */
+  public static String getTapisUrlFromPath(String path, String systemId)
+  {
+    String url = String.format("%s/%s", systemId, path);
+    url = StringUtils.replace(url, "//", "/");
+    return String.format("%s%s", TAPIS_PROTOCOL, url);
   }
 
   /**
