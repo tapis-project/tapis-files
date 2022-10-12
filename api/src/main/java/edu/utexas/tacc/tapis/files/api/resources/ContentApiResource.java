@@ -120,7 +120,9 @@ public class ContentApiResource extends BaseFileOpsResource
               "sharedAppCtx="+sharedAppCtx);
 
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem sys;
+    if (sharedAppCtx) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+    else sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
     // ---------------------------- Make service calls to start data streaming -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
