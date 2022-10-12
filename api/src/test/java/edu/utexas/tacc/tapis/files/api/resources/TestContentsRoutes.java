@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
@@ -83,6 +84,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   private SystemsClient systemsClient;
   private SKClient skClient;
   private SystemsCache systemsCache;
+  private SystemsCacheNoAuth systemsCacheNoAuth;
   private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES);
   private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
@@ -173,6 +175,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     serviceClients = Mockito.mock(ServiceClients.class);
     systemsClient = Mockito.mock(SystemsClient.class);
     systemsCache = Mockito.mock(SystemsCache.class);
+    systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
     SSHConnection.setLocalNodeName("test");
     JWTValidateRequestFilter.setSiteId("tacc");
     JWTValidateRequestFilter.setService("files");
@@ -195,9 +198,11 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
                 bindAsContract(FileOpsService.class).in(Singleton.class);
                 bindAsContract(FileShareService.class).in(Singleton.class);
                 bindAsContract(SystemsCache.class);
+                bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
                 bindAsContract(FilePermsService.class);
                 bind(serviceContext).to(ServiceContext.class);
                 bind(systemsCache).to(SystemsCache.class);
+                bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
                 bind(remoteDataClientFactory).to(RemoteDataClientFactory.class);
                 bind(sshConnectionCache).to(SSHConnectionCache.class);
               }
@@ -223,6 +228,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     Mockito.reset(skClient);
     Mockito.reset(serviceClients);
     Mockito.reset(systemsCache);
+    Mockito.reset(systemsCacheNoAuth);
     Mockito.reset(systemsClient);
     when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
     when(serviceClients.getClient(any(String.class), any(String.class), eq(SystemsClient.class))).thenReturn(systemsClient);
@@ -240,6 +246,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
       {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(sys);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(sys);
         System.out.println("Cleanup for System: " + sys.getId());
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, "testuser");
         client.delete("/");
@@ -266,6 +273,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   {
     when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(testSystem);
     when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
     addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1000);
     Response response = target("/v3/files/content/" + testSystem.getId() + "/testfile1.txt")
             .request()

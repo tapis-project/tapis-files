@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.transfers;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
@@ -55,6 +56,7 @@ public class TransfersApp
         bindAsContract(FileTransfersDAO.class);
         bindAsContract(RemoteDataClientFactory.class);
         bindAsContract(SystemsCache.class).in(Singleton.class);
+        bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
         bindAsContract(TransfersService.class).in(Singleton.class);
         bindAsContract(FilePermsService.class).in(Singleton.class);
         bindAsContract(ChildTaskTransferService.class).in(Singleton.class);

@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxOpRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
@@ -150,6 +151,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
                 bindAsContract(SystemsCache.class).in(Singleton.class);
+                bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
                 bindAsContract(FileOpsService.class).in(Singleton.class);
                 bindAsContract(FileUtilsService.class).in(Singleton.class);
                 bindAsContract(FileShareService.class).in(Singleton.class);

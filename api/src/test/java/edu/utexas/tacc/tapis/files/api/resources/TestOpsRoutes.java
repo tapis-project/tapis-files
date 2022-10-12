@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
@@ -79,6 +80,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   private ServiceClients serviceClients;
   private SKClient skClient;
   private SystemsCache systemsCache;
+  private SystemsCacheNoAuth systemsCacheNoAuth;
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
   private static final String SITE_ID = "tacc";
 
@@ -169,6 +171,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
                 bind(systemsCache).to(SystemsCache.class);
+                bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
                 bindAsContract(RemoteDataClientFactory.class);
                 bind(serviceContext).to(ServiceContext.class);
               }

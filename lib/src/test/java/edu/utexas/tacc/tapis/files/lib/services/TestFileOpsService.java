@@ -4,6 +4,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -84,6 +85,7 @@ public class TestFileOpsService
   private static final Logger log  = LoggerFactory.getLogger(TestFileOpsService.class);
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
   private final SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
+  private final SystemsCacheNoAuth systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
 
   private static final MoveCopyOperation OP_MV = MoveCopyOperation.MOVE;
   private static final MoveCopyOperation OP_CP = MoveCopyOperation.COPY;
@@ -204,6 +206,7 @@ public class TestFileOpsService
         bindAsContract(FileOpsService.class).in(Singleton.class);
         bindAsContract(FileShareService.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
+        bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class).ranked(1);
         bind(permsService).to(FilePermsService.class).ranked(1);
         bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
         bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
