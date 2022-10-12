@@ -21,20 +21,20 @@ import java.util.concurrent.ExecutionException;
 
 /*
  * Systems cache. Loads systems with credentials.
- *   Standard Tapis auth check is done.
+ *   Uses sharedAppCtx = true in order to skip Tapis auth.
  *   effectiveUserId is resolved.
  *   Default AuthnMethod is used.
  */
 @Service
-public class SystemsCache implements ISystemsCache
+public class SystemsCacheNoAuth implements ISystemsCache
 {
-  private static final Logger log = LoggerFactory.getLogger(SystemsCache.class);
+  private static final Logger log = LoggerFactory.getLogger(SystemsCacheNoAuth.class);
 
   private final LoadingCache<SystemCacheKey, TapisSystem> cache;
   private final ServiceClients serviceClients;
 
   @Inject
-  public SystemsCache(ServiceClients svcClients)
+  public SystemsCacheNoAuth(ServiceClients svcClients)
   {
     serviceClients = svcClients;
     IRuntimeConfig config = RuntimeSettings.get();
@@ -45,8 +45,7 @@ public class SystemsCache implements ISystemsCache
   @Override
   public TapisSystem getSystem(String tenantId, String systemId, String username) throws ServiceException
   {
-    try
-    {
+    try {
       SystemCacheKey key = new SystemCacheKey(tenantId, systemId, username);
       return cache.get(key);
     }
@@ -71,7 +70,15 @@ public class SystemsCache implements ISystemsCache
     {
       log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADING", key.getTenantId(), key.getSystemId(), key.getUsername()));
       SystemsClient client = serviceClients.getClient(key.getUsername(), key.getTenantId(), SystemsClient.class);
-      TapisSystem system = client.getSystemWithCredentials(key.getSystemId());
+      // Use sharedAppCtx = true to bypass Tapis auth
+      SystemsClient.AuthnMethod authnMethod = null;
+      var requireExec = false;
+      var selectStr = "allAttributes";
+      var returnCreds = true;
+      String impersonationId = null;
+      var sharedAppCtx = true;
+      TapisSystem system = client.getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
+                                            impersonationId, sharedAppCtx);
       log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADED", key.getTenantId(), key.getSystemId(), key.getUsername(),
                                 system.getDefaultAuthnMethod()));
       return system;

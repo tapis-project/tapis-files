@@ -133,16 +133,15 @@ public class FileOpsService
     String sysId = sys.getId();
     // Get path relative to system rootDir and protect against ../..
     Path relativePath = PathUtils.getRelativePath(path);
-    // If sharedAppCtx set, confirm that it is allowed
-    // This method will throw ForbiddenException if not allowed.
+    // If sharedAppCtx set, confirm that it is allowed (can throw ForbiddenException)
     if (sharedAppCtx) checkSharedAppCtxAllowed(rUser, opName, sysId, path);
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
     try
     {
-      // If not skipping then check for READ/MODIFY permission or share
+      // If not skipping auth then check for READ/MODIFY permission or share
       if (!sharedAppCtx) checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
-
+      // Get the connection and increment the reservation count
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
       client.reserve();
       return ls(client, path, limit, offset);
@@ -155,6 +154,7 @@ public class FileOpsService
     }
     finally
     {
+      // Release the connection
       if (client != null) client.release();
     }
   }
@@ -1097,7 +1097,7 @@ public class FileOpsService
         throw new ServiceException(msg, e);
       }
     }
-    // No READ or share, throw exception
+    // No READ, MODIFY or share, throw exception
     String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", rUser.getOboTenantId(), oboOrImpersonatedUser, systemId,
                                  pathStr, Permission.READ);
     log.warn(msg);

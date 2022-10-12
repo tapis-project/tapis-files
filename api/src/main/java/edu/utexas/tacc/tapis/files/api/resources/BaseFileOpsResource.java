@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
@@ -23,6 +24,9 @@ public abstract class BaseFileOpsResource
 {
   @Inject
   SystemsCache systemsCache;
+
+  @Inject
+  SystemsCacheNoAuth systemsCacheNoAuth;
 
   @Inject
   RemoteDataClientFactory remoteDataClientFactory;

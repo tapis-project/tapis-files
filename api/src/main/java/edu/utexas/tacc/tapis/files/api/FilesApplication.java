@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.api.providers.FilesExceptionMapper;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -162,6 +163,7 @@ public class FilesApplication extends ResourceConfig
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);
+          bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
           bindAsContract(FilePermsService.class).in(Singleton.class);
           bindAsContract(FilePermsCache.class).in(Singleton.class);
           bindAsContract(FileShareService.class).in(Singleton.class);

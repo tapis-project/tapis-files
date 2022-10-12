@@ -8,11 +8,12 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
+
+import edu.utexas.tacc.tapis.files.lib.caches.ISystemsCache;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -217,7 +218,7 @@ public class LibUtils
    * @param systemId - System to check
    * @throws NotFoundException System not found or not enabled
    */
-  public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
+  public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull ISystemsCache systemsCache,
                                                @NotNull String systemId) throws NotFoundException
   {
     // Check for the system
