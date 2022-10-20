@@ -37,8 +37,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -153,8 +151,8 @@ public class ChildTaskTransferService
   //   Step 1: Update TransferTask and ParentTask status
   //   Step 2: Perform the transfer
   //   Step 3: Bookkeeping and cleanup
-  //   Step 4: Check for unfinished work (child tasks). If none then update
-  //           TransferTask and ParentTask status
+  //   Step 4: Check for unfinished work (child tasks).
+  //           If none then update TransferTask and ParentTask status
   //   Step 5: No-op TBD
   // ==========================================================================
 
@@ -198,7 +196,7 @@ public class ChildTaskTransferService
 
   /**
    * Perform the transfer, this is the meat of the operation.
-   * TODO: Support a GLOBUS type point to point transfer
+   * NOTE: TBD Support a GLOBUS type point to point transfer
    *
    * @param taskChild the incoming child task
    * @return update child task
@@ -206,7 +204,7 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException
   {
-    boolean srcIsLinux = false, dstIsLinux = false;
+    boolean srcIsLinux = false, dstIsLinux = false; // Used for properly handling update of exec perm
     //If we are cancelled/failed we can skip the transfer
     if (taskChild.isTerminal()) return taskChild;
 
@@ -238,12 +236,14 @@ public class ChildTaskTransferService
     // Initialize source path and client
     if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://"))
     {
+      // Source path is HTTP/S
       //This should be the full string URL such as http://google.com
       sourcePath = sourceURL.toString();
       sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
     }
     else
     {
+      // Source path is not HTTP/S
       sourcePath = sourceURL.getPath();
       sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
       // If src system is not enabled throw an exception
@@ -253,7 +253,10 @@ public class ChildTaskTransferService
                 taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), sourceSystem.getId());
         throw new ServiceException(msg);
       }
+
+      // Used for properly handling update of exec perm
       srcIsLinux = SystemTypeEnum.LINUX.equals(sourceSystem.getSystemType());
+
       sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
               sourceSystem, taskChild.getUsername());
     }
@@ -270,7 +273,10 @@ public class ChildTaskTransferService
         log.error(msg);
         throw new ServiceException(msg);
       }
+
+      // Used for properly handling update of exec perm
       dstIsLinux = SystemTypeEnum.LINUX.equals(destSystem.getSystemType());
+
       destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
                                                                destSystem, taskChild.getUsername());
     }
@@ -289,11 +295,11 @@ public class ChildTaskTransferService
       return taskChild;
     }
 
-    // TODO/TBD: Handle a GLOBUS type point to point txfr where we are not in control of the stream.
+    // NOTE: TBD: Handle a GLOBUS type point to point txfr where we are not in control of the stream.
     //       We will need to initiate the transfer, get the externalTransferId, update the child/parent task
     //         with the externalTransferId (or will this be done in the synchronous call?).
     //       Then monitor the transfer and update the progress.
-    // TODO/TBD: Or, maybe the txfr will be initiated synchronously and all we will need to do here is
+    // NOTE: TBD: Or, maybe the txfr will be initiated synchronously and all we will need to do here is
     //           use the externalTransferId to monitor the progress and update the status.
 
     // Stream the file contents to destination. While the InputStream is open,

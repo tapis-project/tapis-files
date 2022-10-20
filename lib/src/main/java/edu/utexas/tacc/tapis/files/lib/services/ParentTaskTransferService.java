@@ -222,15 +222,8 @@ public class ParentTaskTransferService
         // Get a listing of all files to be transferred
         //TODO: Retries will break this, should delete anything in the DB if it is a retry?
         List<FileInfo> fileListing;
-        // For S3 we take this to be a single object at the srcPath. So we do not do a full listing.
-        if (srcIsS3)
-        {
-          fileListing = Collections.singletonList(fileInfo);
-        }
-        else
-        {
-          fileListing = fileOpsService.lsRecursive(srcClient, srcPath, FileOpsService.MAX_RECURSION);
-        }
+        // NOTE Treat all source system types the same. For S3 it will be all objects matching the srcPath as a prefix.
+        fileListing = fileOpsService.lsRecursive(srcClient, srcPath, FileOpsService.MAX_RECURSION);
 
         // Create child tasks for each file or object to be transferred.
         List<TransferTaskChild> children = new ArrayList<>();

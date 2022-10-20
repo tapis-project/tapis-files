@@ -21,7 +21,8 @@ import java.util.concurrent.ExecutionException;
 
 /*
  * Systems cache. Loads systems with credentials.
- *   Standard Tapis auth check is done.
+ * For use when not in a shared app context.
+ * Standard Tapis auth check is done.
  *   effectiveUserId is resolved.
  *   Default AuthnMethod is used.
  */
