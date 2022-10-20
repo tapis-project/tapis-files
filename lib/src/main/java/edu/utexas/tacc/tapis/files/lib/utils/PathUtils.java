@@ -117,7 +117,6 @@ public class PathUtils
    */
   public static String getFileInfoPathFromS3Key(String keyStr, String rootDir)
   {
-    keyStr = StringUtils.prependIfMissing(keyStr, "/");
     if (StringUtils.isBlank(rootDir)) return keyStr;
     keyStr = StringUtils.removeStart(keyStr, rootDir);
     return StringUtils.removeStart(keyStr, "/");

@@ -120,7 +120,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     testSystemS3.setHost("http://localhost");
     testSystemS3.setPort(9000);
     testSystemS3.setBucketName("test");
-    testSystemS3.setRootDir("/");
+    testSystemS3.setRootDir("");
     testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
     testSystemS3.setAuthnCredential(creds);
     // Disabled system
@@ -131,7 +131,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     testSystemDisabled.setPort(9000);
     testSystemDisabled.setBucketName("test");
     testSystemDisabled.setAuthnCredential(creds);
-    testSystemDisabled.setRootDir("/");
+    testSystemDisabled.setRootDir("");
     testSystemDisabled.setEnabled(false);
     testSystemDisabled.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 

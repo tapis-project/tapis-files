@@ -189,7 +189,7 @@ public class BaseDatabaseIntegrationTest
     testSystemS3c.setHost("http://localhost");
     testSystemS3c.setBucketName(bucketName3);
     testSystemS3c.setPort(9000);
-    testSystemS3c.setRootDir("/data2");
+    testSystemS3c.setRootDir("data2");
     testSystemS3c.setAuthnCredential(creds);
     testSystemS3c.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 

@@ -95,10 +95,8 @@ public class S3DataClient implements IRemoteDataClient
     oboUser = oboUser1;
     system = system1;
     bucket = system.getBucketName();
-    // Make sure we have a valid rootDir that is not empty and begins with /
-    String tmpDir = system.getRootDir();
-    if (StringUtils.isBlank(tmpDir)) tmpDir = "/";
-    rootDir = StringUtils.prependIfMissing(tmpDir,"/");
+    // Make sure we have a valid rootDir that is not null or have extra whitespace
+    rootDir = (StringUtils.isBlank(system.getRootDir())) ? "" :  system.getRootDir();
 
     // There are so many flavors of s3 URLs we have to do the gymnastics below.
     try
