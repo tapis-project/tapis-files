@@ -46,18 +46,9 @@ public class TransferTaskChild extends TransferTaskParent
 
     // Build the destination path
     String destPathStr;
-    // If the source system is of type S3 then we should not call relativizePaths because we do not support directory transfer
-    if (sourceSystem != null && SystemTypeEnum.S3.equals(sourceSystem.getSystemType()))
-    {
-      // We have an S3 source system. Never treat the source path as a directory.
-      // Ignore source path. Always create file or object at destination path.
-      destPathStr = destUri.getPath();
-    }
-    else
-    {
-      // Source system is not S3. Use a relativized destination path.
-      destPathStr = PathUtils.relativizePaths(sourceUri.getPath(), fileInfo.getPath(), destUri.getPath()).toString();
-    }
+    // To support proper creation of directories at target we need to relativize the paths.
+    // TODO: E.g. if file1, file2 are on source at absolute path /a/b, and we are transferring to /c/b
+    destPathStr = PathUtils.relativizePaths(sourceUri.getPath(), fileInfo.getPath(), destUri.getPath()).toString();
 
     // Create source and destination URIs
     TransferURI newSourceUri = new TransferURI(sourceUri, fileInfo.getPath());

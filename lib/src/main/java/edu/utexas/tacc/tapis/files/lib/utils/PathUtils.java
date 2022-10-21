@@ -137,6 +137,7 @@ public class PathUtils
 
   /**
    * All paths are assumed to be relative to rootDir
+   *
    * @param srcBaseStr The BASE path of the source of the transfer
    * @param srcPathStr The path to the actual file being transferred
    * @param destBaseStr The BASE path of the destination of the transfer

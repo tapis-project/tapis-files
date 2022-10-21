@@ -9,7 +9,7 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.2.6 - 2022-10-??
+## 1.2.6 - 2022-10-20
 
 Incremental improvements and bug fix.
 
@@ -17,7 +17,7 @@ Incremental improvements and bug fix.
 - Review, refactor and strengthen transfer code. Additional integration tests.
 
 ### Bug fixes:
-- Fix issue with S3 to LINUX transfer. Destination path was being constructed incorrectly.
+- Fix issue with S3 to LINUX transfer. Destination paths were being constructed incorrectly.
 - Fix issue with S3 path contained in FileInfo. Should be relative path and not absolute path.
 - Fix issues with populating path and url in FileInfo objects for all system types.
 
