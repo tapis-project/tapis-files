@@ -95,10 +95,8 @@ public class S3DataClient implements IRemoteDataClient
     oboUser = oboUser1;
     system = system1;
     bucket = system.getBucketName();
-    // Make sure we have a valid rootDir that is not empty and begins with /
-    String tmpDir = system.getRootDir();
-    if (StringUtils.isBlank(tmpDir)) tmpDir = "/";
-    rootDir = StringUtils.prependIfMissing(tmpDir,"/");
+    // Make sure we have a valid rootDir that is not null or have extra whitespace
+    rootDir = (StringUtils.isBlank(system.getRootDir())) ? "" :  system.getRootDir();
 
     // There are so many flavors of s3 URLs we have to do the gymnastics below.
     try
@@ -222,7 +220,7 @@ public class S3DataClient implements IRemoteDataClient
    * @param limit - maximum number of keys to return
    * @param offset - Offset for listing
    * @return list of FileInfo objects
-   * @throws IOException       Generally a network error
+   * @throws IOException Generally a network error
    * @throws NotFoundException No file at target
    */
   @Override
@@ -281,8 +279,7 @@ public class S3DataClient implements IRemoteDataClient
   {
     // TODO: This should use multipart on an InputStream ideally;
     // Determine the absolute path and the corresponding object key.
-    String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
-    String objKey = StringUtils.removeStart(absoluteKey, "/");
+    String objKey = PathUtils.getAbsoluteKey(rootDir, path);
     File scratchFile = File.createTempFile(UUID.randomUUID().toString(), "tmp");
     try
     {
@@ -354,9 +351,8 @@ public class S3DataClient implements IRemoteDataClient
   public void delete(@NotNull String path) throws IOException, NotFoundException
   {
     // Determine the absolute path and the corresponding object key.
-    String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
-    String objKey = StringUtils.removeStart(absoluteKey, "/");
-    // If relative path is "/" delete all objects in rootDir
+    String objKey = PathUtils.getAbsoluteKey(rootDir, path);
+    // If relative path is "" delete all objects in rootDir
     // else remove a single object
     if (StringUtils.isEmpty(objKey)) { deleteAllObjectsInBucket(); }
     else
@@ -400,8 +396,7 @@ public class S3DataClient implements IRemoteDataClient
   public InputStream getStream(@NotNull String path) throws IOException, NotFoundException
   {
     // Determine the absolute path and the corresponding object key.
-    String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
-    String objKey = StringUtils.removeStart(absoluteKey, "/");
+    String objKey = PathUtils.getAbsoluteKey(rootDir, path);
     try
     {
       GetObjectRequest req = GetObjectRequest.builder().bucket(bucket).key(objKey).build();
@@ -425,8 +420,7 @@ public class S3DataClient implements IRemoteDataClient
           throws IOException, NotFoundException
   {
     // Determine the absolute path and the corresponding object key.
-    String absoluteKey = PathUtils.getAbsoluteKey(rootDir, path);
-    String objKey = StringUtils.removeStart(absoluteKey, "/");
+    String objKey = PathUtils.getAbsoluteKey(rootDir, path);
     try {
       // S3 api includes the final byte, different than posix, so we subtract one to get the proper count.
       String brange = String.format("bytes=%s-%s", startByte, startByte + count - 1);

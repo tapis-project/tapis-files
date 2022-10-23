@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
@@ -138,7 +139,7 @@ public class TestFileOpsService
     testSystemS3.setBucketName("test");
     testSystemS3.setPort(9000);
     testSystemS3.setAuthnCredential(creds);
-    testSystemS3.setRootDir("/");
+    testSystemS3.setRootDir("");
     testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
     //Irods system
@@ -246,9 +247,9 @@ public class TestFileOpsService
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH, testUser);
-      fileOpsService.delete(client,"/");
+      cleanupAll(client, testSystemSSH);
       client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3, testUser);
-      fileOpsService.delete(client, "/");
+      cleanupAll(client, testSystemS3);
     }
 
     @AfterTest()
@@ -256,9 +257,9 @@ public class TestFileOpsService
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH, testUser);
-      fileOpsService.delete(client,"/");
+      cleanupAll(client, testSystemSSH);
       client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3, testUser);
-      fileOpsService.delete(client, "/");
+      cleanupAll(client, testSystemS3);
     }
 
   // Check the getSystemIfEnabled() method
@@ -297,7 +298,7 @@ public class TestFileOpsService
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
-      fileOpsService.delete(client, "/");
+      cleanupAll(client, testSystem);
       InputStream in = Utils.makeFakeFile(10*1024);
       fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
       List<FileInfo> listing = fileOpsService.ls(client,"/dir1/dir2", MAX_LISTING_SIZE, 0);
@@ -339,7 +340,7 @@ public class TestFileOpsService
     public void testUploadAndGet(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
-        fileOpsService.delete(client, "/");
+        cleanupAll(client, testSystem);
         InputStream in = Utils.makeFakeFile(100*1024);
         fileOpsService.upload(client,"test.txt", in);
 
@@ -354,7 +355,7 @@ public class TestFileOpsService
   public void testMoveFile(TapisSystem testSystem) throws Exception {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
-    fileOpsService.delete(client, "/");
+    cleanupAll(client, testSystem);
     InputStream in = Utils.makeFakeFile(100*1024);
     fileOpsService.upload(client,"test1.txt", in);
     in.close();
@@ -378,7 +379,7 @@ public class TestFileOpsService
           /dir1/test1.txt
           /dir2/test1.txt
      */
-    fileOpsService.delete(client, "/");
+    cleanupAll(client, testSystem);
     InputStream in = Utils.makeFakeFile(100*1024);
     fileOpsService.upload(client,"test1.txt", in);
     in.close();
@@ -438,7 +439,7 @@ public class TestFileOpsService
           /dir1/dir2/test1.txt
           /dir2/test1.txt
      */
-    fileOpsService.delete(client, "/");
+    cleanupAll(client, testSystem);
     InputStream in = Utils.makeFakeFile(100*1024);
     fileOpsService.upload(client,"test1.txt", in);
     in.close();
@@ -524,7 +525,7 @@ public class TestFileOpsService
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
-    fileOpsService.delete(client, "/");
+    cleanupAll(client, testSystem);
     InputStream in = Utils.makeFakeFile(10*1024);
     fileOpsService.upload(client,"dir1/test1.txt", in);
     in.close();
@@ -545,7 +546,7 @@ public class TestFileOpsService
   {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
-        fileOpsService.delete(client, "/");
+        cleanupAll(client, testSystem);
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
         List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0);
@@ -684,6 +685,18 @@ public class TestFileOpsService
         List<FileInfo> listing = fileOpsService.ls(client,"/", MAX_LISTING_SIZE, 0);
         // S3 doesn't really do folders?
       Assert.assertEquals(listing.size(), 1);
-
     }
+
+  // Utility method to remove all files/objects given the client. Need to handle S3
+  void cleanupAll(IRemoteDataClient client, TapisSystem sys) throws ServiceException
+  {
+    if (SystemTypeEnum.S3.equals(sys.getSystemType()))
+    {
+      fileOpsService.delete(client, "");
+    }
+    else
+    {
+      fileOpsService.delete(client, "/");
+    }
+  }
 }

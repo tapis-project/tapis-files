@@ -60,11 +60,11 @@ public class BaseDatabaseIntegrationTest
   protected final String devTenant = "dev";
   protected final String testUser = "testuser";
   private static final String bucketName = "test-bucket";
-  private static final String bucketName1 = "test-bucket1";
-  private static final String bucketName2 = "test-bucket2";
-  private static final String bucketName3 = "test-bucket3";
+  private static final String bucketNameA = "test-bucket1";
+  private static final String bucketNameB = "test-bucket2";
+  private static final String bucketNameC = "test-bucket3";
 
-  protected TapisSystem testSystemS3, testSystemS3a, testSystemS3b, testSystemS3c;
+  protected TapisSystem testSystemS3, testSystemS3a, testSystemS3b, testSystemS3c, testSystemS3BucketC;
   protected TapisSystem testSystemPKI;
   protected TapisSystem testSystemSSH, testSystemSSHa, testSystemSSHb;
   protected TapisSystem testSystemIrods, testSystemIRODSa, testSystemIRODSb;
@@ -152,7 +152,6 @@ public class BaseDatabaseIntegrationTest
     testSystemS3.setTenant(devTenant);
     testSystemS3.setId("testSystemS3");
     testSystemS3.setSystemType(SystemTypeEnum.S3);
-    testSystemS3.setTenant(devTenant);
     testSystemS3.setHost("http://localhost");
     testSystemS3.setBucketName(bucketName);
     testSystemS3.setPort(9000);
@@ -163,9 +162,8 @@ public class BaseDatabaseIntegrationTest
     testSystemS3a.setTenant(devTenant);
     testSystemS3a.setId("testSystemS3a");
     testSystemS3a.setSystemType(SystemTypeEnum.S3);
-    testSystemS3a.setTenant(devTenant);
     testSystemS3a.setHost("http://localhost");
-    testSystemS3a.setBucketName(bucketName1);
+    testSystemS3a.setBucketName(bucketNameA);
     testSystemS3a.setPort(9000);
     testSystemS3a.setAuthnCredential(creds);
     testSystemS3a.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
@@ -174,9 +172,8 @@ public class BaseDatabaseIntegrationTest
     testSystemS3b.setTenant(devTenant);
     testSystemS3b.setId("testSystemS3b");
     testSystemS3b.setSystemType(SystemTypeEnum.S3);
-    testSystemS3b.setTenant(devTenant);
     testSystemS3b.setHost("http://localhost");
-    testSystemS3b.setBucketName(bucketName2);
+    testSystemS3b.setBucketName(bucketNameB);
     testSystemS3b.setPort(9000);
     testSystemS3b.setAuthnCredential(creds);
     testSystemS3b.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
@@ -185,13 +182,23 @@ public class BaseDatabaseIntegrationTest
     testSystemS3c.setTenant(devTenant);
     testSystemS3c.setId("testSystemS3c");
     testSystemS3c.setSystemType(SystemTypeEnum.S3);
-    testSystemS3c.setTenant(devTenant);
     testSystemS3c.setHost("http://localhost");
-    testSystemS3c.setBucketName(bucketName3);
+    testSystemS3c.setBucketName(bucketNameC);
     testSystemS3c.setPort(9000);
-    testSystemS3c.setRootDir("/data2");
+    testSystemS3c.setRootDir("data2");
     testSystemS3c.setAuthnCredential(creds);
     testSystemS3c.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    // ================= Bucket to see all keys in bucketNameC
+    testSystemS3BucketC = new TapisSystem();
+    testSystemS3BucketC.setTenant(devTenant);
+    testSystemS3BucketC.setId("testSystemS3BucketC");
+    testSystemS3BucketC.setSystemType(SystemTypeEnum.S3);
+    testSystemS3BucketC.setHost("http://localhost");
+    testSystemS3BucketC.setBucketName(bucketNameC);
+    testSystemS3BucketC.setPort(9000);
+    testSystemS3BucketC.setRootDir("");
+    testSystemS3BucketC.setAuthnCredential(creds);
+    testSystemS3BucketC.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
 
     // IRODs systems
     Credential irodsCred = new Credential();
@@ -326,17 +333,17 @@ public class BaseDatabaseIntegrationTest
             .build();
     try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}
 
-    createBucketReq = CreateBucketRequest.builder().bucket(bucketName1)
+    createBucketReq = CreateBucketRequest.builder().bucket(bucketNameA)
             .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
             .build();
     try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}
 
-    createBucketReq = CreateBucketRequest.builder().bucket(bucketName2)
+    createBucketReq = CreateBucketRequest.builder().bucket(bucketNameB)
             .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
             .build();
     try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}
 
-    createBucketReq = CreateBucketRequest.builder().bucket(bucketName3)
+    createBucketReq = CreateBucketRequest.builder().bucket(bucketNameC)
             .createBucketConfiguration(CreateBucketConfiguration.builder().locationConstraint(region.id()).build())
             .build();
     try { s3.createBucket(createBucketReq); } catch (BucketAlreadyOwnedByYouException e) {log.warn(e.getMessage());}

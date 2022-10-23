@@ -331,7 +331,9 @@ public class TransfersService
       // Persist the transfer task
       try
       {
+        // Persist the transfer task to the DB
         TransferTask newTask = dao.createTransferTask(task, elements);
+        // Put the transfer task onto the queue for asynchronous processing.
         for (TransferTaskParent parent : newTask.getParentTasks()) { publishParentTaskMessage(parent); }
         return newTask;
       }
@@ -343,8 +345,8 @@ public class TransfersService
     }
 
     /*
-      // TODO/TBD: Is this method only for testing? Can it be made package-private?
-     *
+     * Create a transfer task child in the DB. Currently only used for testing.
+     * Might be able to make this package-private
      */
     public TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException
     {

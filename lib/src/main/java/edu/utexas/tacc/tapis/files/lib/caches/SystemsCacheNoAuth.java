@@ -21,7 +21,8 @@ import java.util.concurrent.ExecutionException;
 
 /*
  * Systems cache. Loads systems with credentials.
- *   Uses sharedAppCtx = true in order to skip Tapis auth.
+ * For use when in a shared app context.
+ * Uses sharedAppCtx = true in order to skip Tapis auth.
  *   effectiveUserId is resolved.
  *   Default AuthnMethod is used.
  */

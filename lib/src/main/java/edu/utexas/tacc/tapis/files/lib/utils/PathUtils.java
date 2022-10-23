@@ -94,20 +94,20 @@ public class PathUtils
 
   /**
    * Construct a normalized absolute S3 key given a system's rootDir and path relative to rootDir.
+   * Prepends rootDir to the relative path.
+   *
    * @param path path relative to system's rootDir
-   * @return Path - normalized absolute key, no preceding "/"
+   * @return Path - normalized absolute key
    */
   public static String getAbsoluteKey(String rootDir, String path)
   {
-    // If rootDir is null or empty use "/"
-    String rdir = StringUtils.isBlank(rootDir) ? "/" : rootDir;
-    // Make sure rootDir starts with a /
-    rdir = StringUtils.prependIfMissing(rdir, "/");
+    // If rootDir is null or empty use ""
+    String rdir = StringUtils.isBlank(rootDir) ? "" : rootDir;
     // First get normalized relative path
     Path relativePath = getRelativePath(path);
     // Return constructed absolute path
     String absolutePathStr = Paths.get(rdir, relativePath.toString()).toString();
-    return StringUtils.removeStart(absolutePathStr, "/");
+    return absolutePathStr;
   }
 
   /**
@@ -117,7 +117,6 @@ public class PathUtils
    */
   public static String getFileInfoPathFromS3Key(String keyStr, String rootDir)
   {
-    keyStr = StringUtils.prependIfMissing(keyStr, "/");
     if (StringUtils.isBlank(rootDir)) return keyStr;
     keyStr = StringUtils.removeStart(keyStr, rootDir);
     return StringUtils.removeStart(keyStr, "/");
@@ -138,6 +137,7 @@ public class PathUtils
 
   /**
    * All paths are assumed to be relative to rootDir
+   *
    * @param srcBaseStr The BASE path of the source of the transfer
    * @param srcPathStr The path to the actual file being transferred
    * @param destBaseStr The BASE path of the destination of the transfer

@@ -5,11 +5,13 @@ import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MoveCopyOperation;
@@ -116,7 +118,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     testSystemS3.setHost("http://localhost");
     testSystemS3.setPort(9000);
     testSystemS3.setBucketName("test");
-    testSystemS3.setRootDir("/");
+    testSystemS3.setRootDir("");
     testSystemS3.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
     testSystemS3.setAuthnCredential(creds);
     // IRODS system
@@ -151,6 +153,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     skClient = Mockito.mock(SKClient.class);
     serviceClients = Mockito.mock(ServiceClients.class);
     systemsCache = Mockito.mock(SystemsCache.class);
+    systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
     JWTValidateRequestFilter.setSiteId("tacc");
     JWTValidateRequestFilter.setService("files");
     ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
@@ -741,5 +744,4 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   {
     return new String[] { "//newDirectory///test", "newDirectory///test/", "newDirectory/test" };
   }
-
 }

@@ -600,8 +600,7 @@ public class SSHDataClient implements ISSHDataClient
    * @param fileStream Data stream to use for insert/append
    * @throws IOException Generally a network error
    */
-  private void createFile(@NotNull String path, @NotNull InputStream fileStream)
-          throws IOException
+  private void createFile(@NotNull String path, @NotNull InputStream fileStream) throws IOException
   {
     path = FilenameUtils.normalize(path);
     Path absolutePath = Paths.get(rootDir, path).normalize();
