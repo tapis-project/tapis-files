@@ -41,7 +41,15 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
   {
     if (SystemTypeEnum.LINUX.equals(system.getSystemType()))
     {
-      SSHConnectionHolder holder = sshConnectionCache.getConnection(system, system.getEffectiveUserId());
+      // Attempt to get the connection. On error invalidate cache entry. Problem may get resolved soon.
+      // For example, error could be invalid credentials or no route to host
+      SSHConnectionHolder holder;
+      try { holder = sshConnectionCache.getConnection(system, system.getEffectiveUserId()); }
+      catch (IOException e)
+      {
+        sshConnectionCache.invalidateConnection(system);
+        throw e;
+      }
       return new SSHDataClient(oboTenant, oboUser, system, holder);
     }
     else if (SystemTypeEnum.S3.equals(system.getSystemType()))

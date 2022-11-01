@@ -74,4 +74,14 @@ public class SSHConnectionCache
       throw new IOException(msg, ex);
     }
   }
+
+  /**
+   * Invalidate the cached connection.
+   * @param system System object
+   */
+  public void invalidateConnection(TapisSystem system)
+  {
+    SSHConnectionCacheKey key = new SSHConnectionCacheKey(system, system.getEffectiveUserId());
+    sessionCache.invalidate(key);
+  }
 }
