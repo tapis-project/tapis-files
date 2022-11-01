@@ -9,6 +9,13 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.2.7 - 2022-11-01
+
+Incremental improvement.  
+Invalidate SSH cache entry when there is an error. Problem may get resolved soon.
+For example, error could be due to invalid credentials or no route to host
+
+---------------------------------------------------------------------------
 ## 1.2.6 - 2022-10-20
 
 Incremental improvements and bug fix.

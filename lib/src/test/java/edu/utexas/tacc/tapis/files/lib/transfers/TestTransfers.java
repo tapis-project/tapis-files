@@ -999,7 +999,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Assert.assertNotNull(parent.getEndTime());
     Assert.assertNotNull(parent.getStartTime());
     // 2 files, so total should be 2x
-    Assert.assertEquals(parent.getBytesTransferred(), 2 * FILESIZE);
+    Assert.assertEquals(parent.getBytesTransferred(), 2 * BIGFILESIZE);
 
     List<FileInfo> listing = fileOpsService.ls(destClient, "/b/cat/dog/", MAX_LISTING_SIZE, 0);
     Assert.assertEquals(listing.size(), 2);
