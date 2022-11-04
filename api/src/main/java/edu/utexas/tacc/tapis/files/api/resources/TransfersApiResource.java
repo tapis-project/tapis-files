@@ -281,7 +281,7 @@ public class  TransfersApiResource
 
     // Trace this request.
     if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "txfrTaskRequestTag="+transferTaskRequest.getTag());
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "txfrTaskRequest="+transferTaskRequest);
 
     // ---------------------------- Make service call -------------------------------
     try

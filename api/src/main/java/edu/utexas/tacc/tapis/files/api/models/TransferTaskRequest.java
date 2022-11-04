@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
+import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
 
 import java.util.List;
 
@@ -14,20 +15,14 @@ public class TransferTaskRequest
   private String tag;
   private List<TransferTaskRequestElement> elements;
 
-  public String getTag() {
-    return tag;
-  }
-
-  public void setTag(String tag) {
-    this.tag = tag;
-  }
+  public String getTag() { return tag; }
+  public void setTag(String tag) { this.tag = tag; }
 
   @NotEmpty
-  public List<TransferTaskRequestElement> getElements() {
-    return elements;
-  }
+  public List<TransferTaskRequestElement> getElements() { return elements; }
 
-  public void setElements(List<TransferTaskRequestElement> elements) {
-    this.elements = elements;
-  }
+  public void setElements(List<TransferTaskRequestElement> elements) { this.elements = elements; }
+
+//  @Override
+//  public String toString() {return TapisUtils.toString(this);}
 }

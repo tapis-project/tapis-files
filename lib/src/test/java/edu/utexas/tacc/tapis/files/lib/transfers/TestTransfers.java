@@ -1335,7 +1335,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
             .verify(Duration.ofSeconds(10));
   }
 
-  @Test(dataProvider = "testSystemsDataProviderNoS3")
+  //  @Test(dataProvider = "testSystemsDataProviderNoS3")
+  @Test(dataProvider = "testSystemsDataProvider1")
   public void test10Files(Pair<TapisSystem, TapisSystem> systemsPair) throws Exception
   {
     TapisSystem sourceSystem = systemsPair.getLeft();

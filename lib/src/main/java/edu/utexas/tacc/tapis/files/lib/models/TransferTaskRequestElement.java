@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
+
 import javax.validation.constraints.NotBlank;
 
 public class TransferTaskRequestElement
@@ -26,4 +28,7 @@ public class TransferTaskRequestElement
   public void setSrcSharedAppCtx(boolean b) { srcSharedAppCtx = b; }
   public boolean isDestSharedAppCtx() { return destSharedAppCtx; }
   public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; }
+
+//  @Override
+//  public String toString() {return TapisUtils.toString(this);}
 }

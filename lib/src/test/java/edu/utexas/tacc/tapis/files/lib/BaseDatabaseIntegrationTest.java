@@ -69,8 +69,10 @@ public class BaseDatabaseIntegrationTest
   protected TapisSystem testSystemSSH, testSystemSSHa, testSystemSSHb;
   protected TapisSystem testSystemIrods, testSystemIRODSa, testSystemIRODSb;
   protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairs;
+  protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairs1;
   protected List<Pair<TapisSystem, TapisSystem>> testSystemsPairsNoS3;
   protected List<TapisSystem> testSystems;
+  protected List<TapisSystem> testSystems1;
   protected List<TapisSystem> testSystemsNoS3;
 
   protected IRemoteDataClientFactory remoteDataClientFactory;
@@ -245,6 +247,17 @@ public class BaseDatabaseIntegrationTest
       }
     }
 
+    testSystems1 = Arrays.asList(testSystemSSH, testSystemPKI);
+    testSystemsPairs1 = new ArrayList<>();
+    for (int i = 0; i < testSystems1.size(); i++)
+    {
+      for (int j = i + 1; j < testSystems1.size(); j++)
+      {
+        Pair<TapisSystem, TapisSystem> pair = new ImmutablePair<>(testSystems1.get(i), testSystems1.get(j));
+        testSystemsPairs1.add(pair);
+      }
+    }
+
     testSystemsNoS3 = Arrays.asList(testSystemSSH, testSystemPKI, testSystemIrods);
     testSystemsPairsNoS3 = new ArrayList<>();
     for (int i = 0; i < testSystemsNoS3.size(); i++)
@@ -303,6 +316,9 @@ public class BaseDatabaseIntegrationTest
 
   @DataProvider
   public Object[] testSystemsDataProvider() { return testSystemsPairs.toArray(); }
+
+  @DataProvider
+  public Object[] testSystemsDataProvider1() { return testSystemsPairs1.toArray(); }
 
   @DataProvider
   public Object[] testSystemsDataProviderNoS3() { return testSystemsPairsNoS3.toArray(); }
