@@ -132,14 +132,15 @@ public class ParentTaskTransferService
     // Extract some values for convenience and clarity
     String taskTenant = parentTask.getTenantId();
     String taskUser = parentTask.getUsername();
-    int parentId = parentTask.getId();
-    int parentTaskId = parentTask.getTaskId();
+    // Keep these Integer and not int. When int the logger puts in commas which makes it harder to search the log.
+    Integer parentId = parentTask.getId();
+    Integer topTaskId = parentTask.getTaskId();
     UUID parentUuid = parentTask.getUuid();
 
     // If already in a terminal state then return
     if (parentTask.isTerminal())
     {
-      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA01", parentId, parentUuid));
+      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA01", topTaskId, parentId, parentTask.getStatus(), parentUuid));
       return parentTask;
     }
 
@@ -155,12 +156,17 @@ public class ParentTaskTransferService
     try
     {
       // Update top level task status, start time
-      TransferTask task = dao.getTransferTaskByID(parentTask.getTaskId());
+      TransferTask task = dao.getTransferTaskByID(topTaskId);
+
+      // TODO BUG TURNS OUT this can be incorrect. It sometimes interrupts final processing of a parent transfer. Where is this updated?
+      // If top task in terminal state then return
       if (task.isTerminal())
       {
-        log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA03", parentId, parentUuid));
+        log.trace(LibUtils.getMsg("FILES_TXFR_TOP_TASK_TERM", taskTenant, taskUser, "doParentStepOneA03", topTaskId, task.getStatus(), parentId, parentTask.getStatus(), parentUuid));
         return parentTask;
       }
+
+      // If needed update top task start time and status
       if (task.getStartTime() == null)
       {
         log.trace(LibUtils.getMsg("FILES_TXFR_TASK_START", taskTenant, taskUser, "doParentStepOneA04", task.getId(), parentId, parentUuid));
@@ -272,7 +278,7 @@ public class ParentTaskTransferService
         TransferTaskChild task = new TransferTaskChild();
         task.setSourceURI(parentTask.getSourceURI());
         task.setParentTaskId(parentId);
-        task.setTaskId(parentTaskId);
+        task.setTaskId(topTaskId);
         task.setDestinationURI(parentTask.getDestinationURI());
         task.setStatus(TransferTaskStatus.ACCEPTED);
         task.setTenantId(parentTask.getTenantId());
@@ -337,6 +343,7 @@ public class ParentTaskTransferService
         task.setStatus(TransferTaskStatus.FAILED);
         task.setEndTime(Instant.now());
         task.setErrorMessage(e.getMessage());
+        log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7C", task.getId(), task.getUuid(), parent.getId(), parent.getUuid()));
         dao.updateTransferTask(task);
       }
     }
@@ -421,7 +428,7 @@ public class ParentTaskTransferService
    * Check to see if the top level TransferTask should be marked as finished.
    * If yes then update status.
    *
-   * @param topTaskId Id of top level TransferTask
+   * @param topTaskId ID of top level TransferTask
    */
   private void checkForComplete(int topTaskId) throws DAOException
   {
@@ -434,6 +441,7 @@ public class ParentTaskTransferService
       {
         topTask.setStatus(TransferTaskStatus.COMPLETED);
         topTask.setEndTime(Instant.now());
+        log.trace(LibUtils.getMsg("FILES_TXFR_TASK_COMPLETE1", topTaskId, topTask.getUuid()));
         dao.updateTransferTask(topTask);
       }
     }
