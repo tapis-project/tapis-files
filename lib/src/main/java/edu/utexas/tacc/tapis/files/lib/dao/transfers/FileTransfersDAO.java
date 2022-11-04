@@ -606,6 +606,19 @@ public class FileTransfersDAO {
         }
     }
 
+    public long getIncompleteParentCount(@NotNull long taskId) throws DAOException
+    {
+      ScalarHandler<Long> scalarHandler = new ScalarHandler<>();
+      QueryRunner runner = new QueryRunner();
+      String query = FileTransfersDAOStatements.GET_PARENT_TASK_INCOMPLETE_COUNT;
+      try (Connection connection = HikariConnectionPool.getConnection()) {
+        long count = runner.query(connection, query, scalarHandler, taskId);
+        return count;
+      } catch (SQLException ex) {
+        throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getIncompleteChildrenCount", taskId), ex);
+      }
+    }
+
     public long getIncompleteChildrenCount(@NotNull long taskId) throws DAOException
     {
         ScalarHandler<Long> scalarHandler = new ScalarHandler<>();

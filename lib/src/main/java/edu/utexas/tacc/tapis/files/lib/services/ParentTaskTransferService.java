@@ -436,8 +436,9 @@ public class ParentTaskTransferService
     // Check to see if all the children of a top task are complete. If so, update the top task.
     if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED))
     {
-      long incompleteCount = dao.getIncompleteChildrenCount(topTaskId);
-      if (incompleteCount == 0)
+      long incompleteParentCount = dao.getIncompleteParentCount(topTaskId);
+      long incompleteChildCount = dao.getIncompleteChildrenCount(topTaskId);
+      if (incompleteChildCount == 0 && incompleteParentCount == 0)
       {
         topTask.setStatus(TransferTaskStatus.COMPLETED);
         topTask.setEndTime(Instant.now());
