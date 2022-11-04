@@ -11,7 +11,6 @@ import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +25,7 @@ import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -137,12 +137,16 @@ public class ParentTaskTransferService
     UUID parentUuid = parentTask.getUuid();
 
     // If already in a terminal state then return
-    if (parentTask.isTerminal()) return parentTask;
+    if (parentTask.isTerminal())
+    {
+      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA01", parentId, parentUuid));
+      return parentTask;
+    }
 
     // Check permission
     if (!isPermitted(parentTask))
     {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", taskTenant, taskUser, "doParentStepOneA", parentId, parentUuid);
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", taskTenant, taskUser, "doParentStepOneA02", parentId, parentUuid);
       log.warn(msg);
       throw new ForbiddenException(msg);
     }
@@ -152,21 +156,27 @@ public class ParentTaskTransferService
     {
       // Update top level task status, start time
       TransferTask task = dao.getTransferTaskByID(parentTask.getTaskId());
-      if (task.isTerminal()) return parentTask;
+      if (task.isTerminal())
+      {
+        log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA03", parentId, parentUuid));
+        return parentTask;
+      }
       if (task.getStartTime() == null)
       {
+        log.trace(LibUtils.getMsg("FILES_TXFR_TASK_START", taskTenant, taskUser, "doParentStepOneA04", task.getId(), parentId, parentUuid));
         task.setStartTime(Instant.now());
         task.setStatus(TransferTaskStatus.IN_PROGRESS);
         dao.updateTransferTask(task);
       }
       //update parent task status, start time
+      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_START", taskTenant, taskUser, "doParentStepOneA05", parentId, parentUuid));
       parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
       parentTask.setStartTime(Instant.now());
       parentTask = dao.updateTransferTaskParent(parentTask);
     }
     catch (DAOException ex)
     {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskTenant, taskUser, "doParentStepOneA",
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskTenant, taskUser, "doParentStepOneA06",
                                    parentId, parentUuid, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
@@ -188,7 +198,6 @@ public class ParentTaskTransferService
     String srcId = srcUri.getSystemId();
     String srcPath = srcUri.getPath();
     String dstId = dstUri.getSystemId();
-
     try
     {
       if (srcUri.isTapisProtocol())
@@ -223,24 +232,32 @@ public class ParentTaskTransferService
         //TODO: Retries will break this, should delete anything in the DB if it is a retry?
         List<FileInfo> fileListing;
         // NOTE Treat all source system types the same. For S3 it will be all objects matching the srcPath as a prefix.
+        log.trace(LibUtils.getMsg("FILES_TXFR_LSR1", taskTenant, taskUser, "doParentStepOneA07", parentId, parentUuid, srcId, srcPath));
         fileListing = fileOpsService.lsRecursive(srcClient, srcPath, FileOpsService.MAX_RECURSION);
+        if (fileListing == null) fileListing = Collections.emptyList();
+        log.trace(LibUtils.getMsg("FILES_TXFR_LSR2", taskTenant, taskUser, "doParentStepOneA08", parentId, parentUuid, srcId, srcPath, fileListing.size()));
 
         // Create child tasks for each file or object to be transferred.
         List<TransferTaskChild> children = new ArrayList<>();
         long totalBytes = 0;
         for (FileInfo f : fileListing)
         {
-          log.debug("Processing file for child task. File: " + f);
+          log.trace(LibUtils.getMsg("FILES_TXFR_ADD_CHILD1", taskTenant, taskUser, "doParentStepOneA09", parentId, parentUuid, f));
           // If destination is of type S3 we skip directories
-          if (dstIsS3 && f.isDir()) continue;
+          if (dstIsS3 && f.isDir())
+          {
+            log.trace(LibUtils.getMsg("FILES_TXFR_SKIP_DIR", taskTenant, taskUser, "doParentStepOneA10", parentId, parentUuid, srcId, srcPath, dstId, f.getPath()));
+            continue;
+          }
           // Only include the bytes from entries that are not directories. Posix folders are --usually-- 4bytes but not always, so
           // it can make some weird totals that don't really make sense.
           if (!f.isDir()) totalBytes += f.getSize();
           TransferTaskChild child = new TransferTaskChild(parentTask, f, srcSystem);
-          log.debug("Adding child task: " + child);
           children.add(child);
+          log.trace(LibUtils.getMsg("FILES_TXFR_ADD_CHILD2", taskTenant, taskUser, "doParentStepOneA11", parentId, parentUuid, child));
         }
         // Update parent task status and totalBytes to be transferred
+        log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_STAGE", taskTenant, taskUser, "doParentStepOneA12", parentId, parentUuid, totalBytes));
         parentTask.setTotalBytes(totalBytes);
         parentTask.setStatus(TransferTaskStatus.STAGED);
         parentTask = dao.updateTransferTaskParent(parentTask);
@@ -287,8 +304,8 @@ public class ParentTaskTransferService
    */
   private Mono<TransferTaskParent> doErrorParentStepOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent)
   {
-    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7", parent.toString()));
-    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7", e));
+    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString()));
+    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7B", e.getMessage()));
     m.nack(false);
 
     // First update parent task, mark FAILED_OPT or FAILED

@@ -332,6 +332,7 @@ public class TransfersService
       try
       {
         // Persist the transfer task to the DB
+        log.trace(LibUtils.getMsgAuthR("FILES_TXFR_PERSIST_TASK", rUser, tag, elements.size()));
         TransferTask newTask = dao.createTransferTask(task, elements);
         // Put the transfer task onto the queue for asynchronous processing.
         for (TransferTaskParent parent : newTask.getParentTasks()) { publishParentTaskMessage(parent); }
@@ -529,6 +530,8 @@ public class TransfersService
       String m = mapper.writeValueAsString(task);
       OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, PARENT_QUEUE, m.getBytes());
       sender.sendWithPublishConfirms(Mono.just(message)).subscribe();
+      int childCount = task.getChildren() == null ? 0 : task.getChildren().size();
+      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_PUBLISHED", task.getTaskId(), childCount, m));
     }
     catch (Exception e)
     {
