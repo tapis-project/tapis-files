@@ -1,8 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
-public class FileTransfersDAOStatements {
-
-
+public class FileTransfersDAOStatements
+{
     //language=SQL
     public static final String GET_TASK_BY_UUID =
         "SELECT * FROM transfer_tasks where uuid = ?";
@@ -101,7 +100,6 @@ public class FileTransfersDAOStatements {
             RETURNING *
         """;
 
-
     //language=SQL
     public static final String UPDATE_CHILD_TASK =
         """
@@ -117,6 +115,12 @@ public class FileTransfersDAOStatements {
         """;
 
     //language=SQL
+    public static final String GET_PARENT_TASK_INCOMPLETE_COUNT =
+          "SELECT count(id) from transfer_tasks_parent " +
+                  "WHERE task_id = ? " +
+                  "AND status != 'COMPLETED' AND STATUS != 'FAILED_OPT' ";
+
+    //language=SQL
     public static final String GET_CHILD_TASK_INCOMPLETE_COUNT =
         "SELECT count(id) from transfer_tasks_child " +
             "WHERE task_id = ? " +
@@ -127,7 +131,6 @@ public class FileTransfersDAOStatements {
         "SELECT count(id) from transfer_tasks_child " +
             "WHERE parent_task_id = ? " +
             "AND status != 'COMPLETED' AND STATUS != 'FAILED_OPT' ";
-
 
     //language=SQL
     public static final String UPDATE_PARENT_TASK_SIZE =
@@ -158,7 +161,6 @@ public class FileTransfersDAOStatements {
                     WHERE uuid = ? 
                     RETURNING *
         """;
-
 
     //language=SQL
     public static final String INSERT_TASK =
@@ -194,8 +196,8 @@ public class FileTransfersDAOStatements {
         """
             UPDATE transfer_tasks_child set bytes_transferred = ? WHERE id = ?
         """;
-  //language=SQL
-  public static final String DELETE_ALL_TRANSFER_TASKS_FOR_USER =
+    //language=SQL
+    public static final String DELETE_ALL_TRANSFER_TASKS_FOR_USER =
           """
               DELETE FROM transfer_tasks WHERE tenant_id = ? AND username = ?;
           """;
