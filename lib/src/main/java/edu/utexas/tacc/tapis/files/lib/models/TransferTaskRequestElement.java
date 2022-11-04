@@ -29,6 +29,6 @@ public class TransferTaskRequestElement
   public boolean isDestSharedAppCtx() { return destSharedAppCtx; }
   public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; }
 
-//  @Override
-//  public String toString() {return TapisUtils.toString(this);}
+  @Override
+  public String toString() {return TapisUtils.toString(this);}
 }

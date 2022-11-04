@@ -23,6 +23,6 @@ public class TransferTaskRequest
 
   public void setElements(List<TransferTaskRequestElement> elements) { this.elements = elements; }
 
-//  @Override
-//  public String toString() {return TapisUtils.toString(this);}
+  @Override
+  public String toString() {return TapisUtils.toString(this);}
 }
