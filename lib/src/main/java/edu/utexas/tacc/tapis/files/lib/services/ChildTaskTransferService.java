@@ -165,24 +165,32 @@ public class ChildTaskTransferService
   private TransferTaskChild stepOne(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
     log.info("***** DOING stepOne **** {}", taskChild);
+    // Update parent task and then child task
     try
     {
-      // Make sure it hasn't been cancelled already
       taskChild = dao.getTransferTaskChild(taskChild.getUuid());
-      if (taskChild.isTerminal()) return taskChild;
-
-      taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
-      taskChild.setStartTime(Instant.now());
-      dao.updateTransferTaskChild(taskChild);
-
       TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-      // If the parent task has not been set to IN_PROGRESS do it here.
-      if (!parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS))
+      // If the parent task not in final state and not yet set to IN_PROGRESS do it here.
+      if (!parentTask.isTerminal() && !parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS))
       {
         parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
-        parentTask.setStartTime(Instant.now());
+        if (parentTask.getStartTime() == null) parentTask.setStartTime(Instant.now());
         dao.updateTransferTaskParent(parentTask);
       }
+
+      // If cancelled or failed set the end time, and we are done
+      if (taskChild.isTerminal())
+      {
+        taskChild.setEndTime(Instant.now());
+        taskChild = dao.updateTransferTaskChild(taskChild);
+        return taskChild;
+      }
+
+      // Ready to start. Update child task status and start time.
+      taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
+      taskChild.setStartTime(Instant.now());
+      taskChild = dao.updateTransferTaskChild(taskChild);
+
       return taskChild;
     }
     catch (DAOException ex)
@@ -205,8 +213,6 @@ public class ChildTaskTransferService
   private TransferTaskChild stepTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException
   {
     boolean srcIsLinux = false, dstIsLinux = false; // Used for properly handling update of exec perm
-    //If we are cancelled/failed we can skip the transfer
-    if (taskChild.isTerminal()) return taskChild;
 
     TapisSystem sourceSystem = null;
     TapisSystem destSystem = null;
@@ -214,9 +220,17 @@ public class ChildTaskTransferService
     IRemoteDataClient destClient;
     log.info("***** DOING stepTwo **** {}", taskChild);
 
-    // Update task in DB to IN_PROGRESS and increment the retries on this particular task
     try
     {
+      // If cancelled or failed set the end time, and we are done
+      if (taskChild.isTerminal())
+      {
+        taskChild.setEndTime(Instant.now());
+        taskChild = dao.updateTransferTaskChild(taskChild);
+        return taskChild;
+      }
+
+      // Update task in DB to IN_PROGRESS and increment the retries on this particular task
       taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
       taskChild.setRetries(taskChild.getRetries() + 1);
       taskChild = dao.updateTransferTaskChild(taskChild);
@@ -367,9 +381,15 @@ public class ChildTaskTransferService
   {
     // If it cancelled/failed somehow, just push it through unchanged.
     log.info("***** DOING stepThree **** {}", taskChild);
-    if (taskChild.isTerminal()) return taskChild;
     try
     {
+      // If we are cancelled/failed, update end time, and we are done
+      if (taskChild.isTerminal())
+      {
+        taskChild.setEndTime(Instant.now());
+        taskChild = dao.updateTransferTaskChild(taskChild);
+        return taskChild;
+      }
       TransferTaskChild updatedChildTask = dao.getChildTaskByUUID(taskChild.getUuid());
       updatedChildTask.setStatus(TransferTaskStatus.COMPLETED);
       updatedChildTask.setEndTime(Instant.now());
@@ -447,6 +467,7 @@ public class ChildTaskTransferService
       child.setStatus(TransferTaskStatus.FAILED);
     }
     child.setErrorMessage(cause.getMessage());
+    child.setEndTime(Instant.now());
     try
     {
       child = dao.updateTransferTaskChild(child);
@@ -486,6 +507,7 @@ public class ChildTaskTransferService
           if (topTask == null) return Mono.empty();
           topTask.setStatus(TransferTaskStatus.FAILED);
           topTask.setErrorMessage(cause.getMessage());
+          topTask.setEndTime(Instant.now());
           log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR13", topTask.getId(), topTask.getUuid(), parent.getId(), parent.getUuid(), child.getId(), child.getUuid()));
           dao.updateTransferTask(topTask);
         }
