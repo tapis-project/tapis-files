@@ -410,9 +410,10 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"))).thenReturn(testSystemDisabled);
     when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"))).thenReturn(testSystemSSH);
 //    when(systemsClient.getSystemWithCredentials(eq("testSystemNotExist"), any())).thenThrow(new NotFoundException("Sys not found: testSystemNotExist"));
+    addTestFilesToSystem(systemsClient.getSystemWithCredentials("testSystemSSH"), "dir1/testfile1.txt", 1024);
 
-    // Attempt to retrieve a folder
-    Response response = target("/v3/files/content/testSystemS3/BAD-PATH/")
+    // Attempt to retrieve a folder without using zip
+    Response response = target("/v3/files/content/testSystemSSH/dir1")
             .request()
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
             .get();

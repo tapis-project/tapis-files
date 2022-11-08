@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 
@@ -15,6 +16,8 @@ public interface IRemoteDataClient
   String getOboTenant();
   String getOboUser();
   String getSystemId();
+  SystemTypeEnum getSystemType();
+  String getSystemRootDir();
 
   /**
    * Record a reservation for a client. Only used for SSH clients.

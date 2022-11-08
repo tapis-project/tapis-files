@@ -14,6 +14,7 @@ import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
@@ -26,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
@@ -262,6 +264,52 @@ public class FileOpsService
     // Make the call that does recursion
     listDirectoryRecurse(client, path, listing, 0, Math.min(depth, MAX_RECURSION));
     return listing;
+  }
+
+  /**
+   * Get FileInfo for a path
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param path - path on system relative to system rootDir
+   * @param impersonationId - use provided Tapis username instead of oboUser
+   * @param sharedAppCtx - Indicates that request is part of a shared app context.
+   * @return FileInfo
+   * @throws NotFoundException - requested path not found
+   */
+  public FileInfo getFileInfo(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                              String impersonationId, boolean sharedAppCtx)
+          throws WebApplicationException
+  {
+    String opName = "getFileInfo";
+    String oboTenant = rUser.getOboTenantId();
+    String oboUser = rUser.getOboUserId();
+    String sysId = sys.getId();
+    // Get path relative to system rootDir and protect against ../..
+    Path relativePath = PathUtils.getRelativePath(path);
+    // If sharedAppCtx set, confirm that it is allowed (can throw ForbiddenException)
+    if (sharedAppCtx) checkSharedAppCtxAllowed(rUser, opName, sysId, path);
+    // Reserve a client connection, use it to perform the operation and then release it
+    IRemoteDataClient client = null;
+    try
+    {
+      // If not skipping auth then check for READ/MODIFY permission or share
+      if (!sharedAppCtx) checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
+      // Get the connection and increment the reservation count
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client.reserve();
+      return client.getFileInfo(path);
+    }
+    catch (IOException | ServiceException ex)
+    {
+      String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, "ls", sysId, path, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
+    }
+    finally
+    {
+      // Release the connection
+      if (client != null) client.release();
+    }
   }
 
   /**
@@ -615,6 +663,16 @@ public class FileOpsService
     // If sharedAppCtx set, confirm that it is allowed
     // This method will throw ForbiddenException if not allowed.
     if (sharedAppCtx) checkSharedAppCtxAllowed(rUser, opName, sys.getId(), path);
+    // If rootDir + path would result in all files then reject
+    String relativePath = PathUtils.getRelativePath(path).toString();
+    String rootDir = sys.getRootDir();
+    if ((StringUtils.isBlank(rootDir) || rootDir.equals("/")) &&
+        (StringUtils.isBlank(relativePath) || relativePath.equals("/")))
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_CONT_NOZIP", rUser, sys.getId(), rootDir, path);
+      throw new BadRequestException(msg);
+    }
+
     StreamingOutput outStream = output -> {
       try
       {
@@ -1026,6 +1084,8 @@ public class FileOpsService
   {
     List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0);
     listing.addAll(currentListing);
+    // If client is S3 we are done.
+    if (SystemTypeEnum.S3.equals(client.getSystemType())) return;
     for (FileInfo fileInfo: currentListing)
     {
       if (fileInfo.isDir() && depth < maxDepth)

@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
 import java.io.IOException;
@@ -25,15 +27,23 @@ public class HTTPClient implements IRemoteDataClient {
   @Override
   public void release() {}
 
-    public String getOboTenant() { return oboTenant; }
-    public String getOboUser() { return oboUser; }
-    // Since no system use srcDstURIs instead
-    public String getSystemId() { return srcDstURIs; }
-    private final String oboTenant;
-    private final String oboUser;
-    private final String srcDstURIs;
+  @Override
+  public String getOboTenant() { return oboTenant; }
+  @Override
+  public String getOboUser() { return oboUser; }
+  @Override
+  public SystemTypeEnum getSystemType() { return SystemTypeEnum.HTTP; }
+  @Override
+  public String getSystemRootDir() { return "/"; }
+  // Since no system use srcDstURIs instead
+  @Override
+  public String getSystemId() { return srcDstURIs; }
 
-    public HTTPClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull String srcUri, @NotNull String dstUri) {
+  private final String oboTenant;
+  private final String oboUser;
+  private final String srcDstURIs;
+
+  public HTTPClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull String srcUri, @NotNull String dstUri) {
       oboTenant = oboTenant1;
       oboUser = oboUser1;
       srcDstURIs = String.format("SRC:%s,DST:%s", srcUri, dstUri);

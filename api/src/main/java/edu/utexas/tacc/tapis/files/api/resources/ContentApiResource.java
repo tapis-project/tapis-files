@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
@@ -20,6 +21,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.QueryParam;
@@ -81,11 +83,11 @@ public class ContentApiResource extends BaseFileOpsResource
    */
   @GET
   @ManagedAsync
-  @Path("/{systemId}/{path:.+}")
+  @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
   public void getContents(@PathParam("systemId") String systemId,
                           @PathParam("path") String path,
                           @HeaderParam("range") HeaderByteRange range,
-                          @QueryParam("zip") boolean zip,
+                          @QueryParam("zip") @DefaultValue("false") boolean zip,
                           @HeaderParam("more") @Min(1) Long startPage,
                           @QueryParam("impersonationId") String impersonationId,
                           @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
@@ -96,19 +98,9 @@ public class ContentApiResource extends BaseFileOpsResource
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 //    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
 //    // Utility method returns null if all OK and appropriate error response if there was a problem.
-//    // TODO: This causes TestContentsRoutes to fail, but Routes tests work for Ops and Txfrs
+//    // NOTE: This causes TestContentsRoutes to fail, but Routes tests work for Ops and Txfrs
 //    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-////    // Try this out for Tests, might work using mockito static ( result - did not work)
-////    try {TapisThreadLocal.push();} catch (CloneNotSupportedException cne) {}
-////    threadContext = TapisThreadLocal.pop();
-//    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
-//    // If there is a problem throw an exception
-//    if (resp1 != null)
-//    {
-//      String msg = LibUtils.getMsgAuth("FILES_CONT_ERR", user, systemId, path, "Unable to validate identity/request attributes");
-//      // checkContext logs an error, so no need to log here.
-//      throw new WebApplicationException(msg);
-//    }
+// ...
 
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
@@ -131,32 +123,37 @@ public class ContentApiResource extends BaseFileOpsResource
     String contentDisposition = null;
     StreamingOutput outStream = null;
     String mediaType = null;
-    // Determine the target file name (.zip will get added for zipStream)
-    java.nio.file.Path filepath = Paths.get(path);
-    String filename = filepath.getFileName().toString();
+    // Determine the target file name to use in ContentDisposition (.zip will get added for zipStream)
+    java.nio.file.Path inPath = Paths.get(path);
+    java.nio.file.Path  filePath = inPath.getFileName();
+    String fileName = (filePath == null) ? "root" : filePath.getFileName().toString();
     // Make a different service call depending on type of response:
     //  - zipStream, byteRangeStream, paginatedStream, fullStream
     if (zip)
     {
       // Send a zip stream. This can handle a path ending in /
       outStream = fileOpsService.getZipStream(rUser, sys, path, impersonationId, sharedAppCtx);
-      String newName = FilenameUtils.removeExtension(filename) + ".zip";
+      String newName = FilenameUtils.removeExtension(fileName) + ".zip";
       contentDisposition = String.format("attachment; filename=%s", newName);
       mediaType = MediaType.APPLICATION_OCTET_STREAM;
     }
     else
     {
-      // So it will not be a zip. Check that path does not end with /.
-      // If it ends with '/' then it is a bad request.
-      if (path.endsWith("/"))
+      // Make sure the requested path is not a directory
+      FileInfo fileInfo = fileOpsService.getFileInfo(rUser, sys, path, impersonationId, sharedAppCtx);
+      if (fileInfo == null)
       {
-        throw new BadRequestException(LibUtils.getMsgAuth("FILES_CONT_BAD", user, systemId, path));
+        throw new NotFoundException(LibUtils.getMsgAuth("FILES_CONT_NO_FILEINFO", user, systemId, path));
+      }
+      if (fileInfo.isDir())
+      {
+        throw new BadRequestException(LibUtils.getMsgAuth("FILES_CONT_DIR_NOZIP", user, systemId, path));
       }
       // Send a byteRange, page blocks or the full stream.
       if (range != null)
       {
         outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range, impersonationId, sharedAppCtx);
-        contentDisposition = String.format("attachment; filename=%s", filename);
+        contentDisposition = String.format("attachment; filename=%s", fileName);
         mediaType = MediaType.TEXT_PLAIN;
       }
       else if (!Objects.isNull(startPage))
@@ -168,7 +165,7 @@ public class ContentApiResource extends BaseFileOpsResource
       else
       {
         outStream = fileOpsService.getFullStream(rUser, sys, path, impersonationId, sharedAppCtx);
-        contentDisposition = String.format("attachment; filename=%s", filename);
+        contentDisposition = String.format("attachment; filename=%s", fileName);
         mediaType = MediaType.APPLICATION_OCTET_STREAM;
       }
     }
