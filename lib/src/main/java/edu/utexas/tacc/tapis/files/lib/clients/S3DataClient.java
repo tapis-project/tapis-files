@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.UriBuilder;
 
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
@@ -75,6 +76,11 @@ public class S3DataClient implements IRemoteDataClient
   public String getOboTenant() { return oboTenant; }
   public String getOboUser() { return oboUser; }
   public String getSystemId() { return system.getId(); }
+  @Override
+  public String getSystemRootDir() { return rootDir; }
+  @Override
+  public SystemTypeEnum getSystemType() { return system.getSystemType(); }
+
 
   private final String oboTenant;
   private final String oboUser;

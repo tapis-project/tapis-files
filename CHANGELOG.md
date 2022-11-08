@@ -11,7 +11,7 @@ https://tapis-project.github.io/live-docs
 ---------------------------------------------------------------------------
 ## 1.2.7 - 2022-11-07
 
-Incremental improvements and bug fix.
+Incremental improvements and bug fixex.
 
 ### New features:
 - Invalidate SSH cache entry when there is an error. Error may get resolved.
@@ -19,6 +19,7 @@ Incremental improvements and bug fix.
 
 ### Bug fixes:
 - When there are multiple transfer elements in a request and one finishes quickly it is possible for some to be missed.
+- Fix problems with zip downloads. Require zip when path is directory. Disallow zip if request would include all files on host.
 
 ---------------------------------------------------------------------------
 ## 1.2.6 - 2022-10-20

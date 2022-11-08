@@ -9,6 +9,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHExecChannel;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.io.FilenameUtils;
@@ -59,11 +60,17 @@ public class SSHDataClient implements ISSHDataClient
   private final String effectiveUserId;
   private final String rootDir;
   private final String systemId;
+  private final TapisSystem system;
   private final SSHConnectionHolder connectionHolder;
 
   public String getOboTenant() { return oboTenant; }
   public String getOboUser() { return oboUser; }
   public String getSystemId() { return systemId; }
+  @Override
+  public String getSystemRootDir() { return rootDir; }
+  @Override
+  public SystemTypeEnum getSystemType() { return system.getSystemType(); }
+
   public String getEffectiveUserId() { return effectiveUserId; }
   public String getHost() { return host; }
 
@@ -79,6 +86,7 @@ public class SSHDataClient implements ISSHDataClient
     rootDir = PathUtils.getAbsolutePath(sys.getRootDir(), "/").toString();
     host = sys.getHost();
     effectiveUserId = sys.getEffectiveUserId();
+    system = sys;
     systemId = sys.getId();
     connectionHolder = holder;
   }

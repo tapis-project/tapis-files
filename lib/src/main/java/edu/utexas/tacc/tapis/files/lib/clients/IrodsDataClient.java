@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -49,6 +50,7 @@ public class IrodsDataClient implements IRemoteDataClient
   private final String oboTenantId;
   private final String oboUsername;
   private final TapisSystem system;
+  private final String systemId;
   private final String irodsZone;
   private final String homeDir;
   private final String rootDir;
@@ -60,6 +62,7 @@ public class IrodsDataClient implements IRemoteDataClient
     oboTenantId = oboTenant1;
     oboUsername = oboUser1;
     system = system1;
+    systemId = system1.getId();
     rootDir = system1.getRootDir();
     Path tmpPath = Paths.get(rootDir);
     irodsZone = tmpPath.subpath(0, 1).toString();
@@ -82,9 +85,13 @@ public class IrodsDataClient implements IRemoteDataClient
   }
 
   @Override
-  public String getSystemId() {
-    return system.getId();
-  }
+  public String getSystemId() { return systemId; }
+
+  @Override
+  public String getSystemRootDir() { return rootDir; }
+
+  @Override
+  public SystemTypeEnum getSystemType() { return system.getSystemType(); }
 
     @Override
     public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException {
@@ -241,7 +248,7 @@ public class IrodsDataClient implements IRemoteDataClient
             String msg = LibUtils.getMsg("FILES_IRODS_MOVE_ERROR_DEST_EXISTS", oboTenantId, oboUsername, cleanedRelativeNewPath.toString());
             throw new IOException(msg, ex);
         } catch (JargonException ex) {
-            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, system.getId());
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, systemId);
             throw new IOException(msg, ex);
         }
     }
@@ -278,13 +285,13 @@ public class IrodsDataClient implements IRemoteDataClient
                 transferControlBlock
             );
         } catch (DataNotFoundException ex) {
-            String msg = LibUtils.getMsg("FILES_IRODS_FILE_NOT_FOUND_ERROR", system.getId(), oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
+            String msg = LibUtils.getMsg("FILES_IRODS_FILE_NOT_FOUND_ERROR", systemId, oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
             throw new NotFoundException(msg, ex);
         } catch (JargonFileOrCollAlreadyExistsException ex) {
             String msg = LibUtils.getMsg("FILES_IRODS_MOVE_ERROR_DEST_EXISTS", oboTenantId, oboUsername, cleanedRelativeDestPath.toString());
             throw new IOException(msg, ex);
         } catch (JargonException ex) {
-            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, system.getId());
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenantId, "", oboTenantId, oboUsername, systemId);
             throw new IOException(msg, ex);
         }
     }
@@ -328,13 +335,19 @@ public class IrodsDataClient implements IRemoteDataClient
     try
     {
       IRODSFile collection = fileFactory.instanceIRODSFile(cleanedAbsolutePath.toString());
+      boolean pathExists = collection.exists();
+      if (!pathExists)
+      {
+        String msg = LibUtils.getMsg("FILES_IRODS_PATH_NOT_FOUND", oboTenantId, oboUsername, systemId, cleanedAbsolutePath.toString());
+        throw new NotFoundException(msg);
+      }
       fileInfo = new FileInfo();
       fileInfo.setSize(collection.length());
       fileInfo.setName(collection.getName());
       Path tmpPath = Paths.get(collection.getPath());
       Path relPath = rootDirPath.relativize(tmpPath);
       fileInfo.setPath(StringUtils.removeStart(relPath.toString(), "/"));
-      fileInfo.setUrl(PathUtils.getTapisUrlFromPath(fileInfo.getPath(), system.getId()));
+      fileInfo.setUrl(PathUtils.getTapisUrlFromPath(fileInfo.getPath(), systemId));
       fileInfo.setLastModified(Instant.ofEpochSecond(collection.lastModified()));
       if (collection.isFile()) fileInfo.setType(FileInfo.FILETYPE_FILE);
       else fileInfo.setType(FileInfo.FILETYPE_DIR);
@@ -367,7 +380,7 @@ public class IrodsDataClient implements IRemoteDataClient
     {
       if (ex.getMessage().contains("FileNotFound"))
       {
-        String msg = LibUtils.getMsg("FILES_IRODS_PATH_NOT_FOUND", oboTenantId, oboUsername, system.getId(), cleanedAbsolutePath.toString());
+        String msg = LibUtils.getMsg("FILES_IRODS_PATH_NOT_FOUND", oboTenantId, oboUsername, systemId, cleanedAbsolutePath.toString());
         throw new NotFoundException(msg);
       }
       else
