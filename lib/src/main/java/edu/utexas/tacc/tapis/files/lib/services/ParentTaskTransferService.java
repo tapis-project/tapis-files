@@ -11,6 +11,7 @@ import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -137,48 +138,58 @@ public class ParentTaskTransferService
     Integer topTaskId = parentTask.getTaskId();
     UUID parentUuid = parentTask.getUuid();
 
-    // If already in a terminal state then return
-    if (parentTask.isTerminal())
-    {
-      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA01", topTaskId, parentId, parentTask.getStatus(), parentUuid));
-      return parentTask;
-    }
-
-    // Check permission
-    if (!isPermitted(parentTask))
-    {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", taskTenant, taskUser, "doParentStepOneA02", parentId, parentUuid);
-      log.warn(msg);
-      throw new ForbiddenException(msg);
-    }
-
-    // Update the top level task first, if it is not already updated with the startTime
+    // Update the top level task and then the parent task
     try
     {
-      // Update top level task status, start time
-      TransferTask task = dao.getTransferTaskByID(topTaskId);
-
-      // TODO BUG TURNS OUT this can be incorrect. It sometimes interrupts final processing of a parent transfer. Where is this updated?
-      // If top task in terminal state then return
-      if (task.isTerminal())
+      // Update top level task.
+      TransferTask topTask = dao.getTransferTaskByID(topTaskId);
+      if (topTask.getStartTime() == null)
       {
-        log.trace(LibUtils.getMsg("FILES_TXFR_TOP_TASK_TERM", taskTenant, taskUser, "doParentStepOneA03", topTaskId, task.getStatus(), parentId, parentTask.getStatus(), parentUuid));
+        log.trace(LibUtils.getMsg("FILES_TXFR_TASK_START", taskTenant, taskUser, "doParentStepOneA04", topTask.getId(), parentId, parentUuid));
+        topTask.setStartTime(Instant.now());
+        // Update status unless already in a terminal state (such as cancelled)
+        if (!topTask.isTerminal()) topTask.setStatus(TransferTaskStatus.IN_PROGRESS);
+        dao.updateTransferTask(topTask);
+      }
+
+      // If top task in terminal state then return
+      if (topTask.isTerminal())
+      {
+        log.trace(LibUtils.getMsg("FILES_TXFR_TOP_TASK_TERM", taskTenant, taskUser, "doParentStepOneA03", topTaskId, topTask.getStatus(), parentId, parentTask.getStatus(), parentUuid));
+        topTask.setEndTime(Instant.now());
+        dao.updateTransferTask(topTask);
         return parentTask;
       }
 
-      // If needed update top task start time and status
-      if (task.getStartTime() == null)
-      {
-        log.trace(LibUtils.getMsg("FILES_TXFR_TASK_START", taskTenant, taskUser, "doParentStepOneA04", task.getId(), parentId, parentUuid));
-        task.setStartTime(Instant.now());
-        task.setStatus(TransferTaskStatus.IN_PROGRESS);
-        dao.updateTransferTask(task);
-      }
-      //update parent task status, start time
+      // Update parent task
       log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_START", taskTenant, taskUser, "doParentStepOneA05", parentId, parentUuid));
-      parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
       parentTask.setStartTime(Instant.now());
+      // Update status unless already in a terminal state (such as cancelled)
+      if (!parentTask.isTerminal()) parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
       parentTask = dao.updateTransferTaskParent(parentTask);
+
+      // Check permission. If not permitted update status to FAILED and throw an exception
+      if (!isPermitted(parentTask))
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", taskTenant, taskUser, "doParentStepOneA02", parentId, parentUuid);
+        log.warn(msg);
+        if (!parentTask.isTerminal())
+        {
+          parentTask.setEndTime(Instant.now());
+          parentTask.setStatus(TransferTaskStatus.FAILED);
+        }
+        dao.updateTransferTaskParent(parentTask);
+        throw new ForbiddenException(msg);
+      }
+
+      // If already in a terminal state then set end time and return
+      if (parentTask.isTerminal())
+      {
+        log.warn(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA01", topTaskId, parentId, parentTask.getStatus(), parentUuid));
+        parentTask.setEndTime(Instant.now());
+        parentTask = dao.updateTransferTaskParent(parentTask);
+        return parentTask;
+      }
     }
     catch (DAOException ex)
     {
@@ -187,6 +198,7 @@ public class ParentTaskTransferService
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
+
 
     // =======================================================================
     // Now for the main work of creating the child tasks and publishing them
@@ -328,23 +340,23 @@ public class ParentTaskTransferService
       if (parent == null) return Mono.empty();
 
       // Now update the top level task
-      TransferTask task = dao.getTransferTaskByID(parent.getTaskId());
+      TransferTask topTask = dao.getTransferTaskByID(parent.getTaskId());
       // This should also not happen, it means that the top task was not in the database.
-      if (task == null) return Mono.empty();
+      if (topTask == null) return Mono.empty();
 
       // If parent is optional we need to check to see if top task status should be updated
       // else parent is required so update top level task to FAILED
       if (parent.isOptional())
       {
-        checkForComplete(task.getId());
+        checkForComplete(topTask.getId());
       }
       else
       {
-        task.setStatus(TransferTaskStatus.FAILED);
-        task.setEndTime(Instant.now());
-        task.setErrorMessage(e.getMessage());
-        log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7C", task.getId(), task.getUuid(), parent.getId(), parent.getUuid()));
-        dao.updateTransferTask(task);
+        topTask.setStatus(TransferTaskStatus.FAILED);
+        topTask.setEndTime(Instant.now());
+        topTask.setErrorMessage(e.getMessage());
+        log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7C", topTask.getId(), topTask.getUuid(), parent.getId(), parent.getUuid()));
+        dao.updateTransferTask(topTask);
       }
     }
     catch (DAOException ex)
