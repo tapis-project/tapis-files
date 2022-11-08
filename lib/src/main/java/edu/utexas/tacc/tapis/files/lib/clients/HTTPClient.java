@@ -32,7 +32,7 @@ public class HTTPClient implements IRemoteDataClient {
   @Override
   public String getOboUser() { return oboUser; }
   @Override
-  public SystemTypeEnum getSystemType() { return SystemTypeEnum.HTTP; }
+  public SystemTypeEnum getSystemType() { return null; }
   @Override
   public String getSystemRootDir() { return "/"; }
   // Since no system use srcDstURIs instead
