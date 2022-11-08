@@ -1019,11 +1019,12 @@ public class FileOpsService
     // If not skipping then check for READ/MODIFY permission or share
     if (!sharedAppCtx) checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
 
-    String cleanedPath = FilenameUtils.normalize(path);
-    cleanedPath = StringUtils.removeStart(cleanedPath, "/");
-    if (StringUtils.isEmpty(cleanedPath)) cleanedPath = "/";
+    String cleanedRelativePath = FilenameUtils.normalize(path);
+    if (StringUtils.isEmpty(cleanedRelativePath)) cleanedRelativePath = "/";
+    cleanedRelativePath = StringUtils.prependIfMissing(cleanedRelativePath, "/");
 
     IRemoteDataClient client = null;
+    // Create an output stream and start adding to it
     try (ZipOutputStream zipStream = new ZipOutputStream(outputStream))
     {
       // Get a remoteDataClient to do the listing and stream contents
@@ -1036,9 +1037,14 @@ public class FileOpsService
         // Always add an entry for a dir to be sure empty directories are included
         if (fileInfo.isDir())
         {
-          String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
-          Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
-          ZipEntry entry = new ZipEntry(StringUtils.appendIfMissing(pth.toString(), "/"));
+          // To relativize we need a leading slash
+          String tmpPath = StringUtils.prependIfMissing(fileInfo.getPath(), "/");
+          Path pth = Paths.get(cleanedRelativePath);
+          pth = pth.relativize(Paths.get(tmpPath));
+          // For final entry we do not want the leading slash and since it is a dir we want a trailing slash
+          String entryPath = StringUtils.removeStart(pth.toString(), "/");
+          entryPath = StringUtils.appendIfMissing(entryPath, "/");
+          ZipEntry entry = new ZipEntry(entryPath);
           zipStream.putNextEntry(entry);
           zipStream.closeEntry();
         }
@@ -1046,9 +1052,13 @@ public class FileOpsService
         {
           try (InputStream inputStream = getAllBytes(rUser, sys, fileInfo.getPath(), impersonationId, sharedAppCtx))
           {
-            String tmpPath = StringUtils.removeStart(fileInfo.getPath(), "/");
-            Path pth = Paths.get(cleanedPath).relativize(Paths.get(tmpPath));
-            ZipEntry entry = new ZipEntry(pth.toString());
+            // To relativize we need a leading slash
+            String tmpPath = StringUtils.prependIfMissing(fileInfo.getPath(), "/");
+            Path pth = Paths.get(cleanedRelativePath);
+            pth = pth.relativize(Paths.get(tmpPath));
+            // For final entry we do not want the leading slash
+            String entryPath = StringUtils.removeStart(pth.toString(), "/");
+            ZipEntry entry = new ZipEntry(entryPath);
             zipStream.putNextEntry(entry);
             inputStream.transferTo(zipStream);
             zipStream.closeEntry();
