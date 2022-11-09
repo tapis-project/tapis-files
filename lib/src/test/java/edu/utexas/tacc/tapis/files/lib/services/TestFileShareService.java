@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
@@ -9,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
@@ -27,6 +29,7 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
@@ -94,7 +97,7 @@ public class TestFileShareService
     testSystemSSH.setAuthnCredential(creds);
     testSystemSSH.setHost("localhost");
     testSystemSSH.setPort(2222);
-    testSystemSSH.setRootDir("/data/home/testuser/");
+    testSystemSSH.setRootDir("/data/home/testuser");
     testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     testSystemSSH.setEffectiveUserId(testUser1);
   }
@@ -157,10 +160,10 @@ public class TestFileShareService
     }
 
   // ===============================================
-  // Test basic sharing of a single path
+  // Test basic sharing of various paths
   // ===============================================
   @Test
-  public void testSharePath() throws Exception
+  public void testSharePaths() throws Exception
   {
     // Set up the mocked systemsCache
     when(systemsCache.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
@@ -168,85 +171,9 @@ public class TestFileShareService
     // Get the system
     TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser1, systemsCache, "testSystemSSH");
     Assert.assertNotNull(tmpSys);
-    String sysId = tmpSys.getId();
-
-    // Path to file used in testing
-    String filePathStr = "/dir1/dir2/test1.txt";
-    // Grant testUser full perms
-    permsService.grantPermission(devTenant, testUser1, sysId, filePathStr, Permission.MODIFY);
-    permsService.grantPermission(devTenant, testUser1, sysId, filePathStr, Permission.READ);
-
-    // Create file at path
-    InputStream in = Utils.makeFakeFile(10*1024);
-    fileOpsService.upload(rTestUser1, tmpSys, filePathStr, in);
-
-    // Clean up any previous shares using recurse=true
-    fileShareService.removeAllSharesForPath(rTestUser1, sysId, filePathStr, true);
-
-    // isSharedWithUser should return false
-//    Assert.assertNull(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
-    Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
-
-    // Check that testUser can see the file and testUser2 cannot
-    fileOpsService.ls(rTestUser1, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
-    boolean pass = false;
-    try
-    {
-      fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
-    }
-    catch (ForbiddenException e) { pass = true; }
-    Assert.assertTrue(pass, "User testUser2 should not be able to list path");
-
-    // Create set of users for sharing
-    var userSet= Collections.singleton(testUser2);
-
-    // Get shareInfo. Should be empty
-    ShareInfo shareInfo = fileShareService.getShareInfo(rTestUser1, sysId, filePathStr);
-    Assert.assertNotNull(shareInfo);
-    Assert.assertNotNull(shareInfo.getUserSet());
-    Assert.assertFalse(shareInfo.isPublic());
-    Assert.assertTrue(shareInfo.getUserSet().isEmpty());
-    // Share file with testuser2
-    fileShareService.sharePath(rTestUser1, sysId, filePathStr, userSet);
-    // Get shareInfo for file. Should be shared with 1 user, testuser2
-    shareInfo = fileShareService.getShareInfo(rTestUser1, sysId, filePathStr);
-    Assert.assertNotNull(shareInfo);
-    Assert.assertNotNull(shareInfo.getUserSet());
-    Assert.assertFalse(shareInfo.isPublic());
-    Assert.assertFalse(shareInfo.getUserSet().isEmpty());
-    Assert.assertEquals(shareInfo.getUserSet().size(), 1);
-    Assert.assertTrue(shareInfo.getUserSet().contains(testUser2));
-
-    // isSharedWithUser should return true
-//    Assert.assertNotNull(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
-    Assert.assertTrue(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
-
-    // Check that testUser and testUser2 can now see the file
-    fileOpsService.ls(rTestUser1, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
-    fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
-
-    // Remove share.
-    fileShareService.unSharePath(rTestUser1, sysId, filePathStr, userSet);
-    // Get shareInfo. Should be empty.
-    shareInfo = fileShareService.getShareInfo(rTestUser1, sysId, filePathStr);
-    Assert.assertNotNull(shareInfo);
-    Assert.assertNotNull(shareInfo.getUserSet());
-    Assert.assertFalse(shareInfo.isPublic());
-    Assert.assertTrue(shareInfo.getUserSet().isEmpty());
-
-    // isSharedWithUser should return false
-//    Assert.assertNull(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
-    Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tmpSys, filePathStr, testUser2));
-
-    // Check that once again testUser can see the file and testUser2 cannot
-    fileOpsService.ls(rTestUser1, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
-    pass = false;
-    try
-    {
-      fileOpsService.ls(rTestUser2, tmpSys, filePathStr, 1, 0, nullImpersonationId, sharedAppCtxFalse);
-    }
-    catch (ForbiddenException e) { pass = true; }
-    Assert.assertTrue(pass, "User testUser2 should not be able to list path");
+    testSharingOfPath(tmpSys, "/", "test1.txt");
+    testSharingOfPath(tmpSys, "", "test1.txt");
+    testSharingOfPath(tmpSys, "/dir1/dir2/test1.txt", null);
   }
 
   // ===============================================
@@ -355,5 +282,119 @@ public class TestFileShareService
     Assert.assertTrue(fileShareService.isSharedWithUser(rTestUser1, tmpSys, filePathStr, testUser3));
     fileShareService.removeAllSharesForPath(rTestUser1, sysId, filePathStr, false);
     Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser1, tmpSys, filePathStr, testUser3));
+  }
+
+  // Test sharing of a path.
+  // If fileToCreate is not blank then create the file.
+  // If fileToCreate is blank then an attempt will be made to create a file using pathToShare
+  private void testSharingOfPath(TapisSystem tSys, String pathToShare, String fileToCreate)
+          throws ServiceException, TapisClientException
+  {
+    String sysId = tSys.getId();
+    String fileToCheck;
+    // Grant testUser full perms
+    permsService.grantPermission(devTenant, testUser1, sysId, pathToShare, Permission.MODIFY);
+    permsService.grantPermission(devTenant, testUser1, sysId, pathToShare, Permission.READ);
+
+    // Create file at path or using filetToCreate
+    InputStream in = Utils.makeFakeFile(1024);
+    if (StringUtils.isBlank(fileToCreate))
+    {
+      fileOpsService.upload(rTestUser1, tSys, pathToShare, in);
+      fileToCheck = pathToShare;
+    }
+    else
+    {
+      fileOpsService.upload(rTestUser1, tSys, fileToCreate, in);
+      fileToCheck = pathToShare = "/" + fileToCreate;
+    }
+
+    // Clean up any previous shares using recurse=true
+    fileShareService.removeAllSharesForPath(rTestUser1, sysId, pathToShare, true);
+
+    // isSharedWithUser should return false
+    Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tSys, pathToShare, testUser2));
+
+    // Check that testUser can see the file and testUser2 cannot
+    fileOpsService.ls(rTestUser1, tSys, pathToShare, 1, 0, nullImpersonationId, sharedAppCtxFalse);
+    fileOpsService.ls(rTestUser1, tSys, fileToCheck, 1, 0, nullImpersonationId, sharedAppCtxFalse);
+    fileOpsService.getFileInfo(rTestUser1, tSys, fileToCheck, nullImpersonationId, sharedAppCtxFalse);
+    boolean pass = false;
+    try
+    {
+      fileOpsService.ls(rTestUser2, tSys, pathToShare, 1, 0, nullImpersonationId, sharedAppCtxFalse);
+    }
+    catch (ForbiddenException e) { pass = true; }
+    Assert.assertTrue(pass, "User testUser2 should not be able to list path");
+    pass = false;
+    try
+    {
+      fileOpsService.getFileInfo(rTestUser2, tSys, fileToCheck, nullImpersonationId, sharedAppCtxFalse);
+    }
+    catch (ForbiddenException e) { pass = true; }
+    Assert.assertTrue(pass, "User testUser2 should not be able to getFileInfo");
+    pass = false;
+    try
+    {
+      fileOpsService.ls(rTestUser2, tSys, fileToCheck, 1 , 0, nullImpersonationId, sharedAppCtxFalse);
+    }
+    catch (ForbiddenException e) { pass = true; }
+    Assert.assertTrue(pass, "User testUser2 should not be able to list path to file");
+
+    // Create set of users for sharing
+    var userSet= Collections.singleton(testUser2);
+
+    // Get shareInfo. Should be empty
+    ShareInfo shareInfo = fileShareService.getShareInfo(rTestUser1, sysId, pathToShare);
+    Assert.assertNotNull(shareInfo);
+    Assert.assertNotNull(shareInfo.getUserSet());
+    Assert.assertFalse(shareInfo.isPublic());
+    Assert.assertTrue(shareInfo.getUserSet().isEmpty());
+
+    //
+    // Share path with testuser2
+    //
+    fileShareService.sharePath(rTestUser1, sysId, pathToShare, userSet);
+    // Get shareInfo for file. Should be shared with 1 user, testuser2
+    shareInfo = fileShareService.getShareInfo(rTestUser1, sysId, pathToShare);
+    Assert.assertNotNull(shareInfo);
+    Assert.assertNotNull(shareInfo.getUserSet());
+    Assert.assertFalse(shareInfo.isPublic());
+    Assert.assertFalse(shareInfo.getUserSet().isEmpty());
+    Assert.assertEquals(shareInfo.getUserSet().size(), 1);
+    Assert.assertTrue(shareInfo.getUserSet().contains(testUser2));
+
+    // isSharedWithUser should return true for path and file
+    Assert.assertTrue(fileShareService.isSharedWithUser(rTestUser2, tSys, pathToShare, testUser2));
+    Assert.assertTrue(fileShareService.isSharedWithUser(rTestUser2, tSys, fileToCheck, testUser2));
+
+    // Check that testUser and testUser2 can now see the path
+    fileOpsService.ls(rTestUser1, tSys, pathToShare, 1, 0, nullImpersonationId, sharedAppCtxFalse);
+    fileOpsService.ls(rTestUser2, tSys, pathToShare, 1, 0, nullImpersonationId, sharedAppCtxFalse);
+    fileOpsService.getFileInfo(rTestUser2, tSys, pathToShare, nullImpersonationId, sharedAppCtxFalse);
+    fileOpsService.getFileInfo(rTestUser2, tSys, fileToCheck, nullImpersonationId, sharedAppCtxFalse);
+
+    // Remove share.
+    fileShareService.unSharePath(rTestUser1, sysId, pathToShare, userSet);
+    // Get shareInfo. Should be empty.
+    shareInfo = fileShareService.getShareInfo(rTestUser1, sysId, pathToShare);
+    Assert.assertNotNull(shareInfo);
+    Assert.assertNotNull(shareInfo.getUserSet());
+    Assert.assertFalse(shareInfo.isPublic());
+    Assert.assertTrue(shareInfo.getUserSet().isEmpty());
+
+    // isSharedWithUser should return false
+    Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tSys, pathToShare, testUser2));
+    Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tSys, fileToCheck, testUser2));
+
+    // Check that once again testUser can see the file and testUser2 cannot
+    fileOpsService.ls(rTestUser1, tSys, pathToShare, 1, 0, nullImpersonationId, sharedAppCtxFalse);
+    pass = false;
+    try
+    {
+      fileOpsService.ls(rTestUser2, tSys, pathToShare, 1, 0, nullImpersonationId, sharedAppCtxFalse);
+    }
+    catch (ForbiddenException e) { pass = true; }
+    Assert.assertTrue(pass, "User testUser2 should not be able to list path");
   }
 }

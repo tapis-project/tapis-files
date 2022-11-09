@@ -306,8 +306,58 @@ public class TestFileOpsService
       Assert.assertEquals(listing.get(0).getPath(), "dir1/dir2/test.txt");
     }
 
+  // Test error cases for upload
+  // Uploading to "/" or "" should throw an exception with a certain message.
+  // Uploading to an existing directory should throw an exception with a certain message.
+  // NOTE that S3 does not support directories so skip
+  @Test(dataProvider = "testSystems")
+  public void testUploadErrors(TapisSystem testSystem) throws Exception
+  {
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    if (!SystemTypeEnum.S3.equals(client.getSystemType())) fileOpsService.mkdir(client, "dir1");
+    InputStream in = Utils.makeFakeFile(1024);
 
-    @Test(dataProvider = "testSystems")
+    boolean pass = false;
+    try { fileOpsService.upload(client,"/", in); }
+    catch (Exception e)
+    {
+      Assert.assertTrue(e.getMessage().contains("FILES_ERR_SLASH_PATH"));
+      pass = true;
+    }
+    Assert.assertTrue(pass);
+
+    pass = false;
+    try { fileOpsService.upload(client,"", in); }
+    catch (Exception e)
+    {
+      Assert.assertTrue(e.getMessage().contains("FILES_ERR_EMPTY_PATH"));
+      pass = true;
+    }
+    Assert.assertTrue(pass);
+
+    // Skip dir related tests for S3
+    if (SystemTypeEnum.S3.equals(client.getSystemType())) return;
+
+    pass = false;
+    try { fileOpsService.upload(client,"dir1", in); }
+    catch (Exception e)
+    {
+      Assert.assertTrue(e.getMessage().contains("FILES_ERR_UPLOAD_DIR"));
+      pass = true;
+    }
+    Assert.assertTrue(pass);
+    pass = false;
+    try { fileOpsService.upload(client,"/dir1", in); }
+    catch (Exception e)
+    {
+      Assert.assertTrue(e.getMessage().contains("FILES_ERR_UPLOAD_DIR"));
+      pass = true;
+    }
+    Assert.assertTrue(pass);
+  }
+
+  @Test(dataProvider = "testSystems")
     public void testUploadAndDelete(TapisSystem testSystem) throws Exception
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
