@@ -48,8 +48,6 @@ public class ContentApiResource extends BaseFileOpsResource
 {
   private static final Logger log = LoggerFactory.getLogger(ContentApiResource.class);
   private final String className = getClass().getSimpleName();
-  // Always return a nicely formatted response
-  private static final boolean PRETTY = true;
 
   // ************************************************************************
   // *********************** Fields *****************************************
@@ -95,6 +93,36 @@ public class ContentApiResource extends BaseFileOpsResource
                           @Suspended final AsyncResponse asyncResponse)
   {
     String opName = "getContents";
+    downloadPath(opName, systemId, path, range, zip, startPage, impersonationId, sharedAppCtx, securityContext, asyncResponse);
+  }
+
+  @GET
+  @ManagedAsync
+  @Path("/{systemId}")
+  public void getContentsRoot(@PathParam("systemId") String systemId,
+                              @HeaderParam("range") HeaderByteRange range,
+                              @QueryParam("zip") @DefaultValue("false") boolean zip,
+                              @HeaderParam("more") @Min(1) Long startPage,
+                              @QueryParam("impersonationId") String impersonationId,
+                              @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
+                              @Context SecurityContext securityContext,
+                              @Suspended final AsyncResponse asyncResponse)
+  {
+    String opName = "getContents";
+    downloadPath(opName, systemId, "", range, zip, startPage, impersonationId, sharedAppCtx, securityContext, asyncResponse);
+  }
+
+  // ************************************************************************
+  // *********************** Private Methods ********************************
+  // ************************************************************************
+
+  /*
+   * Common routine to download
+   */
+  private void downloadPath(String opName, String systemId, String path, HeaderByteRange range, boolean zip,
+                            Long startPage, String impersonationId, boolean sharedAppCtx,
+                            SecurityContext securityContext, AsyncResponse asyncResponse)
+  {
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
 //    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
 //    // Utility method returns null if all OK and appropriate error response if there was a problem.
@@ -177,15 +205,15 @@ public class ContentApiResource extends BaseFileOpsResource
     if (zip)
     {
       response = Response.ok(outStream, mediaType)
-                         .header("content-disposition", contentDisposition)
-                         .build();
+              .header("content-disposition", contentDisposition)
+              .build();
     }
     else
     {
       response = Response.ok(outStream, mediaType)
-                         .header("content-disposition", contentDisposition)
-                         .header("cache-control", "max-age=3600")
-                         .build();
+              .header("content-disposition", contentDisposition)
+              .header("cache-control", "max-age=3600")
+              .build();
     }
     // Start the streaming response
     asyncResponse.resume(response);

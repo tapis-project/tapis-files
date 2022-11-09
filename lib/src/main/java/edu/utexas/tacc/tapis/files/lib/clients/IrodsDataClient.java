@@ -334,13 +334,11 @@ public class IrodsDataClient implements IRemoteDataClient
     IRODSFileFactory fileFactory = getFileFactory();
     try
     {
+      // Get collection. If nothing there return null
       IRODSFile collection = fileFactory.instanceIRODSFile(cleanedAbsolutePath.toString());
       boolean pathExists = collection.exists();
-      if (!pathExists)
-      {
-        String msg = LibUtils.getMsg("FILES_IRODS_PATH_NOT_FOUND", oboTenantId, oboUsername, systemId, cleanedAbsolutePath.toString());
-        throw new NotFoundException(msg);
-      }
+      if (!pathExists) return null;
+
       fileInfo = new FileInfo();
       fileInfo.setSize(collection.length());
       fileInfo.setName(collection.getName());

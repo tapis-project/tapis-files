@@ -273,7 +273,7 @@ public class FileOpsService
    * @param path - path on system relative to system rootDir
    * @param impersonationId - use provided Tapis username instead of oboUser
    * @param sharedAppCtx - Indicates that request is part of a shared app context.
-   * @return FileInfo
+   * @return FileInfo or null if not found
    * @throws NotFoundException - requested path not found
    */
   public FileInfo getFileInfo(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
@@ -364,8 +364,33 @@ public class FileOpsService
                               path, Permission.MODIFY);
       // Get path relative to system rootDir and protect against ../..
       String relPathStr = PathUtils.getRelativePath(path).toString();
+
+      // Make sure this is not an attempt to upload to "/". Check "/" first because "/" resolves to empty string
+      //   for relative path
+      if ("/".equals(path))
+      {
+        String msg = LibUtils.getMsg("FILES_ERR_SLASH_PATH", client.getOboTenant(), client.getOboUser(), "upload",
+                client.getSystemId());
+        throw new ServiceException(msg);
+      }
+
+      // Make sure this is not an attempt to upload to an empty string
+      if (StringUtils.isBlank(relPathStr))
+      {
+        String msg = LibUtils.getMsg("FILES_ERR_EMPTY_PATH", client.getOboTenant(), client.getOboUser(), "upload",
+                                     client.getSystemId());
+        throw new ServiceException(msg);
+      }
       try
       {
+        // Make sure file does not already exist as a directory
+        var fInfo = client.getFileInfo(relPathStr);
+        if (fInfo != null && fInfo.isDir())
+        {
+          String msg = LibUtils.getMsg("FILES_ERR_UPLOAD_DIR", client.getOboTenant(), client.getOboUser(),
+                                       client.getSystemId(), relPathStr);
+          throw new ServiceException(msg);
+        }
         client.upload(relPathStr, inputStream);
       }
       catch (IOException ex)
@@ -1034,15 +1059,19 @@ public class FileOpsService
       List<FileInfo> listing = lsRecursive(client, path, MAX_RECURSION);
       for (FileInfo fileInfo : listing)
       {
+
+        // Build the path we will use for the zip entry
+        // To relativize we need a leading slash
+        String tmpPath = StringUtils.prependIfMissing(fileInfo.getPath(), "/");
+        Path pth = Paths.get(cleanedRelativePath);
+        pth = pth.relativize(Paths.get(tmpPath));
+        // For final entry we do not want the leading slash
+        String entryPath = StringUtils.removeStart(pth.toString(), "/");
+
         // Always add an entry for a dir to be sure empty directories are included
         if (fileInfo.isDir())
         {
-          // To relativize we need a leading slash
-          String tmpPath = StringUtils.prependIfMissing(fileInfo.getPath(), "/");
-          Path pth = Paths.get(cleanedRelativePath);
-          pth = pth.relativize(Paths.get(tmpPath));
-          // For final entry we do not want the leading slash and since it is a dir we want a trailing slash
-          String entryPath = StringUtils.removeStart(pth.toString(), "/");
+          // Since it is a dir we add a trailing slash
           entryPath = StringUtils.appendIfMissing(entryPath, "/");
           ZipEntry entry = new ZipEntry(entryPath);
           zipStream.putNextEntry(entry);
@@ -1052,12 +1081,6 @@ public class FileOpsService
         {
           try (InputStream inputStream = getAllBytes(rUser, sys, fileInfo.getPath(), impersonationId, sharedAppCtx))
           {
-            // To relativize we need a leading slash
-            String tmpPath = StringUtils.prependIfMissing(fileInfo.getPath(), "/");
-            Path pth = Paths.get(cleanedRelativePath);
-            pth = pth.relativize(Paths.get(tmpPath));
-            // For final entry we do not want the leading slash
-            String entryPath = StringUtils.removeStart(pth.toString(), "/");
             ZipEntry entry = new ZipEntry(entryPath);
             zipStream.putNextEntry(entry);
             inputStream.transferTo(zipStream);

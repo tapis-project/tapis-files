@@ -337,6 +337,12 @@ public class ChildTaskTransferService
     if (sourceSystem != null && srcIsLinux && dstIsLinux)
     {
       FileInfo item = sourceClient.getFileInfo(sourcePath);
+      if (item == null)
+      {
+        throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_CHILD_PATH_NOTFOUND", taskChild.getTenantId(),
+                                                    taskChild.getUsername(), taskChild.getId(),
+                                                    taskChild.getUuid(), sourcePath));
+      }
       if (!item.isDir() && item.getNativePermissions().contains("x"))
       {
         try

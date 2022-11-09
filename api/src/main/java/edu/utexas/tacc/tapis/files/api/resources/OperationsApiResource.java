@@ -8,10 +8,13 @@ import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
+import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.apache.commons.io.IOUtils;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
@@ -41,8 +44,10 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_RECURSION;
@@ -105,41 +110,22 @@ public class OperationsApiResource extends BaseFileOpsResource
                             @Context SecurityContext securityContext)
   {
     String opName = "listFiles";
-    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
-    // Utility method returns null if all OK and appropriate error response if there was a problem.
-    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
-    // If there is a problem return error response
-    if (resp1 != null) return resp1;
+    return getListing(opName, systemId, path, limit, offset, recurse, impersonationId, sharedAppCtx, securityContext);
+  }
 
-    // Create a user that collects together tenant, user and request information needed by service calls
-    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
-
-    // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path,
-                          "limit="+limit, "offset="+offset, "recurse="+recurse,"impersonationId="+impersonationId,
-                          "sharedAppCtx="+sharedAppCtx);
-
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys;
-    if (sharedAppCtx) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-    else sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-
-    Instant start = Instant.now();
-    List<FileInfo> listing;
-    // ---------------------------- Make service call -------------------------------
-    // Note that we do not use try/catch around service calls because exceptions are already either
-    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
-    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedAppCtx);
-    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedAppCtx);
-
-    String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
-    log.debug(msg);
-    TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
-    return Response.status(Status.OK).entity(resp).build();
+  @GET
+  @Path("/{systemId}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response listFilesRoot(@PathParam("systemId") String systemId,
+                                @QueryParam("limit") @DefaultValue("1000") @Max(1000) int limit,
+                                @QueryParam("offset") @DefaultValue("0") @Min(0) long offset,
+                                @QueryParam("recurse") @DefaultValue("false") boolean recurse,
+                                @QueryParam("impersonationId") String impersonationId,
+                                @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
+                                @Context SecurityContext securityContext)
+  {
+    String opName = "listFilesRoot";
+    return getListing(opName, systemId, "", limit, offset, recurse, impersonationId, sharedAppCtx, securityContext);
   }
 
   /**
@@ -313,5 +299,52 @@ public class OperationsApiResource extends BaseFileOpsResource
     fileOpsService.delete(rUser, sys, path);
     TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
     return Response.ok(resp).build();
+  }
+
+  // ************************************************************************
+  // *********************** Private Methods ********************************
+  // ************************************************************************
+
+  /*
+   * Common routine to perform a listing
+   */
+  private Response getListing(String opName, String systemId, String path, int limit, long offset, boolean recurse,
+                              String impersonationId, boolean sharedAppCtx, SecurityContext securityContext)
+  {
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path,
+              "limit="+limit, "offset="+offset, "recurse="+recurse,"impersonationId="+impersonationId,
+              "sharedAppCtx="+sharedAppCtx);
+
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem sys;
+    if (sharedAppCtx) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+    else sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+
+    Instant start = Instant.now();
+    List<FileInfo> listing;
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (FilesExceptionMapper).
+    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedAppCtx);
+    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedAppCtx);
+
+    String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+    log.debug(msg);
+    TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
+    return Response.status(Status.OK).entity(resp).build();
   }
 }

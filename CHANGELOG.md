@@ -9,7 +9,7 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.2.7 - 2022-11-08
+## 1.2.7 - 2022-11-09
 
 Incremental improvements and bug fixes.
 
@@ -17,6 +17,7 @@ Incremental improvements and bug fixes.
 - Invalidate SSH cache entry when there is an error. Error may get resolved.
   For example, error could be due to invalid credentials or no route to host.
 - Support zip download for system *rootDir* as long as not all files on host would be included.
+- For certain endpoints that take a path make the trailing slash optional when dealing with top level directory: getContents, getListing, sharing.
 
 ### Bug fixes:
 - When there are multiple transfer elements in a request and one finishes quickly it is possible for some to be missed.
