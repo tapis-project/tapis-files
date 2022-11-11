@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
@@ -85,6 +87,10 @@ public class FileOpsService
   RemoteDataClientFactory remoteDataClientFactory;
   @Inject
   ServiceContext serviceContext;
+  @Inject
+  SystemsCache systemsCache;
+  @Inject
+  SystemsCacheNoAuth systemsCacheNoAuth;
 
   // We must be running on a specific site and this will never change
   // These are initialized in method initService()
@@ -503,6 +509,7 @@ public class FileOpsService
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       String sysId = sys.getId();
+
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
       try
@@ -604,7 +611,6 @@ public class FileOpsService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - path on system relative to system rootDir
-   * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
@@ -688,6 +694,7 @@ public class FileOpsService
     // If sharedAppCtx set, confirm that it is allowed
     // This method will throw ForbiddenException if not allowed.
     if (sharedAppCtx) checkSharedAppCtxAllowed(rUser, opName, sys.getId(), path);
+
     // If rootDir + path would result in all files then reject
     String relativePath = PathUtils.getRelativePath(path).toString();
     String rootDir = sys.getRootDir();

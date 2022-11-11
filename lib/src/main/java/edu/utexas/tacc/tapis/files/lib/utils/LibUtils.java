@@ -216,10 +216,12 @@ public class LibUtils
    * Check to see if a Tapis System exists and is enabled
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - System to check
+   * @param systemsCache - Cache that includes authorization
    * @throws NotFoundException System not found or not enabled
    */
   public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull ISystemsCache systemsCache,
-                                               @NotNull String systemId) throws NotFoundException
+                                               @NotNull String systemId)
+          throws NotFoundException
   {
     // Check for the system
     TapisSystem sys;

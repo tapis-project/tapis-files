@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -97,13 +98,14 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
   {
     String opName = "runLinuxNativeOp";
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
     try
     {
-      TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
-      LibUtils.checkEnabled(user, system);
       String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
       IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
-      if (client == null) throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
 
       // Make the service call
       boolean sharedAppCtxFalse = false;
