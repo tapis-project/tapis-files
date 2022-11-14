@@ -19,7 +19,6 @@ import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
-import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -27,7 +26,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.TestProperties;
-import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,9 +37,12 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import javax.inject.Singleton;
+import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
@@ -65,6 +66,19 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   private final static String oboTenant = "oboTenant";
   private final static String oboUser = "oboUser";
 
+  private static final String TENANT = "dev";
+  private static final String ROOT_DIR = "/data/home/testuser";
+  private static final String SYSTEM_ID = "testSystem";
+  private static final String TEST_USR = "testuser";
+  private static final String TEST_USR1 = "testuser1";
+  private static final String TEST_FILE1 = "testfile1.txt";
+  private static final String TEST_FILE2 = "testfile2.txt";
+  private static final String TEST_FILE3 = "testfile3.txt";
+  private static final String TEST_FILE4 = "testfile4.txt";
+  private static final int TEST_FILE_SIZE = 10 * 1024;
+  private static final String CONTENT_ROUTE = "/v3/files/content";
+  private static final String OPS_ROUTE = "/v3/files/ops";
+
   // Responses used in tests
   private static class FileStringResponse extends TapisResponse<String> {}
 
@@ -81,7 +95,6 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
 
   // mocking out the services
   private ServiceClients serviceClients;
-  private SystemsClient systemsClient;
   private SKClient skClient;
   private SystemsCache systemsCache;
   private SystemsCacheNoAuth systemsCacheNoAuth;
@@ -98,7 +111,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     Credential creds;
     //SSH system with username+password
     creds = new Credential();
-    creds.setAccessKey("testuser");
+    creds.setAccessKey(TEST_USR);
     creds.setPassword("password");
     testSystemSSH = new TapisSystem();
     testSystemSSH.setId("testSystemSSH");
@@ -106,7 +119,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     testSystemSSH.setHost("localhost");
     testSystemSSH.setPort(2222);
     testSystemSSH.setRootDir("/data/home/testuser/");
-    testSystemSSH.setEffectiveUserId("testuser");
+    testSystemSSH.setEffectiveUserId(TEST_USR);
     testSystemSSH.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     testSystemSSH.setAuthnCredential(creds);
     // S3 system with access key+secret
@@ -116,7 +129,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     testSystemS3 = new TapisSystem();
     testSystemS3.setId("testSystemS3");
     testSystemS3.setSystemType(SystemTypeEnum.S3);
-    testSystemS3.setOwner("testuser1");
+    testSystemS3.setOwner(TEST_USR1);
     testSystemS3.setHost("http://localhost");
     testSystemS3.setPort(9000);
     testSystemS3.setBucketName("test");
@@ -160,9 +173,9 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     // But could not get it working, even using the static class/method support in recent versions of mockito.
 //    // Initialize tapisThreadContext
 //    threadContext.setJwtTenantId("dev");
-//    threadContext.setJwtUser("testuser1");
+//    threadContext.setJwtUser(TEST_USR1);
 //    threadContext.setOboTenantId("dev");
-//    threadContext.setOboUser("testuser1");
+//    threadContext.setOboUser(TEST_USR1);
   }
 
   @Override
@@ -173,7 +186,6 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     forceSet(TestProperties.CONTAINER_PORT, "0");
     skClient = Mockito.mock(SKClient.class);
     serviceClients = Mockito.mock(ServiceClients.class);
-    systemsClient = Mockito.mock(SystemsClient.class);
     systemsCache = Mockito.mock(SystemsCache.class);
     systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
     SSHConnection.setLocalNodeName("test");
@@ -195,14 +207,12 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
                 bind(serviceClients).to(ServiceClients.class);
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
-                bindAsContract(FileOpsService.class).in(Singleton.class);
-                bindAsContract(FileShareService.class).in(Singleton.class);
-                bindAsContract(SystemsCache.class);
-                bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
-                bindAsContract(FilePermsService.class);
-                bind(serviceContext).to(ServiceContext.class);
                 bind(systemsCache).to(SystemsCache.class);
                 bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
+                bindAsContract(FileOpsService.class).in(Singleton.class);
+                bindAsContract(FileShareService.class).in(Singleton.class);
+                bindAsContract(FilePermsService.class);
+                bind(serviceContext).to(ServiceContext.class);
                 bind(remoteDataClientFactory).to(RemoteDataClientFactory.class);
                 bind(sshConnectionCache).to(SSHConnectionCache.class);
               }
@@ -229,9 +239,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     Mockito.reset(serviceClients);
     Mockito.reset(systemsCache);
     Mockito.reset(systemsCacheNoAuth);
-    Mockito.reset(systemsClient);
     when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
-    when(serviceClients.getClient(any(String.class), any(String.class), eq(SystemsClient.class))).thenReturn(systemsClient);
     when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
   }
 
@@ -242,16 +250,18 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   {
     testSystems.forEach( (sys)->
     {
-      try
-      {
+      try {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(sys);
         when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(sys);
-        System.out.println("Cleanup for System: " + sys.getId());
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, "testuser");
-        client.delete("/");
+        target(String.format("%s/%s/", OPS_ROUTE, sys.getId()))
+                .request()
+                .accept(MediaType.APPLICATION_JSON)
+                .header("x-tapis-token", getJwtForUser(TENANT, TEST_USR1))
+                .delete(FileStringResponse.class);
       }
-      catch (Exception ex) { log.error(ex.getMessage(), ex); }    });
+      catch (Exception ex) { log.error(ex.getMessage(), ex); }
+    });
   }
 
   /**
@@ -271,16 +281,15 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetContents(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(testSystem);
     when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
     when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
-    addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1000);
+    addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1024);
     Response response = target("/v3/files/content/" + testSystem.getId() + "/testfile1.txt")
             .request()
-            .header("x-tapis-token", getJwtForUser("dev", "testuser1"))
+            .header("x-tapis-token", getJwtForUser("dev", TEST_USR1))
             .get();
     byte[] contents = response.readEntity(byte[].class);
-    Assert.assertEquals(contents.length, 10 * 1000);
+    Assert.assertEquals(contents.length, 10 * 1024);
   }
 
   // For some reason this test almost always uses the S3 system causing it to fail.
@@ -291,7 +300,8 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProviderNoS3", enabled = true)
   public void testZipOutput(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
     addTestFilesToSystem(system, "a/test1.txt", 10 * 1000);
     addTestFilesToSystem(system, "a/b/test2.txt", 10 * 1000);
     addTestFilesToSystem(system, "a/b/test3.txt", 10 * 1000);
@@ -299,7 +309,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     Response response = target("/v3/files/content/" + system.getId() + "/a")
             .queryParam("zip", true)
             .request()
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .header("X-Tapis-Token", getJwtForUser("dev", TEST_USR1))
             .get();
 
     InputStream is = response.readEntity(InputStream.class);
@@ -320,12 +330,13 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testStreamLargeFile(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
     int filesize = 100 * 1000 * 1000;
     addTestFilesToSystem(system, "largetestfile1.txt", filesize);
     Response response = target("/v3/files/content/" + system.getId() + "/largetestfile1.txt")
             .request()
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .header("X-Tapis-Token", getJwtForUser("dev", TEST_USR1))
             .get();
     InputStream contents = response.readEntity(InputStream.class);
     Instant start = Instant.now();
@@ -344,10 +355,11 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testNotFound(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
     Response response = target("/v3/files/content/" + system.getId() + "/NOT-THERE.txt")
             .request()
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .header("X-Tapis-Token", getJwtForUser("dev", TEST_USR1))
             .get();
     Assert.assertEquals(response.getStatus(), 404);
   }
@@ -355,12 +367,13 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetWithRange(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
     addTestFilesToSystem(system, "words.txt", 10 * 1024);
     Response response = target("/v3/files/content/" + system.getId() + "/words.txt")
             .request()
             .header("range", "0,1000")
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .header("X-Tapis-Token", getJwtForUser("dev", TEST_USR1))
             .get();
     Assert.assertEquals(response.getStatus(), 200);
     byte[] contents = response.readEntity(byte[].class);
@@ -370,12 +383,13 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetWithMore(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
     addTestFilesToSystem(system, "words.txt", 10 * 1024);
     Response response = target("/v3/files/content/" + system.getId() + "/words.txt")
             .request()
             .header("more", "1")
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .header("X-Tapis-Token", getJwtForUser("dev", TEST_USR1))
             .get();
     Assert.assertEquals(response.getStatus(), 200);
     String contents = response.readEntity(String.class);
@@ -387,13 +401,14 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetContentsHeaders(TapisSystem system) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
     // make sure content-type is application/octet-stream and filename is correct
     addTestFilesToSystem(system, "testfile1.txt", 10 * 1024);
 
     Response response = target("/v3/files/content/" + system.getId() + "/testfile1.txt")
             .request()
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .header("X-Tapis-Token", getJwtForUser("dev", TEST_USR1))
             .get();
     MultivaluedMap<String, Object> headers = response.getHeaders();
     String contentDisposition = (String) headers.getFirst("content-disposition");
@@ -406,23 +421,29 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test
   public void testBadRequests() throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(eq("testSystemS3"))).thenReturn(testSystemS3);
-    when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"))).thenReturn(testSystemDisabled);
-    when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"))).thenReturn(testSystemSSH);
+//    when(systemsClient.getSystemWithCredentials(eq("testSystemS3"))).thenReturn(testSystemS3);
+//    when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"))).thenReturn(testSystemDisabled);
+//    when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"))).thenReturn(testSystemSSH);
 //    when(systemsClient.getSystemWithCredentials(eq("testSystemNotExist"), any())).thenThrow(new NotFoundException("Sys not found: testSystemNotExist"));
-    addTestFilesToSystem(systemsClient.getSystemWithCredentials("testSystemSSH"), "dir1/testfile1.txt", 1024);
+    when(systemsCache.getSystem(any(), eq("testSystemS3"), any())).thenReturn(testSystemS3);
+    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemS3"), any())).thenReturn(testSystemS3);
+    when(systemsCache.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
+    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
+    when(systemsCache.getSystem(any(), eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
+    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
+    addTestFilesToSystem(testSystemSSH, "dir1/testfile1.txt", 1024);
 
     // Attempt to retrieve a folder without using zip
     Response response = target("/v3/files/content/testSystemSSH/dir1")
             .request()
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .header("X-Tapis-Token", getJwtForUser("dev", TEST_USR1))
             .get();
     Assert.assertEquals(response.getStatus(), 400);
 
     // Attempt to retrieve from a system which is disabled
     response = target("/v3/files/content/testSystemDisabled/testfile1.txt")
             .request()
-            .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
+            .header("X-Tapis-Token", getJwtForUser("dev", TEST_USR1))
             .get();
     Assert.assertEquals(response.getStatus(), 404);
   }
@@ -433,7 +454,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
 
   private void addTestFilesToSystem(TapisSystem system, String fileName, int fileSize) throws Exception
   {
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, system, "testuser");
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(TENANT, TEST_USR1, system, TEST_USR);
     InputStream f1 = makeFakeFile(fileSize);
     client.upload(fileName, f1);
   }
