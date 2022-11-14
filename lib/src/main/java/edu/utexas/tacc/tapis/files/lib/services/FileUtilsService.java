@@ -15,8 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.ws.rs.NotAuthorizedException;
-import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -54,11 +52,9 @@ public class FileUtilsService
    *                      or the link target (true)
    * @return FileStatInfo
    * @throws ServiceException - General problem
-   * @throws NotFoundException - path not found
-   * @throws NotAuthorizedException - user not authorized to operate on path
    */
   public FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String path, boolean followLinks)
-          throws ServiceException, NotFoundException, NotAuthorizedException
+          throws ServiceException
   {
     if (!(client instanceof ISSHDataClient)) {
       String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
@@ -94,11 +90,10 @@ public class FileUtilsService
    * @param sharedAppCtx - Indicates that request is part of a shared app context.
    * @return - result of running the command
    * @throws ServiceException - General problem
-   * @throws NotAuthorizedException - user not authorized to operate on path
    */
   public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
                                      @NotNull String arg, boolean recursive, boolean sharedAppCtx)
-          throws TapisException, ServiceException, NotAuthorizedException
+          throws TapisException, ServiceException
   {
     NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
     if (!(client instanceof ISSHDataClient))

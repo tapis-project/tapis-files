@@ -6,8 +6,8 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
-import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.WebApplicationException;
 
 import edu.utexas.tacc.tapis.files.lib.caches.ISystemsCache;
 import org.jetbrains.annotations.NotNull;
@@ -157,7 +157,6 @@ public class LibUtils
    * @param systemId - system
    * @param pathToCheck - path provided as part of request
    * @param perm - perm to check for
-   * @throws NotAuthorizedException - perm check failed
    * @throws ServiceException - other exceptions
    */
   public static void checkPermitted(FilePermsService svc, String oboTenant, String oboUser, String systemId,
@@ -181,7 +180,6 @@ public class LibUtils
    * @param oboUser - obo user
    * @param systemId - system
    * @param pathToCheck - path provided as part of request
-   * @throws NotAuthorizedException - perm check failed
    * @throws ServiceException - other exceptions
    */
   public static void checkPermittedReadOrModify(FilePermsService svc, String oboTenant, String oboUser, String systemId,
@@ -243,9 +241,9 @@ public class LibUtils
     }
     catch (ServiceException ex)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId);
+      String msg = LibUtils.getMsgAuthR("FILES_SYSOPS_ERR", rUser, "getSystemIfEnabled", systemId, ex.getMessage());
       log.warn(msg);
-      throw new NotFoundException(msg);
+      throw new WebApplicationException(msg);
     }
     return sys;
   }
