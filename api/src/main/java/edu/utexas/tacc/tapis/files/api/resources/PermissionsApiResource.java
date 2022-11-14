@@ -91,15 +91,8 @@ public class PermissionsApiResource
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
-        if (system == null) {
-            throw new NotFoundException(LibUtils.getMsgAuth("FILES_SYS_NOTFOUND", user, systemId));
-        }
 
-        if (queryUsername == null) {
-            username = user.getOboUser();
-        } else {
-            username = queryUsername;
-        }
+        username = StringUtils.isBlank(queryUsername) ? user.getOboUser() : queryUsername;
 
         try {
             Permission permission = permsService.getPermission(user.getOboTenantId(), username, systemId, path);

@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +68,7 @@ public class SystemsCache implements ISystemsCache
    */
   private class SystemLoader extends CacheLoader<SystemCacheKey, TapisSystem>
   {
+    @NotNull
     @Override
     public TapisSystem load(SystemCacheKey key) throws Exception
     {

@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
@@ -85,6 +87,10 @@ public class FileOpsService
   RemoteDataClientFactory remoteDataClientFactory;
   @Inject
   ServiceContext serviceContext;
+  @Inject
+  SystemsCache systemsCache;
+  @Inject
+  SystemsCacheNoAuth systemsCacheNoAuth;
 
   // We must be running on a specific site and this will never change
   // These are initialized in method initService()
@@ -503,6 +509,7 @@ public class FileOpsService
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       String sysId = sys.getId();
+
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
       try
@@ -604,7 +611,6 @@ public class FileOpsService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param path - path on system relative to system rootDir
-   * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
@@ -688,6 +694,7 @@ public class FileOpsService
     // If sharedAppCtx set, confirm that it is allowed
     // This method will throw ForbiddenException if not allowed.
     if (sharedAppCtx) checkSharedAppCtxAllowed(rUser, opName, sys.getId(), path);
+
     // If rootDir + path would result in all files then reject
     String relativePath = PathUtils.getRelativePath(path).toString();
     String rootDir = sys.getRootDir();
@@ -863,6 +870,37 @@ public class FileOpsService
       }
     };
     return outStream;
+  }
+
+  /**
+   * Determine if file path is shared
+   * NOTE: We do not check here that impersonation is allowed. The 2 methods that call this method later call
+   *       checkAuthForReadOrShare which does the check
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param path - path on system relative to system rootDir
+   * @param impersonationId - use provided Tapis username instead of oboUser
+   * @return true if shared else false
+   */
+  public boolean isPathShared(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                              String impersonationId) throws WebApplicationException
+  {
+    // Get path relative to system rootDir and protect against ../..
+    String relativePathStr = PathUtils.getRelativePath(path).toString();
+    // Certain services are allowed to impersonate an OBO user for the purposes of authorization
+    //   and effectiveUserId resolution.
+    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+    try
+    {
+      if (shareService.isSharedWithUser(rUser, sys, relativePathStr, oboOrImpersonatedUser)) return true;
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, sys.getId(), relativePathStr, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+    return false;
   }
 
   /* **************************************************************************** */

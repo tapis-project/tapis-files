@@ -1,19 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
-import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.apache.commons.io.FilenameUtils;
-import org.glassfish.grizzly.http.server.Request;
-import org.glassfish.jersey.server.ManagedAsync;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.nio.file.Paths;
+import java.util.Objects;
 import javax.inject.Inject;
 import javax.servlet.ServletContext;
 import javax.validation.constraints.Min;
@@ -35,8 +23,19 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
-import java.nio.file.Paths;
-import java.util.Objects;
+import org.apache.commons.io.FilenameUtils;
+import org.glassfish.grizzly.http.server.Request;
+import org.glassfish.jersey.server.ManagedAsync;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 /*
  * JAX-RS REST resource for Tapis File content downloads (file or directory)
@@ -139,10 +138,23 @@ public class ContentApiResource extends BaseFileOpsResource
               "path="+path, "range="+range, "zip="+zip, "more="+startPage, "impersonationId="+impersonationId,
               "sharedAppCtx="+sharedAppCtx);
 
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys;
-    if (sharedAppCtx) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-    else sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    // Determine if path is shared. If so it means system is implicitly allowed for the oboUser
+    // To determine if path is shared we get the system without auth.
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);;
+    // If not already in a shared context, check if path is shared.
+    // If path is shared then we have implicit authorization to read the system, so use cacheNoAuth to get the systems.
+    boolean pathIsShared = false;
+    if (!sharedAppCtx)
+    {
+      pathIsShared= fileOpsService.isPathShared(rUser, sys, path, impersonationId);
+    }
+
+    // If not in shared app ctx and path is not shared get the system with auth check.
+    // This confirms oboUser has read access to the system.
+    if (!sharedAppCtx && !pathIsShared)
+    {
+      sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    }
 
     // ---------------------------- Make service calls to start data streaming -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either

@@ -1,25 +1,9 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
-import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
-import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
-import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.apache.commons.io.IOUtils;
-import org.glassfish.grizzly.http.server.Request;
-import org.glassfish.jersey.media.multipart.FormDataParam;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import java.io.InputStream;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import javax.inject.Inject;
 import javax.servlet.ServletContext;
 import javax.validation.Valid;
@@ -43,12 +27,23 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
+import org.glassfish.grizzly.http.server.Request;
+import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
+import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
+import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_RECURSION;
 
@@ -328,10 +323,23 @@ public class OperationsApiResource extends BaseFileOpsResource
               "limit="+limit, "offset="+offset, "recurse="+recurse,"impersonationId="+impersonationId,
               "sharedAppCtx="+sharedAppCtx);
 
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys;
-    if (sharedAppCtx) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-    else sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    // Determine if path is shared. If so it means system is implicitly allowed for the oboUser
+    // To determine if path is shared we get the system without auth.
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);;
+    // If not already in a shared context, check if path is shared.
+    // If path is shared then we have implicit authorization to read the system, so use cacheNoAuth to get the systems.
+    boolean pathIsShared = false;
+    if (!sharedAppCtx)
+    {
+      pathIsShared= fileOpsService.isPathShared(rUser, sys, path, impersonationId);
+    }
+
+    // If not in shared app ctx and path is not shared get the system with auth check.
+    // This confirms oboUser has read access to the system.
+    if (!sharedAppCtx && !pathIsShared)
+    {
+      sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    }
 
     Instant start = Instant.now();
     List<FileInfo> listing;

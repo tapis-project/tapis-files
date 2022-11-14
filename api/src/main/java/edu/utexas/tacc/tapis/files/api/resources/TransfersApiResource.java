@@ -143,7 +143,7 @@ public class  TransfersApiResource
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
       if (task == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_TXFR_NOT_FOUND", rUser, transferTaskUUID));
-      isPermitted(task, rUser.getOboUserId(), rUser.getOboTenantId());
+      isPermitted(task, rUser.getOboUserId(), rUser.getOboTenantId(), opName);
       TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
       return Response.ok(resp).build();
     }
@@ -210,7 +210,7 @@ public class  TransfersApiResource
       // Certain services are allowed to impersonate an OBO user for the purposes of authorization
       String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
 
-      isPermitted(task, oboOrImpersonatedUser, rUser.getOboTenantId());
+      isPermitted(task, oboOrImpersonatedUser, rUser.getOboTenantId(), opName);
       TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
       return Response.ok(resp).build();
     }
@@ -248,7 +248,7 @@ public class  TransfersApiResource
       UUID transferTaskUUID = UUID.fromString(transferTaskId);
       TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
       if (task == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_TXFR_NOT_FOUND", rUser, transferTaskUUID));
-      isPermitted(task, rUser.getOboUserId(), rUser.getOboTenantId());
+      isPermitted(task, rUser.getOboUserId(), rUser.getOboTenantId(), opName);
       transfersService.cancelTransfer(task);
       TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);
       resp.setMessage("Transfer deleted.");
@@ -311,11 +311,14 @@ public class  TransfersApiResource
    * Check that user has permission to access and act on the task
    * @param task - task to check
    * @param oboUser - user trying to act on the task
-   * @throws NotAuthorizedException if not authorized
    */
-  private void isPermitted(TransferTask task, String oboUser, String oboTenant) throws NotAuthorizedException
+  private void isPermitted(TransferTask task, String oboUser, String oboTenant, String opName)
   {
-    if (!task.getUsername().equals(oboUser)) throw new NotAuthorizedException("");
-    if (!task.getTenantId().equals(oboTenant)) throw new NotAuthorizedException("");
+    if (!task.getTenantId().equals(oboTenant) || !task.getUsername().equals(oboUser))
+    {
+      String msg = ApiUtils.getMsg("FAPI_TASK_UNAUTH", oboTenant, oboUser, task.getTenantId(), task.getUsername(),
+                                   task.getUuid(), opName);
+      throw new ForbiddenException(msg);
+    }
   }
 }

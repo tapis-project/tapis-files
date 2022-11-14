@@ -137,7 +137,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
     IRuntimeConfig runtimeConfig = RuntimeSettings.get();
     TenantManager tenantManager = TenantManager.getInstance(runtimeConfig.getTenantsServiceURL());
     tenantManager.getTenants();
-    //JWT validation
+
     ResourceConfig app = new BaseResourceConfig()
             .register(JWTValidateRequestFilter.class)
             .register(FilePermissionsAuthz.class)
@@ -204,6 +204,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @BeforeMethod
   @AfterMethod
+  // Remove all files from test systems
   public void cleanup()
   {
     testSystems.forEach((sys) -> {

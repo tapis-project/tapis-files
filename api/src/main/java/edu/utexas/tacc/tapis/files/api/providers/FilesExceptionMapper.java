@@ -32,7 +32,8 @@ public class FilesExceptionMapper implements ExceptionMapper<Exception>
     Response.Status status = INTERNAL_SERVER_ERROR;
 
     if (exception instanceof NotFoundException) status = NOT_FOUND;
-    else if (exception instanceof NotAuthorizedException || exception instanceof ForbiddenException) status = FORBIDDEN;
+    else if (exception instanceof NotAuthorizedException) status = UNAUTHORIZED;
+    else if (exception instanceof ForbiddenException) status = FORBIDDEN;
     else if (exception instanceof BadRequestException) status = BAD_REQUEST;
     else if (exception instanceof WebApplicationException) status = INTERNAL_SERVER_ERROR;
     else log.error("UNCAUGHT_EXCEPTION", exception);

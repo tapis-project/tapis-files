@@ -9,7 +9,7 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.2.7 - 2022-11-09
+## 1.2.7 - 2022-11-14
 
 Incremental improvements and bug fixes.
 
@@ -23,6 +23,7 @@ Incremental improvements and bug fixes.
 - When there are multiple transfer elements in a request and one finishes quickly it is possible for some to be missed.
 - Fix problems with zip downloads. Require zip when path is directory. Disallow zip if request would include all files on host.
 - Fix bugs in updating start times for top level task and parent tasks.
+- Fix bug: Listing and download not authorized when path is shared.
 
 ---------------------------------------------------------------------------
 ## 1.2.6 - 2022-10-20

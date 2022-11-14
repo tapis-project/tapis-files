@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.ws.rs.NotAuthorizedException;
+import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ResourceInfo;
@@ -44,7 +44,7 @@ public class FileTransfersAuthz implements ContainerRequestFilter {
         boolean isPermitted = transfersService.isPermitted(username, tenantId, taskUUID);
         if (!isPermitted)
         {
-          throw new NotAuthorizedException(LibUtils.getMsgAuth("FILES_TXFR_NOT_AUTH", user, taskUUID));
+          throw new ForbiddenException(LibUtils.getMsgAuth("FILES_TXFR_NOT_AUTH", user, taskUUID));
         }
       }
       catch (ServiceException ex)
