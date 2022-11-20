@@ -1,26 +1,24 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.jetbrains.annotations.NotNull;
-import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import javax.ws.rs.NotFoundException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.jetbrains.annotations.NotNull;
 import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 
-public class HTTPClient implements IRemoteDataClient {
-
-    private static final Logger log = LoggerFactory.getLogger(HTTPClient.class);
+public class HTTPClient implements IRemoteDataClient
+{
+  private static final Logger log = LoggerFactory.getLogger(HTTPClient.class);
 
   @Override
   public void reserve() {}
@@ -33,8 +31,7 @@ public class HTTPClient implements IRemoteDataClient {
   public String getOboUser() { return oboUser; }
   @Override
   public SystemTypeEnum getSystemType() { return null; }
-  @Override
-  public String getSystemRootDir() { return "/"; }
+
   // Since no system use srcDstURIs instead
   @Override
   public String getSystemId() { return srcDstURIs; }

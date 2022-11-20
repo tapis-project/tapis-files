@@ -1,14 +1,12 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
-import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
+import org.jetbrains.annotations.NotNull;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 
 public interface IRemoteDataClient
 {
@@ -17,7 +15,6 @@ public interface IRemoteDataClient
   String getOboUser();
   String getSystemId();
   SystemTypeEnum getSystemType();
-  String getSystemRootDir();
 
   /**
    * Record a reservation for a client. Only used for SSH clients.

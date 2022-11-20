@@ -6,11 +6,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Objects;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import software.amazon.awssdk.services.s3.model.S3Object;
+
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 
 /**
  * Class representing a file or directory on a Tapis System

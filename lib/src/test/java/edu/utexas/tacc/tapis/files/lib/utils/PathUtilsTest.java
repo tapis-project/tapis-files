@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.utils;
 
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

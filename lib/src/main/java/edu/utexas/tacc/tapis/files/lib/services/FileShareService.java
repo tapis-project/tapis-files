@@ -8,6 +8,8 @@ import java.util.Set;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.WebApplicationException;
+
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -32,7 +34,6 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
 import edu.utexas.tacc.tapis.files.lib.models.UserShareInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 
 /*
  * Service level methods for File sharing operations.

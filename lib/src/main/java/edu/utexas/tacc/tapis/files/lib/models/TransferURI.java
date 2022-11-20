@@ -1,13 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.validation.ValidationException;
 import com.fasterxml.jackson.annotation.JsonValue;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.validation.ValidationException;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import static edu.utexas.tacc.tapis.shared.uri.TapisUrl.TAPIS_PROTOCOL_PREFIX;
 
 /**
  * A Transfer URI must look like tapis://{systemId}/{path}
@@ -18,7 +19,6 @@ import java.util.regex.Pattern;
  */
 public class TransferURI
 {
-  public static final String TAPIS_PROTOCOL = "tapis://";
   public static final String HTTP_PROTOCOL_PREFIX = "http";
   private final String systemId;
   private final String path;
@@ -39,7 +39,7 @@ public class TransferURI
     path = FilenameUtils.normalize(tmp);
     // Extract the path and protocol
     protocol = matcher.group(1);
-    isTapisProtocol = stringURI.startsWith(TAPIS_PROTOCOL);
+    isTapisProtocol = stringURI.startsWith(TAPIS_PROTOCOL_PREFIX);
   }
 
   // Construct given specific values for protocol, systemId and path

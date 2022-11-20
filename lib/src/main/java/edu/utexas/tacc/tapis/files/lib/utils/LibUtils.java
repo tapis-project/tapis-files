@@ -10,6 +10,7 @@ import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 
 import edu.utexas.tacc.tapis.files.lib.caches.ISystemsCache;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

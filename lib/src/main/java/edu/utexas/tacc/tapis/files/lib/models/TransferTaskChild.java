@@ -4,9 +4,8 @@ import java.util.StringJoiner;
 import java.util.UUID;
 import javax.validation.constraints.NotNull;
 
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 public class TransferTaskChild extends TransferTaskParent
