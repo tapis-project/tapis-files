@@ -1167,9 +1167,10 @@ public class FileOpsService
 
   /**
    * Confirm that caller or impersonationId has READ/MODIFY permission or share on path
-   * TODO/TBD: If it is allowed due to READ or MODIFY permission then return null
-   *   If it is allowed due to a share then return the UserShareInfo which contains the grantor.
    * To use impersonationId it must be a service request from a service allowed to impersonate.
+   * NOTE: Consider implementing as follows:
+   *   If it is allowed due to READ or MODIFY permission then return null
+   *   If it is allowed due to a share then return the UserShareInfo which contains the grantor.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param system - system containing path
@@ -1202,6 +1203,9 @@ public class FileOpsService
     // Certain services are allowed to impersonate an OBO user for the purposes of authorization
     //   and effectiveUserId resolution.
     String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+
+    // If requesting user is the system owner no need to check
+    if (oboOrImpersonatedUser.equals(system.getOwner())) return;
 
     // If user has READ or MODIFY permission then return
     //  else if shared then return

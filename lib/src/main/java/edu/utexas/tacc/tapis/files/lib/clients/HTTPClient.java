@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import javax.ws.rs.NotFoundException;
+
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -31,6 +33,8 @@ public class HTTPClient implements IRemoteDataClient
   public String getOboUser() { return oboUser; }
   @Override
   public SystemTypeEnum getSystemType() { return null; }
+  @Override
+  public TapisSystem getSystem() { return null; }
 
   // Since no system use srcDstURIs instead
   @Override

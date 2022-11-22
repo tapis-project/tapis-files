@@ -21,7 +21,6 @@ import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.NotFoundException;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -65,7 +64,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     try
     {
       Instant start = Instant.now();
-      TapisSystem system = systemsCache.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
+      TapisSystem system = systemsCacheWithAuth.getSystem(user.getOboTenantId(), systemId, user.getOboUser());
       LibUtils.checkEnabled(user, system);
       String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();
       IRemoteDataClient client = getClientForUserAndSystem(user, system, effectiveUserId);
@@ -101,7 +100,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
     // Make sure the Tapis System exists and is enabled
-    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
     try
     {
       String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? user.getOboUser() : system.getEffectiveUserId();

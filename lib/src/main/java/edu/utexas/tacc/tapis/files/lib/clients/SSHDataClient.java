@@ -71,6 +71,8 @@ public class SSHDataClient implements ISSHDataClient
   public String getSystemId() { return systemId; }
   @Override
   public SystemTypeEnum getSystemType() { return system.getSystemType(); }
+  @Override
+  public TapisSystem getSystem() { return system; }
 
   // Username must start with letter/underscore, contain alphanumeric or _ or -, have at most 32 characters
   //   and may end with $

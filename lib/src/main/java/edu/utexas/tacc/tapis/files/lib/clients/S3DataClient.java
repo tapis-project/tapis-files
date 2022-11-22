@@ -85,6 +85,8 @@ public class S3DataClient implements IRemoteDataClient
   public String getSystemId() { return system.getId(); }
   @Override
   public SystemTypeEnum getSystemType() { return system.getSystemType(); }
+  @Override
+  public TapisSystem getSystem() { return system; }
 
   public S3Client getClient() { return client; }
 

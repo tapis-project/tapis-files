@@ -88,17 +88,16 @@ public class IrodsDataClient implements IRemoteDataClient
   public String getOboTenant() {
     return oboTenant;
   }
-
   @Override
   public String getOboUser() {
     return oboUser;
   }
-
   @Override
   public String getSystemId() { return systemId; }
-
   @Override
   public SystemTypeEnum getSystemType() { return system.getSystemType(); }
+  @Override
+  public TapisSystem getSystem() { return system; }
 
   @Override
   public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException

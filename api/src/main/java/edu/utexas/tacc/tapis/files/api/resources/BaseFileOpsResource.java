@@ -12,11 +12,9 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 public abstract class BaseFileOpsResource
 {
   @Inject
-  SystemsCache systemsCache;
-
+  SystemsCache systemsCacheWithAuth;
   @Inject
   SystemsCacheNoAuth systemsCacheNoAuth;
-
   @Inject
   RemoteDataClientFactory remoteDataClientFactory;
 

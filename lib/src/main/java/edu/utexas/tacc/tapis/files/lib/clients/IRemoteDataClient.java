@@ -7,6 +7,7 @@ import javax.ws.rs.NotFoundException;
 import org.jetbrains.annotations.NotNull;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 public interface IRemoteDataClient
 {
@@ -15,6 +16,7 @@ public interface IRemoteDataClient
   String getOboUser();
   String getSystemId();
   SystemTypeEnum getSystemType();
+  TapisSystem getSystem();
 
   /**
    * Record a reservation for a client. Only used for SSH clients.
