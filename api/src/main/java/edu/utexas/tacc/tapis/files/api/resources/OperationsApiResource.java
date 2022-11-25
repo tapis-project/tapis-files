@@ -159,8 +159,7 @@ public class OperationsApiResource extends BaseFileOpsResource
 
     // Is the requester the owner of the system?
     boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
-    // If not owner get the system with auth check.
-    // This confirms oboUser has read access to the system.
+    // If not owner get the system with auth check. This confirms oboUser has read access to the system.
     if (!isOwner) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
 
     // ---------------------------- Make service call -------------------------------
@@ -258,9 +257,7 @@ public class OperationsApiResource extends BaseFileOpsResource
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
     // Is the requester the owner of the system?
     boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
-
-    // If not owner get the system with auth check.
-    // This confirms oboUser has read access to the system.
+    // If not owner get the system with auth check. This confirms oboUser has read access to the system.
     if (!isOwner) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
 
     // ---------------------------- Make service call -------------------------------
@@ -305,8 +302,7 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Is the requester the owner of the system?
     boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
 
-    // If not owner get the system with auth check.
-    // This confirms oboUser has read access to the system.
+    // If not owner get the system with auth check. This confirms oboUser has read access to the system.
     if (!isOwner) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
 
     // ---------------------------- Make service call -------------------------------

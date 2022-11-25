@@ -14,8 +14,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
-
-import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.irods.jargon.core.connection.AuthScheme;
@@ -38,6 +36,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -89,9 +88,7 @@ public class IrodsDataClient implements IRemoteDataClient
     return oboTenant;
   }
   @Override
-  public String getOboUser() {
-    return oboUser;
-  }
+  public String getOboUser() { return oboUser; }
   @Override
   public String getSystemId() { return systemId; }
   @Override
