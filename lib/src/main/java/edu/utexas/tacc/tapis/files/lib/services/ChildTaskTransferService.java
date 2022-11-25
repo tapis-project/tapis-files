@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -52,7 +52,7 @@ public class ChildTaskTransferService
     private final FileTransfersDAO dao;
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
     private final RemoteDataClientFactory remoteDataClientFactory;
-    private final SystemsCache systemsCache;
+    private final SystemsCacheNoAuth systemsCacheNoAuth;
     private final FileUtilsService fileUtilsService;
     private static final Logger log = LoggerFactory.getLogger(ChildTaskTransferService.class);
 
@@ -60,15 +60,19 @@ public class ChildTaskTransferService
   /*            Constructors                                                 */
   /* *********************************************************************** */
 
+  /*
+   * Constructor for service.
+   * Note that this is never invoked explicitly. Arguments of constructor are initialized via Dependency Injection.
+   */
   @Inject
   public ChildTaskTransferService(TransfersService transfersService1, FileTransfersDAO dao1,
                                   FileUtilsService fileUtilsService1,
                                   RemoteDataClientFactory remoteDataClientFactory1,
-                                  SystemsCache systemsCache1)
+                                  SystemsCacheNoAuth cache1)
   {
     transfersService = transfersService1;
     dao = dao1;
-    systemsCache = systemsCache1;
+    systemsCacheNoAuth = cache1;
     remoteDataClientFactory = remoteDataClientFactory1;
     fileUtilsService = fileUtilsService1;
   }
@@ -219,7 +223,6 @@ public class ChildTaskTransferService
     IRemoteDataClient sourceClient;
     IRemoteDataClient destClient;
     log.info("***** DOING stepTwo **** {}", taskChild);
-
     try
     {
       // If cancelled or failed set the end time, and we are done
@@ -259,7 +262,7 @@ public class ChildTaskTransferService
     {
       // Source path is not HTTP/S
       sourcePath = sourceURL.getPath();
-      sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
+      sourceSystem = systemsCacheNoAuth.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
       // If src system is not enabled throw an exception
       if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
       {
@@ -278,7 +281,7 @@ public class ChildTaskTransferService
     // Initialize destination client
     try
     {
-      destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
+      destSystem = systemsCacheNoAuth.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
       // If dst system is not enabled throw an exception
       if (destSystem.getEnabled() == null || !destSystem.getEnabled())
       {
@@ -532,13 +535,8 @@ public class ChildTaskTransferService
   // ========= Other private methods
   // ======================================================================================
 
-  /**
+  /*
    * Perform the transfer specified in the child task
-   *
-   * @param taskChild
-   * @return
-   * @throws ServiceException
-   * @throws IOException
    */
   private TransferTaskChild doTransfer(TransferTaskChild taskChild) throws ServiceException, IOException
   {

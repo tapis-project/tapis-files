@@ -29,7 +29,6 @@ import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 @Service
 public class FileUtilsService
 {
-
   private static final Logger log = LoggerFactory.getLogger(FileUtilsService.class);
   private final FilePermsService permsService;
 
@@ -63,16 +62,19 @@ public class FileUtilsService
       throw new IllegalArgumentException(msg);
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
-    try {
-      // Check permissions
-      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           path, Permission.READ);
-
+    boolean isOwner = false;
+    if (client.getSystem().getOwner() != null) isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+    try
+    {
+      // If not system owner explicitly check permissions
+      if (!isOwner) LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                                            path, Permission.READ);
       Path relativePath = PathUtils.getRelativePath(path);
       // Make the remoteDataClient call
       return sshClient.getStatInfo(relativePath.toString(), followLinks);
-
-    } catch (IOException ex) {
+    }
+    catch (IOException ex)
+    {
       String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
                                 client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
@@ -104,10 +106,12 @@ public class FileUtilsService
       throw new IllegalArgumentException(msg);
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
+    boolean isOwner = false;
+    if (client.getSystem().getOwner() != null) isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
     try
     {
-      // If not skipping due to sharedAppCtx then check permissions
-      if (!sharedAppCtx)
+      // If not skipping due to ownership or sharedAppCtx then check permissions
+      if (!isOwner && !sharedAppCtx)
       {
         LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                 path, Permission.MODIFY);

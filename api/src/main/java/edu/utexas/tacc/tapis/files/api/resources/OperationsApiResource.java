@@ -154,13 +154,10 @@ public class OperationsApiResource extends BaseFileOpsResource
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
 
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-
-    // Is the requester the owner of the system?
-    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
-    // If not owner get the system with auth check. This confirms oboUser has read access to the system.
-    if (!isOwner) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
+    // Fetch the system, including authorization check for access to the system.
+    // (fileOpsSvc=null, path=null, sharedAppCtx=false, impersonationId=null)
+    TapisSystem sys = LibUtils.getSysWithAuth(rUser, null, systemsCacheNoAuth, systemsCacheWithAuth, systemId, null,
+                                              false, null);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -203,14 +200,10 @@ public class OperationsApiResource extends BaseFileOpsResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
                           "sharedAppCtx="+sharedAppCtx, "path="+mkdirRequest.getPath());
 
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-    // Is the requester the owner of the system?
-    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
-
-    // If not owner and not in shared context get the system with auth check.
-    // This confirms oboUser has read access to the system.
-    if (!isOwner && !sharedAppCtx) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
+    // Fetch the system, including authorization check for access to the system.
+    // (fileOpsSvc=null, path=null, impersonationId=null)
+    TapisSystem sys = LibUtils.getSysWithAuth(rUser, null, systemsCacheNoAuth, systemsCacheWithAuth, systemId, null,
+                                              sharedAppCtx, null);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -253,12 +246,11 @@ public class OperationsApiResource extends BaseFileOpsResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
                           "op="+mvCpReq.getOperation(), "newPath="+mvCpReq.getNewPath());
 
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-    // Is the requester the owner of the system?
-    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
-    // If not owner get the system with auth check. This confirms oboUser has read access to the system.
-    if (!isOwner) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
+
+    // Fetch the system, including authorization check for access to the system.
+    // (fileOpsSvc=null, path=null, sharedAppCtx=false, impersonationId=null)
+    TapisSystem sys = LibUtils.getSysWithAuth(rUser, null, systemsCacheNoAuth, systemsCacheWithAuth, systemId, null,
+                                              false, null);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -297,13 +289,10 @@ public class OperationsApiResource extends BaseFileOpsResource
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
 
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-    // Is the requester the owner of the system?
-    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
-
-    // If not owner get the system with auth check. This confirms oboUser has read access to the system.
-    if (!isOwner) sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
+    // Fetch the system, including authorization check for access to the system.
+    // (fileOpsSvc=null, path=null, sharedAppCtx=false, impersonationId=null)
+    TapisSystem sys = LibUtils.getSysWithAuth(rUser, null, systemsCacheNoAuth, systemsCacheWithAuth, systemId, null,
+                                              false, null);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -341,27 +330,9 @@ public class OperationsApiResource extends BaseFileOpsResource
               "limit="+limit, "offset="+offset, "recurse="+recurse,"impersonationId="+impersonationId,
               "sharedAppCtx="+sharedAppCtx);
 
-    // Determine if path is shared. If so it means system is implicitly allowed for the oboUser
-    // To determine if path is shared we get the system without auth.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-
-    // Is the requester the owner of the system?
-    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
-
-    // If not owner and not already in a shared context, check if path is shared.
-    // If path is shared then we have implicit authorization to read the system, so use cacheNoAuth to get the systems.
-    boolean pathIsShared = false;
-    if (!sharedAppCtx && !isOwner)
-    {
-      pathIsShared= fileOpsService.isPathShared(rUser, sys, path, impersonationId);
-    }
-
-    // If not owner, not in shared app ctx and path is not shared get the system with auth check.
-    // This confirms oboUser has read access to the system.
-    if (!sharedAppCtx && !isOwner && !pathIsShared)
-    {
-      sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
-    }
+    // Fetch the system, including authorization check for access to the system.
+    TapisSystem sys = LibUtils.getSysWithAuth(rUser, fileOpsService, systemsCacheNoAuth, systemsCacheWithAuth,
+                                              systemId, path, sharedAppCtx, impersonationId);
 
     Instant start = Instant.now();
     List<FileInfo> listing;

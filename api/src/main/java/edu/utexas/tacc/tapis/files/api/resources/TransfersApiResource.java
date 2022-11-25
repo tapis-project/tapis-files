@@ -309,16 +309,14 @@ public class  TransfersApiResource
 
   /**
    * Check that user has permission to access and act on the task
+   * Permitted only if task tenant+user matched obo tenant+user
    * @param task - task to check
    * @param oboUser - user trying to act on the task
    */
   private void isPermitted(TransferTask task, String oboUser, String oboTenant, String opName)
   {
-    if (!task.getTenantId().equals(oboTenant) || !task.getUsername().equals(oboUser))
-    {
-      String msg = ApiUtils.getMsg("FAPI_TASK_UNAUTH", oboTenant, oboUser, task.getTenantId(), task.getUsername(),
-                                   task.getUuid(), opName);
-      throw new ForbiddenException(msg);
-    }
+    if (task.getTenantId().equals(oboTenant) && task.getUsername().equals(oboUser)) return;
+    throw new ForbiddenException(ApiUtils.getMsg("FAPI_TASK_UNAUTH", oboTenant, oboUser, task.getTenantId(),
+                                                 task.getUsername(), task.getUuid(), opName));
   }
 }

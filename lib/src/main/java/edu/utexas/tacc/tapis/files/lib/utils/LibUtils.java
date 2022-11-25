@@ -10,6 +10,7 @@ import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 
 import edu.utexas.tacc.tapis.files.lib.caches.ISystemsCache;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -259,5 +260,47 @@ public class LibUtils
     if (msgList == null || msgList.isEmpty()) return sb.toString();
     for (String msg : msgList) { sb.append("  ").append(msg).append(System.lineSeparator()); }
     return sb.toString();
+  }
+
+  /*
+   * Fetch a system, include authorization checks.
+   * If fileOpsService is null then we do not check for sharing of the path.
+   */
+  public static TapisSystem getSysWithAuth(ResourceRequestUser rUser, FileOpsService fileOpsService,
+                                           ISystemsCache systemsCacheNoAuth, ISystemsCache systemsCacheWithAuth,
+                                           String systemId, String path, boolean sharedAppCtx, String impersonationId)
+  {
+    // Get system without auth. We need it for authorization checking.
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+    // Is the requester the owner of the system?
+    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
+
+    // Check authorization for the system.
+    // If owner or in sharedAppCtx allow it, else check for explicit sharing of path
+    boolean permitted;
+    if (isOwner || sharedAppCtx)
+    {
+      permitted = true;
+    }
+    else
+    {
+      // If no fileOpsSvc, we do not check for sharing of the path.
+      if (fileOpsService == null)
+      {
+        permitted = false;
+      }
+      else
+      {
+        // Determine if path is shared. If so it means system is implicitly allowed for the oboUser
+        permitted = fileOpsService.isPathShared(rUser, sys, path, impersonationId);
+      }
+    }
+    // If not owner, not in shared app ctx and path is not shared get the system with auth check.
+    // This confirms oboUser has read access to the system.
+    if (!permitted)
+    {
+      sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
+    }
+    return sys;
   }
 }

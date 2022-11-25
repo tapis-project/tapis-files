@@ -1247,7 +1247,7 @@ public class FileOpsService
    * @param pathStr - path involved in operation
    * @throws ForbiddenException - user not authorized to perform operation
    */
-  private void checkSharedAppCtxAllowed(ResourceRequestUser rUser, String opName, String sysId, String pathStr)
+  private static void checkSharedAppCtxAllowed(ResourceRequestUser rUser, String opName, String sysId, String pathStr)
           throws ForbiddenException
   {
     // If a service request the username will be the service name. E.g. files, jobs, streams, etc
