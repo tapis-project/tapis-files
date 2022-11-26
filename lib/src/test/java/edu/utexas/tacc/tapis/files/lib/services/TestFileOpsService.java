@@ -45,6 +45,8 @@ import org.testng.annotations.Test;
 import javax.inject.Singleton;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.StreamingOutput;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -606,7 +608,8 @@ public class TestFileOpsService
     }
 
     @Test(dataProvider = "testSystems")
-    public void testGetBytesByRange(TapisSystem testSystem) throws Exception {
+    public void testGetBytesByRange(TapisSystem testSystem) throws Exception
+    {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
@@ -614,6 +617,19 @@ public class TestFileOpsService
         InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId, sharedAppCtxFalse);
         Assert.assertEquals(result.readAllBytes().length, 1000);
     }
+
+  @Test(dataProvider = "testSystems")
+  public void testGetFullStream(TapisSystem testSystem) throws Exception
+  {
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    InputStream in = Utils.makeFakeFile( 1000 * 1024);
+    fileOpsService.upload(client,"test.txt", in);
+    StreamingOutput streamingOutput = fileOpsService.getFullStream(rTestUser, testSystem,"test.txt", nullImpersonationId, sharedAppCtxFalse);
+    ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+    streamingOutput.write(outStream);
+    Assert.assertEquals(outStream.size(), 1000*1024);
+  }
 
     @Test(dataProvider = "testSystems")
     public void testGetZip(TapisSystem testSystem) throws Exception
@@ -629,7 +645,7 @@ public class TestFileOpsService
         OutputStream outputStream = new FileOutputStream(file);
         fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a", nullImpersonationId, sharedAppCtxFalse);
 
-        try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis) )
+        try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis))
         {
             ZipEntry ze;
             int count = 0;
