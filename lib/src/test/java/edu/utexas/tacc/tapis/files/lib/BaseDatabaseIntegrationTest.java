@@ -14,6 +14,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
+import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -28,6 +29,7 @@ import org.flywaydb.core.Flyway;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,8 +82,9 @@ public class BaseDatabaseIntegrationTest
   protected ServiceLocator locator;
 
   protected ServiceClients serviceClients = Mockito.mock(ServiceClients.class);
+  protected SKClient skClient = Mockito.mock(SKClient.class);
   protected FilePermsService permsService = Mockito.mock(FilePermsService.class);
-  protected SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
+  protected SystemsCache systemsCacheWithAuth = Mockito.mock(SystemsCache.class);
   protected SystemsCacheNoAuth systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
 
   protected TransfersService transfersService;
@@ -289,7 +292,7 @@ public class BaseDatabaseIntegrationTest
       protected void configure()
       {
         bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-        bind(systemsCache).to(SystemsCache.class);
+        bind(systemsCacheWithAuth).to(SystemsCache.class);
         bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
         bindAsContract(TransfersService.class).in(Singleton.class);
         bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
