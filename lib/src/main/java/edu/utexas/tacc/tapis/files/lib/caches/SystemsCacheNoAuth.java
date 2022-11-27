@@ -107,10 +107,10 @@ public class SystemsCacheNoAuth implements ISystemsCache
       var requireExec = false;
       var selectStr = "allAttributes";
       var returnCreds = true;
-      String impersonationId = null;
+      String impersonationIdNull = null;
       var sharedAppCtx = true;
       TapisSystem system = client.getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
-                                            impersonationId, sharedAppCtx);
+                                            impersonationIdNull, sharedAppCtx);
       log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADED", key.getTenantId(), key.getSystemId(), key.getUsername(),
                                 system.getDefaultAuthnMethod()));
       return system;

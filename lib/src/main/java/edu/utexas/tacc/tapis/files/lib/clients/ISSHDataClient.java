@@ -10,11 +10,6 @@ import java.io.IOException;
 
 public interface ISSHDataClient extends IRemoteDataClient
 {
-  // In addition to oboTenant, oboUser and systemId in IRemoteDataClient an SSHClient also has an
-  //   associated user and host
-  String getEffectiveUserId();
-  String getHost();
-
   // ------------------------------
   // Native Linux Utility Methods
   // ------------------------------

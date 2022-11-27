@@ -11,8 +11,6 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.UriBuilder;
-
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
@@ -39,12 +37,12 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Iterable;
 
+import edu.utexas.tacc.tapis.shared.s3.S3Utils;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
-import edu.utexas.tacc.tapis.files.lib.utils.S3URLParser;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /**
@@ -67,32 +65,30 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
 public class S3DataClient implements IRemoteDataClient
 {
   private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
-
-  @Override
-  public void reserve() {}
-  @Override
-  public void release() {}
-
-  public String getOboTenant() { return oboTenant; }
-  public String getOboUser() { return oboUser; }
-  public String getSystemId() { return system.getId(); }
-  @Override
-  public String getSystemRootDir() { return rootDir; }
-  @Override
-  public SystemTypeEnum getSystemType() { return system.getSystemType(); }
-
-
   private final String oboTenant;
   private final String oboUser;
-
-  public S3Client getClient() {
-    return client;
-  }
-
   private final S3Client client;
   private final String bucket;
   private final TapisSystem system;
   private final String rootDir;
+
+  @Override
+  public void reserve() {}
+  @Override
+  public void release() {} // NOTE: Do not close on release. getContent calls have streaming output. Must remain open.
+
+  @Override
+  public String getOboTenant() { return oboTenant; }
+  @Override
+  public String getOboUser() { return oboUser; }
+  @Override
+  public String getSystemId() { return system.getId(); }
+  @Override
+  public SystemTypeEnum getSystemType() { return system.getSystemType(); }
+  @Override
+  public TapisSystem getSystem() { return system; }
+
+  public S3Client getClient() { return client; }
 
   public S3DataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1)
           throws IOException
@@ -101,15 +97,16 @@ public class S3DataClient implements IRemoteDataClient
     oboUser = oboUser1;
     system = system1;
     bucket = system.getBucketName();
-    // Make sure we have a valid rootDir that is not null or have extra whitespace
+    // Make sure we have a valid rootDir that is not null and does not have extra whitespace
     rootDir = (StringUtils.isBlank(system.getRootDir())) ? "" :  system.getRootDir();
 
     // There are so many flavors of s3 URLs we have to do the gymnastics below.
     try
     {
       String host = system.getHost();
-      String region = S3URLParser.getRegion(host);
-      URI endpoint = configEndpoint(host);
+      int port = system.getPort() == null ? -1 : system.getPort();
+      String region = S3Utils.getS3Region(host);
+      URI endpoint = configEndpoint(host, port);
       Region reg;
 
       //For minio/other S3 compliant APIs, the region is not needed
@@ -163,7 +160,7 @@ public class S3DataClient implements IRemoteDataClient
               .credentialsProvider(StaticCredentialsProvider.create(credentials));
 
       // Have to do the endpoint override if it is not a real AWS route, as in the case for a minio instance
-      if (!S3URLParser.isAWSUrl(host))
+      if (!S3Utils.isAWSUrl(host))
       {
         log.debug(LibUtils.getMsg("FILES_CLIENT_S3_EP_OVER", oboTenant, oboUser, system.getId(), bucket,
                 reg.toString(), host, endpoint.toString()));
@@ -188,21 +185,21 @@ public class S3DataClient implements IRemoteDataClient
    * Build a URI using host, scheme, port
    *
    * @param host Host from the System
+   * @param port port from the System
    * @return a URI
    * @throws URISyntaxException on error
    */
-  public URI configEndpoint(String host) throws URISyntaxException
+  public URI configEndpoint(String host, int port) throws URISyntaxException
   {
     URI tmpURI = new URI(host);
     // Build a URI setting host, scheme, port
     UriBuilder uriBuilder = UriBuilder.fromUri("");
     uriBuilder.host(tmpURI.getHost()).scheme(tmpURI.getScheme());
-    if ((system.getPort() != null) && (system.getPort() > 0)) uriBuilder.port(system.getPort());
+    if (port > 0) uriBuilder.port(port);
     if (StringUtils.isBlank(tmpURI.getHost())) uriBuilder.host(host);
     //Make sure there is a scheme, and default to https if not.
     if (StringUtils.isBlank(tmpURI.getScheme())) uriBuilder.scheme("https");
-    URI endpoint = uriBuilder.build();
-    return endpoint;
+    return uriBuilder.build();
   }
 
   /**

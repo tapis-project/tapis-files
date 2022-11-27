@@ -24,6 +24,7 @@ import edu.utexas.tacc.tapis.security.client.model.SKShareGetSharesParms;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -32,7 +33,6 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
 import edu.utexas.tacc.tapis.files.lib.models.UserShareInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 
 /*
  * Service level methods for File sharing operations.
@@ -78,6 +78,8 @@ public class FileShareService
   FilePermsService permsService;
   @Inject
   private SystemsCache systemsCache;
+  @Inject
+  private SystemsCache systemsCacheNoAuth;
   @Inject
   private ServiceClients serviceClients;
 
@@ -269,7 +271,10 @@ public class FileShareService
   {
     String opName = "getShareInfo";
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+    // Is the requester the owner of the system?
+    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
+
     // Get path relative to system rootDir and protect against ../.. and make sure starts with /
     String pathStr = PathUtils.getSKRelativePath(path).toString();
 
@@ -305,7 +310,7 @@ public class FileShareService
     try
     {
       // If not the owner check for READ permission
-      if (sys.getOwner() != null && !sys.getOwner().equals(oboUser))
+      if (!isOwner)
       {
         LibUtils.checkPermitted(permsService, oboTenant, oboUser, systemId, pathStr, FileInfo.Permission.READ);
       }
@@ -465,17 +470,19 @@ public class FileShareService
           throws WebApplicationException
   {
     String opName = "removeAllSharesForPath";
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-    // Get path relative to system rootDir and protect against ../.. and make sure starts with /
-    String pathStr = PathUtils.getSKRelativePath(path).toString();
-
     // For convenience/clarity
     String oboUser = rUser.getOboUserId();
     String oboTenant = rUser.getOboTenantId();
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+    // Is the requester the owner of the system?
+    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
+
+    // Get path relative to system rootDir and protect against ../.. and make sure starts with /
+    String pathStr = PathUtils.getSKRelativePath(path).toString();
 
     // User must be system owner
-    if (sys.getOwner() == null || !sys.getOwner().equals(oboUser))
+    if (!isOwner)
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, opName);
       log.warn(msg);
@@ -528,7 +535,10 @@ public class FileShareService
           throws WebApplicationException
   {
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+    // Is the requester the owner of the system?
+    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
+
     // Get path relative to system rootDir and protect against ../.. and make sure starts with /
     String pathStr = PathUtils.getSKRelativePath(path).toString();
 
@@ -537,7 +547,7 @@ public class FileShareService
     String oboTenant = rUser.getOboTenantId();
 
     // User must be system owner
-    if (sys.getOwner() == null || !sys.getOwner().equals(oboUser))
+    if (!isOwner)
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, opName);
       log.warn(msg);

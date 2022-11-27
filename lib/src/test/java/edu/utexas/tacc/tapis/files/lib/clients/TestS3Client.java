@@ -26,7 +26,7 @@ public class TestS3Client {
         sys.setAuthnCredential(creds);
 
         S3DataClient client = new S3DataClient(oboTenant, oboUser, sys);
-        URI tmpURI = client.configEndpoint(sys.getHost());
+        URI tmpURI = client.configEndpoint(sys.getHost(), sys.getPort());
         Assert.assertEquals(tmpURI.getScheme(), "https");
         Assert.assertEquals(tmpURI.toString(), "https://test.tacc.io:9000");
     }
@@ -43,7 +43,7 @@ public class TestS3Client {
         sys.setAuthnCredential(creds);
 
         S3DataClient client = new S3DataClient(oboTenant, oboUser, sys);
-        URI tmpURI = client.configEndpoint(sys.getHost());
+        URI tmpURI = client.configEndpoint(sys.getHost(), sys.getPort());
         Assert.assertEquals(tmpURI.getScheme(), "http");
         Assert.assertEquals(tmpURI.toString(), "http://test.tacc.io:9000");
     }
@@ -60,7 +60,7 @@ public class TestS3Client {
         sys.setAuthnCredential(creds);
 
         S3DataClient client = new S3DataClient(oboTenant, oboUser, sys);
-        URI tmpURI = client.configEndpoint(sys.getHost());
+        URI tmpURI = client.configEndpoint(sys.getHost(),sys.getPort());
         Assert.assertEquals(tmpURI.getScheme(), "https");
         Assert.assertEquals(tmpURI.toString(), "https://test.tacc.io:9000");
     }

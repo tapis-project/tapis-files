@@ -1,27 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
-import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.ssh.apache.SSHExecChannel;
-import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.apache.commons.exec.CommandLine;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.sshd.sftp.client.SftpClient.Attributes;
-import org.apache.sshd.sftp.client.SftpClient.DirEntry;
-import org.apache.sshd.sftp.common.SftpException;
-import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.ws.rs.NotFoundException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -37,7 +15,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import javax.ws.rs.NotFoundException;
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.sshd.sftp.client.SftpClient.Attributes;
+import org.apache.sshd.sftp.client.SftpClient.DirEntry;
+import org.apache.sshd.sftp.common.SftpException;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
+import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.ssh.apache.SSHExecChannel;
+import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /**
@@ -63,16 +62,16 @@ public class SSHDataClient implements ISSHDataClient
   private final TapisSystem system;
   private final SSHConnectionHolder connectionHolder;
 
+  @Override
   public String getOboTenant() { return oboTenant; }
+  @Override
   public String getOboUser() { return oboUser; }
+  @Override
   public String getSystemId() { return systemId; }
   @Override
-  public String getSystemRootDir() { return rootDir; }
-  @Override
   public SystemTypeEnum getSystemType() { return system.getSystemType(); }
-
-  public String getEffectiveUserId() { return effectiveUserId; }
-  public String getHost() { return host; }
+  @Override
+  public TapisSystem getSystem() { return system; }
 
   // Username must start with letter/underscore, contain alphanumeric or _ or -, have at most 32 characters
   //   and may end with $

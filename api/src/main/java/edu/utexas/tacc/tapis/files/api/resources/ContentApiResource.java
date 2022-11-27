@@ -138,23 +138,9 @@ public class ContentApiResource extends BaseFileOpsResource
               "path="+path, "range="+range, "zip="+zip, "more="+startPage, "impersonationId="+impersonationId,
               "sharedAppCtx="+sharedAppCtx);
 
-    // Determine if path is shared. If so it means system is implicitly allowed for the oboUser
-    // To determine if path is shared we get the system without auth.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);;
-    // If not already in a shared context, check if path is shared.
-    // If path is shared then we have implicit authorization to read the system, so use cacheNoAuth to get the systems.
-    boolean pathIsShared = false;
-    if (!sharedAppCtx)
-    {
-      pathIsShared= fileOpsService.isPathShared(rUser, sys, path, impersonationId);
-    }
-
-    // If not in shared app ctx and path is not shared get the system with auth check.
-    // This confirms oboUser has read access to the system.
-    if (!sharedAppCtx && !pathIsShared)
-    {
-      sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-    }
+    // Fetch the system, including authorization check for access to the system.
+    TapisSystem sys = LibUtils.getSysWithAuth(rUser, fileOpsService, systemsCacheNoAuth, systemsCacheWithAuth,
+                                              systemId, path, sharedAppCtx, impersonationId);
 
     // ---------------------------- Make service calls to start data streaming -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either

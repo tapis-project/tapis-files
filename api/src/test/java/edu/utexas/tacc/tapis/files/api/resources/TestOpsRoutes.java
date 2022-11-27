@@ -74,6 +74,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   private static final String SYSTEM_ID = "testSystem";
   private static final String TEST_USR = "testuser";
   private static final String TEST_USR1 = "testuser1";
+  private static final String TEST_USR2 = "testuser2";
   private static final String TEST_FILE1 = "testfile1.txt";
   private static final String TEST_FILE2 = "testfile2.txt";
   private static final String TEST_FILE3 = "testfile3.txt";
@@ -336,7 +337,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
         Response response = target("/v3/files/ops/testSystem/testfile1.txt")
             .request()
             .accept(MediaType.APPLICATION_JSON)
-            .header("x-tapis-token", getJwtForUser(TENANT, TEST_USR1))
+            .header("x-tapis-token", getJwtForUser(TENANT, TEST_USR2))
             .get();
         Assert.assertEquals(response.getStatus(), 403);
     }

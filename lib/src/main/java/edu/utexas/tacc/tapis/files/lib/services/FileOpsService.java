@@ -1,39 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
-import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
-import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.shared.TapisConstants;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.security.ServiceContext;
-import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.flywaydb.core.Flyway;
-import org.jvnet.hk2.annotations.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.jetbrains.annotations.NotNull;
-
-import javax.inject.Inject;
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.ForbiddenException;
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.StreamingOutput;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,8 +11,40 @@ import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import javax.inject.Inject;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.StreamingOutput;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.flywaydb.core.Flyway;
+import org.jvnet.hk2.annotations.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.jetbrains.annotations.NotNull;
 
-import static edu.utexas.tacc.tapis.files.lib.models.TransferURI.TAPIS_PROTOCOL;
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
+import edu.utexas.tacc.tapis.files.lib.models.HeaderByteRange;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import static edu.utexas.tacc.tapis.shared.uri.TapisUrl.TAPIS_PROTOCOL_PREFIX;
 
 /*
  * Service level methods for File Operations.
@@ -69,7 +67,7 @@ public class FileOpsService
 
   private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
   // 0=systemId, 1=path, 2=tenant
-  private final String TAPIS_FILES_URL_FORMAT = String.format("%s{0}/{1}?tenant={2}", TAPIS_PROTOCOL);
+  private final String TAPIS_FILES_URL_FORMAT = String.format("%s{0}/{1}?tenant={2}", TAPIS_PROTOCOL_PREFIX);
 
   private static final String SYSTEMS_SERVICE = TapisConstants.SERVICE_NAME_SYSTEMS;
   private static final String APPS_SERVICE = TapisConstants.SERVICE_NAME_APPS;
@@ -1169,9 +1167,10 @@ public class FileOpsService
 
   /**
    * Confirm that caller or impersonationId has READ/MODIFY permission or share on path
-   * TODO/TBD: If it is allowed due to READ or MODIFY permission then return null
-   *   If it is allowed due to a share then return the UserShareInfo which contains the grantor.
    * To use impersonationId it must be a service request from a service allowed to impersonate.
+   * NOTE: Consider implementing as follows:
+   *   If it is allowed due to READ or MODIFY permission then return null
+   *   If it is allowed due to a share then return the UserShareInfo which contains the grantor.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param system - system containing path
@@ -1204,6 +1203,9 @@ public class FileOpsService
     // Certain services are allowed to impersonate an OBO user for the purposes of authorization
     //   and effectiveUserId resolution.
     String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+
+    // If requesting user is the system owner no need to check
+    if (oboOrImpersonatedUser.equals(system.getOwner())) return;
 
     // If user has READ or MODIFY permission then return
     //  else if shared then return
@@ -1245,7 +1247,7 @@ public class FileOpsService
    * @param pathStr - path involved in operation
    * @throws ForbiddenException - user not authorized to perform operation
    */
-  private void checkSharedAppCtxAllowed(ResourceRequestUser rUser, String opName, String sysId, String pathStr)
+  private static void checkSharedAppCtxAllowed(ResourceRequestUser rUser, String opName, String sysId, String pathStr)
           throws ForbiddenException
   {
     // If a service request the username will be the service name. E.g. files, jobs, streams, etc

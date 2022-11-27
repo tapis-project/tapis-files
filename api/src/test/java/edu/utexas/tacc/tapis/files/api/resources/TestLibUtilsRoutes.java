@@ -228,7 +228,10 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetStatInfo(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
+    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem); // For SystemsCacheWithAuth
+    when(systemsClient.getSystem(any(), any(), eq(false), any(), eq(true), any(), eq(true))).thenReturn(testSystem); // For SystemsCacheNoAuth
+// getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
+//                                            impersonationIdNull, sharedAppCtx);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
     // Get stat info and check file properties

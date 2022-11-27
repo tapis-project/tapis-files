@@ -1,22 +1,22 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import javax.inject.Inject;
+import org.jetbrains.annotations.NotNull;
+import org.jvnet.hk2.annotations.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.ISSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import org.jetbrains.annotations.NotNull;
-import org.jvnet.hk2.annotations.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import java.io.IOException;
-import java.nio.file.Path;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 
 /*
  * Service level methods for FileUtils.
@@ -29,7 +29,6 @@ import java.nio.file.Path;
 @Service
 public class FileUtilsService
 {
-
   private static final Logger log = LoggerFactory.getLogger(FileUtilsService.class);
   private final FilePermsService permsService;
 
@@ -63,16 +62,19 @@ public class FileUtilsService
       throw new IllegalArgumentException(msg);
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
-    try {
-      // Check permissions
-      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                           path, Permission.READ);
-
+    boolean isOwner = false;
+    if (client.getSystem().getOwner() != null) isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+    try
+    {
+      // If not system owner explicitly check permissions
+      if (!isOwner) LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                                            path, Permission.READ);
       Path relativePath = PathUtils.getRelativePath(path);
       // Make the remoteDataClient call
       return sshClient.getStatInfo(relativePath.toString(), followLinks);
-
-    } catch (IOException ex) {
+    }
+    catch (IOException ex)
+    {
       String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
                                 client.getSystemId(), path, ex.getMessage());
       log.error(msg, ex);
@@ -104,10 +106,12 @@ public class FileUtilsService
       throw new IllegalArgumentException(msg);
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
+    boolean isOwner = false;
+    if (client.getSystem().getOwner() != null) isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
     try
     {
-      // If not skipping due to sharedAppCtx then check permissions
-      if (!sharedAppCtx)
+      // If not skipping due to ownership or sharedAppCtx then check permissions
+      if (!isOwner && !sharedAppCtx)
       {
         LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                 path, Permission.MODIFY);
