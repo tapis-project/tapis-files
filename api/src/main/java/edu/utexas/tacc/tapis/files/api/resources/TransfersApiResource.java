@@ -1,13 +1,47 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import javax.inject.Inject;
+import javax.servlet.ServletContext;
+import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.GET;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Application;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
+import org.apache.commons.lang3.StringUtils;
+import org.glassfish.grizzly.http.server.Request;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
-import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
+import edu.utexas.tacc.tapis.sharedapi.responses.RespAbstract;
+import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
@@ -15,31 +49,6 @@ import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.sharedapi.validators.ValidUUID;
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.apache.commons.lang3.StringUtils;
-import org.glassfish.grizzly.http.server.Request;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import javax.servlet.ServletContext;
-import javax.validation.Valid;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.ws.rs.*;
-import javax.ws.rs.core.Application;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.UUID;
-
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_IMPERSONATE;
 
 /*
@@ -50,11 +59,21 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_IM
 @Path("/v3/files/transfers")
 public class  TransfersApiResource
 {
+  // ************************************************************************
+  // *********************** Constants **************************************
+  // ************************************************************************
   private static final Logger log = LoggerFactory.getLogger(TransfersApiResource.class);
   private final String className = getClass().getSimpleName();
+  // Format strings
+  private static final String TASKS_CNT_STR = "%d transfer tasks";
+
+  private static final String FILES_SVC = StringUtils.capitalize(TapisConstants.SERVICE_NAME_FILES);
 
   // Always return a nicely formatted response
   private static final boolean PRETTY = true;
+
+  // Message keys
+  private static final String TAPIS_FOUND = "TAPIS_FOUND";
 
   // ************************************************************************
   // *********************** Fields *****************************************
@@ -106,8 +125,13 @@ public class  TransfersApiResource
     try
     {
       List<TransferTask> tasks = transfersService.getRecentTransfers(rUser.getOboTenantId(), rUser.getOboUserId(), limit, offset);
-      TapisResponse<List<TransferTask>> resp = TapisResponse.createSuccessResponse(tasks);
-      return Response.ok(resp).build();
+      if (tasks == null) tasks = Collections.emptyList();
+      RespBasic resp = new RespBasic(tasks);
+      String itemCountStr = String.format(TASKS_CNT_STR, tasks.size());
+      return createSuccessResponse(Status.OK, MsgUtils.getMsg(TAPIS_FOUND, FILES_SVC, itemCountStr), resp);
+// TODO remove
+//      String msg = MsgUtils.getMsg("TAPIS_FOUND", "Transfer tasks", tasks.size(), " items");
+//      return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp)).build();
     }
     catch (ServiceException e)
     {
@@ -144,8 +168,9 @@ public class  TransfersApiResource
       TransferTask task = transfersService.getTransferTaskByUUID(transferTaskUUID);
       if (task == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_TXFR_NOT_FOUND", rUser, transferTaskUUID));
       isPermitted(task, rUser.getOboUserId(), rUser.getOboTenantId(), opName);
-      TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
-      return Response.ok(resp).build();
+
+      RespBasic resp = new RespBasic(task);
+      return createSuccessResponse(Status.OK, MsgUtils.getMsg(TAPIS_FOUND, "TransferTask", transferTaskId), resp);
     }
     catch (ServiceException e)
     {
@@ -211,8 +236,8 @@ public class  TransfersApiResource
       String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
 
       isPermitted(task, oboOrImpersonatedUser, rUser.getOboTenantId(), opName);
-      TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
-      return Response.ok(resp).build();
+      RespBasic resp = new RespBasic(task);
+      return createSuccessResponse(Status.OK, MsgUtils.getMsg(TAPIS_FOUND, "TransferTaskDetails", transferTaskId), resp);
     }
     catch (ServiceException ex)
     {
@@ -250,9 +275,10 @@ public class  TransfersApiResource
       if (task == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_TXFR_NOT_FOUND", rUser, transferTaskUUID));
       isPermitted(task, rUser.getOboUserId(), rUser.getOboTenantId(), opName);
       transfersService.cancelTransfer(task);
-      TapisResponse<String> resp = TapisResponse.createSuccessResponse(null);
-      resp.setMessage("Transfer deleted.");
-      return Response.ok(resp).build();
+
+      RespBasic respBasic = new RespBasic();
+      String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CANCELLED", rUser, transferTaskId);
+      return createSuccessResponse(Status.OK, msg, respBasic);
     }
     catch (ServiceException e)
     {
@@ -288,12 +314,11 @@ public class  TransfersApiResource
     {
       // Create the txfr task
       TransferTask task = transfersService.createTransfer(rUser, transferTaskRequest.getTag(), transferTaskRequest.getElements());
-      TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(task);
-      resp.setMessage("Transfer created.");
+      RespBasic respBasic = new RespBasic(task);
+      String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CREATED", rUser, task.getUuid());
       // Trace details of the created txfr task.
       if (log.isTraceEnabled()) log.trace(task.toString());
-
-      return Response.ok(resp).build();
+      return createSuccessResponse(Status.CREATED, msg, respBasic);
     }
     catch (ServiceException ex)
     {
@@ -318,5 +343,16 @@ public class  TransfersApiResource
     if (task.getTenantId().equals(oboTenant) && task.getUsername().equals(oboUser)) return;
     throw new ForbiddenException(ApiUtils.getMsg("FAPI_TASK_UNAUTH", oboTenant, oboUser, task.getTenantId(),
                                                  task.getUsername(), task.getUuid(), opName));
+  }
+
+  /**
+   * Create an OK response given message and base response to put in result
+   * @param msg - message for resp.message
+   * @param resp - base response (the result)
+   * @return - Final response to return to client
+   */
+  private static Response createSuccessResponse(Response.Status status, String msg, RespAbstract resp)
+  {
+    return Response.status(status).entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp)).build();
   }
 }

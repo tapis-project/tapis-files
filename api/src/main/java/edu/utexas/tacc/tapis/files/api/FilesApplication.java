@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.api;
 
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
-import edu.utexas.tacc.tapis.files.api.providers.FilesExceptionMapper;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
@@ -24,6 +23,7 @@ import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
+import edu.utexas.tacc.tapis.sharedapi.providers.ApiExceptionMapper;
 import edu.utexas.tacc.tapis.sharedapi.providers.ObjectMapperContextResolver;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.sharedapi.providers.ValidationExceptionMapper;
@@ -100,7 +100,7 @@ public class FilesApplication extends ResourceConfig
 
     // ExceptionMappers, need both because ValidationMapper is a custom Jersey thing and
     // cannot be implemented in a generic mapper
-    register(FilesExceptionMapper.class);
+    register(ApiExceptionMapper.class);
     register(ValidationExceptionMapper.class);
 
     // Register service class for calling init method during application startup

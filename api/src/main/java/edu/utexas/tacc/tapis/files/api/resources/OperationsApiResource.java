@@ -31,7 +31,8 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
@@ -40,11 +41,9 @@ import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
-import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_RECURSION;
 
 /*
@@ -162,10 +161,14 @@ public class OperationsApiResource extends BaseFileOpsResource
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     fileOpsService.upload(rUser, sys, path, fileInputStream);
-    TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-    return Response.ok(resp).build();
+
+    RespBasic respBasic = new RespBasic();
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
+    return Response.status(Status.OK)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
+            .build();
   }
 
   /**
@@ -208,10 +211,14 @@ public class OperationsApiResource extends BaseFileOpsResource
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedAppCtx);
-    TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-    return Response.ok(resp).build();
+
+    RespBasic respBasic = new RespBasic();
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, mkdirRequest.getPath());
+    return Response.status(Status.OK)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
+            .build();
   }
 
   /**
@@ -255,16 +262,20 @@ public class OperationsApiResource extends BaseFileOpsResource
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     fileOpsService.moveOrCopy(rUser, mvCpReq.getOperation(), sys, path, mvCpReq.getNewPath());
-    TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-    return Response.ok(resp).build();
+
+    RespBasic respBasic = new RespBasic();
+    String msg = ApiUtils.getMsgAuth("FAPI_MVCP_COMPLETE", rUser, mvCpReq.getOperation(), systemId, path, mvCpReq.getNewPath());
+    return Response.status(Status.OK)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
+            .build();
   }
 
   /**
-   * Delete a directory
+   * Delete a path
    * @param systemId - id of system
-   * @param path - directory to delete
+   * @param path - path to delete
    * @param securityContext - user identity
    * @return response
    */
@@ -297,10 +308,14 @@ public class OperationsApiResource extends BaseFileOpsResource
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     fileOpsService.delete(rUser, sys, path);
-    TapisResponse<String> resp = TapisResponse.createSuccessResponse("ok", "ok");
-    return Response.ok(resp).build();
+
+    RespBasic respBasic = new RespBasic();
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
+    return Response.status(Status.OK)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
+            .build();
   }
 
   // ************************************************************************
@@ -339,13 +354,17 @@ public class OperationsApiResource extends BaseFileOpsResource
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedAppCtx);
     else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedAppCtx);
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);
-    TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse("ok", listing);
-    return Response.status(Status.OK).entity(resp).build();
+
+    RespBasic respBasic = new RespBasic(listing);
+    msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
+    return Response.status(Status.OK)
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
+            .build();
   }
 }

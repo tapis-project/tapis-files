@@ -231,7 +231,7 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
 
         TransferTaskResponse data = response.readEntity(TransferTaskResponse.class);
         Assert.assertEquals(response.getStatus(), 404);
-        Assert.assertEquals(data.getStatus(), "error");
+        Assert.assertEquals(data.getStatus(), Response.Status.NOT_FOUND.getReasonPhrase());
     }
 
     @Test
