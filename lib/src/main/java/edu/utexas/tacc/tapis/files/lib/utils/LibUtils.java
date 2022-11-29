@@ -202,11 +202,11 @@ public class LibUtils
    *   which results in a response status of BAD_REQUEST (400).
    * Mapping happens in edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper
    */
-  public static void checkEnabled(AuthenticatedUser authenticatedUser, TapisSystem sys) throws BadRequestException
+  public static void checkEnabled(ResourceRequestUser rUser, TapisSystem sys) throws BadRequestException
   {
     if (sys.getEnabled() == null || !sys.getEnabled())
     {
-      String msg = getMsgAuth("FILES_SYS_NOTENABLED", authenticatedUser, sys.getId());
+      String msg = getMsgAuthR("FILES_SYS_NOTENABLED", rUser, sys.getId());
       log.warn(msg);
       throw new BadRequestException(msg);
     }

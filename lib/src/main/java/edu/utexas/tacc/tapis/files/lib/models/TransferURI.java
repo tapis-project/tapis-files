@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.validation.ValidationException;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -27,6 +28,7 @@ public class TransferURI
   private static final Pattern pattern = Pattern.compile("(http:\\/\\/|https:\\/\\/|tapis:\\/\\/)([\\w -\\.]+)\\/?(.*)");
 
   // Construct using a single string for the URI
+  @JsonCreator
   public TransferURI(String stringURI) throws ValidationException
   {
     Matcher matcher = pattern.matcher(stringURI);

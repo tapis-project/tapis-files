@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 public abstract class BaseFileOpsResource
@@ -21,15 +22,15 @@ public abstract class BaseFileOpsResource
   /**
    * Get a remote data client from the cache
    *
-   * @param authUser Authenticated user
+   * @param rUser Authenticated user
    * @param system system for connection
    * @param effUserId effective user to be used when connecting to host
    * @return a remote data client
    * @throws IOException on error
    */
-  protected IRemoteDataClient getClientForUserAndSystem(AuthenticatedUser authUser, TapisSystem system, String effUserId)
+  protected IRemoteDataClient getClientForUserAndSystem(ResourceRequestUser rUser, TapisSystem system, String effUserId)
           throws IOException
   {
-    return remoteDataClientFactory.getRemoteDataClient(authUser.getOboTenantId(), authUser.getOboUser(), system, effUserId);
+    return remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(), system, effUserId);
   }
 }

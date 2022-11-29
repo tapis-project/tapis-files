@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
+import edu.utexas.tacc.tapis.files.api.responses.RespTransferTask;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -50,6 +51,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+/*
+ NOTE: Most of these tests are failing. Problem is with jackson deserialization of response from createTransferTask:
+
+Caused by: com.fasterxml.jackson.databind.exc.MismatchedInputException: Cannot deserialize value of type `java.lang.String` from Object value (token `JsonToken.START_OBJECT`)
+at [Source: (org.glassfish.jersey.message.internal.ReaderInterceptorExecutor$UnCloseableInputStream); line: 17, column: 22] (through reference chain: edu.utexas.tacc.tapis.files.api.responses.RespTransferTask["result"]->edu.utexas.tacc.tapis.files.lib.models.TransferTask["parentTasks"]->java.util.ArrayList[0]->edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent["sourceURI"])
+
+ Other routes tests are OK. Not clear why these fail.
+ */
 @Test(groups = {"integration"})
 public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
 {
@@ -66,8 +75,8 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
     private ServiceJWT serviceJWT;
     private final Tenant tenant;
     private final Site testSite;
-  private SystemsCache systemsCache;
-  private SystemsCacheNoAuth systemsCacheNoAuth;
+    private SystemsCache systemsCache;
+    private SystemsCacheNoAuth systemsCacheNoAuth;
     private final Map<String, Tenant> tenantMap = new HashMap<>();
 
     private TestTransfersRoutes()
@@ -231,7 +240,7 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
 
         TransferTaskResponse data = response.readEntity(TransferTaskResponse.class);
         Assert.assertEquals(response.getStatus(), 404);
-        Assert.assertEquals(data.getStatus(), "error");
+        Assert.assertEquals(data.getStatus(), Response.Status.NOT_FOUND.getReasonPhrase());
     }
 
     @Test
@@ -278,13 +287,13 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
     elements.add(element1);
     request.setElements(elements);
 
-    TransferTaskResponse createTaskResponse = target("/v3/files/transfers")
+    RespTransferTask createTaskResponse = target("/v3/files/transfers")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("content-type", MediaType.APPLICATION_JSON)
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
-            .post(Entity.json(request), TransferTaskResponse.class);
-    return createTaskResponse.getResult();
+            .post(Entity.json(request), RespTransferTask.class);
+    return createTaskResponse.result;
   }
 
   private TransferTask getTransferTask(String taskUUID)

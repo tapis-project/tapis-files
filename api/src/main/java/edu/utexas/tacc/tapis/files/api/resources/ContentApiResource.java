@@ -145,7 +145,7 @@ public class ContentApiResource extends BaseFileOpsResource
     // ---------------------------- Make service calls to start data streaming -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     String contentDisposition = null;
     StreamingOutput outStream = null;
     String mediaType = null;

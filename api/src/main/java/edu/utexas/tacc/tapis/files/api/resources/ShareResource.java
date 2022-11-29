@@ -355,7 +355,7 @@ public class ShareResource
     // ------------------------- Perform the operation -------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     switch (opName)
     {
       case OP_SHARE_PATH_USERS   -> svc.sharePath(rUser, systemId, path, userSet);
@@ -394,7 +394,7 @@ public class ShareResource
     // ------------------------- Perform the operation -------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     switch (opName)
     {
       case OP_SHARE_PATH_PUBLIC   -> svc.sharePathPublic(rUser, systemId, path);
@@ -432,7 +432,7 @@ public class ShareResource
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     ShareInfo shareInfo = svc.getShareInfo(rUser, systemId, path);
 
     // No share info for path.
@@ -475,7 +475,7 @@ public class ShareResource
     // ------------------------- Perform the operation -------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-    //   to responses (FilesExceptionMapper).
+    //   to responses (ApiExceptionMapper).
     svc.removeAllSharesForPath(rUser, systemId, path, recurse);
 
     // ---------------------------- Success -------------------------------

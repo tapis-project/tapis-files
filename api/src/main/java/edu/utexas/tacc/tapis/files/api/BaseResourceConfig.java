@@ -1,8 +1,8 @@
 package edu.utexas.tacc.tapis.files.api;
 
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
-import edu.utexas.tacc.tapis.files.api.providers.FilesExceptionMapper;
 import edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver;
+import edu.utexas.tacc.tapis.sharedapi.providers.ApiExceptionMapper;
 import edu.utexas.tacc.tapis.sharedapi.providers.ValidationExceptionMapper;
 import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -20,7 +20,7 @@ public class BaseResourceConfig extends ResourceConfig {
         register(ObjectMapperContextResolver.class);
         // ExceptionMappers, need both because ValidationMapper is a custom Jersey thing and
         // can't be implemented in a generic mapper
-        register(FilesExceptionMapper.class);
+        register(ApiExceptionMapper.class);
         register(ValidationExceptionMapper.class);
 
         // AuthZ filters
