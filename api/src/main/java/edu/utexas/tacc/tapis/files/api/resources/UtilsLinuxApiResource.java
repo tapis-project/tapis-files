@@ -17,15 +17,14 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
-
-import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
-import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import edu.utexas.tacc.tapis.files.api.responses.RespFileStatInfo;
+import edu.utexas.tacc.tapis.files.api.responses.RespNativeLinuxOpResult;
+import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxOpRequest;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -90,7 +89,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     String msg = LibUtils.getMsgAuthR("FILES_DURATION", rUser, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);
 
-    RespBasic resp1 = new RespBasic(fileStatInfo);
+    RespFileStatInfo resp1 = new RespFileStatInfo(fileStatInfo);
     msg = ApiUtils.getMsgAuth("FAPI_LINUX_STATINFO_FOUND", rUser, systemId, path);
     return Response.status(Response.Status.OK)
             .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
@@ -123,7 +122,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
       boolean sharedAppCtxFalse = false;
       NativeLinuxOpResult nativeLinuxOpResult =
               fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(), recursive, sharedAppCtxFalse);
-      RespBasic resp1 = new RespBasic(nativeLinuxOpResult);
+      RespNativeLinuxOpResult resp1 = new RespNativeLinuxOpResult(nativeLinuxOpResult);
       String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, request.getOperation().name(), systemId, path);
       return Response.status(Response.Status.OK)
               .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))

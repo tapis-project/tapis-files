@@ -26,6 +26,7 @@ import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
+import edu.utexas.tacc.tapis.files.api.responses.RespFilePermission;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -126,7 +127,7 @@ public class PermissionsApiResource
       filePermission.setUsername(username);
       filePermission.setTenantId(oboTenant);
       filePermission.setPermission(permission);
-      RespBasic resp1 = new RespBasic(filePermission);
+      RespFilePermission resp1 = new RespFilePermission(filePermission);
       String msg = ApiUtils.getMsgAuth("FAPI_PERM_FOUND", rUser, filePermission, username, systemId, path);
       return Response.status(Response.Status.OK)
               .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
@@ -166,7 +167,7 @@ public class PermissionsApiResource
       filePermission.setUsername(user);
       filePermission.setTenantId(tenant);
       filePermission.setPermission(perm);
-      RespBasic resp1 = new RespBasic(filePermission);
+      RespFilePermission resp1 = new RespFilePermission(filePermission);
       String msg = ApiUtils.getMsgAuth("FAPI_PERM_GRANTED", rUser, perm, user, systemId, path);
       return Response.status(Response.Status.CREATED)
               .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))

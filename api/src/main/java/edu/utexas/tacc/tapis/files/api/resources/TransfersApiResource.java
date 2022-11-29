@@ -41,6 +41,8 @@ import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespAbstract;
+import edu.utexas.tacc.tapis.files.api.responses.RespTransferTask;
+import edu.utexas.tacc.tapis.files.api.responses.RespTransferTaskList;
 import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
@@ -126,12 +128,9 @@ public class  TransfersApiResource
     {
       List<TransferTask> tasks = transfersService.getRecentTransfers(rUser.getOboTenantId(), rUser.getOboUserId(), limit, offset);
       if (tasks == null) tasks = Collections.emptyList();
-      RespBasic resp = new RespBasic(tasks);
+      RespTransferTaskList resp = new RespTransferTaskList(tasks);
       String itemCountStr = String.format(TASKS_CNT_STR, tasks.size());
       return createSuccessResponse(Status.OK, MsgUtils.getMsg(TAPIS_FOUND, FILES_SVC, itemCountStr), resp);
-// TODO remove
-//      String msg = MsgUtils.getMsg("TAPIS_FOUND", "Transfer tasks", tasks.size(), " items");
-//      return Response.status(Status.OK).entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp)).build();
     }
     catch (ServiceException e)
     {
@@ -169,7 +168,7 @@ public class  TransfersApiResource
       if (task == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_TXFR_NOT_FOUND", rUser, transferTaskUUID));
       isPermitted(task, rUser.getOboUserId(), rUser.getOboTenantId(), opName);
 
-      RespBasic resp = new RespBasic(task);
+      RespTransferTask resp = new RespTransferTask(task);
       return createSuccessResponse(Status.OK, MsgUtils.getMsg(TAPIS_FOUND, "TransferTask", transferTaskId), resp);
     }
     catch (ServiceException e)
@@ -236,7 +235,7 @@ public class  TransfersApiResource
       String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
 
       isPermitted(task, oboOrImpersonatedUser, rUser.getOboTenantId(), opName);
-      RespBasic resp = new RespBasic(task);
+      RespTransferTask resp = new RespTransferTask(task);
       return createSuccessResponse(Status.OK, MsgUtils.getMsg(TAPIS_FOUND, "TransferTaskDetails", transferTaskId), resp);
     }
     catch (ServiceException ex)
@@ -314,11 +313,11 @@ public class  TransfersApiResource
     {
       // Create the txfr task
       TransferTask task = transfersService.createTransfer(rUser, transferTaskRequest.getTag(), transferTaskRequest.getElements());
-      RespBasic respBasic = new RespBasic(task);
+      RespTransferTask resp = new RespTransferTask(task);
       String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CREATED", rUser, task.getUuid());
       // Trace details of the created txfr task.
       if (log.isTraceEnabled()) log.trace(task.toString());
-      return createSuccessResponse(Status.CREATED, msg, respBasic);
+      return createSuccessResponse(Status.CREATED, msg, resp);
     }
     catch (ServiceException ex)
     {

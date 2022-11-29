@@ -5,7 +5,6 @@ import edu.utexas.tacc.tapis.sharedapi.responses.RespAbstract;
 
 public final class RespShareInfo extends RespAbstract
 {
-    public RespShareInfo(ShareInfo result) { this.result = result;}
-    
-    public ShareInfo result;
+  public RespShareInfo(ShareInfo shareInfo) { result = shareInfo;}
+  public ShareInfo result;
 }

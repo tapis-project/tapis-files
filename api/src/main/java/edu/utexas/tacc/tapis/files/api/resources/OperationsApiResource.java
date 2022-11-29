@@ -36,6 +36,7 @@ import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.api.responses.RespFileInfoList;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
@@ -361,10 +362,10 @@ public class OperationsApiResource extends BaseFileOpsResource
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);
 
-    RespBasic respBasic = new RespBasic(listing);
+    RespFileInfoList respList = new RespFileInfoList(listing);
     msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
     return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
+            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respList))
             .build();
   }
 }
