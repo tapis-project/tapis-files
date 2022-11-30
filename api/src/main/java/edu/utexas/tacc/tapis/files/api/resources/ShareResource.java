@@ -9,19 +9,14 @@ import javax.servlet.ServletContext;
 import javax.ws.rs.*;
 import javax.ws.rs.core.*;
 import javax.ws.rs.core.Response.Status;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import edu.utexas.tacc.tapis.files.api.responses.RespShareInfo;
-import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
-import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.glassfish.grizzly.http.server.Request;
 import org.apache.commons.io.IOUtils;
-
+import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisJSONException;
@@ -32,6 +27,9 @@ import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.api.responses.RespShareInfo;
+import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 
 /*
  * JAX-RS REST resource for Tapis File sharing operations

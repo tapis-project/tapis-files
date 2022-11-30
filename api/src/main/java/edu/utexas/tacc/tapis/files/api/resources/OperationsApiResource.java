@@ -31,17 +31,15 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
-import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
-import edu.utexas.tacc.tapis.files.api.responses.RespFileInfoList;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -164,12 +162,9 @@ public class OperationsApiResource extends BaseFileOpsResource
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
     fileOpsService.upload(rUser, sys, path, fileInputStream);
-
-    RespBasic respBasic = new RespBasic();
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
-    return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
-            .build();
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
+    return Response.ok(resp).build();
   }
 
   /**
@@ -214,12 +209,9 @@ public class OperationsApiResource extends BaseFileOpsResource
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
     fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedAppCtx);
-
-    RespBasic respBasic = new RespBasic();
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, mkdirRequest.getPath());
-    return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
-            .build();
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
+    return Response.ok(resp).build();
   }
 
   /**
@@ -265,12 +257,9 @@ public class OperationsApiResource extends BaseFileOpsResource
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
     fileOpsService.moveOrCopy(rUser, mvCpReq.getOperation(), sys, path, mvCpReq.getNewPath());
-
-    RespBasic respBasic = new RespBasic();
     String msg = ApiUtils.getMsgAuth("FAPI_MVCP_COMPLETE", rUser, mvCpReq.getOperation(), systemId, path, mvCpReq.getNewPath());
-    return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
-            .build();
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
+    return Response.ok(resp).build();
   }
 
   /**
@@ -311,12 +300,9 @@ public class OperationsApiResource extends BaseFileOpsResource
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
     fileOpsService.delete(rUser, sys, path);
-
-    RespBasic respBasic = new RespBasic();
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
-    return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respBasic))
-            .build();
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
+    return Response.ok(resp).build();
   }
 
   // ************************************************************************
@@ -361,11 +347,8 @@ public class OperationsApiResource extends BaseFileOpsResource
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);
-
-    RespFileInfoList respList = new RespFileInfoList(listing);
     msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
-    return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, respList))
-            .build();
+    TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse(msg, listing);
+    return Response.status(Status.OK).entity(resp).build();
   }
 }

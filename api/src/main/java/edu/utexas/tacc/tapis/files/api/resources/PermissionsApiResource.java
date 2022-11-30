@@ -21,18 +21,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
-import edu.utexas.tacc.tapis.sharedapi.responses.RespBasic;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthorization;
-import edu.utexas.tacc.tapis.files.api.responses.RespFilePermission;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
@@ -49,8 +47,6 @@ public class PermissionsApiResource
   private static final Logger log = LoggerFactory.getLogger(PermissionsApiResource.class);
   private final FilePermsService permsService;
   private final SystemsCache systemsCache;
-  // Always return a nicely formatted response
-  private static final boolean PRETTY = true;
 
   // **************** Inject Services using HK2 ****************
   @Inject
@@ -83,20 +79,18 @@ public class PermissionsApiResource
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
     }
-    RespBasic resp1 = new RespBasic();
     String msg = ApiUtils.getMsgAuth("FAPI_PERM_REVOKED", rUser, username, systemId, path);
-    return Response.status(Response.Status.CREATED)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
-            .build();
+    TapisResponse<String> response = TapisResponse.createSuccessResponse(msg, null);
+    return Response.ok(response).build();
   }
 
   @GET
   @Path("/{systemId}/{path:(.*+)}")
   @Produces({ MediaType.APPLICATION_JSON })
-  public Response getPermissions(@PathParam("systemId") String systemId,
-                                            @PathParam("path") String path,
-                                            @QueryParam("username") String queryUsername,
-                                            @Context SecurityContext securityContext) throws NotFoundException
+  public TapisResponse<FilePermission> getPermissions(@PathParam("systemId") String systemId,
+                                                      @PathParam("path") String path,
+                                                      @QueryParam("username") String queryUsername,
+                                                      @Context SecurityContext securityContext) throws NotFoundException
   {
     path = StringUtils.isBlank(path) ? "/" : path;
     String opName = "getPermissions";
@@ -127,11 +121,9 @@ public class PermissionsApiResource
       filePermission.setUsername(username);
       filePermission.setTenantId(oboTenant);
       filePermission.setPermission(permission);
-      RespFilePermission resp1 = new RespFilePermission(filePermission);
       String msg = ApiUtils.getMsgAuth("FAPI_PERM_FOUND", rUser, filePermission, username, systemId, path);
-      return Response.status(Response.Status.OK)
-              .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
-              .build();
+      TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(msg, filePermission);
+      return response;
     }
     catch (ServiceException ex)
     {
@@ -146,10 +138,10 @@ public class PermissionsApiResource
   @Path("/{systemId}/{path:(.*+)}")
   @Produces({ MediaType.APPLICATION_JSON })
   @Consumes({MediaType.APPLICATION_JSON})
-  public Response grantPermissions(@PathParam("systemId") String systemId,
-                                   @PathParam("path") String path,
-                                   @Valid CreatePermissionRequest createPermissionRequest,
-                                   @Context SecurityContext securityContext) throws NotFoundException
+  public TapisResponse<FilePermission> grantPermissions(@PathParam("systemId") String systemId,
+                                                        @PathParam("path") String path,
+                                                        @Valid CreatePermissionRequest createPermissionRequest,
+                                                        @Context SecurityContext securityContext) throws NotFoundException
   {
     path = StringUtils.isBlank(path) ? "/" : path;
     String opName = "grantPermissions";
@@ -167,11 +159,9 @@ public class PermissionsApiResource
       filePermission.setUsername(user);
       filePermission.setTenantId(tenant);
       filePermission.setPermission(perm);
-      RespFilePermission resp1 = new RespFilePermission(filePermission);
       String msg = ApiUtils.getMsgAuth("FAPI_PERM_GRANTED", rUser, perm, user, systemId, path);
-      return Response.status(Response.Status.CREATED)
-              .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
-              .build();
+      TapisResponse<FilePermission> response = TapisResponse.createSuccessResponse(msg, filePermission);
+      return response;
     }
     catch (ServiceException ex)
     {

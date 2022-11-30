@@ -21,10 +21,7 @@ import javax.ws.rs.core.SecurityContext;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import edu.utexas.tacc.tapis.files.api.responses.RespFileStatInfo;
-import edu.utexas.tacc.tapis.files.api.responses.RespNativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
-import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxOpRequest;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -33,6 +30,7 @@ import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -48,8 +46,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 public class UtilsLinuxApiResource extends BaseFileOpsResource
 {
   private static final Logger log = LoggerFactory.getLogger(UtilsLinuxApiResource.class);
-  // Always return a nicely formatted response
-  private static final boolean PRETTY = true;
 
   @Inject
   FileUtilsService fileUtilsService;
@@ -88,12 +84,9 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
 
     String msg = LibUtils.getMsgAuthR("FILES_DURATION", rUser, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);
-
-    RespFileStatInfo resp1 = new RespFileStatInfo(fileStatInfo);
-    msg = ApiUtils.getMsgAuth("FAPI_LINUX_STATINFO_FOUND", rUser, systemId, path);
-    return Response.status(Response.Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
-            .build();
+    msg = LibUtils.getMsgAuthR("FILES_DURATION", rUser, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+    TapisResponse<FileStatInfo> resp = TapisResponse.createSuccessResponse(msg, fileStatInfo);
+    return Response.ok(resp).build();
   }
 
   @POST
@@ -113,6 +106,8 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     String oboUser = rUser.getOboUserId();
     // Make sure the Tapis System exists and is enabled
     TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
+
+    NativeLinuxOpResult nativeLinuxOpResult;
     try
     {
       String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? oboUser : system.getEffectiveUserId();
@@ -120,19 +115,18 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
 
       // Make the service call
       boolean sharedAppCtxFalse = false;
-      NativeLinuxOpResult nativeLinuxOpResult =
-              fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(), recursive, sharedAppCtxFalse);
-      RespNativeLinuxOpResult resp1 = new RespNativeLinuxOpResult(nativeLinuxOpResult);
-      String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, request.getOperation().name(), systemId, path);
-      return Response.status(Response.Status.OK)
-              .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
-              .build();
-   }
+      nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(),
+                                                     recursive, sharedAppCtxFalse);
+    }
     catch (TapisException | ServiceException | IOException e)
     {
       String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, opName, systemId, path, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
+
+    String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, request.getOperation().name(), systemId, path);
+    TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, nativeLinuxOpResult);
+    return Response.ok(resp).build();
   }
 }
