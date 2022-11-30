@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
-import edu.utexas.tacc.tapis.files.api.responses.RespTransferTask;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -38,8 +37,6 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-
 import javax.inject.Singleton;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
@@ -51,14 +48,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-/*
- NOTE: Most of these tests are failing. Problem is with jackson deserialization of response from createTransferTask:
-
-Caused by: com.fasterxml.jackson.databind.exc.MismatchedInputException: Cannot deserialize value of type `java.lang.String` from Object value (token `JsonToken.START_OBJECT`)
-at [Source: (org.glassfish.jersey.message.internal.ReaderInterceptorExecutor$UnCloseableInputStream); line: 17, column: 22] (through reference chain: edu.utexas.tacc.tapis.files.api.responses.RespTransferTask["result"]->edu.utexas.tacc.tapis.files.lib.models.TransferTask["parentTasks"]->java.util.ArrayList[0]->edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent["sourceURI"])
-
- Other routes tests are OK. Not clear why these fail.
- */
 @Test(groups = {"integration"})
 public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
 {
@@ -287,13 +276,13 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
     elements.add(element1);
     request.setElements(elements);
 
-    RespTransferTask createTaskResponse = target("/v3/files/transfers")
+    TransferTaskResponse createTaskResponse = target("/v3/files/transfers")
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("content-type", MediaType.APPLICATION_JSON)
             .header("X-Tapis-Token", getJwtForUser("dev", "testuser1"))
-            .post(Entity.json(request), RespTransferTask.class);
-    return createTaskResponse.result;
+            .post(Entity.json(request), TransferTaskResponse.class);
+    return createTaskResponse.getResult();
   }
 
   private TransferTask getTransferTask(String taskUUID)
