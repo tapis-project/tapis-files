@@ -27,8 +27,6 @@ import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.NotNull;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
@@ -74,7 +72,7 @@ public class FileOpsService
   private static final String JOBS_SERVICE = TapisConstants.SERVICE_NAME_JOBS;
 
   public static final Set<String> SVCLIST_IMPERSONATE = new HashSet<>(Set.of(JOBS_SERVICE));
-  public static final Set<String> SVCLIST_SHAREDAPPCTX = new HashSet<>(Set.of(JOBS_SERVICE));
+  public static final Set<String> SVCLIST_SHAREDCTX = new HashSet<>(Set.of(JOBS_SERVICE));
 
   // **************** Inject Services using HK2 ****************
   @Inject
@@ -85,10 +83,6 @@ public class FileOpsService
   RemoteDataClientFactory remoteDataClientFactory;
   @Inject
   ServiceContext serviceContext;
-  @Inject
-  SystemsCache systemsCache;
-  @Inject
-  SystemsCacheNoAuth systemsCacheNoAuth;
 
   // We must be running on a specific site and this will never change
   // These are initialized in method initService()
@@ -101,6 +95,7 @@ public class FileOpsService
   /**
    * Initialize the service:
    *   init service context
+   *   migrate DB
    */
   public void initService(String siteId1, String siteAdminTenantId1, String svcPassword) throws TapisException, TapisClientException
   {
@@ -1252,7 +1247,7 @@ public class FileOpsService
   {
     // If a service request the username will be the service name. E.g. files, jobs, streams, etc
     String svcName = rUser.getJwtUserId();
-    if (!rUser.isServiceRequest() || !SVCLIST_SHAREDAPPCTX.contains(svcName))
+    if (!rUser.isServiceRequest() || !SVCLIST_SHAREDCTX.contains(svcName))
     {
       String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDAPPCTX", rUser, opName, sysId, pathStr);
       log.warn(msg);

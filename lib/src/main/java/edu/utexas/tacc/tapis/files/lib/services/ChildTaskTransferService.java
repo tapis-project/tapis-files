@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -52,7 +52,7 @@ public class ChildTaskTransferService
     private final FileTransfersDAO dao;
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
     private final RemoteDataClientFactory remoteDataClientFactory;
-    private final SystemsCacheNoAuth systemsCacheNoAuth;
+    private final SystemsCache systemsCache;
     private final FileUtilsService fileUtilsService;
     private static final Logger log = LoggerFactory.getLogger(ChildTaskTransferService.class);
 
@@ -68,11 +68,11 @@ public class ChildTaskTransferService
   public ChildTaskTransferService(TransfersService transfersService1, FileTransfersDAO dao1,
                                   FileUtilsService fileUtilsService1,
                                   RemoteDataClientFactory remoteDataClientFactory1,
-                                  SystemsCacheNoAuth cache1)
+                                  SystemsCache cache1)
   {
     transfersService = transfersService1;
     dao = dao1;
-    systemsCacheNoAuth = cache1;
+    systemsCache = cache1;
     remoteDataClientFactory = remoteDataClientFactory1;
     fileUtilsService = fileUtilsService1;
   }
@@ -262,7 +262,7 @@ public class ChildTaskTransferService
     {
       // Source path is not HTTP/S
       sourcePath = sourceURL.getPath();
-      sourceSystem = systemsCacheNoAuth.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
+      sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
       // If src system is not enabled throw an exception
       if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
       {
@@ -281,7 +281,7 @@ public class ChildTaskTransferService
     // Initialize destination client
     try
     {
-      destSystem = systemsCacheNoAuth.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
+      destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
       // If dst system is not enabled throw an exception
       if (destSystem.getEnabled() == null || !destSystem.getEnabled())
       {

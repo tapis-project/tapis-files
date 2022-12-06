@@ -4,7 +4,6 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -88,11 +87,12 @@ public class TestFileOpsService
   private static final Logger log  = LoggerFactory.getLogger(TestFileOpsService.class);
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
   private final SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
-  private final SystemsCacheNoAuth systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
 
   private static final MoveCopyOperation OP_MV = MoveCopyOperation.MOVE;
   private static final MoveCopyOperation OP_CP = MoveCopyOperation.COPY;
 
+  // TODO change sharedCtx from boolean to String and set to null (?)
+  boolean sharedCtxGrantorNull = false;
   private TestFileOpsService() throws IOException
   {
     SSHConnection.setLocalNodeName("dev");
@@ -209,7 +209,6 @@ public class TestFileOpsService
         bindAsContract(FileOpsService.class).in(Singleton.class);
         bindAsContract(FileShareService.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
-        bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class).ranked(1);
         bind(permsService).to(FilePermsService.class).ranked(1);
         bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
         bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
@@ -398,7 +397,10 @@ public class TestFileOpsService
 
         List<FileInfo> listing = fileOpsService.ls(client, "/test.txt", MAX_LISTING_SIZE, 0);
         Assert.assertEquals(listing.get(0).getSize(), 100*1024);
-        InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt", nullImpersonationId, sharedAppCtxFalse);
+        // TODO revisit sharedFalse, impersonationNull
+      boolean sharedFalse = false;
+      String impersonationNull = null;
+        InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt", impersonationNull, sharedFalse);
         byte[] output = IOUtils.toByteArray(out);
         Assert.assertEquals(output.length, 100 * 1024);
     }
@@ -614,7 +616,7 @@ public class TestFileOpsService
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
-        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId, sharedAppCtxFalse);
+        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId, sharedCtxGrantorNull);
         Assert.assertEquals(result.readAllBytes().length, 1000);
     }
 
@@ -625,7 +627,7 @@ public class TestFileOpsService
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
     InputStream in = Utils.makeFakeFile( 1000 * 1024);
     fileOpsService.upload(client,"test.txt", in);
-    StreamingOutput streamingOutput = fileOpsService.getFullStream(rTestUser, testSystem,"test.txt", nullImpersonationId, sharedAppCtxFalse);
+    StreamingOutput streamingOutput = fileOpsService.getFullStream(rTestUser, testSystem,"test.txt", nullImpersonationId, sharedCtxGrantorNull);
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
     streamingOutput.write(outStream);
     Assert.assertEquals(outStream.size(), 1000*1024);

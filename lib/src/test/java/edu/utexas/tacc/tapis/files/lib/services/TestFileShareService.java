@@ -6,7 +6,6 @@ import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
@@ -78,7 +77,6 @@ public class TestFileShareService
   private FileShareService fileShareService;
   private static final Logger log  = LoggerFactory.getLogger(TestFileShareService.class);
   private final SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
-  private final SystemsCacheNoAuth systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
 
   private static final MoveCopyOperation OP_MV = MoveCopyOperation.MOVE;
   private static final MoveCopyOperation OP_CP = MoveCopyOperation.COPY;
@@ -121,7 +119,6 @@ public class TestFileShareService
         bindAsContract(FileOpsService.class).in(Singleton.class);
         bindAsContract(FileShareService.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
-        bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class).ranked(1);
         bind(FilePermsService.class).to(FilePermsService.class).in(Singleton.class);
         bind(FilePermsCache.class).to(FilePermsCache.class).in(Singleton.class);
         bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
@@ -170,7 +167,6 @@ public class TestFileShareService
   {
     // Set up the mocked systemsCache
     when(systemsCache.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
-    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
 
     // Get the system
     TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser1, systemsCache, "testSystemSSH");
@@ -188,7 +184,6 @@ public class TestFileShareService
   {
     // Set up the mocked systemsCache
     when(systemsCache.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
-    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
 
     // Get the system
     TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser1, systemsCache, "testSystemSSH");

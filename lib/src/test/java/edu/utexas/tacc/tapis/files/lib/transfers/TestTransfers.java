@@ -102,8 +102,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   {
     Mockito.reset(skClient);
     Mockito.reset(serviceClients);
-    Mockito.reset(systemsCacheWithAuth);
-    Mockito.reset(systemsCacheNoAuth);
+    Mockito.reset(systemsCache);
     when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
     when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
   }
@@ -532,10 +531,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
 
     TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -569,10 +566,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     TransferTaskRequestElement element = new TransferTaskRequestElement();
@@ -603,10 +598,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
       System.out.println(("Source is of type S3. Test does not apply."));
       return;
     }
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -641,10 +634,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -698,10 +689,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -741,10 +730,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -770,7 +757,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     List<TransferTaskChild> children = transfersService.getAllChildrenTasks(t1);
     Assert.assertEquals(children.size(), 2);
     printListing(destClient, destSystem, "");
-    Mockito.reset(systemsCacheWithAuth);
+    Mockito.reset(systemsCache);
   }
 
   // Test all system pairs except those involving S3 since S3 does not support directories
@@ -782,10 +769,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -824,10 +809,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -918,10 +901,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
     // Init mocking to return values appropriate to the test
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     // Create data clients for each system.
@@ -977,10 +958,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -1040,10 +1019,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -1091,8 +1068,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* HTTP to %s\n", testSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("testSystem"), any())).thenReturn(testSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("testSystem"), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), eq("testSystem"), any())).thenReturn(testSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
@@ -1150,10 +1126,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
     IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, destSystem, testUser);
@@ -1210,10 +1184,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -1284,10 +1256,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -1322,10 +1292,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -1378,10 +1346,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
 
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -1419,10 +1385,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -1482,10 +1446,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -1556,10 +1518,8 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* %s to %s\n", sourceSystem.getId(), destSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCacheWithAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheWithAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
-    when(systemsCacheNoAuth.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
+    when(systemsCache.getSystem(any(), eq("sourceSystem"), any())).thenReturn(sourceSystem);
+    when(systemsCache.getSystem(any(), eq("destSystem"), any())).thenReturn(destSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient sourceClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, sourceSystem, testUser);
@@ -1792,20 +1752,13 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     if (doIrods) clientIRODSb = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemIRODSb, testUser);
 
     // Init mocking to return values appropriate to the test
-    when(systemsCacheWithAuth.getSystem(any(), eq(testSystemSSHa.getId()), any())).thenReturn(testSystemSSHa);
-    when(systemsCacheWithAuth.getSystem(any(), eq(testSystemSSHb.getId()), any())).thenReturn(testSystemSSHb);
-    when(systemsCacheWithAuth.getSystem(any(), eq(testSystemS3a.getId()), any())).thenReturn(testSystemS3a);
-    when(systemsCacheWithAuth.getSystem(any(), eq(testSystemS3b.getId()), any())).thenReturn(testSystemS3b);
-    when(systemsCacheWithAuth.getSystem(any(), eq(testSystemS3c.getId()), any())).thenReturn(testSystemS3c);
-    if (doIrods) when(systemsCacheWithAuth.getSystem(any(), eq(testSystemIRODSa.getId()), any())).thenReturn(testSystemIRODSa);
-    if (doIrods) when(systemsCacheWithAuth.getSystem(any(), eq(testSystemIRODSb.getId()), any())).thenReturn(testSystemIRODSb);
-    when(systemsCacheNoAuth.getSystem(any(), eq(testSystemSSHa.getId()), any())).thenReturn(testSystemSSHa);
-    when(systemsCacheNoAuth.getSystem(any(), eq(testSystemSSHb.getId()), any())).thenReturn(testSystemSSHb);
-    when(systemsCacheNoAuth.getSystem(any(), eq(testSystemS3a.getId()), any())).thenReturn(testSystemS3a);
-    when(systemsCacheNoAuth.getSystem(any(), eq(testSystemS3b.getId()), any())).thenReturn(testSystemS3b);
-    when(systemsCacheNoAuth.getSystem(any(), eq(testSystemS3c.getId()), any())).thenReturn(testSystemS3c);
-    if (doIrods) when(systemsCacheNoAuth.getSystem(any(), eq(testSystemIRODSa.getId()), any())).thenReturn(testSystemIRODSa);
-    if (doIrods) when(systemsCacheNoAuth.getSystem(any(), eq(testSystemIRODSb.getId()), any())).thenReturn(testSystemIRODSb);
+    when(systemsCache.getSystem(any(), eq(testSystemSSHa.getId()), any())).thenReturn(testSystemSSHa);
+    when(systemsCache.getSystem(any(), eq(testSystemSSHb.getId()), any())).thenReturn(testSystemSSHb);
+    when(systemsCache.getSystem(any(), eq(testSystemS3a.getId()), any())).thenReturn(testSystemS3a);
+    when(systemsCache.getSystem(any(), eq(testSystemS3b.getId()), any())).thenReturn(testSystemS3b);
+    when(systemsCache.getSystem(any(), eq(testSystemS3c.getId()), any())).thenReturn(testSystemS3c);
+    if (doIrods) when(systemsCache.getSystem(any(), eq(testSystemIRODSa.getId()), any())).thenReturn(testSystemIRODSa);
+    if (doIrods) when(systemsCache.getSystem(any(), eq(testSystemIRODSb.getId()), any())).thenReturn(testSystemIRODSb);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     // Cleanup and create top level directories

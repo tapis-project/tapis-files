@@ -8,17 +8,15 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
-
-import edu.utexas.tacc.tapis.files.lib.caches.ISystemsCache;
-import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
-import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -212,22 +210,29 @@ public class LibUtils
     }
   }
 
+  /*
+   * Convenience wrapper
+   */
+  public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
+                                               @NotNull String systemId)
+          throws NotFoundException { return getSystemIfEnabled(rUser, systemsCache, systemId, null, null); }
+
   /**
    * Check to see if a Tapis System exists and is enabled
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - System to check
-   * @param systemsCache - Cache that includes authorization
+   * @param systemsCache - Cache of systems
    * @throws NotFoundException System not found or not enabled
    */
-  public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull ISystemsCache systemsCache,
-                                               @NotNull String systemId)
+  public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
+                                               @NotNull String systemId, String impersonationId, String sharedCtxGrantor)
           throws NotFoundException
   {
     // Check for the system
     TapisSystem sys;
     try
     {
-      sys = systemsCache.getSystem(rUser.getOboTenantId(), systemId, rUser.getOboUserId());
+      sys = systemsCache.getSystem(rUser.getOboTenantId(), systemId, rUser.getOboUserId(), impersonationId, sharedCtxGrantor);
       if (sys == null)
       {
         String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId);
@@ -262,45 +267,50 @@ public class LibUtils
     return sb.toString();
   }
 
-  /*
-   * Fetch a system, include authorization checks.
-   * If fileOpsService is null then we do not check for sharing of the path.
-   */
-  public static TapisSystem getSysWithAuth(ResourceRequestUser rUser, FileOpsService fileOpsService,
-                                           ISystemsCache systemsCacheNoAuth, ISystemsCache systemsCacheWithAuth,
-                                           String systemId, String path, boolean sharedAppCtx, String impersonationId)
-  {
-    // Get system without auth. We need it for authorization checking.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-    // Is the requester the owner of the system?
-    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
-
-    // Check authorization for the system.
-    // If owner or in sharedAppCtx allow it, else check for explicit sharing of path
-    boolean permitted;
-    if (isOwner || sharedAppCtx)
-    {
-      permitted = true;
-    }
-    else
-    {
-      // If no fileOpsSvc, we do not check for sharing of the path.
-      if (fileOpsService == null)
-      {
-        permitted = false;
-      }
-      else
-      {
-        // Determine if path is shared. If so it means system is implicitly allowed for the oboUser
-        permitted = fileOpsService.isPathShared(rUser, sys, path, impersonationId);
-      }
-    }
-    // If not owner, not in shared app ctx and path is not shared get the system with auth check.
-    // This confirms oboUser has read access to the system.
-    if (!permitted)
-    {
-      sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
-    }
-    return sys;
-  }
+//  /* TODO Do we need this? Now that auth is getting more complex with share by priv, shareGrantor. Probably best
+//           to always get the system if enabled and do auth check separately.
+//   * Fetch a system, include authorization checks.
+//   * If fileOpsService is null then we do not check for sharing of the path.
+//   * TODO previously sharedCtx was a bool and if true we skipped auth. Now? Do we need to check that
+//   *       owner or share grantor has access to system? Or is that already done elsewhere?
+//   *       Also, if path is shared previously this meant system was implicitly shared. Is that still true? do we need
+//   *       deal with that?
+//   */
+//  public static TapisSystem getSysWithAuth(ResourceRequestUser rUser, FileOpsService fileOpsService,
+//                                           ISystemsCache systemsCacheNoAuth, ISystemsCache systemsCacheWithAuth,
+//                                           String systemId, String path, String sharedCtxGrantor, String impersonationId)
+//  {
+//    // Get system without auth. We need it for authorization checking.
+//    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+//    // Is the requester the owner of the system?
+//    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
+//
+//    // Check authorization for the system.
+//    // If owner or in sharedAppCtx allow it, else check for explicit sharing of path
+//    boolean permitted;
+//    if (isOwner || sharedCtxGrantor)
+//    {
+//      permitted = true;
+//    }
+//    else
+//    {
+//      // If no fileOpsSvc, we do not check for sharing of the path.
+//      if (fileOpsService == null)
+//      {
+//        permitted = false;
+//      }
+//      else
+//      {
+//        // Determine if path is shared. If so it means system is implicitly allowed for the oboUser
+//        permitted = fileOpsService.isPathShared(rUser, sys, path, impersonationId);
+//      }
+//    }
+//    // If not owner, not in shared app ctx and path is not shared get the system with auth check.
+//    // This confirms oboUser has read access to the system.
+//    if (!permitted)
+//    {
+//      sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
+//    }
+//    return sys;
+//  }
 }

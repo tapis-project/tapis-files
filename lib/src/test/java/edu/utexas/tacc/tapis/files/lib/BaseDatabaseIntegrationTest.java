@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.lib;
 
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
@@ -29,7 +28,6 @@ import org.flywaydb.core.Flyway;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,8 +82,7 @@ public class BaseDatabaseIntegrationTest
   protected ServiceClients serviceClients = Mockito.mock(ServiceClients.class);
   protected SKClient skClient = Mockito.mock(SKClient.class);
   protected FilePermsService permsService = Mockito.mock(FilePermsService.class);
-  protected SystemsCache systemsCacheWithAuth = Mockito.mock(SystemsCache.class);
-  protected SystemsCacheNoAuth systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
+  protected SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
 
   protected TransfersService transfersService;
   protected ChildTaskTransferService childTaskTransferService;
@@ -292,8 +289,7 @@ public class BaseDatabaseIntegrationTest
       protected void configure()
       {
         bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
-        bind(systemsCacheWithAuth).to(SystemsCache.class);
-        bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
+        bind(systemsCache).to(SystemsCache.class);
         bindAsContract(TransfersService.class).in(Singleton.class);
         bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
         bindAsContract(ParentTaskTransferService.class).in(Singleton.class);

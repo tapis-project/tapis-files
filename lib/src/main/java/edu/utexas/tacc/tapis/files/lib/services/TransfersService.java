@@ -5,7 +5,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import javax.inject.Inject;
@@ -17,7 +16,6 @@ import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Delivery;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -38,16 +36,17 @@ import reactor.rabbitmq.ReceiverOptions;
 import reactor.rabbitmq.Sender;
 import reactor.rabbitmq.SenderOptions;
 import reactor.util.retry.RetrySpec;
+import static reactor.rabbitmq.BindingSpecification.binding;
 
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
@@ -57,8 +56,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import static reactor.rabbitmq.BindingSpecification.binding;
-import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SHAREDAPPCTX;
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SHAREDCTX;
 
 @Service
 public class TransfersService
@@ -72,8 +70,7 @@ public class TransfersService
   private final Sender sender;
 
   private final FileTransfersDAO dao;
-  private final SystemsCache systemsCacheWithAuth;
-  private final SystemsCacheNoAuth systemsCacheNoAuth;
+  private final SystemsCache systemsCache;
   private final FileOpsService fileOpsService;
   private final FilePermsService permsService;
 
@@ -89,8 +86,7 @@ public class TransfersService
    * Note that this is never invoked explicitly. Arguments of constructor are initialized via Dependency Injection.
    */
   @Inject
-  public TransfersService(FileTransfersDAO dao1, SystemsCache cache1, SystemsCacheNoAuth cache2, FileOpsService svc1,
-                          FilePermsService svc2)
+  public TransfersService(FileTransfersDAO dao1, SystemsCache cache1, FileOpsService svc1, FilePermsService svc2)
   {
     ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
     ReceiverOptions receiverOptions = new ReceiverOptions()
@@ -104,8 +100,7 @@ public class TransfersService
     receiver = RabbitFlux.createReceiver(receiverOptions);
     sender = RabbitFlux.createSender(senderOptions);
     dao = dao1;
-    systemsCacheWithAuth = cache1;
-    systemsCacheNoAuth = cache2;
+    systemsCache = cache1;
     fileOpsService = svc1;
     permsService = svc2;
     init();
@@ -574,7 +569,7 @@ public class TransfersService
 
     // If a service request the username will be the service name. E.g. files, jobs, streams, etc
     String svcName = rUser.getJwtUserId();
-    if (!rUser.isServiceRequest() || !SVCLIST_SHAREDAPPCTX.contains(svcName))
+    if (!rUser.isServiceRequest() || !SVCLIST_SHAREDCTX.contains(svcName))
     {
       String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDAPPCTX_TXFR", rUser, opName, tag);
       log.warn(msg);
@@ -621,13 +616,14 @@ public class TransfersService
                                               boolean sharedAppCtx, List<String> errMessages)
   {
     TapisSystem sys = null;
-    try
-    {
-      // impersonationId = null
-      sys = LibUtils.getSysWithAuth(rUser, fileOpsService, systemsCacheNoAuth, systemsCacheWithAuth, sysId, path,
-                                    sharedAppCtx, null);
-    }
-    catch (Exception e) { errMessages.add(e.getMessage()); }
+// TODO
+//    try
+//    {
+//      // impersonationId = null
+//      sys = LibUtils.getSysWithAuth(rUser, fileOpsService, systemsCacheNoAuth, systemsCacheWithAuth, sysId, path,
+//                                    sharedAppCtx, null);
+//    }
+//    catch (Exception e) { errMessages.add(e.getMessage()); }
     return sys;
   }
 
@@ -656,18 +652,19 @@ public class TransfersService
       // Get any Tapis systems. If protocol is http/s then leave as null.
       // For protocol tapis:// get each system. These should already be in the cache due to a previous check, see validateSystemsAreEnabled()
       TapisSystem srcSys = null, dstSys = null;
-      try
-      {
-        if (!StringUtils.isBlank(srcId) && srcUri.isTapisProtocol())
-          srcSys = systemsCacheNoAuth.getSystem(rUser.getOboTenantId(), srcId, rUser.getOboUserId());
-        if (!StringUtils.isBlank(dstId) && dstUri.isTapisProtocol())
-          dstSys = systemsCacheNoAuth.getSystem(rUser.getOboTenantId(), dstId, rUser.getOboUserId());
-      }
-      catch (Exception e)
-      {
-        // In theory this will not happen due to previous check, see validateSystemsAreEnabled()
-        errMessages.add(e.getMessage());
-      }
+// TODO
+//      try
+//      {
+//        if (!StringUtils.isBlank(srcId) && srcUri.isTapisProtocol())
+//          srcSys = systemsCacheNoAuth.getSystem(rUser.getOboTenantId(), srcId, rUser.getOboUserId());
+//        if (!StringUtils.isBlank(dstId) && dstUri.isTapisProtocol())
+//          dstSys = systemsCacheNoAuth.getSystem(rUser.getOboTenantId(), dstId, rUser.getOboUserId());
+//      }
+//      catch (Exception e)
+//      {
+//        // In theory this will not happen due to previous check, see validateSystemsAreEnabled()
+//        errMessages.add(e.getMessage());
+//      }
 
       // If srcSys is GLOBUS and dstSys is not then we do not support it
       if ((srcSys != null && SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType())) &&

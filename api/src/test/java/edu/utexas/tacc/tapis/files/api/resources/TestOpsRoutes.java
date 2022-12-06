@@ -5,7 +5,6 @@ import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
@@ -95,7 +94,6 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   private ServiceClients serviceClients;
   private SKClient skClient;
   private SystemsCache systemsCache;
-  private SystemsCacheNoAuth systemsCacheNoAuth;
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
   /**
@@ -166,7 +164,6 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     skClient = Mockito.mock(SKClient.class);
     serviceClients = Mockito.mock(ServiceClients.class);
     systemsCache = Mockito.mock(SystemsCache.class);
-    systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
     JWTValidateRequestFilter.setSiteId("tacc");
     JWTValidateRequestFilter.setService("files");
     ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
@@ -187,7 +184,6 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
                 bind(systemsCache).to(SystemsCache.class);
-                bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
                 bindAsContract(RemoteDataClientFactory.class);
                 bind(serviceContext).to(ServiceContext.class);
               }
@@ -241,7 +237,6 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
       try {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(sys);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(sys);
         target(String.format("%s/%s/", OPS_ROUTE, SYSTEM_ID))
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -267,8 +262,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetList(TapisSystem testSystem) throws Exception
   {
-    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     // Create file
     addFileToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
     FileListResponse response = target("/v3/files/ops/testSystem/")
@@ -286,8 +280,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
     public void testGetListWithObo(TapisSystem testSystem) throws Exception
   {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         addFileToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
         FileListResponse response = target("/v3/files/ops/testSystem/")
             .request()
@@ -304,8 +297,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProvider")
     public void testGetListWithLimitAndOffset(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         addFileToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
         addFileToSystem(testSystem, TEST_FILE2, TEST_FILE_SIZE);
         addFileToSystem(testSystem, TEST_FILE3, TEST_FILE_SIZE);
@@ -330,8 +322,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProvider")
     public void testGetListNoAuthz(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         addFileToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
         Response response = target("/v3/files/ops/testSystem/testfile1.txt")
@@ -345,8 +336,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProvider")
     public void testDelete(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         addFileToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
         addFileToSystem(testSystem, TEST_FILE2, TEST_FILE_SIZE);
         addFileToSystem(testSystem, "dir1/testfile3.txt", TEST_FILE_SIZE);
@@ -363,8 +353,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProvider")
     public void testCopyFile(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         addFileToSystem(testSystem, "sample1.txt", TEST_FILE_SIZE);
         MoveCopyRequest request = new MoveCopyRequest();
         request.setOperation(MoveCopyOperation.COPY);
@@ -384,8 +373,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testCopyFile2(TapisSystem testSystem) throws Exception
   {
-    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     addFileToSystem(testSystem, "/dir1/sample1.txt", TEST_FILE_SIZE);
     MoveCopyRequest request = new MoveCopyRequest();
     request.setOperation(MoveCopyOperation.COPY);
@@ -405,8 +393,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProviderNoS3")
   public void testCopyFileToDir(TapisSystem testSystem) throws Exception
   {
-    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     addFileToSystem(testSystem, "/dir1/sample1.txt", TEST_FILE_SIZE);
     addFileToSystem(testSystem, "/dir2/sample2.txt", TEST_FILE_SIZE);
     MoveCopyRequest request = new MoveCopyRequest();
@@ -427,8 +414,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
    @Test(dataProvider = "testSystemsProvider")
     public void testCopyFileShould404(TapisSystem testSystem) throws Exception
    {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         addFileToSystem(testSystem, "sample1.txt", TEST_FILE_SIZE);
         MoveCopyRequest request = new MoveCopyRequest();
         request.setOperation(MoveCopyOperation.COPY);
@@ -444,8 +430,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testMoveFile(TapisSystem testSystem) throws Exception
   {
-    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     addFileToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
 
     MoveCopyRequest request = new MoveCopyRequest();
@@ -469,8 +454,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProviderNoS3")
   public void testMoveFileToDir(TapisSystem testSystem) throws Exception
   {
-    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     addFileToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
     addFileToSystem(testSystem, "dir1/testfile2.txt", TEST_FILE_SIZE);
 
@@ -492,8 +476,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProviderNoS3")
     public void testMoveManyObjects1(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         addFileToSystem(testSystem, "test1.txt", TEST_FILE_SIZE);
         addFileToSystem(testSystem, "test2.txt", TEST_FILE_SIZE);
         addFileToSystem(testSystem, "dir1/1.txt", TEST_FILE_SIZE);
@@ -524,8 +507,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProviderNoS3")
     public void testMoveManyObjects2(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
         addFileToSystem(testSystem, "test1.txt", TEST_FILE_SIZE);
         addFileToSystem(testSystem, "test2.txt", TEST_FILE_SIZE);
@@ -554,8 +536,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProviderNoS3")
     public void testDeleteManyObjects(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         addFileToSystem(testSystem, "test1.txt", TEST_FILE_SIZE);
         addFileToSystem(testSystem, "test2.txt", TEST_FILE_SIZE);
         addFileToSystem(testSystem, "dir1/1.txt", TEST_FILE_SIZE);
@@ -580,8 +561,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProvider")
     public void testInsertFile(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         InputStream inputStream = makeFakeFile(TEST_FILE_SIZE);
         File tempFile = File.createTempFile("tempfile", null);
         tempFile.deleteOnExit();
@@ -610,8 +590,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProviderNoS3")
     public void testMkdir(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
         MkdirRequest req = new MkdirRequest();
         req.setPath("newDirectory");
@@ -636,8 +615,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     @Test(dataProvider = "testSystemsProviderNoS3")
     public void testMkdirNoSlash(TapisSystem testSystem) throws Exception
     {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
         MkdirRequest req = new MkdirRequest();
         req.setPath("newDirectory");
 
@@ -670,7 +648,6 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     public void testMkdirWithSlashes(Pair<String, TapisSystem> inputs) throws Exception
   {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(inputs.getRight());
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(inputs.getRight());
 
         MkdirRequest req = new MkdirRequest();
         req.setPath(inputs.getLeft());
@@ -711,7 +688,6 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     public void testMkdirWithBadData(Pair<String, TapisSystem> inputs) throws Exception
     {
         when(systemsCache.getSystem(any(), any(), any())).thenReturn(inputs.getRight());
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(inputs.getRight());
         MkdirRequest req = new MkdirRequest();
         req.setPath(inputs.getLeft());
         Response response = target("/v3/files/ops/testSystem/")
