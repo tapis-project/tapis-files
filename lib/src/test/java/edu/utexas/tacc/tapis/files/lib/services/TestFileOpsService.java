@@ -268,8 +268,8 @@ public class TestFileOpsService
   public void testGetSystemIfEnabled(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    when(systemsCache.getSystem(any(), eq("testSystemNotEnabled"), any())).thenReturn(testSystemNotEnabled);
-    when(systemsCache.getSystem(any(), eq("testSystemEnabled"), any())).thenReturn(testSystemSSH);
+    when(systemsCache.getSystem(any(), eq("testSystemNotEnabled"), any(), any(), any())).thenReturn(testSystemNotEnabled);
+    when(systemsCache.getSystem(any(), eq("testSystemEnabled"), any(), any(), any())).thenReturn(testSystemSSH);
     // For an enabled system this should return the system
     TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemEnabled");
     Assert.assertNotNull(tmpSys);
