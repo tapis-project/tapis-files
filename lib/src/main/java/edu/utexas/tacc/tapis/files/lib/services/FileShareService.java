@@ -79,8 +79,6 @@ public class FileShareService
   @Inject
   private SystemsCache systemsCache;
   @Inject
-  private SystemsCache systemsCacheNoAuth;
-  @Inject
   private ServiceClients serviceClients;
 
   private static String siteAdminTenantId;
@@ -271,7 +269,7 @@ public class FileShareService
   {
     String opName = "getShareInfo";
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
     // Is the requester the owner of the system?
     boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
 
@@ -474,7 +472,7 @@ public class FileShareService
     String oboUser = rUser.getOboUserId();
     String oboTenant = rUser.getOboTenantId();
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
     // Is the requester the owner of the system?
     boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
 
@@ -535,7 +533,7 @@ public class FileShareService
           throws WebApplicationException
   {
     // Make sure the Tapis System exists and is enabled
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
     // Is the requester the owner of the system?
     boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
 

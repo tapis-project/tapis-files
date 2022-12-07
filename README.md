@@ -74,6 +74,11 @@ mvn clean install
 
 The integration tests are configured to use the `test` database created above.
 
+Unfortunately TestTransfers takes a long time to run. And some tests in TestTransfers fail when all tests are
+  run from command line, even though they pass individually when run from IDE.
+When a git commit message says "Integ tests pass" or "Most integ tests pass" it usually means all tests except
+  TestTransfers were run from the IDE and a few tests from TestTransfers were run from the IDE.
+
 Currently, tests run using mvn from the command line appear to have concurrency issues. They sometimes fail.
 Tests to run manually from IDE:
  - TestOpsRoutes (1.5 minutes)

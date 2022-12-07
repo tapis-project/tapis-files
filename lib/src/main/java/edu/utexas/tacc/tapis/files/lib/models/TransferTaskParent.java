@@ -27,8 +27,8 @@ public class TransferTaskParent
   protected int taskId;
   protected TransferTaskStatus status;
   protected boolean optional;
-  protected boolean srcSharedAppCtx;
-  protected boolean destSharedAppCtx;
+  protected String srcSharedCtxGrantor;
+  protected String destSharedCtxGrantor;
 
   protected Instant created;
   protected Instant startTime;
@@ -39,7 +39,7 @@ public class TransferTaskParent
   public TransferTaskParent(){}
 
   public TransferTaskParent(String tenantId1, String username1, String srcURI1, String dstURI1, boolean optional1,
-                            boolean srcCtx1, boolean dstCtx1)
+                            String srcCtx1, String dstCtx1)
   {
     tenantId = tenantId1;
     username = username1;
@@ -47,8 +47,8 @@ public class TransferTaskParent
     destinationURI = new TransferURI(dstURI1);
     status = TransferTaskStatus.ACCEPTED;
     optional = optional1;
-    srcSharedAppCtx = srcCtx1;
-    destSharedAppCtx = dstCtx1;
+    srcSharedCtxGrantor = srcCtx1;
+    destSharedCtxGrantor = dstCtx1;
     uuid = UUID.randomUUID();
   }
 
@@ -152,11 +152,11 @@ public class TransferTaskParent
   public boolean isOptional() { return optional; }
   public void setOptional(boolean b) { optional = b; }
 
-  public boolean isSrcSharedAppCtx() { return srcSharedAppCtx; }
-  public void setSrcSharedAppCtx(boolean b) { srcSharedAppCtx = b; }
+  public String getSrcSharedCtxGrantor() { return srcSharedCtxGrantor; }
+  public void setSrcSharedCtxGrantor(String s) { srcSharedCtxGrantor = s; }
 
-  public boolean isDestSharedAppCtx() { return destSharedAppCtx; }
-  public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; }
+  public String getDestSharedCtxGrantor() { return destSharedCtxGrantor; }
+  public void setDestSharedCtxGrantor(String s) { destSharedCtxGrantor = s; }
 
   public List<TransferTaskChild> getChildren() { return children; }
   public void setChildren(List<TransferTaskChild> tlist) { children = tlist; }
@@ -180,24 +180,20 @@ public class TransferTaskParent
   @Override
   public boolean equals(java.lang.Object o)
   {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    TransferTaskParent transferTask = (TransferTaskParent) o;
-    return Objects.equals(this.uuid, transferTask.uuid) &&
-            Objects.equals(this.created, transferTask.created) &&
-            Objects.equals(this.status, transferTask.status);
+    if (o == this) return true;
+    // Note: no need to check for o==null since instanceof will handle that case
+    if (!(o instanceof TransferTaskParent)) return false;
+    TransferTaskParent that = (TransferTaskParent) o;
+    return (Objects.equals(this.uuid, that.uuid) &&
+            Objects.equals(this.created, that.created) &&
+            Objects.equals(this.status, that.status));
   }
 
   @Override
-  public int hashCode() {
-    return  Objects.hash(uuid, created, status);
-  }
+  public int hashCode() { return  Objects.hash(uuid, created, status); }
 
   @JsonIgnore
-  public boolean isTerminal()
-  {
-    return TERMINAL_STATES.contains(status);
-  }
+  public boolean isTerminal() { return TERMINAL_STATES.contains(status); }
 
   @Override
   public String toString()

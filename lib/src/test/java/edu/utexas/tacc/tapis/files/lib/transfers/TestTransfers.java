@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
-import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.BaseDatabaseIntegrationTest;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -14,7 +13,6 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -41,7 +39,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
@@ -533,16 +530,18 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     when(systemsCache.getSystem(any(), eq("sourceSystem"), any(), any(), any())).thenReturn(sourceSystem);
     when(systemsCache.getSystem(any(), eq("destSystem"), any(), any(), any())).thenReturn(destSystem);
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
 
     TransferTaskRequestElement element = new TransferTaskRequestElement();
     element.setSourceURI("tapis://sourceSystem/");
     element.setDestinationURI("tapis://destSystem/");
     List<TransferTaskRequestElement> elements = new ArrayList<>();
     elements.add(element);
+    // Allow txfr task to be created
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     TransferTask t1 = transfersService.createTransfer(rTestUser, "tag", elements);
+    // When not allowed task should be FAILED after the pipeline runs
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
     Flux<TransferTaskParent> tasks = parentTaskTransferService.runPipeline();
-    // Task should be FAILED after the pipeline runs
     StepVerifier
             .create(tasks)
             .assertNext(t -> Assert.assertEquals(t.getStatus(), TransferTaskStatus.FAILED))
@@ -916,9 +915,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     //Add some files to transfer
     fileOpsService.upload(sourceClient, "program.exe", Utils.makeFakeFile(BIGFILESIZE));
     boolean recurseFalse = false;
-    boolean sharedAppCtxFalse = false;
-    fileUtilsService.linuxOp(sourceClient, "/program.exe", FileUtilsService.NativeLinuxOperation.CHMOD, "755",
-                             recurseFalse, sharedAppCtxFalse);
+    fileUtilsService.linuxOp(sourceClient, "/program.exe", FileUtilsService.NativeLinuxOperation.CHMOD, "755", recurseFalse);
 
     TransferTaskRequestElement element = new TransferTaskRequestElement();
     element.setSourceURI("tapis://sourceSystem/program.exe");
@@ -1068,7 +1065,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     System.out.printf("************* HTTP to %s\n", testSystem.getId());
     System.out.println("********************************************************************************************");
-    when(systemsCache.getSystem(any(), eq("testSystem"), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), eq("testSystem"), any(), any(), any())).thenReturn(testSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     IRemoteDataClient destClient = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
@@ -1752,13 +1749,13 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     if (doIrods) clientIRODSb = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemIRODSb, testUser);
 
     // Init mocking to return values appropriate to the test
-    when(systemsCache.getSystem(any(), eq(testSystemSSHa.getId()), any())).thenReturn(testSystemSSHa);
-    when(systemsCache.getSystem(any(), eq(testSystemSSHb.getId()), any())).thenReturn(testSystemSSHb);
-    when(systemsCache.getSystem(any(), eq(testSystemS3a.getId()), any())).thenReturn(testSystemS3a);
-    when(systemsCache.getSystem(any(), eq(testSystemS3b.getId()), any())).thenReturn(testSystemS3b);
-    when(systemsCache.getSystem(any(), eq(testSystemS3c.getId()), any())).thenReturn(testSystemS3c);
-    if (doIrods) when(systemsCache.getSystem(any(), eq(testSystemIRODSa.getId()), any())).thenReturn(testSystemIRODSa);
-    if (doIrods) when(systemsCache.getSystem(any(), eq(testSystemIRODSb.getId()), any())).thenReturn(testSystemIRODSb);
+    when(systemsCache.getSystem(any(), eq(testSystemSSHa.getId()), any(), any(), any())).thenReturn(testSystemSSHa);
+    when(systemsCache.getSystem(any(), eq(testSystemSSHb.getId()), any(), any(), any())).thenReturn(testSystemSSHb);
+    when(systemsCache.getSystem(any(), eq(testSystemS3a.getId()), any(), any(), any())).thenReturn(testSystemS3a);
+    when(systemsCache.getSystem(any(), eq(testSystemS3b.getId()), any(), any(), any())).thenReturn(testSystemS3b);
+    when(systemsCache.getSystem(any(), eq(testSystemS3c.getId()), any(), any(), any())).thenReturn(testSystemS3c);
+    if (doIrods) when(systemsCache.getSystem(any(), eq(testSystemIRODSa.getId()), any(), any(), any())).thenReturn(testSystemIRODSa);
+    if (doIrods) when(systemsCache.getSystem(any(), eq(testSystemIRODSb.getId()), any(), any(), any())).thenReturn(testSystemIRODSb);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
 
     // Cleanup and create top level directories

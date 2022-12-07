@@ -75,7 +75,7 @@ public class TestFileOpsService
   private final String devTenant = "dev";
   private final String testUser = "testuser";
   private final String nullImpersonationId = null;
-  private final boolean sharedAppCtxFalse = false;
+  private final String sharedCtxGrantorNull = null;
   private ResourceRequestUser rTestUser;
   TapisSystem testSystemNotEnabled;
   TapisSystem testSystemSSH;
@@ -91,8 +91,6 @@ public class TestFileOpsService
   private static final MoveCopyOperation OP_MV = MoveCopyOperation.MOVE;
   private static final MoveCopyOperation OP_CP = MoveCopyOperation.COPY;
 
-  // TODO change sharedCtx from boolean to String and set to null (?)
-  boolean sharedCtxGrantorNull = false;
   private TestFileOpsService() throws IOException
   {
     SSHConnection.setLocalNodeName("dev");
@@ -264,8 +262,8 @@ public class TestFileOpsService
     }
 
   // Check the getSystemIfEnabled() method
-  @Test(dataProvider = "testSystemsNotEnabled")
-  public void testGetSystemIfEnabled(TapisSystem testSystem) throws Exception
+  @Test
+  public void testGetSystemIfEnabled() throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     when(systemsCache.getSystem(any(), eq("testSystemNotEnabled"), any(), any(), any())).thenReturn(testSystemNotEnabled);
@@ -397,10 +395,7 @@ public class TestFileOpsService
 
         List<FileInfo> listing = fileOpsService.ls(client, "/test.txt", MAX_LISTING_SIZE, 0);
         Assert.assertEquals(listing.get(0).getSize(), 100*1024);
-        // TODO revisit sharedFalse, impersonationNull
-      boolean sharedFalse = false;
-      String impersonationNull = null;
-        InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt", impersonationNull, sharedFalse);
+        InputStream out = fileOpsService.getAllBytes(rTestUser, testSystem,"test.txt");
         byte[] output = IOUtils.toByteArray(out);
         Assert.assertEquals(output.length, 100 * 1024);
     }
@@ -645,7 +640,7 @@ public class TestFileOpsService
 
         File file = File.createTempFile("test", ".zip");
         OutputStream outputStream = new FileOutputStream(file);
-        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a", nullImpersonationId, sharedAppCtxFalse);
+        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a", nullImpersonationId, sharedCtxGrantorNull);
 
         try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis))
         {
@@ -681,10 +676,10 @@ public class TestFileOpsService
       client.delete("/");
       fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
       // MODIFY should imply read so ls should work
-      fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedAppCtxFalse);
+      fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedCtxGrantorNull);
       // Without MODIFY or READ should fail
       when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(false);
-      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedAppCtxFalse); });
+      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedCtxGrantorNull); });
     }
 
   // NoAuthz tests for mkdir, move, copy and delete
@@ -700,9 +695,10 @@ public class TestFileOpsService
     fileOpsService.upload(client,"/b/3.txt", Utils.makeFakeFile(10*1024));
     // Perform the tests
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"newdir"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/newdir"); });
-    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/a/newdir"); });
+// NOTE: After refactoring, mkdir call using client no longer does perm checks.
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"newdir"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/newdir"); });
+//    Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.mkdir(client,"/a/newdir"); });
     Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/1.txt","/1new.txt"); });
     Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/1.txt","/a/1new.txt"); });
     Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(client,OP_MV,"/a/2.txt","/b/2new.txt"); });

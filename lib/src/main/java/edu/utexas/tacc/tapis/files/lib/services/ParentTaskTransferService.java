@@ -11,7 +11,6 @@ import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -385,25 +384,29 @@ public class ParentTaskTransferService
     String srcPath = parentTask.getSourceURI().getPath();
     String destSystemId = parentTask.getDestinationURI().getSystemId();
     String destPath = parentTask.getDestinationURI().getPath();
-    boolean srcSharedAppCtx = parentTask.isSrcSharedAppCtx();
-    boolean destSharedAppCtx = parentTask.isDestSharedAppCtx();
+    String srcSharedAppCtx = parentTask.getSrcSharedCtxGrantor();
+    String destSharedAppCtx = parentTask.getDestSharedCtxGrantor();
 
-    // If we have a tapis:// link, have to do the source perms check
+    // Do source path perms check if it is not http/s
     if (!isHttpSource)
     {
-      // If sharedAppCtx is true then skip perm check
-      if (!srcSharedAppCtx)
-      {
+// TODO Update for sharing
+//      // If sharedAppCtx is true then skip perm check
+//      if (!srcSharedAppCtx)
+//      {
         boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
         if (!sourcePerms) return false;
-      }
+//      }
     }
-    // If sharedAppCtx is true then skip perm check
-    if (!destSharedAppCtx)
-    {
+
+    // Do target path perms check
+// TODO Update for sharing
+//    // If sharedAppCtx is true then skip perm check
+//    if (!destSharedAppCtx)
+//    {
       return permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
-    }
-    return true;
+//    }
+//    return true;
   }
 
   private Mono<TransferTaskParent> deserializeParentMessage(AcknowledgableDelivery message)

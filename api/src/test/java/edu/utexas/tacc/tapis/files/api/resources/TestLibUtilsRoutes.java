@@ -227,7 +227,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   public void testGetStatInfo(TapisSystem testSystem) throws Exception
   {
     when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem); // For SystemsCacheWithAuth
-    when(systemsClient.getSystem(any(), any(), eq(false), any(), eq(true), any(), any())).thenReturn(testSystem); // For SystemsCacheNoAuth
+    when(systemsClient.getSystem(any(), any(), eq(false), any(), eq(true), any(), any())).thenReturn(testSystem); // For SystemsCache
 // getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
 //                                            impersonationIdNull, sharedAppCtx);
     // Create file

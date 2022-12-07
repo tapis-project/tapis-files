@@ -262,7 +262,8 @@ public class ChildTaskTransferService
     {
       // Source path is not HTTP/S
       sourcePath = sourceURL.getPath();
-      sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
+      // TODO Do we need to used sharedCtxGrantor info?
+      sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername(), null, null);
       // If src system is not enabled throw an exception
       if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
       {
@@ -281,7 +282,8 @@ public class ChildTaskTransferService
     // Initialize destination client
     try
     {
-      destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
+      // TODO Do we need to used sharedCtxGrantor info?
+      destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername(), null, null);
       // If dst system is not enabled throw an exception
       if (destSystem.getEnabled() == null || !destSystem.getEnabled())
       {
@@ -353,10 +355,13 @@ public class ChildTaskTransferService
           // Before calling linuxOp, we need to know if we are in a sharedAppCtx
           // So the linuxOp will skip the perm check
           TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-          boolean isDestShared = parentTask.isDestSharedAppCtx();
+// TODO Update sharing
+//          boolean isDestShared = parentTask.getDestSharedCtxGrantor();
           boolean recurseFalse = false;
+//          fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700",
+//                                   recurseFalse, isDestShared);
           fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700",
-                                   recurseFalse, isDestShared);
+                                   recurseFalse);
         }
         catch (TapisException | DAOException ex)
         {

@@ -111,6 +111,13 @@ public class SystemsCache
       var returnCreds = true;
       TapisSystem system = client.getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
                                             key.getImpersonationId(), key.getSharedCtxGrantor());
+      // If client returns null it means not found
+      if (system == null)
+      {
+        String msg = LibUtils.getMsg("FILES_CACHE_SYS_NULL", key.getTenantId(), key.getSystemId(), key.getTapisUser(),
+                                     key.getImpersonationId(), key.getSharedCtxGrantor());
+        throw new NotFoundException(msg);
+      }
       log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADED", key.getTenantId(), key.getSystemId(), key.getTapisUser(),
                                 key.getImpersonationId(), key.getSharedCtxGrantor(), system.getDefaultAuthnMethod()));
       return system;
