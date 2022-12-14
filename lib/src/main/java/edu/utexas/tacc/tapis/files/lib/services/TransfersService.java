@@ -17,6 +17,7 @@ import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Delivery;
 import org.apache.commons.lang3.StringUtils;
+import org.glassfish.jersey.process.internal.Stage;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -180,7 +181,7 @@ public class TransfersService
       }
       catch (DAOException e)
       {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", null, null, "getChildTaskByUUID", null, uuid, e.getMessage());
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", null, null, "getChildTaskByUUID", null, null, uuid, e.getMessage());
         log.error(msg, e);
         throw new ServiceException(msg, e);
       }
@@ -196,7 +197,7 @@ public class TransfersService
       catch (DAOException e)
       {
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                                     "getAllChildrenTasks", task.getId(), task.getUuid(), e.getMessage());
+                                     "getAllChildrenTasks", task.getId(), task.getTag(), task.getUuid(), e.getMessage());
         log.error(msg, e);
         throw new ServiceException(msg, e);
       }
@@ -311,6 +312,9 @@ public class TransfersService
         throw new ServiceException(msg);
       }
 
+      // Update tag for each parent task to be created.
+      for (TransferTaskRequestElement e : elements) { e.setTag(tag); }
+
       // Check for srcSharedCtx or destSharedCtx in the request elements.
       // Only certain services may set these to true. May throw ForbiddenException.
       for (TransferTaskRequestElement e : elements) { checkSharedCtxAllowed(rUser, tag, e); }
@@ -353,7 +357,7 @@ public class TransfersService
       catch (DAOException ex)
       {
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                                     "createTransferTaskChild", task.getId(), task.getUuid(), ex.getMessage());
+                                     "createTransferTaskChild", task.getId(), task.getTag(), task.getUuid(), ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
       }
@@ -374,7 +378,7 @@ public class TransfersService
       catch (DAOException ex)
       {
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                                     "cancelTransfer", task.getId(), task.getUuid(), ex.getMessage());
+                                     "cancelTransfer", task.getId(), task.getTag(), task.getUuid(), ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
       }
@@ -428,7 +432,7 @@ public class TransfersService
       catch (JsonProcessingException ex)
       {
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", childTask.getTenantId(), childTask.getUsername(),
-                                     "publishChildMessage", childTask.getId(), childTask.getUuid(), ex.getMessage());
+                                     "publishChildMessage", childTask.getId(), childTask.getTag(), childTask.getUuid(), ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
       }
@@ -529,12 +533,12 @@ public class TransfersService
       OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, PARENT_QUEUE, m.getBytes());
       sender.sendWithPublishConfirms(Mono.just(message)).subscribe();
       int childCount = task.getChildren() == null ? 0 : task.getChildren().size();
-      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_PUBLISHED", task.getTaskId(), childCount, m));
+      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_PUBLISHED", task.getTaskId(), task.getTag(), childCount, m));
     }
     catch (Exception e)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                                   "publishParentTaskMessage", task.getId(), task.getUuid(), e.getMessage());
+                                   "publishParentTaskMessage", task.getId(), task.getTag(), task.getUuid(), e.getMessage());
       throw new ServiceException(msg, e);
     }
   }
@@ -630,13 +634,9 @@ public class TransfersService
     TapisSystem sys = null;
     try
     {
-      // Get system without auth.
-      sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, sysId);
-// TODO Probably should not do auth here.
-// TODO Check auth here or always let the service call do that?
-//      // impersonationId = null
-//      sys = LibUtils.getSysWithAuth(rUser, fileOpsService, systemsCacheNoCred, systemsCache, sysId, path,
-//                                    sharedCtxGrantor, null);
+      // Get system
+      String impersonationIdNull = null;
+      sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, sysId, impersonationIdNull, sharedCtxGrantor);
     }
     catch (Exception e) { errMessages.add(e.getMessage()); }
     return sys;
@@ -663,6 +663,10 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcId = srcUri.getSystemId();
       String dstId = dstUri.getSystemId();
+      String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
+      String dstGrantor = txfrElement.getDestSharedCtxGrantor();
+      boolean dstShared = !StringUtils.isBlank(dstGrantor);
+      String impersonationIdNull = null;
 
       // Get any Tapis systems. If protocol is http/s then leave as null.
       // For protocol tapis:// get each system. These should already be in the cache due to a previous check, see validateSystemsAreEnabled()
@@ -670,9 +674,9 @@ public class TransfersService
       try
       {
         if (!StringUtils.isBlank(srcId) && srcUri.isTapisProtocol())
-          srcSys = systemsCache.getSystem(rUser.getOboTenantId(), srcId, rUser.getOboUserId());
+          srcSys = systemsCache.getSystem(rUser.getOboTenantId(), srcId, rUser.getOboUserId(), impersonationIdNull, srcGrantor);
         if (!StringUtils.isBlank(dstId) && dstUri.isTapisProtocol())
-          dstSys = systemsCache.getSystem(rUser.getOboTenantId(), dstId, rUser.getOboUserId());
+          dstSys = systemsCache.getSystem(rUser.getOboTenantId(), dstId, rUser.getOboUserId(), impersonationIdNull, dstGrantor);
       }
       catch (Exception e)
       {
@@ -684,18 +688,18 @@ public class TransfersService
       if ((srcSys != null && SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType())) &&
           (dstSys == null || !SystemTypeEnum.GLOBUS.equals(dstSys.getSystemType())))
       {
-        errMessages.add(LibUtils.getMsg("FILES_TXFR_GLOBUS_NOTSUPPORTED", srcUri, dstUri));
+        errMessages.add(LibUtils.getMsg("FILES_TXFR_GLOBUS_NOTSUPPORTED", srcUri, dstUri, txfrElement.getTag()));
       }
       // If dstSys is GLOBUS and srcSys is not then we do not support it
       if ((dstSys != null && SystemTypeEnum.GLOBUS.equals(dstSys.getSystemType())) &&
           (srcSys == null || !SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType())))
       {
-        errMessages.add(LibUtils.getMsg("FILES_TXFR_GLOBUS_NOTSUPPORTED", srcUri, dstUri));
+        errMessages.add(LibUtils.getMsg("FILES_TXFR_GLOBUS_NOTSUPPORTED", srcUri, dstUri, txfrElement.getTag()));
       }
       // If dstUri is not tapis protocol we do not support it
       if (!dstUri.isTapisProtocol())
       {
-        errMessages.add(LibUtils.getMsg("FILES_TXFR_DST_NOTSUPPORTED", srcUri, dstUri));
+        errMessages.add(LibUtils.getMsg("FILES_TXFR_DST_NOTSUPPORTED", srcUri, dstUri, txfrElement.getTag()));
       }
     }
   }
@@ -721,25 +725,25 @@ public class TransfersService
       String dstSystemId = dstUri.getSystemId();
       String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
       String dstGrantor = txfrElement.getDestSharedCtxGrantor();
-      TapisSystem sys;
+      boolean dstShared = !StringUtils.isBlank(dstGrantor);
       // Check source system
       if (!StringUtils.isBlank(srcSystemId) && srcUri.isTapisProtocol())
       {
-        sys = validateSystemIsEnabled(rUser, srcSystemId, srcUri.getPath(), srcGrantor, errMessages);
+        validateSystemIsEnabled(rUser, srcSystemId, srcUri.getPath(), srcGrantor, errMessages);
       }
       // Check destination system
       if (!StringUtils.isBlank(dstSystemId) && dstUri.isTapisProtocol())
       {
-        // TODO: Update in light of share grantor support
-        sys = validateSystemIsEnabled(rUser, dstSystemId, dstUri.getPath(), dstGrantor, errMessages);
-        // For destination systems we also check that user has modify access to the path.
-        // If not owner, then must have MODIFY permission.
-        if (sys != null && !rUser.getOboUserId().equals(sys.getOwner()))
-        {
-          try { LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), rUser.getOboUserId(), dstSystemId,
-                                        dstUri.getPath(), FileInfo.Permission.MODIFY); }
-          catch (Exception e) { errMessages.add(e.getMessage()); }
-        }
+        TapisSystem sys = validateSystemIsEnabled(rUser, dstSystemId, dstUri.getPath(), dstGrantor, errMessages);
+// TODO Should we do this here?
+//        // For destination systems we also check that user has modify access to the path.
+//        // If not owner or shared, then must have MODIFY permission.
+//        if (sys != null && !rUser.getOboUserId().equals(sys.getOwner()) && !dstShared)
+//        {
+//          try { LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), rUser.getOboUserId(), dstSystemId,
+//                                        dstUri.getPath(), FileInfo.Permission.MODIFY); }
+//          catch (Exception e) { errMessages.add(e.getMessage()); }
+//        }
       }
     }
   }

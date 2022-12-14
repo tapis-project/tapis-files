@@ -281,7 +281,7 @@ public class  TransfersApiResource
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
-    String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CANCELLED", rUser, transferTaskId);
+    String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CANCELLED", rUser, task.getTag(), transferTaskId);
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
   }
@@ -305,7 +305,8 @@ public class  TransfersApiResource
 
     // Trace this request.
     if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "txfrTaskRequest="+transferTaskRequest);
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
+                          "Tag="+transferTaskRequest.getTag(), "transferTaskRequest="+transferTaskRequest);
 
     // ---------------------------- Make service call -------------------------------
     TransferTask task;
@@ -320,7 +321,7 @@ public class  TransfersApiResource
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
     }
-    String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CREATED", rUser, task.getUuid());
+    String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CREATED", rUser, task.getTag(), task.getUuid());
     TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(msg, task);
     // Trace details of the created txfr task.
     if (log.isTraceEnabled()) log.trace(task.toString());

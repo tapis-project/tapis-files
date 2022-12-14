@@ -211,7 +211,7 @@ public class LibUtils
   }
 
   /*
-   * Convenience wrapper
+   * Convenience wrapper for callers that do not need to support sharing
    */
   public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
                                                @NotNull String systemId)

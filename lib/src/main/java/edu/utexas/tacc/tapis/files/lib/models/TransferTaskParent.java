@@ -29,6 +29,7 @@ public class TransferTaskParent
   protected boolean optional;
   protected String srcSharedCtxGrantor;
   protected String destSharedCtxGrantor;
+  protected String tag;
 
   protected Instant created;
   protected Instant startTime;
@@ -39,7 +40,7 @@ public class TransferTaskParent
   public TransferTaskParent(){}
 
   public TransferTaskParent(String tenantId1, String username1, String srcURI1, String dstURI1, boolean optional1,
-                            String srcCtx1, String dstCtx1)
+                            String srcCtx1, String dstCtx1, String tag1)
   {
     tenantId = tenantId1;
     username = username1;
@@ -49,6 +50,7 @@ public class TransferTaskParent
     optional = optional1;
     srcSharedCtxGrantor = srcCtx1;
     destSharedCtxGrantor = dstCtx1;
+    tag = tag1;
     uuid = UUID.randomUUID();
   }
 
@@ -158,6 +160,9 @@ public class TransferTaskParent
   public String getDestSharedCtxGrantor() { return destSharedCtxGrantor; }
   public void setDestSharedCtxGrantor(String s) { destSharedCtxGrantor = s; }
 
+  public String getTag() { return tag; }
+  public void setTag(String s) { tag = s; }
+
   public List<TransferTaskChild> getChildren() { return children; }
   public void setChildren(List<TransferTaskChild> tlist) { children = tlist; }
 
@@ -201,6 +206,7 @@ public class TransferTaskParent
     return new StringJoiner(", ", TransferTaskParent.class.getSimpleName() + "[", "]")
             .add("id=" + id)
             .add("taskId=" + taskId)
+            .add("tag=" + tag)
             .add("tenantId='" + tenantId + "'")
             .add("username='" + username + "'")
             .add("sourceURI='" + sourceURI + "'")

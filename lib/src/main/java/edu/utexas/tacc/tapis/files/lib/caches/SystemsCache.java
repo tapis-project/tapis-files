@@ -10,6 +10,8 @@ import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
+
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -109,8 +111,13 @@ public class SystemsCache
       var requireExec = false;
       var selectStr = "allAttributes";
       var returnCreds = true;
+      // TODO sharedAppCtx - update to handle as grantor of share.
+      //      For now, set to true for any grantor.
+      boolean sharedAppCtx = false;
+      if (!StringUtils.isBlank(key.getSharedCtxGrantor())) sharedAppCtx = true;
       TapisSystem system = client.getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
-                                            key.getImpersonationId(), key.getSharedCtxGrantor());
+// TODO                                            key.getImpersonationId(), key.getSharedCtxGrantor());
+                                            key.getImpersonationId(), sharedAppCtx);
       // If client returns null it means not found
       if (system == null)
       {

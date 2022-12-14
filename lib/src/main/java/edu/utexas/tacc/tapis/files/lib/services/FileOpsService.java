@@ -229,7 +229,7 @@ public class FileOpsService
       try
       {
         // Check for READ/MODIFY permission or share
-        checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId,sharedCtxGrantor);
+        checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
 
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
         client.reserve();
@@ -1203,6 +1203,12 @@ public class FileOpsService
       // An allowed service is impersonating, log it
       log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE", rUser, systemId, relativePathStr, impersonationId));
     }
+
+    // TODO
+    // TODO For now if sharedCtxGrantor set to anything other than false then allow
+    // TODO
+    if (sharedCtx && !"FALSE".equalsIgnoreCase(sharedCtxGrantor)) return;
+    // TODO
 
     // If obo user is owner or in shared context and share grantor is owner then allow.
     if (oboOrImpersonatedUser.equals(owner) || (sharedCtx && sharedCtxGrantor.equals(owner))) return;

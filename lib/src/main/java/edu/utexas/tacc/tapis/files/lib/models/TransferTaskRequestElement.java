@@ -10,6 +10,7 @@ public class TransferTaskRequestElement
   private boolean optional;
   private String srcSharedCtxGrantor;
   private String destSharedCtxGrantor;
+  private  String tag;
 
   @NotBlank
   public TransferURI getSourceURI() { return sourceURI; }
@@ -27,6 +28,8 @@ public class TransferTaskRequestElement
   public void setSrcSharedCtxGrantor(String s) { srcSharedCtxGrantor = s; }
   public String getDestSharedCtxGrantor() { return destSharedCtxGrantor; }
   public void setDestSharedCtxGrantor(String s) { destSharedCtxGrantor = s; }
+  public String getTag() { return tag; }
+  public void setTag(String s) { tag = s; }
 
   @Override
   public String toString() {return TapisUtils.toString(this);}
