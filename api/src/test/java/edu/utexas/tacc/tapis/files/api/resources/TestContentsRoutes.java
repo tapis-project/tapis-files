@@ -4,7 +4,6 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
@@ -93,8 +92,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   // mocking out the services
   private ServiceClients serviceClients;
   private SKClient skClient;
-  private SystemsCache systemsCacheWithAuth;
-  private SystemsCacheNoAuth systemsCacheNoAuth;
+  private SystemsCache systemsCache;
   private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES);
   private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
@@ -183,8 +181,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     forceSet(TestProperties.CONTAINER_PORT, "0");
     skClient = Mockito.mock(SKClient.class);
     serviceClients = Mockito.mock(ServiceClients.class);
-    systemsCacheWithAuth = Mockito.mock(SystemsCache.class);
-    systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
+    systemsCache = Mockito.mock(SystemsCache.class);
     SSHConnection.setLocalNodeName("test");
     JWTValidateRequestFilter.setSiteId("tacc");
     JWTValidateRequestFilter.setService("files");
@@ -204,8 +201,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
                 bind(serviceClients).to(ServiceClients.class);
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
-                bind(systemsCacheWithAuth).to(SystemsCache.class);
-                bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
+                bind(systemsCache).to(SystemsCache.class);
                 bindAsContract(FileOpsService.class).in(Singleton.class);
                 bindAsContract(FileShareService.class).in(Singleton.class);
                 bindAsContract(FilePermsService.class);
@@ -234,8 +230,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   {
     Mockito.reset(skClient);
     Mockito.reset(serviceClients);
-    Mockito.reset(systemsCacheWithAuth);
-    Mockito.reset(systemsCacheNoAuth);
+    Mockito.reset(systemsCache);
     when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
     when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
   }
@@ -249,8 +244,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     {
       try {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
-        when(systemsCacheWithAuth.getSystem(any(), any(), any())).thenReturn(sys);
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(sys);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(sys);
         target(String.format("%s/%s/", OPS_ROUTE, sys.getId()))
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -278,8 +272,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetContents(TapisSystem testSystem) throws Exception
   {
-    when(systemsCacheWithAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     addTestFilesToSystem(testSystem, "testfile1.txt", 10 * 1024);
     Response response = target("/v3/files/content/" + testSystem.getId() + "/testfile1.txt")
             .request()
@@ -297,8 +290,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProviderNoS3", enabled = true)
   public void testZipOutput(TapisSystem system) throws Exception
   {
-    when(systemsCacheWithAuth.getSystem(any(), any(), any())).thenReturn(system);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(system);
     addTestFilesToSystem(system, "a/test1.txt", 10 * 1000);
     addTestFilesToSystem(system, "a/b/test2.txt", 10 * 1000);
     addTestFilesToSystem(system, "a/b/test3.txt", 10 * 1000);
@@ -327,8 +319,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testStreamLargeFile(TapisSystem system) throws Exception
   {
-    when(systemsCacheWithAuth.getSystem(any(), any(), any())).thenReturn(system);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(system);
     int filesize = 100 * 1000 * 1000;
     addTestFilesToSystem(system, "largetestfile1.txt", filesize);
     Response response = target("/v3/files/content/" + system.getId() + "/largetestfile1.txt")
@@ -352,8 +343,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testNotFound(TapisSystem system) throws Exception
   {
-    when(systemsCacheWithAuth.getSystem(any(), any(), any())).thenReturn(system);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(system);
     Response response = target("/v3/files/content/" + system.getId() + "/NOT-THERE.txt")
             .request()
             .header("X-Tapis-Token", getJwtForUser("dev", TEST_USR1))
@@ -364,8 +354,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetWithRange(TapisSystem system) throws Exception
   {
-    when(systemsCacheWithAuth.getSystem(any(), any(), any())).thenReturn(system);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(system);
     addTestFilesToSystem(system, "words.txt", 10 * 1024);
     Response response = target("/v3/files/content/" + system.getId() + "/words.txt")
             .request()
@@ -380,8 +369,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetWithMore(TapisSystem system) throws Exception
   {
-    when(systemsCacheWithAuth.getSystem(any(), any(), any())).thenReturn(system);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(system);
     addTestFilesToSystem(system, "words.txt", 10 * 1024);
     Response response = target("/v3/files/content/" + system.getId() + "/words.txt")
             .request()
@@ -398,8 +386,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetContentsHeaders(TapisSystem system) throws Exception
   {
-    when(systemsCacheWithAuth.getSystem(any(), any(), any())).thenReturn(system);
-    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(system);
     // make sure content-type is application/octet-stream and filename is correct
     addTestFilesToSystem(system, "testfile1.txt", 10 * 1024);
 
@@ -422,12 +409,9 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
 //    when(systemsClient.getSystemWithCredentials(eq("testSystemDisabled"))).thenReturn(testSystemDisabled);
 //    when(systemsClient.getSystemWithCredentials(eq("testSystemSSH"))).thenReturn(testSystemSSH);
 //    when(systemsClient.getSystemWithCredentials(eq("testSystemNotExist"), any())).thenThrow(new NotFoundException("Sys not found: testSystemNotExist"));
-    when(systemsCacheWithAuth.getSystem(any(), eq("testSystemS3"), any())).thenReturn(testSystemS3);
-    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemS3"), any())).thenReturn(testSystemS3);
-    when(systemsCacheWithAuth.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
-    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
-    when(systemsCacheWithAuth.getSystem(any(), eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
-    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemDisabled"), any())).thenReturn(testSystemDisabled);
+    when(systemsCache.getSystem(any(), eq("testSystemS3"), any(), any(), any())).thenReturn(testSystemS3);
+    when(systemsCache.getSystem(any(), eq("testSystemSSH"), any(), any(), any())).thenReturn(testSystemSSH);
+    when(systemsCache.getSystem(any(), eq("testSystemDisabled"), any(), any(), any())).thenReturn(testSystemDisabled);
     addTestFilesToSystem(testSystemSSH, "dir1/testfile1.txt", 1024);
 
     // Attempt to retrieve a folder without using zip

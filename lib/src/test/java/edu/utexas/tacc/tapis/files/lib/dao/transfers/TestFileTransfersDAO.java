@@ -141,8 +141,9 @@ public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
    */
   private TransferTask createTransferTask(String userName) throws DAOException
   {
+    String tag = "testTag";
     TransferTask task = new TransferTask();
-    task.setTag("testTag");
+    task.setTag(tag);
     task.setTenantId(testTenant);
     task.setUsername(userName);
     task.setStatus(TransferTaskStatus.ACCEPTED.name());
@@ -150,11 +151,13 @@ public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
     TransferTaskRequestElement element1 = new TransferTaskRequestElement();
     element1.setDestinationURI("tapis://sourceSystem/path");
     element1.setSourceURI("tapis://destSystem/path");
+    element1.setTag(tag);
     elements.add(element1);
 
     TransferTaskRequestElement element2 = new TransferTaskRequestElement();
     element2.setDestinationURI("tapis://sourceSystem2/path");
     element2.setSourceURI("tapis://destSystem2/path");
+    element2.setTag(tag);
     elements.add(element2);
 
     task = dao.createTransferTask(task, elements);

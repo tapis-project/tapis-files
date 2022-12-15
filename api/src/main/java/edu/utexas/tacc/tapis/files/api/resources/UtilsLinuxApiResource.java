@@ -67,7 +67,8 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     FileStatInfo fileStatInfo;
     try
     {
-      TapisSystem system = systemsCacheWithAuth.getSystem(oboTenant, systemId, oboUser);
+      // NOTE: Allow for linux operations on systems that are disabled. So do not use getSystemIfEnabled.
+      TapisSystem system = systemsCache.getSystem(oboTenant, systemId, oboUser);
       LibUtils.checkEnabled(rUser, system);
       String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? oboUser : system.getEffectiveUserId();
       IRemoteDataClient client = getClientForUserAndSystem(rUser, system, effectiveUserId);
@@ -102,10 +103,9 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     String opName = "runLinuxNativeOp";
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
-    String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     // Make sure the Tapis System exists and is enabled
-    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
+    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
     NativeLinuxOpResult nativeLinuxOpResult;
     try
@@ -114,9 +114,8 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
       IRemoteDataClient client = getClientForUserAndSystem(rUser, system, effectiveUserId);
 
       // Make the service call
-      boolean sharedAppCtxFalse = false;
       nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(),
-                                                     recursive, sharedAppCtxFalse);
+                                                     recursive);
     }
     catch (TapisException | ServiceException | IOException e)
     {

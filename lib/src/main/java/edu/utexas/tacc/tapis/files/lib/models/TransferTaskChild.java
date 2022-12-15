@@ -20,7 +20,7 @@ public class TransferTaskChild extends TransferTaskParent
 
   public TransferTaskChild() {}
 
-  public TransferTaskChild(String tenantId1, String username1, TransferURI srcUri1, TransferURI dstUri1, int parentId1)
+  public TransferTaskChild(String tenantId1, String username1, TransferURI srcUri1, TransferURI dstUri1, int parentId1, String tag1)
   {
     tenantId = tenantId1;
     username = username1;
@@ -29,6 +29,7 @@ public class TransferTaskChild extends TransferTaskParent
     uuid = UUID.randomUUID();
     status = TransferTaskStatus.ACCEPTED;
     parentTaskId = parentId1;
+    tag = tag1;
   }
 
   /**
@@ -54,6 +55,7 @@ public class TransferTaskChild extends TransferTaskParent
     TransferURI newDestUri = new TransferURI(destUri, destPathStr);
 
     // Set attributes for child we are constructing.
+    setTag(transferTaskParent.getTag());
     setParentTaskId(transferTaskParent.getId());
     setTaskId(transferTaskParent.getTaskId());
     setSourceURI(newSourceUri.toString());
@@ -84,6 +86,7 @@ public class TransferTaskChild extends TransferTaskParent
     public String toString() {
         return new StringJoiner(", ", TransferTaskChild.class.getSimpleName() + "[", "]")
             .add("id=" + id)
+            .add("tag=" + tag)
             .add("parentTaskId=" + parentTaskId)
             .add("taskId=" + getTaskId())
             .add("retries=" + retries)

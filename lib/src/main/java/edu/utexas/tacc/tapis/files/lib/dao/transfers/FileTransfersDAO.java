@@ -99,8 +99,9 @@ public class FileTransfersDAO {
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
             task.setOptional(rs.getBoolean("optional"));
-            task.setSrcSharedAppCtx(rs.getBoolean("src_shared_app_ctx"));
-            task.setDestSharedAppCtx(rs.getBoolean("dest_shared_app_ctx"));
+            task.setSrcSharedCtxGrantor(rs.getString("src_shared_ctx"));
+            task.setDestSharedCtxGrantor(rs.getString("dst_shared_ctx"));
+            task.setTag(rs.getString("tag"));
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             task.setErrorMessage(rs.getString("error_message"));
@@ -194,8 +195,9 @@ public class FileTransfersDAO {
             insertParentTaskStmnt.setString(5, element.getDestinationURI().toString());
             insertParentTaskStmnt.setString(6, TransferTaskStatus.ACCEPTED.name());
             insertParentTaskStmnt.setBoolean(7, element.isOptional());
-            insertParentTaskStmnt.setBoolean(8, element.isSrcSharedAppCtx());
-            insertParentTaskStmnt.setBoolean(9, element.isDestSharedAppCtx());
+            insertParentTaskStmnt.setString(8, element.getSrcSharedCtxGrantor());
+            insertParentTaskStmnt.setString(9, element.getDestSharedCtxGrantor());
+            insertParentTaskStmnt.setString(10, element.getTag());
             insertParentTaskStmnt.addBatch();
           }
           insertParentTaskStmnt.executeBatch();
@@ -217,7 +219,7 @@ public class FileTransfersDAO {
       catch (SQLException ex)
       {
         throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                "createTransferTask", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                "createTransferTask", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
       }
     }
 
@@ -355,7 +357,7 @@ public class FileTransfersDAO {
             return updatedTask;
         } catch (SQLException ex) {
           throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "updateTransferTask", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                  "updateTransferTask", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -378,7 +380,7 @@ public class FileTransfersDAO {
             return updatedTask;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "updateTransferTaskParentSize", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                  "updateTransferTaskParentSize", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -398,7 +400,7 @@ public class FileTransfersDAO {
                 task.getId());
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                "updateTransferTaskParentSize", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                "updateTransferTaskParentSize", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -454,7 +456,7 @@ public class FileTransfersDAO {
             return updatedTask;
         } catch (SQLException ex) {
           throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "updateTransferTaskParent", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                  "updateTransferTaskParent", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -485,7 +487,7 @@ public class FileTransfersDAO {
             return updatedTask;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "updateTransferTaskChild", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                  "updateTransferTaskChild", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -505,13 +507,14 @@ public class FileTransfersDAO {
                 task.getDestinationURI().toString(),
                 task.getStatus().name(),
                 task.isOptional(),
-                task.isSrcSharedAppCtx(),
-                task.isDestSharedAppCtx()
+                task.getSrcSharedCtxGrantor(),
+                task.getDestSharedCtxGrantor(),
+                task.getTag()
                 );
             return insertedTask;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "createTransferTaskParent", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                  "createTransferTaskParent", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -528,7 +531,8 @@ public class FileTransfersDAO {
                 child.getStatus().name(),
                 child.getBytesTransferred(),
                 child.getTotalBytes(),
-                child.isDir()
+                child.isDir(),
+                child.getTag()
             });
         });
         Object[][] t = new Object[params.size()][];
@@ -559,13 +563,14 @@ public class FileTransfersDAO {
                 task.getStatus().name(),
                 task.getBytesTransferred(),
                 task.getTotalBytes(),
-                task.isDir()
+                task.isDir(),
+                task.getTag()
             );
 
             return child;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "insertChildTask", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                  "insertChildTask", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -582,7 +587,7 @@ public class FileTransfersDAO {
 
             return child;
         } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", ex), ex);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getChildTaskByUUID", taskUUID, ex.getMessage()), ex);
         }
     }
 
@@ -662,7 +667,7 @@ public class FileTransfersDAO {
             return children;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "getAllChildren1", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                  "getAllChildren1", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
@@ -684,7 +689,7 @@ public class FileTransfersDAO {
             return children;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "getAllChildren2", task.getId(), task.getUuid(), ex.getMessage()), ex);
+                  "getAllChildren2", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 

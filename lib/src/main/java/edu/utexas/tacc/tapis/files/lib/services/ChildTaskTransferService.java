@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -20,6 +20,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -52,7 +53,7 @@ public class ChildTaskTransferService
     private final FileTransfersDAO dao;
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
     private final RemoteDataClientFactory remoteDataClientFactory;
-    private final SystemsCacheNoAuth systemsCacheNoAuth;
+    private final SystemsCache systemsCache;
     private final FileUtilsService fileUtilsService;
     private static final Logger log = LoggerFactory.getLogger(ChildTaskTransferService.class);
 
@@ -68,11 +69,11 @@ public class ChildTaskTransferService
   public ChildTaskTransferService(TransfersService transfersService1, FileTransfersDAO dao1,
                                   FileUtilsService fileUtilsService1,
                                   RemoteDataClientFactory remoteDataClientFactory1,
-                                  SystemsCacheNoAuth cache1)
+                                  SystemsCache cache1)
   {
     transfersService = transfersService1;
     dao = dao1;
-    systemsCacheNoAuth = cache1;
+    systemsCache = cache1;
     remoteDataClientFactory = remoteDataClientFactory1;
     fileUtilsService = fileUtilsService1;
   }
@@ -200,7 +201,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepOne", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+                                   "stepOne", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -223,6 +224,7 @@ public class ChildTaskTransferService
     IRemoteDataClient sourceClient;
     IRemoteDataClient destClient;
     log.info("***** DOING stepTwo **** {}", taskChild);
+    TransferTaskParent parentTask;
     try
     {
       // If cancelled or failed set the end time, and we are done
@@ -237,11 +239,14 @@ public class ChildTaskTransferService
       taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
       taskChild.setRetries(taskChild.getRetries() + 1);
       taskChild = dao.updateTransferTaskChild(taskChild);
+
+      // Get the parent task. We will need it for shared ctx grantors.
+      parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
     }
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepTwoA", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+                                   "stepTwoA", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -249,6 +254,7 @@ public class ChildTaskTransferService
     String sourcePath;
     TransferURI destURL = taskChild.getDestinationURI();
     TransferURI sourceURL = taskChild.getSourceURI();
+    String impersonationIdNull = null;
 
     // Initialize source path and client
     if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://"))
@@ -262,12 +268,13 @@ public class ChildTaskTransferService
     {
       // Source path is not HTTP/S
       sourcePath = sourceURL.getPath();
-      sourceSystem = systemsCacheNoAuth.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername());
+      sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername(),
+                                            impersonationIdNull, parentTask.getSrcSharedCtxGrantor());
       // If src system is not enabled throw an exception
       if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
       {
         String msg = LibUtils.getMsg("FILES_TXFR_SYS_NOTENABLED", taskChild.getTenantId(),
-                taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), sourceSystem.getId());
+                taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), sourceSystem.getId(), taskChild.getTag());
         throw new ServiceException(msg);
       }
 
@@ -281,12 +288,13 @@ public class ChildTaskTransferService
     // Initialize destination client
     try
     {
-      destSystem = systemsCacheNoAuth.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername());
+      destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername(),
+                                          impersonationIdNull, parentTask.getDestSharedCtxGrantor());
       // If dst system is not enabled throw an exception
       if (destSystem.getEnabled() == null || !destSystem.getEnabled())
       {
-        String msg = LibUtils.getMsg("FILES_TXFR_SYS_NOTENABLED", taskChild.getTenantId(),
-                                     taskChild.getUsername(), taskChild.getId(), taskChild.getUuid(), destSystem.getId());
+        String msg = LibUtils.getMsg("FILES_TXFR_SYS_NOTENABLED", taskChild.getTenantId(), taskChild.getUsername(),
+                                     taskChild.getId(), taskChild.getUuid(), destSystem.getId(), taskChild.getTag());
         log.error(msg);
         throw new ServiceException(msg);
       }
@@ -300,7 +308,7 @@ public class ChildTaskTransferService
     catch (IOException | ServiceException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepTwoB", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+                                   "stepTwoB", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -344,24 +352,26 @@ public class ChildTaskTransferService
       {
         throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_CHILD_PATH_NOTFOUND", taskChild.getTenantId(),
                                                     taskChild.getUsername(), taskChild.getId(),
-                                                    taskChild.getUuid(), sourcePath));
+                                                    taskChild.getUuid(), sourcePath, taskChild.getTag()));
       }
       if (!item.isDir() && item.getNativePermissions().contains("x"))
       {
         try
         {
-          // Before calling linuxOp, we need to know if we are in a sharedAppCtx
+          // TODO Before calling linuxOp, we need to know if we are in a sharedAppCtx
           // So the linuxOp will skip the perm check
-          TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-          boolean isDestShared = parentTask.isDestSharedAppCtx();
+          boolean isDestShared = !StringUtils.isBlank(parentTask.getDestSharedCtxGrantor());
+// TODO Update for sharing
+//          fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700",
+//                                   recurseFalse, isDestShared);
           boolean recurseFalse = false;
           fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700",
-                                   recurseFalse, isDestShared);
+                                   recurseFalse);
         }
-        catch (TapisException | DAOException ex)
+        catch (TapisException ex)
         {
           String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                       "chmod", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+                                       "chmod", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
           log.error(msg, ex);
           throw new ServiceException(msg, ex);
         }
@@ -409,7 +419,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepThree", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+                                   "stepThree", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -434,7 +444,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepFour", taskChild.getId(), taskChild.getUuid(), ex.getMessage());
+                                   "stepFour", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -506,7 +516,7 @@ public class ChildTaskTransferService
         }
         parent.setEndTime(Instant.now());
         parent.setErrorMessage(cause.getMessage());
-        log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR14", parent.getId(), parent.getUuid(), child.getId(), child.getUuid(), parent.getStatus()));
+        log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR14", parent.getId(), parent.getTag(), parent.getUuid(), child.getId(), child.getUuid(), parent.getStatus()));
         dao.updateTransferTaskParent(parent);
         // If parent is required update top level task to FAILED and set error message
         if (!parent.isOptional())
@@ -517,7 +527,7 @@ public class ChildTaskTransferService
           topTask.setStatus(TransferTaskStatus.FAILED);
           topTask.setErrorMessage(cause.getMessage());
           topTask.setEndTime(Instant.now());
-          log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR13", topTask.getId(), topTask.getUuid(), parent.getId(), parent.getUuid(), child.getId(), child.getUuid()));
+          log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR13", topTask.getId(), topTask.getTag(), topTask.getUuid(), parent.getId(), parent.getUuid(), child.getId(), child.getUuid()));
           dao.updateTransferTask(topTask);
         }
       }
@@ -525,7 +535,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
-              "doChildErrorStepOne", child.getId(), child.getUuid(), ex.getMessage()), ex);
+              "doChildErrorStepOne", child.getId(), child.getTag(), child.getUuid(), ex.getMessage()), ex);
     }
 
     return Mono.just(child);
@@ -618,7 +628,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-              "updateProgress", taskChild.getId(), taskChild.getUuid(), ex.getMessage()));
+              "updateProgress", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage()));
       return Mono.empty();
     }
   }
@@ -686,7 +696,7 @@ public class ChildTaskTransferService
       {
         parentTask.setStatus(TransferTaskStatus.COMPLETED);
         parentTask.setEndTime(Instant.now());
-        log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_COMPLETE", topTaskId, topTask.getUuid(), parentTaskId, parentTask.getUuid()));
+        log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_COMPLETE", topTaskId, topTask.getUuid(), parentTaskId, parentTask.getUuid(), parentTask.getTag()));
         dao.updateTransferTaskParent(parentTask);
       }
     }
@@ -699,7 +709,7 @@ public class ChildTaskTransferService
       {
         topTask.setStatus(TransferTaskStatus.COMPLETED);
         topTask.setEndTime(Instant.now());
-        log.trace(LibUtils.getMsg("FILES_TXFR_TASK_COMPLETE2", topTaskId, topTask.getUuid()));
+        log.trace(LibUtils.getMsg("FILES_TXFR_TASK_COMPLETE2", topTaskId, topTask.getUuid(), topTask.getTag()));
         dao.updateTransferTask(topTask);
       }
     }

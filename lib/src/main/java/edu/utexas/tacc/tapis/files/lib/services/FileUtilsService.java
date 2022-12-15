@@ -1,13 +1,11 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import javax.inject.Inject;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.ISSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -46,13 +44,13 @@ public class FileUtilsService
    * Run the linux stat command on the path and return stat information
    *
    * @param client - remote data client
-   * @param path - target path for operation
+   * @param pathStr - target path for operation
    * @param followLinks - When path is a symbolic link whether to get information about the link (false)
    *                      or the link target (true)
    * @return FileStatInfo
    * @throws ServiceException - General problem
    */
-  public FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String path, boolean followLinks)
+  public FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String pathStr, boolean followLinks)
           throws ServiceException
   {
     if (!(client instanceof ISSHDataClient)) {
@@ -64,19 +62,21 @@ public class FileUtilsService
     ISSHDataClient sshClient = (ISSHDataClient) client;
     boolean isOwner = false;
     if (client.getSystem().getOwner() != null) isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+
+    // Get normalized path relative to system rootDir and protect against ../..
+    String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
     try
     {
       // If not system owner explicitly check permissions
       if (!isOwner) LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                            path, Permission.READ);
-      Path relativePath = PathUtils.getRelativePath(path);
+                                            relativePathStr, Permission.READ);
       // Make the remoteDataClient call
-      return sshClient.getStatInfo(relativePath.toString(), followLinks);
+      return sshClient.getStatInfo(relativePathStr, followLinks);
     }
     catch (IOException ex)
     {
       String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
-                                client.getSystemId(), path, ex.getMessage());
+                                client.getSystemId(), relativePathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -85,16 +85,15 @@ public class FileUtilsService
   /**
    * Run a native linux operation: chown, chmod, chgrp
    * @param client - remote data client
-   * @param path - target path for operation
+   * @param pathStr - target path for operation
    * @param op - operation to perform
    * @param arg - argument for operation
    * @param recursive - flag indicating if operation should be applied recursively for directories
-   * @param sharedAppCtx - Indicates that request is part of a shared app context.
    * @return - result of running the command
    * @throws ServiceException - General problem
    */
-  public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String path, @NotNull NativeLinuxOperation op,
-                                     @NotNull String arg, boolean recursive, boolean sharedAppCtx)
+  public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String pathStr, @NotNull NativeLinuxOperation op,
+                                     @NotNull String arg, boolean recursive)
           throws TapisException, ServiceException
   {
     NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
@@ -108,33 +107,36 @@ public class FileUtilsService
     ISSHDataClient sshClient = (ISSHDataClient) client;
     boolean isOwner = false;
     if (client.getSystem().getOwner() != null) isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+
+    // Get normalized path relative to system rootDir and protect against ../..
+    String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
     try
     {
       // If not skipping due to ownership or sharedAppCtx then check permissions
-      if (!isOwner && !sharedAppCtx)
+      if (!isOwner)
       {
         LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                path, Permission.MODIFY);
+                                relativePathStr, Permission.MODIFY);
       }
-      else
-      {
-        // Log that we have skipped the perm check
-        String msg = LibUtils.getMsg("FILES_AUTH_SHAREDAPPCTX2", client.getOboTenant(), client.getOboUser(), op.name(),
-                                     client.getSystemId(), path);
-        log.warn(msg);
-      }
+// TODO remove?
+//      else
+//      {
+//        // Log that we have skipped the perm check
+//        String msg = LibUtils.getMsg("FILES_AUTH_SHAREDCTX2", client.getOboTenant(), client.getOboUser(), op.name(),
+//                                     client.getSystemId(), path, sharedAppCtxGrantor);
+//        log.warn(msg);
+//      }
 
-      Path relativePath = PathUtils.getRelativePath(path);
       // Make the remoteDataClient call
       switch (op) {
-        case CHMOD -> nativeLinuxOpResult = sshClient.linuxChmod(relativePath.toString(), arg, recursive);
-        case CHOWN -> nativeLinuxOpResult = sshClient.linuxChown(relativePath.toString(), arg, recursive);
-        case CHGRP -> nativeLinuxOpResult = sshClient.linuxChgrp(relativePath.toString(), arg, recursive);
+        case CHMOD -> nativeLinuxOpResult = sshClient.linuxChmod(relativePathStr, arg, recursive);
+        case CHOWN -> nativeLinuxOpResult = sshClient.linuxChown(relativePathStr, arg, recursive);
+        case CHGRP -> nativeLinuxOpResult = sshClient.linuxChgrp(relativePathStr, arg, recursive);
       }
 
     } catch (IOException ex) {
       String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), op.name(),
-                                client.getSystemId(), path, ex.getMessage());
+                                client.getSystemId(), relativePathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
