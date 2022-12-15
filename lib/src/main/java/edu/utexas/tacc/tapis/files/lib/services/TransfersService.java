@@ -569,6 +569,13 @@ public class TransfersService
     String dstGrantor = e.getDestSharedAppCtx();
     boolean srcShared = !StringUtils.isBlank(srcGrantor);
     boolean dstShared = !StringUtils.isBlank(dstGrantor);
+// TODO temporarily treat as not shared if grantor is false. Once Jobs sends in real grantor remove this
+    // TODO
+    // TODO
+    if (srcShared && "FALSE".equalsIgnoreCase(srcGrantor)) srcShared = false;
+    if (dstShared && "FALSE".equalsIgnoreCase(dstGrantor)) dstShared = false;
+    // TODO
+    // TODO
     if (!srcShared && !dstShared) return;
 
     String srcSysId = e.getSourceURI().getSystemId();
