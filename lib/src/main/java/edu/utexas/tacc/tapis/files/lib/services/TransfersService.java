@@ -17,7 +17,6 @@ import com.rabbitmq.client.AMQP.Queue.DeleteOk;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Delivery;
 import org.apache.commons.lang3.StringUtils;
-import org.glassfish.jersey.process.internal.Stage;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -47,7 +46,6 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
@@ -567,8 +565,8 @@ public class TransfersService
   {
     // If nothing to check or sharedCtxGrantor not set for src or dest then we are done.
     if (e == null) return;
-    String srcGrantor = e.getSrcSharedCtxGrantor();
-    String dstGrantor = e.getDestSharedCtxGrantor();
+    String srcGrantor = e.getSrcSharedAppCtx();
+    String dstGrantor = e.getDestSharedAppCtx();
     boolean srcShared = !StringUtils.isBlank(srcGrantor);
     boolean dstShared = !StringUtils.isBlank(dstGrantor);
     if (!srcShared && !dstShared) return;
@@ -663,8 +661,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcId = srcUri.getSystemId();
       String dstId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
-      String dstGrantor = txfrElement.getDestSharedCtxGrantor();
+      String srcGrantor = txfrElement.getSrcSharedAppCtx();
+      String dstGrantor = txfrElement.getDestSharedAppCtx();
       boolean dstShared = !StringUtils.isBlank(dstGrantor);
       String impersonationIdNull = null;
 
@@ -723,8 +721,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcSystemId = srcUri.getSystemId();
       String dstSystemId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
-      String dstGrantor = txfrElement.getDestSharedCtxGrantor();
+      String srcGrantor = txfrElement.getSrcSharedAppCtx();
+      String dstGrantor = txfrElement.getDestSharedAppCtx();
       boolean dstShared = !StringUtils.isBlank(dstGrantor);
       // Check source system
       if (!StringUtils.isBlank(srcSystemId) && srcUri.isTapisProtocol())

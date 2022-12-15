@@ -195,8 +195,8 @@ public class FileTransfersDAO {
             insertParentTaskStmnt.setString(5, element.getDestinationURI().toString());
             insertParentTaskStmnt.setString(6, TransferTaskStatus.ACCEPTED.name());
             insertParentTaskStmnt.setBoolean(7, element.isOptional());
-            insertParentTaskStmnt.setString(8, element.getSrcSharedCtxGrantor());
-            insertParentTaskStmnt.setString(9, element.getDestSharedCtxGrantor());
+            insertParentTaskStmnt.setString(8, element.getSrcSharedAppCtx());
+            insertParentTaskStmnt.setString(9, element.getDestSharedAppCtx());
             insertParentTaskStmnt.setString(10, element.getTag());
             insertParentTaskStmnt.addBatch();
           }
