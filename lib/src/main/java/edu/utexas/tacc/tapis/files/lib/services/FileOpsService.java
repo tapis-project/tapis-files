@@ -1183,7 +1183,7 @@ public class FileOpsService
   {
     String systemId = system.getId();
     String relativePathStr = relativePath.toString();
-    String owner = system.getOwner();
+    String sysOwner = system.getOwner();
     String oboTenant = rUser.getOboTenantId();
     boolean sharedCtx = !StringUtils.isBlank(sharedCtxGrantor);
     boolean modifyRequired = Permission.MODIFY.equals(perm);
@@ -1211,7 +1211,7 @@ public class FileOpsService
     // TODO
 
     // If obo user is owner or in shared context and share grantor is owner then allow.
-    if (oboOrImpersonatedUser.equals(owner) || (sharedCtx && sharedCtxGrantor.equals(owner))) return;
+    if (oboOrImpersonatedUser.equals(sysOwner) || (sharedCtx && sharedCtxGrantor.equals(sysOwner))) return;
 
     // Check for fine-grained permission READ/MODIFY or MODIFY for obo user
     if (modifyRequired)

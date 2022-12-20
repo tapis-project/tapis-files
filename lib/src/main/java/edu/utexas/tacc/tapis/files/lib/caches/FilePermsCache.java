@@ -109,11 +109,11 @@ public class FilePermsCache
     public Boolean load(FilePermCacheKey key) throws Exception
     {
       log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOADING", key.getTenantId(), key.getSystemId(), key.getUsername(),
-                                key.getPath()));
+                                key.getPerm().name(), key.getPath()));
       String permSpec = String.format(PERMSPEC, key.getTenantId(), key.getPerm(), key.getSystemId(), key.getPath());
       boolean isPermitted = getSKClient().isPermitted(key.getTenantId(), key.getUsername(), permSpec);
       log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOADED", key.getTenantId(), key.getSystemId(), key.getUsername(),
-                                key.getPath()));
+                                key.getPerm().name(), key.getPath()));
       return isPermitted;
     }
   }
