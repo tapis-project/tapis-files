@@ -115,6 +115,8 @@ public class FileShareService
     String oboTenant = rUser.getOboTenantId();
     String systemId = system.getId();
 
+    log.debug(LibUtils.getMsgAuthR("FILES_AUTH_SHARE_CHECK", rUser, systemId, user, pathStr));
+
     // Create SKShareGetSharesParms needed for SK calls.
     var skParms = new SKShareGetSharesParms();
     skParms.setResourceType(RESOURCE_TYPE);
@@ -123,7 +125,7 @@ public class FileShareService
 
     SkShareList skShares;
     boolean isPublic;
-    String isPublicPath;
+    String isPublicPath = null;
 
     // First determine if path is publicly shared. Search for share on sys+path to grantee ~public
     // First check the specific path passed in
@@ -144,6 +146,7 @@ public class FileShareService
     // ============================================
     // If publicly shared then return true
     // ============================================
+    log.debug(LibUtils.getMsgAuthR("FILES_AUTH_SHARE_CHECK_PUB", rUser, systemId, user, pathStr, isPublic, isPublicPath));
     if (isPublic) return true;
 
     // Now check to see if given path is shared directly with given user.
@@ -155,13 +158,20 @@ public class FileShareService
     // ====================================================
     // If specific path shared with user then return true
     // ====================================================
-    if (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty()) return true;
+    if (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty())
+    {
+      log.debug(LibUtils.getMsgAuthR("FILES_AUTH_SHARE_CHECK_USR", rUser, systemId, user, pathStr, true, null));
+      return true;
+    }
 
     // If system is of type LINUX then path may be shared with a user via a parent path
     if (SystemTypeEnum.LINUX.equals(system.getSystemType()))
     {
-      // Check parent paths. This is the final check, so simply return
-      return checkForGranteeInParentPaths(rUser.getOboUserId(), rUser.getOboTenantId(), skParms, pathStr);
+      // Check parent paths.
+      String sharedParentPath = checkForGranteeInParentPaths(skParms, pathStr);
+      boolean isShared = !StringUtils.isBlank(sharedParentPath);
+      log.debug(LibUtils.getMsgAuthR("FILES_AUTH_SHARE_CHECK_USR", rUser, systemId, user, pathStr, isShared, sharedParentPath));
+      if (isShared) return true;
     }
 
     // No shares found, path not shared, return false.
@@ -701,16 +711,15 @@ public class FileShareService
    *
    * @param skParms Parameter set for calling SK with many attributes already set.
    * @param pathStr normalized path to check
-   * @return true if a parent path is shared with Grantee contained in skParms
+   * @return path that is shared or null if no such path found.
    */
-  private boolean checkForGranteeInParentPaths(String oboUser, String oboTenant, SKShareGetSharesParms skParms,
-                                               String pathStr)
+  private String checkForGranteeInParentPaths(SKShareGetSharesParms skParms, String pathStr)
           throws TapisClientException
   {
     // If path is empty or "/" then we are done.
     // We should never be given an empty string and if it is "/" then there are no parents and the calling routine
     //   will have already processed it.
-    if (StringUtils.isBlank(pathStr) || "/".equals(pathStr)) return false;
+    if (StringUtils.isBlank(pathStr) || "/".equals(pathStr)) return null;
 
     Path path = Paths.get(pathStr);
     SkShareList skShares;
@@ -725,12 +734,12 @@ public class FileShareService
       // ====================================================
       // If share found then return true
       // ====================================================
-      if (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty()) return true;
+      if (skShares != null && skShares.getShares() != null && !skShares.getShares().isEmpty()) return parentPathStr;
       // Get the next parent path to check
       parentPath = parentPath.getParent();
     }
     // No shares found
-    return false;
+    return null;
   }
 
 
