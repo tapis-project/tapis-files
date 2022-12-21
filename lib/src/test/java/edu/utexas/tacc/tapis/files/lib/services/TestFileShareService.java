@@ -147,7 +147,7 @@ public class TestFileShareService
     public void setUp() throws Exception
     {
       permsService.grantPermission(devTenant, testUser1, testSystemSSH.getId(), "/", Permission.MODIFY);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser1, testSystemSSH, testUser1);
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser1, testSystemSSH);
       fileOpsService.delete(client,"/");
     }
 
@@ -155,7 +155,7 @@ public class TestFileShareService
     public void tearDown() throws Exception
     {
       permsService.grantPermission(devTenant, testUser1, testSystemSSH.getId(), "/", Permission.MODIFY);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser1, testSystemSSH, testUser1);
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser1, testSystemSSH);
       fileOpsService.delete(client,"/");
     }
 

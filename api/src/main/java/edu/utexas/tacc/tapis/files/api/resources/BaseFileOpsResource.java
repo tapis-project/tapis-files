@@ -20,13 +20,12 @@ public abstract class BaseFileOpsResource
    *
    * @param rUser Authenticated user
    * @param system system for connection
-   * @param effUserId effective user to be used when connecting to host
    * @return a remote data client
    * @throws IOException on error
    */
-  protected IRemoteDataClient getClientForUserAndSystem(ResourceRequestUser rUser, TapisSystem system, String effUserId)
+  protected IRemoteDataClient getClientForUserAndSystem(ResourceRequestUser rUser, TapisSystem system)
           throws IOException
   {
-    return remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(), system, effUserId);
+    return remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(), system);
   }
 }

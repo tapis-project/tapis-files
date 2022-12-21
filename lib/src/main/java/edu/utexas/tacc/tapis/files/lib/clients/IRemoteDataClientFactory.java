@@ -7,6 +7,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 public interface IRemoteDataClientFactory
 {
    IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
-                                         @NotNull TapisSystem system, @NotNull String effUserId)
+                                         @NotNull TapisSystem system)
            throws IOException;
 }

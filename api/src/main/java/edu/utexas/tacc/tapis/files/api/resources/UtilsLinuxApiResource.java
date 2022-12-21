@@ -70,8 +70,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
       // NOTE: Allow for linux operations on systems that are disabled. So do not use getSystemIfEnabled.
       TapisSystem system = systemsCache.getSystem(oboTenant, systemId, oboUser);
       LibUtils.checkEnabled(rUser, system);
-      String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? oboUser : system.getEffectiveUserId();
-      IRemoteDataClient client = getClientForUserAndSystem(rUser, system, effectiveUserId);
+      IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
 
       // Make the service call
       fileStatInfo = fileUtilsService.getStatInfo(client, path, followLinks);
@@ -110,8 +109,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     NativeLinuxOpResult nativeLinuxOpResult;
     try
     {
-      String effectiveUserId = StringUtils.isEmpty(system.getEffectiveUserId()) ? oboUser : system.getEffectiveUserId();
-      IRemoteDataClient client = getClientForUserAndSystem(rUser, system, effectiveUserId);
+      IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
 
       // Make the service call
       nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(),

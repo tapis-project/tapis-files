@@ -98,6 +98,7 @@ public class SystemsCache
   public void invalidateEntry(@NotNull String tenant, @NotNull String sysId, @NotNull String tapisUser,
                               String impersonationId, String sharedCtxGrantor)
   {
+    log.warn(LibUtils.getMsg("FILES_CACHE_SYS_REMOVE", tenant, sysId, tapisUser, impersonationId, sharedCtxGrantor));
     SystemCacheKey key = new SystemCacheKey(tenant, sysId, tapisUser, impersonationId, sharedCtxGrantor);
     cache.invalidate(key);
   }

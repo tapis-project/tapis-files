@@ -245,9 +245,9 @@ public class TestFileOpsService
     public void setUp() throws Exception
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH, testUser);
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH);
       cleanupAll(client, testSystemSSH);
-      client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3, testUser);
+      client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3);
       cleanupAll(client, testSystemS3);
     }
 
@@ -255,9 +255,9 @@ public class TestFileOpsService
     public void tearDown() throws Exception
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH, testUser);
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH);
       cleanupAll(client, testSystemSSH);
-      client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3, testUser);
+      client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3);
       cleanupAll(client, testSystemS3);
     }
 
@@ -283,7 +283,7 @@ public class TestFileOpsService
   public void testListingPath(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     InputStream in = Utils.makeFakeFile(10*1024);
     fileOpsService.upload(client,"test.txt", in);
     List<FileInfo> listing = fileOpsService.ls(client,"test.txt", MAX_LISTING_SIZE, 0);
@@ -296,7 +296,7 @@ public class TestFileOpsService
     public void testListingPathNested(TapisSystem testSystem) throws Exception
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
       cleanupAll(client, testSystem);
       InputStream in = Utils.makeFakeFile(10*1024);
       fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
@@ -313,7 +313,7 @@ public class TestFileOpsService
   public void testUploadErrors(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     if (!SystemTypeEnum.S3.equals(client.getSystemType())) fileOpsService.mkdir(client, "dir1");
     InputStream in = Utils.makeFakeFile(1024);
 
@@ -360,7 +360,7 @@ public class TestFileOpsService
     public void testUploadAndDelete(TapisSystem testSystem) throws Exception
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
       InputStream in = Utils.makeFakeFile(10*1024);
       fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
       // List files after upload
@@ -376,7 +376,7 @@ public class TestFileOpsService
     @Test(dataProvider = "testSystemsNoS3")
     public void testUploadAndDeleteNested(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.upload(client,"a/b/c/test.txt", in);
         List<FileInfo> listing = fileOpsService.ls(client,"/a/b/c/test.txt", MAX_LISTING_SIZE, 0);
@@ -388,7 +388,7 @@ public class TestFileOpsService
     @Test(dataProvider = "testSystems")
     public void testUploadAndGet(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
         cleanupAll(client, testSystem);
         InputStream in = Utils.makeFakeFile(100*1024);
         fileOpsService.upload(client,"test.txt", in);
@@ -403,7 +403,7 @@ public class TestFileOpsService
   @Test(dataProvider = "testSystems")
   public void testMoveFile(TapisSystem testSystem) throws Exception {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     cleanupAll(client, testSystem);
     InputStream in = Utils.makeFakeFile(100*1024);
     fileOpsService.upload(client,"test1.txt", in);
@@ -421,7 +421,7 @@ public class TestFileOpsService
   public void testCopyFiles(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     /*
         Create the following files and directories:
           /test1.txt
@@ -480,7 +480,7 @@ public class TestFileOpsService
   public void testCopyFilesNested(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     /*
         Create the following files and directories:
           /test1.txt
@@ -573,7 +573,7 @@ public class TestFileOpsService
   public void testListing(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     cleanupAll(client, testSystem);
     InputStream in = Utils.makeFakeFile(10*1024);
     fileOpsService.upload(client,"dir1/test1.txt", in);
@@ -594,7 +594,7 @@ public class TestFileOpsService
     public void testUploadLargeFile(TapisSystem testSystem) throws Exception
   {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
         cleanupAll(client, testSystem);
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
@@ -608,7 +608,7 @@ public class TestFileOpsService
     public void testGetBytesByRange(TapisSystem testSystem) throws Exception
     {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
         InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId, sharedCtxGrantorNull);
@@ -619,7 +619,7 @@ public class TestFileOpsService
   public void testGetFullStream(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     InputStream in = Utils.makeFakeFile( 1000 * 1024);
     fileOpsService.upload(client,"test.txt", in);
     StreamingOutput streamingOutput = fileOpsService.getFullStream(rTestUser, testSystem,"test.txt", nullImpersonationId, sharedCtxGrantorNull);
@@ -632,7 +632,7 @@ public class TestFileOpsService
     public void testGetZip(TapisSystem testSystem) throws Exception
     {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
         client.delete("/");
         fileOpsService.upload(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
         fileOpsService.upload(client,"a/b/test2.txt", Utils.makeFakeFile(1000 * 1024));
@@ -661,7 +661,7 @@ public class TestFileOpsService
     @Test(dataProvider = "testSystems")
     public void testUploadNoAuthz(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
         InputStream in = Utils.makeFakeFile(10*1024);
 
         Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.upload(client,"test.txt", in); });
@@ -672,7 +672,7 @@ public class TestFileOpsService
     {
       when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(true);
       when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.READ))).thenReturn(false);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
       client.delete("/");
       fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
       // MODIFY should imply read so ls should work
@@ -687,7 +687,7 @@ public class TestFileOpsService
   public void testNoAuthzMany(TapisSystem testSystem) throws Exception
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     // Create directories and files for tests
     client.delete("/");
     fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(10*1024));
@@ -715,7 +715,7 @@ public class TestFileOpsService
     {
       int maxDepth = 5;
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
       client.delete("/");
       fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(10*1024));
       fileOpsService.upload(client,"/a/2.txt", Utils.makeFakeFile(10*1024));
@@ -742,7 +742,7 @@ public class TestFileOpsService
     @Test(dataProvider = "testSystems")
     public void testZeroByteInsert(TapisSystem testSystem) throws Exception {
         when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem, testUser);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
         client.delete("/");
         fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(0));
 

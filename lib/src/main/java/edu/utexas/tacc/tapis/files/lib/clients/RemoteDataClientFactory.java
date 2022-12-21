@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import java.io.IOException;
+import java.util.Objects;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.validation.constraints.NotNull;
@@ -32,10 +33,10 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
    */
   @Override
   public IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
-                                               @NotNull TapisSystem system, @NotNull String effUserId)
+                                               @NotNull TapisSystem system)
           throws IOException
   {
-    return getRemoteDataClient(oboTenant, oboUser, system, effUserId, null, null);
+    return getRemoteDataClient(oboTenant, oboUser, system, null, null);
   }
 
   /**
@@ -47,7 +48,6 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
    * @param oboTenant - api tenant
    * @param oboUser - api user
    * @param system - Tapis System
-   * @param effUserId - User who is accessing system
    * @param impersonationId - needed to build key to invalidate system cache entry when connection fails.
    * @param sharedCtxGrantor - needed to build key to invalidate system cache entry when connection fails.
    * @return Remote data client
@@ -55,8 +55,8 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
    */
 //  @Override
   public IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
-                                               @NotNull TapisSystem system, @NotNull String effUserId,
-                                               String impersonationId, String sharedCtxGrantor)
+                                               @NotNull TapisSystem system, String impersonationId,
+                                               String sharedCtxGrantor)
   throws IOException
   {
     if (SystemTypeEnum.LINUX.equals(system.getSystemType()))
@@ -70,7 +70,8 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
       catch (IOException e)
       {
         sshConnectionCache.invalidateConnection(system);
-        systemsCache.invalidateEntry(oboTenant, oboUser, effUserId, impersonationId, sharedCtxGrantor);
+        systemsCache.invalidateEntry(oboTenant, Objects.requireNonNull(system.getId()), oboUser, impersonationId,
+                                     sharedCtxGrantor);
         throw e;
       }
       return new SSHDataClient(oboTenant, oboUser, system, holder);

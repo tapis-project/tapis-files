@@ -81,6 +81,7 @@ public class SSHConnectionCache
    */
   public void invalidateConnection(TapisSystem system)
   {
+    log.warn(LibUtils.getMsg("FILES_CACHE_CONN_REMOVE", system.getTenant(), system.getId(), system.getEffectiveUserId()));
     SSHConnectionCacheKey key = new SSHConnectionCacheKey(system, system.getEffectiveUserId());
     sessionCache.invalidate(key);
   }
