@@ -144,7 +144,7 @@ public class FileOpsService
       // Check for READ/MODIFY permission or share
       checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
       // Get the connection and increment the reservation count
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, impersonationId, sharedCtxGrantor);
       client.reserve();
       return ls(client, pathStr, limit, offset);
     }
@@ -231,7 +231,7 @@ public class FileOpsService
         // Check for READ/MODIFY permission or share
         checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
 
-        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
         client.reserve();
         return lsRecursive(client, relativePath.toString(), depth);
       }
@@ -295,7 +295,7 @@ public class FileOpsService
       // Check for READ/MODIFY permission or share
       checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
       // Get the connection and increment the reservation count
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
       return client.getFileInfo(pathStr);
     }
@@ -334,7 +334,7 @@ public class FileOpsService
     try
     {
       LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, pathStr, Permission.MODIFY);
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
       upload(client, relPathStr, inStrm);
     }
@@ -432,7 +432,7 @@ public class FileOpsService
       // Check for MODIFY permission or share
       String impersonationIdNull = null;
       checkAuthForPath(rUser, sys, relativePath, Permission.MODIFY, impersonationIdNull, sharedCtxGrantor);
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, null, sharedCtxGrantor);
       client.reserve();
       mkdir(client, relativePath.toString());
     }
@@ -501,7 +501,7 @@ public class FileOpsService
         // Check the source and destination both have MODIFY perm
         LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, srcRelPathStr, Permission.MODIFY);
         LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, dstRelPathStr, Permission.MODIFY);
-        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
         client.reserve();
         moveOrCopy(client, op, srcRelPathStr, dstRelPathStr);
       }
@@ -610,7 +610,7 @@ public class FileOpsService
       try
       {
         LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, relativePathStr, Permission.MODIFY);
-        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
         client.reserve();
         // Delete files and permissions
         delete(client, relativePathStr);
@@ -961,7 +961,7 @@ public class FileOpsService
     try
     {
       // Get a remoteDataClient to stream contents
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
       return client.getStream(relPathStr);
     }
@@ -1002,7 +1002,7 @@ public class FileOpsService
     try
     {
       // Get a remoteDataClient to stream contents
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
       return client.getBytesByRange(relPathStr, startByte, count);
     }
@@ -1041,7 +1041,7 @@ public class FileOpsService
     try
     {
       // Get a remoteDataClient to stream contents
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
       return client.getBytesByRange(relPathStr, startByte, startByte + 1023);
     }
@@ -1088,7 +1088,7 @@ public class FileOpsService
     try (ZipOutputStream zipStream = new ZipOutputStream(outputStream))
     {
       // Get a remoteDataClient to do the listing and stream contents
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
       // Step through a recursive listing up to some max depth
       List<FileInfo> listing = lsRecursive(client, relativePath.toString(), MAX_RECURSION);

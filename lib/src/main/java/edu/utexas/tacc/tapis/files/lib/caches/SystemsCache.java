@@ -10,7 +10,6 @@ import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
-
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -51,6 +50,9 @@ public class SystemsCache
     cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).build(new SystemLoader());
   }
 
+  /*
+   * Convenience wrapper. Not all callers use impersonationId and/or sharedCtxGrantor.
+   */
   public TapisSystem getSystem(String tenantId, String systemId, String tapisUser) throws ServiceException
   {
     return getSystem(tenantId, systemId, tapisUser, null, null);
@@ -88,6 +90,17 @@ public class SystemsCache
       msg = LibUtils.getMsg("FILES_CACHE_ERR", "Systems", tenantId, systemId, tapisUser, ex.getMessage());
       throw new WebApplicationException(msg, ex);
     }
+  }
+
+  /**
+   * Invalidate the cache entry
+   */
+  public void invalidateEntry(@NotNull String tenant, @NotNull String sysId, @NotNull String tapisUser,
+                              String impersonationId, String sharedCtxGrantor)
+  {
+    log.warn(LibUtils.getMsg("FILES_CACHE_SYS_REMOVE", tenant, sysId, tapisUser, impersonationId, sharedCtxGrantor));
+    SystemCacheKey key = new SystemCacheKey(tenant, sysId, tapisUser, impersonationId, sharedCtxGrantor);
+    cache.invalidate(key);
   }
 
   // ====================================================================================

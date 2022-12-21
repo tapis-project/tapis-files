@@ -198,7 +198,7 @@ public class OperationsApiResource extends BaseFileOpsResource
                           "sharedCtx="+sharedCtx, "path="+mkdirRequest.getPath());
 
     // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtx);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either

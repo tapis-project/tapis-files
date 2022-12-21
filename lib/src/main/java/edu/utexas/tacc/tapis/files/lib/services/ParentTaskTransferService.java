@@ -239,7 +239,7 @@ public class ParentTaskTransferService
         boolean dstIsS3 = SystemTypeEnum.S3.equals(dstSystem.getSystemType());
 
         // Establish client
-        srcClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, srcSystem, taskUser);
+        srcClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, srcSystem);
 
         // Check that src path exists. If not found it is an error.
         FileInfo fileInfo = srcClient.getFileInfo(srcPath);

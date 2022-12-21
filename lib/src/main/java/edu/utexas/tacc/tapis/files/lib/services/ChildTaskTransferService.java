@@ -281,8 +281,7 @@ public class ChildTaskTransferService
       // Used for properly handling update of exec perm
       srcIsLinux = SystemTypeEnum.LINUX.equals(sourceSystem.getSystemType());
 
-      sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
-              sourceSystem, taskChild.getUsername());
+      sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(), sourceSystem);
     }
 
     // Initialize destination client
@@ -302,8 +301,7 @@ public class ChildTaskTransferService
       // Used for properly handling update of exec perm
       dstIsLinux = SystemTypeEnum.LINUX.equals(destSystem.getSystemType());
 
-      destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
-                                                               destSystem, taskChild.getUsername());
+      destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(), destSystem);
     }
     catch (IOException | ServiceException ex)
     {

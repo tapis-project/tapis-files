@@ -435,7 +435,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
 
   private void addTestFilesToSystem(TapisSystem system, String fileName, int fileSize) throws Exception
   {
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(TENANT, TEST_USR1, system, TEST_USR);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(TENANT, TEST_USR1, system);
     InputStream f1 = makeFakeFile(fileSize);
     client.upload(fileName, f1);
   }
