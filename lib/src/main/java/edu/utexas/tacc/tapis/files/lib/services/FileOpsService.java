@@ -144,7 +144,8 @@ public class FileOpsService
       // Check for READ/MODIFY permission or share
       checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
       // Get the connection and increment the reservation count
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId(),
+                                                           impersonationId, sharedCtxGrantor);
       client.reserve();
       return ls(client, pathStr, limit, offset);
     }
@@ -432,7 +433,7 @@ public class FileOpsService
       // Check for MODIFY permission or share
       String impersonationIdNull = null;
       checkAuthForPath(rUser, sys, relativePath, Permission.MODIFY, impersonationIdNull, sharedCtxGrantor);
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId());
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, sys.getEffectiveUserId(), null, sharedCtxGrantor);
       client.reserve();
       mkdir(client, relativePath.toString());
     }
