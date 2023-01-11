@@ -56,6 +56,9 @@ import static edu.utexas.tacc.tapis.shared.uri.TapisUrl.TAPIS_PROTOCOL_PREFIX;
 @Service
 public class FileOpsService
 {
+  // TODO remove sharedCtxGrantorNull
+  static String sharedCtxGrantorNull = null;
+
   public static final int MAX_LISTING_SIZE = 1000;
   public static final int MAX_RECURSION = 20;
 
@@ -128,9 +131,6 @@ public class FileOpsService
                            long limit, long offset, String impersonationId, boolean sharedCtx)
           throws WebApplicationException
   {
-    //TODO REMOVE
-    String sharedCtxGrantor = null;
-
     String opName = "ls";
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
@@ -149,7 +149,7 @@ public class FileOpsService
 //TODO      // Check for READ/MODIFY permission or share
 //TODO      checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
       // Get the connection and increment the reservation count
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, impersonationId, sharedCtxGrantor);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, impersonationId, sharedCtxGrantorNull);
       client.reserve();
       return ls(client, pathStr, limit, offset);
     }
@@ -428,11 +428,8 @@ public class FileOpsService
                     boolean sharedAppCtx)
           throws WebApplicationException
   {
-    // TODO REMOVE
-    String sharedCtxGrantor = null;
-
     // Trace the call
-    log.debug(LibUtils.getMsgAuthR("FILES_OP_MKDIR", rUser, sys.getId(), pathStr, sharedCtxGrantor));
+    log.debug(LibUtils.getMsgAuthR("FILES_OP_MKDIR", rUser, sys.getId(), pathStr, sharedCtxGrantorNull));
     String opName = "mkdir";
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
@@ -456,7 +453,7 @@ public class FileOpsService
 //TODO      String impersonationIdNull = null;
 //TODO      checkAuthForPath(rUser, sys, relativePath, Permission.MODIFY, impersonationIdNull, sharedCtxGrantor);
 
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, null, sharedCtxGrantor);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, null, sharedCtxGrantorNull);
       client.reserve();
       mkdir(client, relativePath.toString());
     }
@@ -1425,12 +1422,12 @@ public class FileOpsService
     String svcName = rUser.getJwtUserId();
     if (!rUser.isServiceRequest() || !SVCLIST_SHAREDCTX.contains(svcName))
     {
-      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX", rUser, opName, sysId, pathStr);//TODO, sharedCtxGrantor);
+      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX", rUser, opName, sysId, pathStr, sharedCtxGrantorNull);
       log.warn(msg);
       throw new ForbiddenException(msg);
     }
     // An allowed service is skipping auth, log it
-    log.debug(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX", rUser, opName, sysId, pathStr));//TODO, sharedCtxGrantor));
+    log.debug(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX", rUser, opName, sysId, pathStr, sharedCtxGrantorNull));
   }
 
   /*

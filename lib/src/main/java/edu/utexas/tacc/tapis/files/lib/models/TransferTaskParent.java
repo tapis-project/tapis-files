@@ -40,7 +40,7 @@ public class TransferTaskParent
   public TransferTaskParent(){}
 
   public TransferTaskParent(String tenantId1, String username1, String srcURI1, String dstURI1, boolean optional1,
-                            boolean srcCtx1, boolean dstCtx1)
+                            boolean srcCtx1, boolean dstCtx1, String tag1)
   {
     tenantId = tenantId1;
     username = username1;
@@ -50,6 +50,7 @@ public class TransferTaskParent
     optional = optional1;
     srcSharedAppCtx = srcCtx1;
     destSharedAppCtx = dstCtx1;
+    tag = tag1;
     uuid = UUID.randomUUID();
   }
 

@@ -584,22 +584,34 @@ public class TransfersService
     String srcPath = e.getSourceURI().getPath();
     String dstSysId = e.getDestinationURI().getSystemId();
     String dstPath = e.getDestinationURI().getPath();
-    // If a service request the username will be the service name. E.g. files, jobs, streams, etc
-    boolean allowed = (rUser.isServiceRequest() && SVCLIST_SHAREDCTX.contains(rUser.getJwtUserId()));
-    if (allowed)
-    {
-      // Src and/or Dest shared, log it
-      if (srcShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_SRC_TXFR", rUser, tag, srcSysId, srcPath, srcGrantor));
-      if (dstShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_DST_TXFR", rUser, tag, dstSysId, dstPath, dstGrantor));
-    }
-    else
-    {
-      // Sharing not allowed. Log systems and paths involved
-      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX_TXFR", rUser, tag, srcSysId, srcPath, dstSysId,
-                                        srcGrantor, dstPath, dstGrantor);
-      log.warn(msg);
-      throw new ForbiddenException(msg);
-    }
+
+    // TODO REMOVE *****************************************************************************************
+    // TODO NOTE: Do not support sharedCtx yet due to priv escalation bug.
+    // TODO       Once we support sharedCtxGrantor as string then restore support
+    // Sharing not allowed. Log systems and paths involved
+    String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX_TXFR", rUser, tag, srcSysId, srcPath, dstSysId,
+            srcGrantor, dstPath, dstGrantor);
+    log.warn(msg);
+    throw new ForbiddenException(msg);
+    // TODO REMOVE *****************************************************************************************
+
+//
+//    // If a service request the username will be the service name. E.g. files, jobs, streams, etc
+//    boolean allowed = (rUser.isServiceRequest() && SVCLIST_SHAREDCTX.contains(rUser.getJwtUserId()));
+//    if (allowed)
+//    {
+//      // Src and/or Dest shared, log it
+//      if (srcShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_SRC_TXFR", rUser, tag, srcSysId, srcPath, srcGrantor));
+//      if (dstShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_DST_TXFR", rUser, tag, dstSysId, dstPath, dstGrantor));
+//    }
+//    else
+//    {
+//      // Sharing not allowed. Log systems and paths involved
+//      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX_TXFR", rUser, tag, srcSysId, srcPath, dstSysId,
+//                                        srcGrantor, dstPath, dstGrantor);
+//      log.warn(msg);
+//      throw new ForbiddenException(msg);
+//    }
   }
 
   /**
