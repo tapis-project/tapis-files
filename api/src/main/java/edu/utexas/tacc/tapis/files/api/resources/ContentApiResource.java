@@ -48,6 +48,9 @@ public class ContentApiResource extends BaseFileOpsResource
   private static final Logger log = LoggerFactory.getLogger(ContentApiResource.class);
   private final String className = getClass().getSimpleName();
 
+  // TODO remove sharedFalse
+  boolean sharedFalse = false;
+
   // ************************************************************************
   // *********************** Fields *****************************************
   // ************************************************************************
@@ -157,7 +160,8 @@ public class ContentApiResource extends BaseFileOpsResource
     if (zip)
     {
       // Send a zip stream. This can handle a path ending in /
-      outStream = fileOpsService.getZipStream(rUser, sys, path, impersonationId, sharedCtx);
+      // TODO replace sharedFalse
+      outStream = fileOpsService.getZipStream(rUser, sys, path, impersonationId, sharedFalse);
       String newName = FilenameUtils.removeExtension(fileName) + ".zip";
       contentDisposition = String.format("attachment; filename=%s", newName);
       mediaType = MediaType.APPLICATION_OCTET_STREAM;
@@ -165,7 +169,8 @@ public class ContentApiResource extends BaseFileOpsResource
     else
     {
       // Make sure the requested path is not a directory
-      FileInfo fileInfo = fileOpsService.getFileInfo(rUser, sys, path, impersonationId, sharedCtx);
+      // TODO replace sharedFalse
+      FileInfo fileInfo = fileOpsService.getFileInfo(rUser, sys, path, impersonationId, sharedFalse);
       if (fileInfo == null)
       {
         throw new NotFoundException(LibUtils.getMsgAuth("FILES_CONT_NO_FILEINFO", user, systemId, path));
@@ -177,19 +182,22 @@ public class ContentApiResource extends BaseFileOpsResource
       // Send a byteRange, page blocks or the full stream.
       if (range != null)
       {
-        outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range, impersonationId, sharedCtx);
+        // TODO replace sharedFalse
+        outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range, impersonationId, sharedFalse);
         contentDisposition = String.format("attachment; filename=%s", fileName);
         mediaType = MediaType.TEXT_PLAIN;
       }
       else if (!Objects.isNull(startPage))
       {
-        outStream = fileOpsService.getPagedStream(rUser, sys, path, startPage, impersonationId, sharedCtx);
+        // TODO replace sharedFalse
+        outStream = fileOpsService.getPagedStream(rUser, sys, path, startPage, impersonationId, sharedFalse);
         contentDisposition = "inline";
         mediaType = MediaType.TEXT_PLAIN;
       }
       else
       {
-        outStream = fileOpsService.getFullStream(rUser, sys, path, impersonationId, sharedCtx);
+        // TODO replace sharedFalse
+        outStream = fileOpsService.getFullStream(rUser, sys, path, impersonationId, sharedFalse);
         contentDisposition = String.format("attachment; filename=%s", fileName);
         mediaType = MediaType.APPLICATION_OCTET_STREAM;
       }

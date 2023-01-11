@@ -58,6 +58,11 @@ public class OperationsApiResource extends BaseFileOpsResource
   // Always return a nicely formatted response
   private static final boolean PRETTY = true;
 
+  // TODO remove sharedFalse
+  // TODO NOTE: Do not support sharedCtx yet due to priv escalation bug.
+  // TODO       Once we support sharedCtxGrantor as string then restore support
+  // TODO       for sharedCtx. So for now hard code shared to false for all calls to fileOps service.
+  boolean sharedFalse = false;
   // ************************************************************************
   // *********************** Fields *****************************************
   // ************************************************************************
@@ -86,7 +91,7 @@ public class OperationsApiResource extends BaseFileOpsResource
    * @param offset - pagination offset
    * @param recurse - flag indicating a recursive listing should be provided (up to depth of 10)
    * @param impersonationId - use provided Tapis username instead of oboUser when checking auth, getSystem (effUserId)
-   * @param sharedCtx - Grantor for the case of a shared context.
+   * @param sharedAppCtx - Indicates that request is part of a shared app context. Tapis auth bypassed.
    * @param securityContext - user identity
    * @return response containing list of files
    */
@@ -99,11 +104,11 @@ public class OperationsApiResource extends BaseFileOpsResource
                             @QueryParam("offset") @DefaultValue("0") @Min(0) long offset,
                             @QueryParam("recurse") @DefaultValue("false") boolean recurse,
                             @QueryParam("impersonationId") String impersonationId,
-                            @QueryParam("sharedCtx") String sharedCtx,
+                            @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
                             @Context SecurityContext securityContext)
   {
     String opName = "listFiles";
-    return getListing(opName, systemId, path, limit, offset, recurse, impersonationId, sharedCtx, securityContext);
+    return getListing(opName, systemId, path, limit, offset, recurse, impersonationId, sharedAppCtx, securityContext);
   }
 
   @GET
@@ -114,11 +119,11 @@ public class OperationsApiResource extends BaseFileOpsResource
                                 @QueryParam("offset") @DefaultValue("0") @Min(0) long offset,
                                 @QueryParam("recurse") @DefaultValue("false") boolean recurse,
                                 @QueryParam("impersonationId") String impersonationId,
-                                @QueryParam("sharedCtx") String sharedCtx,
+                                @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
                                 @Context SecurityContext securityContext)
   {
     String opName = "listFilesRoot";
-    return getListing(opName, systemId, "", limit, offset, recurse, impersonationId, sharedCtx, securityContext);
+    return getListing(opName, systemId, "", limit, offset, recurse, impersonationId, sharedAppCtx, securityContext);
   }
 
   /**
@@ -169,7 +174,7 @@ public class OperationsApiResource extends BaseFileOpsResource
    * Create a directory
    * @param systemId - id of system
    * @param mkdirRequest - request body containing a path relative to system rootDir
-   * @param sharedCtx - Grantor for the case of a shared context.
+   * @param sharedAppCtx - Indicates that request is part of a shared app context. Tapis auth bypassed.
    * @param securityContext - user identity
    * @return response
    */
@@ -179,7 +184,7 @@ public class OperationsApiResource extends BaseFileOpsResource
   @Produces(MediaType.APPLICATION_JSON)
   public Response mkdir(@PathParam("systemId") String systemId,
                         @Valid MkdirRequest mkdirRequest,
-                        @QueryParam("sharedCtx") String sharedCtx,
+                        @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
                         @Context SecurityContext securityContext)
   {
     String opName = "mkdir";
@@ -195,16 +200,20 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Trace this request.
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-                          "sharedCtx="+sharedCtx, "path="+mkdirRequest.getPath());
+                          "sharedAppCtx="+sharedAppCtx, "path="+mkdirRequest.getPath());
 
     // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtx);
+    // TODO do we still need to pass in sharedCtx when it is bool? what about when we switch to sharedCtx is owner?
+    // TODO sharedCtxGrantor
+    String sharedCtxGrantorNull = null;
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtxGrantorNull);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedCtx);
+    // TODO replace sharedFalse
+    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedFalse);
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, mkdirRequest.getPath());
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
@@ -304,7 +313,7 @@ public class OperationsApiResource extends BaseFileOpsResource
    * Common routine to perform a listing
    */
   private Response getListing(String opName, String systemId, String path, int limit, long offset, boolean recurse,
-                              String impersonationId, String sharedCtx, SecurityContext securityContext)
+                              String impersonationId, boolean sharedAppCtx, SecurityContext securityContext)
   {
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
@@ -321,10 +330,12 @@ public class OperationsApiResource extends BaseFileOpsResource
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path,
               "limit="+limit, "offset="+offset, "recurse="+recurse,"impersonationId="+impersonationId,
-              "sharedCtx="+sharedCtx);
+              "sharedAppCtx="+sharedAppCtx);
 
     // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, sharedCtx);
+    // TODO sharedCtxGrantor
+    String sharedCtxGrantorNull = null;
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, sharedCtxGrantorNull);
 
     Instant start = Instant.now();
     List<FileInfo> listing;
@@ -332,8 +343,9 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedCtx);
-    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedCtx);
+    // TODO replace sharedFalse
+    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedFalse);
+    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedFalse);
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);

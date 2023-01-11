@@ -216,8 +216,9 @@ public class ParentTaskTransferService
     String srcId = srcUri.getSystemId();
     String srcPath = srcUri.getPath();
     String dstId = dstUri.getSystemId();
-    String srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
-    String dstSharedCtxGrantor = parentTask.getDestSharedCtxGrantor();
+//TODO sharedCtxGrantor
+    String srcSharedCtxGrantor = null; //parentTask.getSrcSharedCtxGrantor();
+    String dstSharedCtxGrantor = null; //parentTask.getDestSharedCtxGrantor();
     String impersonationIdNull = null;
 
     try
@@ -390,8 +391,9 @@ public class ParentTaskTransferService
     String srcPath = parentTask.getSourceURI().getPath();
     String destSystemId = parentTask.getDestinationURI().getSystemId();
     String destPath = parentTask.getDestinationURI().getPath();
-    String srcSharedAppCtx = parentTask.getSrcSharedCtxGrantor();
-    String destSharedAppCtx = parentTask.getDestSharedCtxGrantor();
+// TODO sharedCtxGrantor
+    String srcSharedAppCtx = null; //parentTask.getSrcSharedCtxGrantor();
+    String destSharedAppCtx = null; //parentTask.getDestSharedCtxGrantor();
 
     // Do source path perms check if it is not http/s
     if (!isHttpSource)

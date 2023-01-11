@@ -565,15 +565,17 @@ public class TransfersService
   {
     // If nothing to check or sharedCtxGrantor not set for src or dest then we are done.
     if (e == null) return;
-    String srcGrantor = e.getSrcSharedAppCtx();
-    String dstGrantor = e.getDestSharedAppCtx();
-    boolean srcShared = !StringUtils.isBlank(srcGrantor);
-    boolean dstShared = !StringUtils.isBlank(dstGrantor);
+//TODO sharedCtxGrantor
+   String srcGrantor = null;//e.getSrcSharedAppCtx();
+   String dstGrantor = null;//e.getDestSharedAppCtx();
+//TODO sharedCtxGrantor    String dstGrantor = e.getDestSharedAppCtx();
+    boolean srcShared = e.isSrcSharedAppCtx();// !StringUtils.isBlank(srcGrantor);
+    boolean dstShared = e.isDestSharedAppCtx();// !StringUtils.isBlank(dstGrantor);
 // TODO temporarily treat as not shared if grantor is false. Once Jobs sends in real grantor remove this
     // TODO
     // TODO
-    if (srcShared && "FALSE".equalsIgnoreCase(srcGrantor)) srcShared = false;
-    if (dstShared && "FALSE".equalsIgnoreCase(dstGrantor)) dstShared = false;
+//    if (srcShared && "FALSE".equalsIgnoreCase(srcGrantor)) srcShared = false;
+//    if (dstShared && "FALSE".equalsIgnoreCase(dstGrantor)) dstShared = false;
     // TODO
     // TODO
     if (!srcShared && !dstShared) return;
@@ -582,22 +584,34 @@ public class TransfersService
     String srcPath = e.getSourceURI().getPath();
     String dstSysId = e.getDestinationURI().getSystemId();
     String dstPath = e.getDestinationURI().getPath();
-    // If a service request the username will be the service name. E.g. files, jobs, streams, etc
-    boolean allowed = (rUser.isServiceRequest() && SVCLIST_SHAREDCTX.contains(rUser.getJwtUserId()));
-    if (allowed)
-    {
-      // Src and/or Dest shared, log it
-      if (srcShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_SRC_TXFR", rUser, tag, srcSysId, srcPath, srcGrantor));
-      if (dstShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_DST_TXFR", rUser, tag, dstSysId, dstPath, dstGrantor));
-    }
-    else
-    {
-      // Sharing not allowed. Log systems and paths involved
-      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX_TXFR", rUser, tag, srcSysId, srcPath, dstSysId,
-                                        srcGrantor, dstPath, dstGrantor);
-      log.warn(msg);
-      throw new ForbiddenException(msg);
-    }
+
+    // TODO REMOVE *****************************************************************************************
+    // TODO NOTE: Do not support sharedCtx yet due to priv escalation bug.
+    // TODO       Once we support sharedCtxGrantor as string then restore support
+    // Sharing not allowed. Log systems and paths involved
+    String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX_TXFR", rUser, tag, srcSysId, srcPath, dstSysId,
+            srcGrantor, dstPath, dstGrantor);
+    log.warn(msg);
+    throw new ForbiddenException(msg);
+    // TODO REMOVE *****************************************************************************************
+
+//
+//    // If a service request the username will be the service name. E.g. files, jobs, streams, etc
+//    boolean allowed = (rUser.isServiceRequest() && SVCLIST_SHAREDCTX.contains(rUser.getJwtUserId()));
+//    if (allowed)
+//    {
+//      // Src and/or Dest shared, log it
+//      if (srcShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_SRC_TXFR", rUser, tag, srcSysId, srcPath, srcGrantor));
+//      if (dstShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_DST_TXFR", rUser, tag, dstSysId, dstPath, dstGrantor));
+//    }
+//    else
+//    {
+//      // Sharing not allowed. Log systems and paths involved
+//      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX_TXFR", rUser, tag, srcSysId, srcPath, dstSysId,
+//                                        srcGrantor, dstPath, dstGrantor);
+//      log.warn(msg);
+//      throw new ForbiddenException(msg);
+//    }
   }
 
   /**
@@ -668,8 +682,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcId = srcUri.getSystemId();
       String dstId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedAppCtx();
-      String dstGrantor = txfrElement.getDestSharedAppCtx();
+      String srcGrantor = null; //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
+      String dstGrantor = null; //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
       boolean dstShared = !StringUtils.isBlank(dstGrantor);
       String impersonationIdNull = null;
 
@@ -728,8 +742,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcSystemId = srcUri.getSystemId();
       String dstSystemId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedAppCtx();
-      String dstGrantor = txfrElement.getDestSharedAppCtx();
+      String srcGrantor = null; //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
+      String dstGrantor = null; //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
       boolean dstShared = !StringUtils.isBlank(dstGrantor);
       // Check source system
       if (!StringUtils.isBlank(srcSystemId) && srcUri.isTapisProtocol())

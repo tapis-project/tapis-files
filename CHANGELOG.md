@@ -9,14 +9,15 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.2.8 - 2022-??-??
+## 1.2.8 - 2023-01-11
 
-Incremental improvements and bug fixes.
+Incremental improvements. Improved logging.
 
 ### New features:
-- 
+- None
+
 ### Bug fixes:
-- 
+- Fix bug in expiring of system cache entry when ssh connection fails.
 
 ---------------------------------------------------------------------------
 ## 1.2.7 - 2022-11-14
