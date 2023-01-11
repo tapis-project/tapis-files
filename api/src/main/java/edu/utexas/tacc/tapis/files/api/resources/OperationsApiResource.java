@@ -58,11 +58,6 @@ public class OperationsApiResource extends BaseFileOpsResource
   // Always return a nicely formatted response
   private static final boolean PRETTY = true;
 
-  // TODO remove sharedFalse
-  // TODO NOTE: Do not support sharedCtx yet due to priv escalation bug.
-  // TODO       Once we support sharedCtxGrantor as string then restore support
-  // TODO       for sharedCtx. So for now hard code shared to false for all calls to fileOps service.
-  boolean sharedFalse = false;
   // ************************************************************************
   // *********************** Fields *****************************************
   // ************************************************************************
@@ -212,8 +207,7 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    // TODO replace sharedFalse
-    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedFalse);
+    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedAppCtx);
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, mkdirRequest.getPath());
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
@@ -343,9 +337,8 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    // TODO replace sharedFalse
-    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedFalse);
-    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedFalse);
+    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedAppCtx);
+    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedAppCtx);
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);

@@ -99,6 +99,12 @@ public class FileTransfersDAO {
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
             task.setOptional(rs.getBoolean("optional"));
+          // TODO REMOVE
+            boolean srcShared = Boolean.getBoolean(rs.getString("src_shared_ctx"));
+            boolean dstShared = Boolean.getBoolean(rs.getString("dst_shared_ctx"));
+            task.setSrcSharedAppCtx(srcShared);
+            task.setDestSharedAppCtx(dstShared);
+          // TODO REMOVE
             //TODO sharedCtxGrantor task.setSrcSharedCtxGrantor(rs.getString("src_shared_ctx"));
             //TODO sharedCtxGrantor task.setDestSharedCtxGrantor(rs.getString("dst_shared_ctx"));
             task.setTag(rs.getString("tag"));
@@ -195,8 +201,8 @@ public class FileTransfersDAO {
             insertParentTaskStmnt.setString(5, element.getDestinationURI().toString());
             insertParentTaskStmnt.setString(6, TransferTaskStatus.ACCEPTED.name());
             insertParentTaskStmnt.setBoolean(7, element.isOptional());
-            insertParentTaskStmnt.setString(8, null); // TODO element.getSrcSharedAppCtx());
-            insertParentTaskStmnt.setString(9, null); // TODO element.getDestSharedAppCtx());
+            insertParentTaskStmnt.setString(8, Boolean.toString(element.isSrcSharedAppCtx())); // TODO element.getSrcSharedAppCtx());
+            insertParentTaskStmnt.setString(9, Boolean.toString(element.isDestSharedAppCtx())); // TODO element.getDestSharedAppCtx());
             insertParentTaskStmnt.setString(10, element.getTag());
             insertParentTaskStmnt.addBatch();
           }
@@ -507,8 +513,8 @@ public class FileTransfersDAO {
                 task.getDestinationURI().toString(),
                 task.getStatus().name(),
                 task.isOptional(),
-                    null, //TODO sharedCtxGrantor task.getSrcSharedCtxGrantor(),
-                    null, //TODO sharedCtxGrantor task.getDestSharedCtxGrantor(),
+                Boolean.toString(task.isSrcSharedAppCtx()), //TODO sharedCtxGrantor task.getSrcSharedCtxGrantor(),
+                Boolean.toString(task.isDestSharedAppCtx()), //TODO sharedCtxGrantor task.getDestSharedCtxGrantor(),
                 task.getTag()
                 );
             return insertedTask;

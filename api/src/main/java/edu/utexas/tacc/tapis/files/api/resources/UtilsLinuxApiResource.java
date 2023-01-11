@@ -112,11 +112,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
       IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
 
       // Make the service call
-      // TODO remove sharedFalse
-      boolean sharedFalse = false;
-      // TODO sharedCtxGrantor
-      nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(),
-                                                     recursive);//, sharedFalse);
+      nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(), recursive);
     }
     catch (TapisException | ServiceException | IOException e)
     {
