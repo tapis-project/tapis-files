@@ -58,6 +58,8 @@ public class OperationsApiResource extends BaseFileOpsResource
   // Always return a nicely formatted response
   private static final boolean PRETTY = true;
 
+  // TODO remove sharedFalse
+  boolean sharedFalse = false;
   // ************************************************************************
   // *********************** Fields *****************************************
   // ************************************************************************
@@ -198,13 +200,15 @@ public class OperationsApiResource extends BaseFileOpsResource
                           "sharedCtx="+sharedCtx, "path="+mkdirRequest.getPath());
 
     // Get system. This requires READ permission.
+    // TODO do we still need to pass in sharedCtx when it is bool? what about when we switch to sharedCtx is owner?
     TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtx);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedCtx);
+    // TODO replace sharedFalse
+    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedFalse);
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, mkdirRequest.getPath());
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
@@ -332,8 +336,9 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedCtx);
-    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedCtx);
+    // TODO replace sharedFalse
+    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedFalse);
+    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedFalse);
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);

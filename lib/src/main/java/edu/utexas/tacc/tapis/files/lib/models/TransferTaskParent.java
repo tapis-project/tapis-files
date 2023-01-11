@@ -27,8 +27,8 @@ public class TransferTaskParent
   protected int taskId;
   protected TransferTaskStatus status;
   protected boolean optional;
-  protected String srcSharedCtxGrantor;
-  protected String destSharedCtxGrantor;
+  protected boolean srcSharedAppCtx;
+  protected boolean destSharedAppCtx;
   protected String tag;
 
   protected Instant created;
@@ -40,7 +40,7 @@ public class TransferTaskParent
   public TransferTaskParent(){}
 
   public TransferTaskParent(String tenantId1, String username1, String srcURI1, String dstURI1, boolean optional1,
-                            String srcCtx1, String dstCtx1, String tag1)
+                            boolean srcCtx1, boolean dstCtx1)
   {
     tenantId = tenantId1;
     username = username1;
@@ -48,9 +48,8 @@ public class TransferTaskParent
     destinationURI = new TransferURI(dstURI1);
     status = TransferTaskStatus.ACCEPTED;
     optional = optional1;
-    srcSharedCtxGrantor = srcCtx1;
-    destSharedCtxGrantor = dstCtx1;
-    tag = tag1;
+    srcSharedAppCtx = srcCtx1;
+    destSharedAppCtx = dstCtx1;
     uuid = UUID.randomUUID();
   }
 
@@ -154,11 +153,12 @@ public class TransferTaskParent
   public boolean isOptional() { return optional; }
   public void setOptional(boolean b) { optional = b; }
 
-  public String getSrcSharedCtxGrantor() { return srcSharedCtxGrantor; }
-  public void setSrcSharedCtxGrantor(String s) { srcSharedCtxGrantor = s; }
+  public boolean isSrcSharedAppCtx() { return srcSharedAppCtx; }
+  public void setSrcSharedAppCtx(boolean b) { srcSharedAppCtx = b; }
 
-  public String getDestSharedCtxGrantor() { return destSharedCtxGrantor; }
-  public void setDestSharedCtxGrantor(String s) { destSharedCtxGrantor = s; }
+  public boolean isDestSharedAppCtx() { return destSharedAppCtx; }
+  public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; }
+
 
   public String getTag() { return tag; }
   public void setTag(String s) { tag = s; }

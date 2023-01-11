@@ -565,15 +565,17 @@ public class TransfersService
   {
     // If nothing to check or sharedCtxGrantor not set for src or dest then we are done.
     if (e == null) return;
-    String srcGrantor = e.getSrcSharedAppCtx();
-    String dstGrantor = e.getDestSharedAppCtx();
-    boolean srcShared = !StringUtils.isBlank(srcGrantor);
-    boolean dstShared = !StringUtils.isBlank(dstGrantor);
+//TODO sharedCtxGrantor
+   String srcGrantor = null;//e.getSrcSharedAppCtx();
+   String dstGrantor = null;//e.getDestSharedAppCtx();
+//TODO sharedCtxGrantor    String dstGrantor = e.getDestSharedAppCtx();
+    boolean srcShared = e.isSrcSharedAppCtx();// !StringUtils.isBlank(srcGrantor);
+    boolean dstShared = e.isDestSharedAppCtx();// !StringUtils.isBlank(dstGrantor);
 // TODO temporarily treat as not shared if grantor is false. Once Jobs sends in real grantor remove this
     // TODO
     // TODO
-    if (srcShared && "FALSE".equalsIgnoreCase(srcGrantor)) srcShared = false;
-    if (dstShared && "FALSE".equalsIgnoreCase(dstGrantor)) dstShared = false;
+//    if (srcShared && "FALSE".equalsIgnoreCase(srcGrantor)) srcShared = false;
+//    if (dstShared && "FALSE".equalsIgnoreCase(dstGrantor)) dstShared = false;
     // TODO
     // TODO
     if (!srcShared && !dstShared) return;
@@ -668,8 +670,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcId = srcUri.getSystemId();
       String dstId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedAppCtx();
-      String dstGrantor = txfrElement.getDestSharedAppCtx();
+      String srcGrantor = null; //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
+      String dstGrantor = null; //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
       boolean dstShared = !StringUtils.isBlank(dstGrantor);
       String impersonationIdNull = null;
 
@@ -728,8 +730,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcSystemId = srcUri.getSystemId();
       String dstSystemId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedAppCtx();
-      String dstGrantor = txfrElement.getDestSharedAppCtx();
+      String srcGrantor = null; //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
+      String dstGrantor = null; //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
       boolean dstShared = !StringUtils.isBlank(dstGrantor);
       // Check source system
       if (!StringUtils.isBlank(srcSystemId) && srcUri.isTapisProtocol())

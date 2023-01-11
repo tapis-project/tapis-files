@@ -8,8 +8,8 @@ public class TransferTaskRequestElement
   private TransferURI sourceURI;
   private TransferURI destinationURI;
   private boolean optional;
-  private String srcSharedAppCtx;
-  private String destSharedAppCtx;
+  private boolean srcSharedAppCtx = false;
+  private boolean destSharedAppCtx = false;
   private  String tag;
 
   @NotBlank
@@ -24,10 +24,10 @@ public class TransferTaskRequestElement
   public void setSourceURI(String s) { sourceURI = new TransferURI(s); }
   public boolean isOptional() { return optional; }
   public void setOptional(boolean b) { optional = b; }
-  public String getSrcSharedAppCtx() { return srcSharedAppCtx; }
-  public void setSrcSharedAppCtx(String s) { srcSharedAppCtx = s; }
-  public String getDestSharedAppCtx() { return destSharedAppCtx; }
-  public void setDestSharedAppCtx(String s) { destSharedAppCtx = s; }
+  public boolean isSrcSharedAppCtx() { return srcSharedAppCtx; }
+  public void setSrcSharedAppCtx(boolean b) { srcSharedAppCtx = b; }
+  public boolean isDestSharedAppCtx() { return destSharedAppCtx; }
+  public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; }
   public String getTag() { return tag; }
   public void setTag(String s) { tag = s; }
 
