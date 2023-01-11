@@ -217,8 +217,8 @@ public class ParentTaskTransferService
     String srcPath = srcUri.getPath();
     String dstId = dstUri.getSystemId();
 //TODO sharedCtxGrantor
-    String srcSharedCtxGrantor = null; //parentTask.getSrcSharedCtxGrantor();
-    String dstSharedCtxGrantor = null; //parentTask.getDestSharedCtxGrantor();
+    String srcSharedCtxGrantor = Boolean.toString(parentTask.isSrcSharedAppCtx()); //parentTask.getSrcSharedCtxGrantor();
+    String dstSharedCtxGrantor = Boolean.toString(parentTask.isDestSharedAppCtx()); //parentTask.getDestSharedCtxGrantor();
     String impersonationIdNull = null;
 
     try

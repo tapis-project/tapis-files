@@ -143,7 +143,8 @@ public class ContentApiResource extends BaseFileOpsResource
               "sharedCtx="+sharedAppCtx);
 
     // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, sharedCtxGrantorNull);
+    // TODO sharedCtxGrantor
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, Boolean.toString(sharedAppCtx));
 
     // ---------------------------- Make service calls to start data streaming -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
