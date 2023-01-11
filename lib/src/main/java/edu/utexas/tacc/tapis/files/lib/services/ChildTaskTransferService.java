@@ -269,7 +269,7 @@ public class ChildTaskTransferService
       // Source path is not HTTP/S
       sourcePath = sourceURL.getPath();
       sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername(),
-                                            impersonationIdNull, null); // TODO parentTask.getSrcSharedCtxGrantor());
+                                            impersonationIdNull, Boolean.toString(parentTask.isSrcSharedAppCtx())); // TODO parentTask.getSrcSharedCtxGrantor());
       // If src system is not enabled throw an exception
       if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
       {
@@ -288,7 +288,7 @@ public class ChildTaskTransferService
     try
     {
       destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername(),
-                                          impersonationIdNull, null); // TODO parentTask.getDestSharedCtxGrantor());
+                                          impersonationIdNull, Boolean.toString(parentTask.isDestSharedAppCtx())); // TODO parentTask.getDestSharedCtxGrantor());
       // If dst system is not enabled throw an exception
       if (destSystem.getEnabled() == null || !destSystem.getEnabled())
       {

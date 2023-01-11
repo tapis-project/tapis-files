@@ -37,11 +37,12 @@ Exec into the irods container
 Run admin commands to add the user
 
 ``` 
-iinit (host=localhost, user=rods, passwd=rods)
+iinit
 iadmin mkuser dev rodsuser
 iadmin moduser dev password dev
 ```
 
+Inputs for iinit: host=localhost, user=rods, passwd=rods
 
 ### Database setup
 We need to create a test database and user for integration tests also. A dev database

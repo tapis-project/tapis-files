@@ -671,9 +671,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcId = srcUri.getSystemId();
       String dstId = dstUri.getSystemId();
-      String srcGrantor = null; //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
-      String dstGrantor = null; //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
-      boolean dstShared = !StringUtils.isBlank(dstGrantor);
+      String srcGrantor = Boolean.toString(txfrElement.isSrcSharedAppCtx()); //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
+      String dstGrantor = Boolean.toString(txfrElement.isDestSharedAppCtx()); //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
       String impersonationIdNull = null;
 
       // Get any Tapis systems. If protocol is http/s then leave as null.
@@ -731,9 +730,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcSystemId = srcUri.getSystemId();
       String dstSystemId = dstUri.getSystemId();
-      String srcGrantor = null; //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
-      String dstGrantor = null; //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
-      boolean dstShared = !StringUtils.isBlank(dstGrantor);
+      String srcGrantor = Boolean.toString(txfrElement.isSrcSharedAppCtx()); //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
+      String dstGrantor = Boolean.toString(txfrElement.isDestSharedAppCtx()); //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
       // Check source system
       if (!StringUtils.isBlank(srcSystemId) && srcUri.isTapisProtocol())
       {

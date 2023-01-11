@@ -200,8 +200,9 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Get system. This requires READ permission.
     // TODO do we still need to pass in sharedCtx when it is bool? what about when we switch to sharedCtx is owner?
     // TODO sharedCtxGrantor
-    String sharedCtxGrantorNull = null;
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtxGrantorNull);
+//TODO    String sharedCtxGrantorNull = null;
+//TODO    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtxGrantorNull);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, Boolean.toString(sharedAppCtx));
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -328,8 +329,7 @@ public class OperationsApiResource extends BaseFileOpsResource
 
     // Get system. This requires READ permission.
     // TODO sharedCtxGrantor
-    String sharedCtxGrantorNull = null;
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, sharedCtxGrantorNull);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, Boolean.toString(sharedAppCtx));
 
     Instant start = Instant.now();
     List<FileInfo> listing;
