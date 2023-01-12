@@ -396,46 +396,51 @@ public class ParentTaskTransferService
 //    String srcSharedAppCtx = null; //parentTask.getSrcSharedCtxGrantor();
 //    String destSharedAppCtx = null; //parentTask.getDestSharedCtxGrantor();
 
-    // Do source path perms check if it is not http/s
-    if (!isHttpSource)
-    {
-      // First check sharing, then check permissions
-      if (parentTask.isSrcSharedAppCtx()) return true;
-// TODO Update for sharing
-//      // If sharedAppCtx is true then skip perm check
-//      if (!srcSharedAppCtx)
-//      {
-      // TODO
-      // TODO For now if sharedCtxGrantor set to anything other than false then allow
-      // TODO
-//      boolean sharedCtx = !StringUtils.isBlank(srcSharedAppCtx);
-//      if (sharedCtx && !"FALSE".equalsIgnoreCase(srcSharedAppCtx)) return true;
-      // TODO
-
-      boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
-      if (!sourcePerms) return false;
-//      }
-    }
-
-    // Do target path perms check
-    // First check sharing, then check permissions
-    if (parentTask.isDestSharedAppCtx()) return true;
-// TODO Update for sharing
-//    // If sharedAppCtx is true then skip perm check
-//    if (!destSharedAppCtx)
-//    {
-
-    // TODO
-    // TODO For now if sharedCtxGrantor set to anything other than false then allow
-    // TODO
-//    boolean sharedCtx = !StringUtils.isBlank(dstSharedCtxGrantor);
-//    if (sharedCtx && !"FALSE".equalsIgnoreCase(dstSharedCtxGrantor)) return true;
-    // TODO
-
-    //TODO ???????????? update when users can share with modify
-//TODO    return permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
-//    }
+    // TODO review when updating for sharedCtxGrantor. Seems like this should not return true before checking destination path
+    //      return true for now. sharing not working properly
     return true;
+//
+//    // Do source path perms check if it is not http/s
+//    if (!isHttpSource)
+//    {
+//      // First check sharing, then check permissions
+//      // TODO review when updating for sharedCtxGrantor. Seems like this should not return true before checking destination path
+//      if (parentTask.isSrcSharedAppCtx()) return true;
+//// TODO Update for sharing
+////      // If sharedAppCtx is true then skip perm check
+////      if (!srcSharedAppCtx)
+////      {
+//      // TODO
+//      // TODO For now if sharedCtxGrantor set to anything other than false then allow
+//      // TODO
+////      boolean sharedCtx = !StringUtils.isBlank(srcSharedAppCtx);
+////      if (sharedCtx && !"FALSE".equalsIgnoreCase(srcSharedAppCtx)) return true;
+//      // TODO
+//
+//      boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
+//      if (!sourcePerms) return false;
+////      }
+//    }
+//
+//    // Do target path perms check
+//    // First check sharing, then check permissions
+//    if (parentTask.isDestSharedAppCtx()) return true;
+//// TODO Update for sharing
+////    // If sharedAppCtx is true then skip perm check
+////    if (!destSharedAppCtx)
+////    {
+//
+//    // TODO
+//    // TODO For now if sharedCtxGrantor set to anything other than false then allow
+//    // TODO
+////    boolean sharedCtx = !StringUtils.isBlank(dstSharedCtxGrantor);
+////    if (sharedCtx && !"FALSE".equalsIgnoreCase(dstSharedCtxGrantor)) return true;
+//    // TODO
+//
+//    //TODO ???????????? update when users can share with modify
+////TODO    return permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
+////    }
+//    return true;
   }
 
   private Mono<TransferTaskParent> deserializeParentMessage(AcknowledgableDelivery message)
