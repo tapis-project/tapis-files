@@ -173,7 +173,7 @@ public class ParentTaskTransferService
       if (!isPermitted(parentTask))
       {
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", taskTenant, taskUser, "doParentStepOneA02", parentId, parentUuid, tag);
-        log.warn(msg);
+        log.error(msg);
         if (!parentTask.isTerminal())
         {
           parentTask.setEndTime(Instant.now());
@@ -328,8 +328,7 @@ public class ParentTaskTransferService
    */
   private Mono<TransferTaskParent> doErrorParentStepOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent)
   {
-    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString()));
-    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7B", e.getMessage()));
+    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString(), e));
     m.nack(false);
 
     // First update parent task, mark FAILED_OPT or FAILED
@@ -361,7 +360,7 @@ public class ParentTaskTransferService
         topTask.setStatus(TransferTaskStatus.FAILED);
         topTask.setEndTime(Instant.now());
         topTask.setErrorMessage(e.getMessage());
-        log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7C", topTask.getId(), topTask.getTag(), topTask.getUuid(), parent.getId(), parent.getUuid()));
+        log.debug(LibUtils.getMsg("FILES_TXFR_SVC_ERR7C", topTask.getId(), topTask.getTag(), topTask.getUuid(), parent.getId(), parent.getUuid()));
         dao.updateTransferTask(topTask);
       }
     }
@@ -392,30 +391,35 @@ public class ParentTaskTransferService
     String destSystemId = parentTask.getDestinationURI().getSystemId();
     String destPath = parentTask.getDestinationURI().getPath();
 // TODO sharedCtxGrantor
-    String srcSharedAppCtx = null; //parentTask.getSrcSharedCtxGrantor();
-    String destSharedAppCtx = null; //parentTask.getDestSharedCtxGrantor();
+    String srcSharedCtxGrantor = Boolean.toString(parentTask.isSrcSharedAppCtx()); //parentTask.getSrcSharedCtxGrantor();
+    String dstSharedCtxGrantor = Boolean.toString(parentTask.isDestSharedAppCtx()); //parentTask.getDestSharedCtxGrantor();
+//    String srcSharedAppCtx = null; //parentTask.getSrcSharedCtxGrantor();
+//    String destSharedAppCtx = null; //parentTask.getDestSharedCtxGrantor();
 
     // Do source path perms check if it is not http/s
     if (!isHttpSource)
     {
+      // First check sharing, then check permissions
+      if (parentTask.isSrcSharedAppCtx()) return true;
 // TODO Update for sharing
 //      // If sharedAppCtx is true then skip perm check
 //      if (!srcSharedAppCtx)
 //      {
-
       // TODO
       // TODO For now if sharedCtxGrantor set to anything other than false then allow
       // TODO
-      boolean sharedCtx = !StringUtils.isBlank(srcSharedAppCtx);
-      if (sharedCtx && !"FALSE".equalsIgnoreCase(srcSharedAppCtx)) return true;
+//      boolean sharedCtx = !StringUtils.isBlank(srcSharedAppCtx);
+//      if (sharedCtx && !"FALSE".equalsIgnoreCase(srcSharedAppCtx)) return true;
       // TODO
 
-        boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
-        if (!sourcePerms) return false;
+      boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
+      if (!sourcePerms) return false;
 //      }
     }
 
     // Do target path perms check
+    // First check sharing, then check permissions
+    if (parentTask.isDestSharedAppCtx()) return true;
 // TODO Update for sharing
 //    // If sharedAppCtx is true then skip perm check
 //    if (!destSharedAppCtx)
@@ -424,13 +428,14 @@ public class ParentTaskTransferService
     // TODO
     // TODO For now if sharedCtxGrantor set to anything other than false then allow
     // TODO
-    boolean sharedCtx = !StringUtils.isBlank(destSharedAppCtx);
-    if (sharedCtx && !"FALSE".equalsIgnoreCase(destSharedAppCtx)) return true;
+//    boolean sharedCtx = !StringUtils.isBlank(dstSharedCtxGrantor);
+//    if (sharedCtx && !"FALSE".equalsIgnoreCase(dstSharedCtxGrantor)) return true;
     // TODO
 
-    return permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
+    //TODO ???????????? update when users can share with modify
+//TODO    return permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
 //    }
-//    return true;
+    return true;
   }
 
   private Mono<TransferTaskParent> deserializeParentMessage(AcknowledgableDelivery message)
