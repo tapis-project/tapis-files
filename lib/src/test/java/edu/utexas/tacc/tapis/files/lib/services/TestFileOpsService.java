@@ -611,8 +611,7 @@ public class TestFileOpsService
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
-//TODO sharedCtxGrantor        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId, sharedCtxGrantorNull);
-        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId);
+        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId, sharedCtxGrantorNull);
         Assert.assertEquals(result.readAllBytes().length, 1000);
     }
 
@@ -623,8 +622,7 @@ public class TestFileOpsService
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     InputStream in = Utils.makeFakeFile( 1000 * 1024);
     fileOpsService.upload(client,"test.txt", in);
-//TODO sharedCtxGrantor    StreamingOutput streamingOutput = fileOpsService.getFullStream(rTestUser, testSystem,"test.txt", nullImpersonationId, sharedCtxGrantorNull);
-    StreamingOutput streamingOutput = fileOpsService.getFullStream(rTestUser, testSystem,"test.txt", nullImpersonationId, false);
+    StreamingOutput streamingOutput = fileOpsService.getFullStream(rTestUser, testSystem,"test.txt", nullImpersonationId, sharedCtxGrantorNull);
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
     streamingOutput.write(outStream);
     Assert.assertEquals(outStream.size(), 1000*1024);
@@ -642,7 +640,7 @@ public class TestFileOpsService
 
         File file = File.createTempFile("test", ".zip");
         OutputStream outputStream = new FileOutputStream(file);
-        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a", nullImpersonationId, false);
+        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a", nullImpersonationId, sharedCtxGrantorNull);
 
         try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis))
         {
@@ -678,10 +676,10 @@ public class TestFileOpsService
       client.delete("/");
       fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
       // MODIFY should imply read so ls should work
-      fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, false);
+      fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedCtxGrantorNull);
       // Without MODIFY or READ should fail
       when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(false);
-      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, false); });
+      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedCtxGrantorNull); });
     }
 
   // NoAuthz tests for mkdir, move, copy and delete

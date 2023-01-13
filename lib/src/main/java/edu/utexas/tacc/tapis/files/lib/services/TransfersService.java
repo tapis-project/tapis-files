@@ -314,6 +314,22 @@ public class TransfersService
       for (TransferTaskRequestElement e : elements) { e.setTag(tag); }
 
       // Check for srcSharedCtx or destSharedCtx in the request elements.
+      // TODO REMOVE
+      //      Convert incoming boolean sharedAppCtx true/false into "true" / null for sharedCtxGrantor
+      //      From now on we can deal with strings.
+      for (TransferTaskRequestElement e : elements)
+      {
+        if (e.isSrcSharedAppCtx())
+          e.setSrcSharedCtxGrantor(Boolean.toString(e.isSrcSharedAppCtx()));
+        else
+          e.setSrcSharedCtxGrantor(null);
+        if (e.isDestSharedAppCtx())
+          e.setDestSharedCtxGrantor(Boolean.toString(e.isDestSharedAppCtx()));
+        else
+          e.setDestSharedCtxGrantor(null);
+      }
+      // TODO REMOVE
+
       // Only certain services may set these to true. May throw ForbiddenException.
       for (TransferTaskRequestElement e : elements) { checkSharedCtxAllowed(rUser, tag, e); }
 
@@ -565,19 +581,14 @@ public class TransfersService
   {
     // If nothing to check or sharedCtxGrantor not set for src or dest then we are done.
     if (e == null) return;
-//TODO sharedCtxGrantor
-   String srcGrantor = null;//e.getSrcSharedAppCtx();
-   String dstGrantor = null;//e.getDestSharedAppCtx();
-//TODO sharedCtxGrantor    String dstGrantor = e.getDestSharedAppCtx();
-    boolean srcShared = e.isSrcSharedAppCtx();// !StringUtils.isBlank(srcGrantor);
-    boolean dstShared = e.isDestSharedAppCtx();// !StringUtils.isBlank(dstGrantor);
-// TODO temporarily treat as not shared if grantor is false. Once Jobs sends in real grantor remove this
-    // TODO
-    // TODO
-//    if (srcShared && "FALSE".equalsIgnoreCase(srcGrantor)) srcShared = false;
-//    if (dstShared && "FALSE".equalsIgnoreCase(dstGrantor)) dstShared = false;
-    // TODO
-    // TODO
+    String srcGrantor = e.getSrcSharedCtxGrantor();
+    String dstGrantor = e.getDestSharedCtxGrantor();
+
+    // Grantor not null indicates attempt to share.
+    boolean srcShared = !StringUtils.isBlank(srcGrantor);
+    boolean dstShared = !StringUtils.isBlank(dstGrantor);
+
+    // If no sharing we are done
     if (!srcShared && !dstShared) return;
 
     String srcSysId = e.getSourceURI().getSystemId();
@@ -671,8 +682,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcId = srcUri.getSystemId();
       String dstId = dstUri.getSystemId();
-      String srcGrantor = Boolean.toString(txfrElement.isSrcSharedAppCtx()); //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
-      String dstGrantor = Boolean.toString(txfrElement.isDestSharedAppCtx()); //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
+      String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
+      String dstGrantor = txfrElement.getDestSharedCtxGrantor();
       String impersonationIdNull = null;
 
       // Get any Tapis systems. If protocol is http/s then leave as null.
@@ -730,8 +741,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcSystemId = srcUri.getSystemId();
       String dstSystemId = dstUri.getSystemId();
-      String srcGrantor = Boolean.toString(txfrElement.isSrcSharedAppCtx()); //TODO sharedCtxGrantor txfrElement.getSrcSharedAppCtx();
-      String dstGrantor = Boolean.toString(txfrElement.isDestSharedAppCtx()); //TODO sharedCtxGrantor txfrElement.getDestSharedAppCtx();
+      String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
+      String dstGrantor = txfrElement.getDestSharedCtxGrantor();
       // Check source system
       if (!StringUtils.isBlank(srcSystemId) && srcUri.isTapisProtocol())
       {

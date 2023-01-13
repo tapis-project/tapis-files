@@ -66,9 +66,7 @@ public class TestFileShareService
   private final String devTenant = "dev";
   private final String siteId = "tacc";
   private final String nullImpersonationId = null;
-  // TODO sharedCtxGrantor
-//  private final String sharedCtxGrantorNull = null;
-  private final boolean sharedCtxGrantorNull = false;
+  private final String sharedCtxGrantorNull = null;
   private ResourceRequestUser rTestUser1;
   private ResourceRequestUser rTestUser2;
   private ResourceRequestUser rTestUser3;
