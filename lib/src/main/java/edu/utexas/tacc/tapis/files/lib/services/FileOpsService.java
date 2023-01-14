@@ -912,36 +912,36 @@ public class FileOpsService
   }
 
 //// TODO remove once using sharedCtxGrantor?
-//  /**
-//   * Determine if file path is shared
-//   * NOTE: We do not check here that impersonation is allowed. The 2 methods that call this method later call
-//   *       checkAuthForReadOrShare which does the check
-//   * @param rUser - ResourceRequestUser containing tenant, user and request info
-//   * @param sys - System
-//   * @param path - path on system relative to system rootDir
-//   * @param impersonationId - use provided Tapis username instead of oboUser
-//   * @return true if shared else false
-//   */
-//  public boolean isPathShared(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-//                              String impersonationId) throws WebApplicationException
-//  {
-//    // Get path relative to system rootDir and protect against ../..
-//    String relativePathStr = PathUtils.getRelativePath(path).toString();
-//    // Certain services are allowed to impersonate an OBO user for the purposes of authorization
-//    //   and effectiveUserId resolution.
-//    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
-//    try
-//    {
-//      if (shareService.isSharedWithUser(rUser, sys, relativePathStr, oboOrImpersonatedUser)) return true;
-//    }
-//    catch (TapisClientException e)
-//    {
-//      String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, sys.getId(), relativePathStr, e.getMessage());
-//      log.error(msg, e);
-//      throw new WebApplicationException(msg, e);
-//    }
-//    return false;
-//  }
+  /**
+   * Determine if file path is shared
+   * NOTE: We do not check here that impersonation is allowed. The 2 methods that call this method later call
+   *       checkAuthForReadOrShare which does the check
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param path - path on system relative to system rootDir
+   * @param impersonationId - use provided Tapis username instead of oboUser
+   * @return true if shared else false
+   */
+  public boolean isPathShared(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
+                              String impersonationId) throws WebApplicationException
+  {
+    // Get path relative to system rootDir and protect against ../..
+    String relativePathStr = PathUtils.getRelativePath(path).toString();
+    // Certain services are allowed to impersonate an OBO user for the purposes of authorization
+    //   and effectiveUserId resolution.
+    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+    try
+    {
+      if (shareService.isSharedWithUser(rUser, sys, relativePathStr, oboOrImpersonatedUser)) return true;
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, sys.getId(), relativePathStr, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+    return false;
+  }
 
   /* **************************************************************************** */
   /*                                Private Methods                               */
@@ -1353,29 +1353,29 @@ public class FileOpsService
     }
 
 // TODO sharedCtxGrantor
-//    // Check for share with obo user / impersonationId or shareGrantor
-//    // TODO sharing must now include share by priv READ or MODIFY
-//    //    Currently sharing only allows for READ. So check only for READ case.
-//    //    When sharing updated to share by privilege then update here.
-//    // TODO/TBD previously sharedCtx was bool and all auth checking turned off. Skip check for MODIFY for now?
-//    //          Let READ be enough?
-//    try
-//    {
-//      if (Permission.READ.equals(perm))
-//      {
-//        if (shareService.isSharedWithUser(rUser, system, relativePathStr, oboOrImpersonatedUser)) return;
-//        if (sharedCtx)
-//        {
-//          if (shareService.isSharedWithUser(rUser, system, relativePathStr, sharedCtxGrantor)) return;
-//        }
-//      }
-//    }
-//    catch (TapisClientException e)
-//    {
-//      String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, systemId, relativePathStr, e.getMessage());
-//      log.error(msg, e);
-//      throw new ServiceException(msg, e);
-//    }
+    // Check for share with obo user / impersonationId or shareGrantor
+    // TODO sharing must now include share by priv READ or MODIFY
+    //    Currently sharing only allows for READ. So check only for READ case.
+    //    When sharing updated to share by privilege then update here.
+    // TODO/TBD previously sharedCtx was bool and all auth checking turned off. Skip check for MODIFY for now?
+    //          Let READ be enough?
+    try
+    {
+      if (Permission.READ.equals(perm))
+      {
+        if (shareService.isSharedWithUser(rUser, system, relativePathStr, oboOrImpersonatedUser)) return;
+        if (sharedCtx)
+        {
+          if (shareService.isSharedWithUser(rUser, system, relativePathStr, sharedCtxGrantor)) return;
+        }
+      }
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, systemId, relativePathStr, e.getMessage());
+      log.error(msg, e);
+      throw new ServiceException(msg, e);
+    }
 
     // Nothing allowed the operation. Throw ForbiddenException
     String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", rUser.getOboTenantId(), oboOrImpersonatedUser, systemId,

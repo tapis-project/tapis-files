@@ -55,6 +55,9 @@ public class OperationsApiResource extends BaseFileOpsResource
 {
   private static final Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
   private final String className = getClass().getSimpleName();
+
+  // Some methods do not support impersonationId
+  private static final String impersonationIdNull = null;
   // Always return a nicely formatted response
   private static final boolean PRETTY = true;
 
@@ -202,8 +205,18 @@ public class OperationsApiResource extends BaseFileOpsResource
     //      From now on we can deal with strings.
     String sharedCtxGrantor = sharedAppCtx ? Boolean.toString(sharedAppCtx) : null;
 
+    // TODO/TBD Revisit after switch to sharedCtxGrantor
+    // TODO/TBD: Determine if path is shared with MODIFY
+    //           NOTE: Currently path is shared or unshared, now way to share with MODIFY
+//    boolean isPathShared = fileOpsService.isPathShared(rUser, systemId, mkdirRequest.getPath(), impersonationIdNull);
+
     // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtxGrantor);
+//    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtxGrantor);
+    // TODO/TBD Revisit after switch to sharedCtxGrantor
+    //          If path is shared with MODIFY we want to skip the auth check
+    //          For now, always get the system such that auth check should pass
+//    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationIdNull, sharedCtxGrantor);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationIdNull, "true");
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -334,7 +347,11 @@ public class OperationsApiResource extends BaseFileOpsResource
     String sharedCtxGrantor = sharedAppCtx ? Boolean.toString(sharedAppCtx) : null;
 
     // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, sharedCtxGrantor);
+    // TODO/TBD Revisit after switch to sharedCtxGrantor
+    //          If path is shared we want to skip the auth check
+    //          For now, always get the system such that auth check should pass
+//    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, sharedCtxGrantor);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, "true");
 
     Instant start = Instant.now();
     List<FileInfo> listing;
