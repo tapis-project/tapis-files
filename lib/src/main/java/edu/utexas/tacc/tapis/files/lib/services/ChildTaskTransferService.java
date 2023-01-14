@@ -240,7 +240,7 @@ public class ChildTaskTransferService
       taskChild.setRetries(taskChild.getRetries() + 1);
       taskChild = dao.updateTransferTaskChild(taskChild);
 
-      // Get the parent task. TODO: We will need it for shared ctx grantors.
+      // Get the parent task. We will need it for shared ctx grantors.
       parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
     }
     catch (DAOException ex)
@@ -269,7 +269,7 @@ public class ChildTaskTransferService
       // Source path is not HTTP/S
       sourcePath = sourceURL.getPath();
       sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername(),
-                                            impersonationIdNull, Boolean.toString(parentTask.isSrcSharedAppCtx())); // TODO parentTask.getSrcSharedCtxGrantor());
+                                            impersonationIdNull, parentTask.getSrcSharedCtxGrantor());
       // If src system is not enabled throw an exception
       if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
       {
@@ -288,7 +288,7 @@ public class ChildTaskTransferService
     try
     {
       destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername(),
-                                          impersonationIdNull, Boolean.toString(parentTask.isDestSharedAppCtx())); // TODO parentTask.getDestSharedCtxGrantor());
+                                          impersonationIdNull, parentTask.getDestSharedCtxGrantor());
       // If dst system is not enabled throw an exception
       if (destSystem.getEnabled() == null || !destSystem.getEnabled())
       {

@@ -125,8 +125,8 @@ public class SystemsCache
       var selectStr = "allAttributes";
       var returnCreds = true;
       // TODO sharedAppCtx - update to handle as grantor of share.
-      //      For now, process string as boolean (true or false)
-      boolean sharedAppCtx = Boolean.parseBoolean(key.getSharedCtxGrantor());
+      //      For now, set to true for any grantor.
+      boolean sharedAppCtx = false;
       if (!StringUtils.isBlank(key.getSharedCtxGrantor())) sharedAppCtx = true;
       TapisSystem system = client.getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
 // TODO                                            key.getImpersonationId(), key.getSharedCtxGrantor());

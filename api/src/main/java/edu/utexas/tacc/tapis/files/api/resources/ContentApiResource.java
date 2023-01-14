@@ -45,10 +45,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 @Path("/v3/files/content")
 public class ContentApiResource extends BaseFileOpsResource
 {
-
-  // TODO remove
-  String sharedCtxGrantorNull = null;
-
   private static final Logger log = LoggerFactory.getLogger(ContentApiResource.class);
   private final String className = getClass().getSimpleName();
 
@@ -142,9 +138,13 @@ public class ContentApiResource extends BaseFileOpsResource
               "path="+path, "range="+range, "zip="+zip, "more="+startPage, "impersonationId="+impersonationId,
               "sharedCtx="+sharedAppCtx);
 
+    // TODO REMOVE
+    //      Convert incoming boolean sharedAppCtx true/false into "true" / null for sharedCtxGrantor
+    //      From now on we can deal with strings.
+    String sharedCtxGrantor = sharedAppCtx ? Boolean.toString(sharedAppCtx) : null;
+
     // Get system. This requires READ permission.
-    // TODO sharedCtxGrantor
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, Boolean.toString(sharedAppCtx));
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, sharedCtxGrantor);
 
     // ---------------------------- Make service calls to start data streaming -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -162,7 +162,7 @@ public class ContentApiResource extends BaseFileOpsResource
     if (zip)
     {
       // Send a zip stream. This can handle a path ending in /
-      outStream = fileOpsService.getZipStream(rUser, sys, path, impersonationId, sharedAppCtx);
+      outStream = fileOpsService.getZipStream(rUser, sys, path, impersonationId, sharedCtxGrantor);
       String newName = FilenameUtils.removeExtension(fileName) + ".zip";
       contentDisposition = String.format("attachment; filename=%s", newName);
       mediaType = MediaType.APPLICATION_OCTET_STREAM;
@@ -170,7 +170,7 @@ public class ContentApiResource extends BaseFileOpsResource
     else
     {
       // Make sure the requested path is not a directory
-      FileInfo fileInfo = fileOpsService.getFileInfo(rUser, sys, path, impersonationId, sharedAppCtx);
+      FileInfo fileInfo = fileOpsService.getFileInfo(rUser, sys, path, impersonationId, sharedCtxGrantor);
       if (fileInfo == null)
       {
         throw new NotFoundException(LibUtils.getMsgAuth("FILES_CONT_NO_FILEINFO", user, systemId, path));
@@ -182,19 +182,19 @@ public class ContentApiResource extends BaseFileOpsResource
       // Send a byteRange, page blocks or the full stream.
       if (range != null)
       {
-        outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range, impersonationId, sharedAppCtx);
+        outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range, impersonationId, sharedCtxGrantor);
         contentDisposition = String.format("attachment; filename=%s", fileName);
         mediaType = MediaType.TEXT_PLAIN;
       }
       else if (!Objects.isNull(startPage))
       {
-        outStream = fileOpsService.getPagedStream(rUser, sys, path, startPage, impersonationId, sharedAppCtx);
+        outStream = fileOpsService.getPagedStream(rUser, sys, path, startPage, impersonationId, sharedCtxGrantor);
         contentDisposition = "inline";
         mediaType = MediaType.TEXT_PLAIN;
       }
       else
       {
-        outStream = fileOpsService.getFullStream(rUser, sys, path, impersonationId, sharedAppCtx);
+        outStream = fileOpsService.getFullStream(rUser, sys, path, impersonationId, sharedCtxGrantor);
         contentDisposition = String.format("attachment; filename=%s", fileName);
         mediaType = MediaType.APPLICATION_OCTET_STREAM;
       }

@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.commons.lang3.StringUtils;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -27,8 +28,10 @@ public class TransferTaskParent
   protected int taskId;
   protected TransferTaskStatus status;
   protected boolean optional;
-  protected boolean srcSharedAppCtx;
-  protected boolean destSharedAppCtx;
+  protected String srcSharedCtxGrantor;
+  protected String destSharedCtxGrantor;
+  protected boolean srcSharedAppCtx; // TODO REMOVE
+  protected boolean destSharedAppCtx; // TODO REMOVE
   protected String tag;
 
   protected Instant created;
@@ -40,7 +43,7 @@ public class TransferTaskParent
   public TransferTaskParent(){}
 
   public TransferTaskParent(String tenantId1, String username1, String srcURI1, String dstURI1, boolean optional1,
-                            boolean srcCtx1, boolean dstCtx1, String tag1)
+                            String srcCtx1, String dstCtx1, String tag1)
   {
     tenantId = tenantId1;
     username = username1;
@@ -48,8 +51,10 @@ public class TransferTaskParent
     destinationURI = new TransferURI(dstURI1);
     status = TransferTaskStatus.ACCEPTED;
     optional = optional1;
-    srcSharedAppCtx = srcCtx1;
-    destSharedAppCtx = dstCtx1;
+    srcSharedCtxGrantor = srcCtx1;
+    destSharedCtxGrantor = dstCtx1;
+    srcSharedAppCtx = !StringUtils.isBlank(srcCtx1);  // TODO REMOVE
+    destSharedAppCtx = !StringUtils.isBlank(dstCtx1);  // TODO REMOVE
     tag = tag1;
     uuid = UUID.randomUUID();
   }
@@ -154,12 +159,17 @@ public class TransferTaskParent
   public boolean isOptional() { return optional; }
   public void setOptional(boolean b) { optional = b; }
 
-  public boolean isSrcSharedAppCtx() { return srcSharedAppCtx; }
-  public void setSrcSharedAppCtx(boolean b) { srcSharedAppCtx = b; }
+  public String getSrcSharedCtxGrantor() { return srcSharedCtxGrantor; }
+  public void setSrcSharedCtxGrantor(String s) { srcSharedCtxGrantor = s; }
 
-  public boolean isDestSharedAppCtx() { return destSharedAppCtx; }
-  public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; }
+  public String getDestSharedCtxGrantor() { return destSharedCtxGrantor; }
+  public void setDestSharedCtxGrantor(String s) { destSharedCtxGrantor = s; }
 
+  public boolean isSrcSharedAppCtx() { return srcSharedAppCtx; }      // TODO REMOVE
+  public void setSrcSharedAppCtx(boolean b) { srcSharedAppCtx = b; }  // TODO REMOVE
+
+  public boolean isDestSharedAppCtx() { return destSharedAppCtx; } // TODO REMOVE
+  public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; } // TODO REMOVE
 
   public String getTag() { return tag; }
   public void setTag(String s) { tag = s; }

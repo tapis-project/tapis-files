@@ -55,6 +55,9 @@ public class OperationsApiResource extends BaseFileOpsResource
 {
   private static final Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
   private final String className = getClass().getSimpleName();
+
+  // Some methods do not support impersonationId
+  private static final String impersonationIdNull = null;
   // Always return a nicely formatted response
   private static final boolean PRETTY = true;
 
@@ -197,18 +200,29 @@ public class OperationsApiResource extends BaseFileOpsResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
                           "sharedAppCtx="+sharedAppCtx, "path="+mkdirRequest.getPath());
 
+    // TODO REMOVE
+    //      Convert incoming boolean sharedAppCtx true/false into "true" / null for sharedCtxGrantor
+    //      From now on we can deal with strings.
+    String sharedCtxGrantor = sharedAppCtx ? Boolean.toString(sharedAppCtx) : null;
+
+    // TODO/TBD Revisit after switch to sharedCtxGrantor
+    // TODO/TBD: Determine if path is shared with MODIFY
+    //           NOTE: Currently path is shared or unshared, now way to share with MODIFY
+//    boolean isPathShared = fileOpsService.isPathShared(rUser, systemId, mkdirRequest.getPath(), impersonationIdNull);
+
     // Get system. This requires READ permission.
-    // TODO do we still need to pass in sharedCtx when it is bool? what about when we switch to sharedCtx is owner?
-    // TODO sharedCtxGrantor
-//TODO    String sharedCtxGrantorNull = null;
-//TODO    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtxGrantorNull);
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, Boolean.toString(sharedAppCtx));
+//    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, sharedCtxGrantor);
+    // TODO/TBD Revisit after switch to sharedCtxGrantor
+    //          If path is shared with MODIFY we want to skip the auth check
+    //          For now, always get the system such that auth check should pass
+//    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationIdNull, sharedCtxGrantor);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationIdNull, "true");
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedAppCtx);
+    fileOpsService.mkdir(rUser, sys, mkdirRequest.getPath(), sharedCtxGrantor);
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, mkdirRequest.getPath());
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
@@ -327,9 +341,17 @@ public class OperationsApiResource extends BaseFileOpsResource
               "limit="+limit, "offset="+offset, "recurse="+recurse,"impersonationId="+impersonationId,
               "sharedAppCtx="+sharedAppCtx);
 
+    // TODO REMOVE
+    //      Convert incoming boolean sharedAppCtx true/false into "true" / null for sharedCtxGrantor
+    //      From now on we can deal with strings.
+    String sharedCtxGrantor = sharedAppCtx ? Boolean.toString(sharedAppCtx) : null;
+
     // Get system. This requires READ permission.
-    // TODO sharedCtxGrantor
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, Boolean.toString(sharedAppCtx));
+    // TODO/TBD Revisit after switch to sharedCtxGrantor
+    //          If path is shared we want to skip the auth check
+    //          For now, always get the system such that auth check should pass
+//    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, sharedCtxGrantor);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, "true");
 
     Instant start = Instant.now();
     List<FileInfo> listing;
@@ -337,8 +359,8 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedAppCtx);
-    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedAppCtx);
+    if (recurse) listing = fileOpsService.lsRecursive(rUser, sys, path, MAX_RECURSION, impersonationId, sharedCtxGrantor);
+    else listing = fileOpsService.ls(rUser, sys, path, limit, offset, impersonationId, sharedCtxGrantor);
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);
