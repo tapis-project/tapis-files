@@ -1,5 +1,4 @@
-FROM panubo/sshd
-# FROM rastasheep/ubuntu-sshd:18.04
+FROM rastasheep/ubuntu-sshd:18.04
 
 RUN useradd --create-home --shell /bin/bash testuser
 RUN echo 'testuser:password' | chpasswd
