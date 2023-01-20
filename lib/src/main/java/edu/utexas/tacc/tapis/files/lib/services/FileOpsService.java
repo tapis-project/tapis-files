@@ -325,7 +325,7 @@ public class FileOpsService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sys - System
    * @param pathStr - path on system relative to system rootDir
-   * @param inStrm  data stream to be used when creating file
+   * @param inStrm  data stream to be used whsys = {TapisSystem@10991} "class TapisSystem {\n    tenant: null\n    id: testSystem\n    description: null\n    systemType: LINUX\n    owner: ${apiUserId}\n    host: localhost\n    enabled: true\n    effectiveUserId: testuser\n    defaultAuthnMethod: PASSWORD\n    authnCredential: class Credential {\n        authnMethod: null\n        loginUser: null\n        password: password\n        privateKey: null\n        publicKey: null\n        accessKey: null\n        accessSecret: null\n        certificate: null\n    }\n    bucketName: null\n    rootDir: /data/home/testuser\n    port: 2222\n    useProxy: false\n    proxyHost: null\n    proxyPort: null\n    dtnSystemId: null\n    dtnMountPoint: null\n    dtnMountSourcePath: null\n    isPublic: null\n    isDynamicEffectiveUser: null\n    isDtn: false\n    canExec: null\n    canRunBatch: false\n    mpiCmd: null\n    jobRuntimes: null\n    jobWorkingDir: null\n    jobEnvVariables: null\n    jobMaxJobs: 2147483647\n    jobMaxJobsPerUser: 2147483647\n    batchScheduler: null\n    batchLogicalQueues: null\n    batc"... Viewen creating file
    * @throws ForbiddenException - user not authorized
    */
   public void upload(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String pathStr,

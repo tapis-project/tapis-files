@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
+
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -544,6 +546,7 @@ public class SSHDataClient implements ISSHDataClient
   {
     String opName = "chmod";
     // Parse and validate the chmod perms argument
+
     try
     {
       int permsInt = Integer.parseInt(permsStr, 8);
@@ -561,6 +564,7 @@ public class SSHDataClient implements ISSHDataClient
               path, permsStr, e.getMessage());
       throw new TapisException(msg, e);
     }
+
     // Run the command
     return runLinuxChangeOp(opName, permsStr, path, recursive);
   }
@@ -772,5 +776,89 @@ public class SSHDataClient implements ISSHDataClient
       else throw e;
     }
     return fileInfo;
+  }
+
+  public NativeLinuxOpResult runLinuxGetfacl(String path) throws IOException, TapisException {
+    String opName = "getfacl";
+
+    // Path should have already been normalized and checked but for safety and security do it
+    //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
+    // Get path relative to system rootDir and protect against ../..
+    String relativePathStr = PathUtils.getRelativePath(path).toString();
+    String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relativePathStr).toString();
+
+    // Check that path exists. This will throw a NotFoundException if path is not there
+    this.ls(relativePathStr);
+
+    // Build the command and execute it.
+    var cmdRunner = connectionHolder.getExecChannel();
+
+    StringBuilder sb = new StringBuilder(opName);
+    sb.append(" -cp ").append(absolutePathStr);
+    String cmdStr = sb.toString();
+
+    // Execute the command
+    ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
+    ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
+    int exitCode = cmdRunner.execute(cmdStr, stdOut, stdErr);
+    if (exitCode != 0)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
+              path, opName, exitCode, stdOut.toString(), stdErr.toString());
+      log.warn(msg);
+    }
+    connectionHolder.returnExecChannel(cmdRunner);
+    return new NativeLinuxOpResult(cmdStr, exitCode, String.valueOf(stdOut), String.valueOf(stdErr));
+  }
+
+  @Override
+  public NativeLinuxOpResult runLinuxSetfacl(String path, FileUtilsService.NativeLinuxFaclOperation operation,
+                                             FileUtilsService.NativeLinuxFaclRecursion recursion,
+                                             String aclEntries) throws IOException, TapisException {
+    String opName = "setfacl";
+
+    // Path should have already been normalized and checked but for safety and security do it
+    //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
+    // Get path relative to system rootDir and protect against ../..
+    String relativePathStr = PathUtils.getRelativePath(path).toString();
+    String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relativePathStr).toString();
+
+    // Check that path exists. This will throw a NotFoundException if path is not there
+    this.ls(relativePathStr);
+
+    // Build the command and execute it.
+    var cmdRunner = connectionHolder.getExecChannel();
+
+    StringBuilder sb = new StringBuilder(opName);
+    sb.append(" ");
+
+    switch (recursion) {
+      case PHYSICAL -> sb.append("-RP ");
+      case LOGICAL -> sb.append("-RL ");
+    }
+
+    switch (operation) {
+      case ADD -> sb.append("-m ").append(aclEntries).append(" ");
+      case REMOVE -> sb.append("-x ").append(aclEntries).append(" ");
+      case REMOVE_ALL -> sb.append("-b ");
+      case REMOVE_DEFAULT -> sb.append("-k ");
+    }
+
+    sb.append(absolutePathStr);
+
+    String cmdStr = sb.toString();
+
+    // Execute the command
+    ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
+    ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
+    int exitCode = cmdRunner.execute(cmdStr, stdOut, stdErr);
+    if (exitCode != 0)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
+              path, opName, exitCode, stdOut.toString(), stdErr.toString());
+      log.warn(msg);
+    }
+    connectionHolder.returnExecChannel(cmdRunner);
+    return new NativeLinuxOpResult(cmdStr, exitCode, String.valueOf(stdOut), String.valueOf(stdErr));
   }
 }

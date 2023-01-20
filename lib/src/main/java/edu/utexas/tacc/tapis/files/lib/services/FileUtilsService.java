@@ -32,6 +32,9 @@ public class FileUtilsService
 
   public enum NativeLinuxOperation {CHMOD, CHOWN, CHGRP}
 
+  public enum NativeLinuxFaclOperation {ADD, REMOVE, REMOVE_ALL, REMOVE_DEFAULT}
+  public enum NativeLinuxFaclRecursion {LOGICAL, PHYSICAL, NONE}
+
   // Initial value for a NativeLinuxOpResult.
   public static final NativeLinuxOpResult NATIVE_LINUX_OP_RESULT_NOOP = new NativeLinuxOpResult("NO_OP", -1, "", "");
 
@@ -140,6 +143,65 @@ public class FileUtilsService
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
+    return nativeLinuxOpResult;
+  }
+
+  public NativeLinuxOpResult getfacl(@NotNull IRemoteDataClient client, @NotNull String pathStr)
+          throws TapisException, ServiceException {
+    NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
+    if (!(client instanceof ISSHDataClient)) {
+      String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+              ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
+      log.error(msg);
+      throw new IllegalArgumentException(msg);
+    }
+    ISSHDataClient sshClient = (ISSHDataClient) client;
+    boolean isOwner = false;
+    if (client.getSystem().getOwner() != null) {
+      isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+    }
+
+    // Get normalized path relative to system rootDir and protect against ../..
+    String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
+    try {
+      nativeLinuxOpResult = sshClient.runLinuxGetfacl(relativePathStr);
+    } catch (IOException ex) {
+      String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getfacl",
+              client.getSystemId(), relativePathStr, ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+
+    return nativeLinuxOpResult;
+  }
+  public NativeLinuxOpResult setfacl(@NotNull IRemoteDataClient client, @NotNull String pathStr,
+                                     NativeLinuxFaclOperation operation,
+                                     NativeLinuxFaclRecursion recursion, String aclEntries)
+          throws TapisException, ServiceException {
+    NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
+    if (!(client instanceof ISSHDataClient)) {
+      String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+              ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
+      log.error(msg);
+      throw new IllegalArgumentException(msg);
+    }
+    ISSHDataClient sshClient = (ISSHDataClient) client;
+    boolean isOwner = false;
+    if (client.getSystem().getOwner() != null) {
+      isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+    }
+
+    // Get normalized path relative to system rootDir and protect against ../..
+    String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
+    try {
+      nativeLinuxOpResult = sshClient.runLinuxSetfacl(relativePathStr, operation, recursion, aclEntries);
+    } catch (IOException ex) {
+      String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getfacl",
+              client.getSystemId(), relativePathStr, ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+
     return nativeLinuxOpResult;
   }
 }
