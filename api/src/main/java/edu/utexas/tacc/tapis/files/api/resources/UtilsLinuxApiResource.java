@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import javax.inject.Inject;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -18,7 +19,9 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
-import org.apache.commons.lang3.StringUtils;
+
+import edu.utexas.tacc.tapis.files.api.models.NativeLinuxFaclRequest;
+import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
@@ -125,4 +128,76 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, nativeLinuxOpResult);
     return Response.ok(resp).build();
   }
+
+  @GET
+  @Produces(MediaType.APPLICATION_JSON)
+  @Path("facl/{systemId}/{path:.+}")
+  public Response runLinuxGetfacl(@PathParam("systemId") String systemId,
+                                   @PathParam("path") String path,
+                                   @Context SecurityContext securityContext)
+  {
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    String oboUser = rUser.getOboUserId();
+
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+
+    List<AclEntry> aclEntries;
+    try
+    {
+      IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
+
+      // Make the service call
+      aclEntries = fileUtilsService.getfacl(client, path);
+    }
+    catch (TapisException | ServiceException | IOException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, "getfacl", systemId, path, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+
+    String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, "getfacl", systemId, path);
+    TapisResponse<List<AclEntry>> resp = TapisResponse.createSuccessResponse(msg, aclEntries);
+    return Response.ok(resp).build();
+  }
+
+  @POST
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Path("facl/{systemId}/{path:.+}")
+  public Response runLinuxSetfacl(@PathParam("systemId") String systemId,
+                                  @PathParam("path") String path,
+                                  @Valid NativeLinuxFaclRequest request,
+                                  @Context SecurityContext securityContext)
+  {
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    String oboUser = rUser.getOboUserId();
+
+    // Make sure the Tapis System exists and is enabled
+    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+
+    NativeLinuxOpResult nativeLinuxOpResult;
+    try
+    {
+      IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
+
+      // Make the service call
+      nativeLinuxOpResult = fileUtilsService.setfacl(client, path, request.getOperation(),
+              request.getRecursionMethod(), request.getAclString());
+    }
+    catch (TapisException | ServiceException | IOException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, "setfacl", systemId, path, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+
+    String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, "setfacl", systemId, path);
+    TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, nativeLinuxOpResult);
+    return Response.ok(resp).build();
+  }
+
 }
