@@ -1,7 +1,11 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import javax.inject.Inject;
+
+import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -146,9 +150,9 @@ public class FileUtilsService
     return nativeLinuxOpResult;
   }
 
-  public NativeLinuxOpResult getfacl(@NotNull IRemoteDataClient client, @NotNull String pathStr)
+  public List<AclEntry> getfacl(@NotNull IRemoteDataClient client, @NotNull String pathStr)
           throws TapisException, ServiceException {
-    NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
+    List<AclEntry> aclEntries = Collections.emptyList();
     if (!(client instanceof ISSHDataClient)) {
       String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
               ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
@@ -164,7 +168,7 @@ public class FileUtilsService
     // Get normalized path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
     try {
-      nativeLinuxOpResult = sshClient.runLinuxGetfacl(relativePathStr);
+      aclEntries = sshClient.runLinuxGetfacl(relativePathStr);
     } catch (IOException ex) {
       String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getfacl",
               client.getSystemId(), relativePathStr, ex.getMessage());
@@ -172,7 +176,7 @@ public class FileUtilsService
       throw new ServiceException(msg, ex);
     }
 
-    return nativeLinuxOpResult;
+    return aclEntries;
   }
   public NativeLinuxOpResult setfacl(@NotNull IRemoteDataClient client, @NotNull String pathStr,
                                      NativeLinuxFaclOperation operation,

@@ -17,7 +17,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
 
+import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
+import edu.utexas.tacc.tapis.shared.utils.PathSanitizer;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -778,7 +780,7 @@ public class SSHDataClient implements ISSHDataClient
     return fileInfo;
   }
 
-  public NativeLinuxOpResult runLinuxGetfacl(String path) throws IOException, TapisException {
+  public List<AclEntry> runLinuxGetfacl(String path) throws IOException, TapisException {
     String opName = "getfacl";
 
     // Path should have already been normalized and checked but for safety and security do it
@@ -794,7 +796,7 @@ public class SSHDataClient implements ISSHDataClient
     var cmdRunner = connectionHolder.getExecChannel();
 
     StringBuilder sb = new StringBuilder(opName);
-    sb.append(" -cp ").append(absolutePathStr);
+    sb.append(" -cp ").append(safelySingleQuoteString(absolutePathStr));
     String cmdStr = sb.toString();
 
     // Execute the command
@@ -808,7 +810,15 @@ public class SSHDataClient implements ISSHDataClient
       log.warn(msg);
     }
     connectionHolder.returnExecChannel(cmdRunner);
-    return new NativeLinuxOpResult(cmdStr, exitCode, String.valueOf(stdOut), String.valueOf(stdErr));
+    if(exitCode != 0) {
+      StringBuilder msg = new StringBuilder("Native Linux operation getfacl returned a non-zero exit code.");
+      msg.append(System.lineSeparator());
+      msg.append(stdErr);
+      msg.append(System.lineSeparator());
+      throw new TapisException(msg.toString());
+    }
+
+    return AclEntry.parseAclEntries(String.valueOf(stdOut));
   }
 
   @Override
@@ -816,6 +826,12 @@ public class SSHDataClient implements ISSHDataClient
                                              FileUtilsService.NativeLinuxFaclRecursion recursion,
                                              String aclEntries) throws IOException, TapisException {
     String opName = "setfacl";
+
+    //TODO - this causes problems with semi-colons - can we just escape and single qquote?
+//    if((PathSanitizer.hasDangerousChars(path)) || (PathSanitizer.hasParentTraversal(path))){
+//      throw new TapisException("The path '" + path + "' contains unsafe characters and is not allowed.");
+//    }
+
 
     // Path should have already been normalized and checked but for safety and security do it
     //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
@@ -838,13 +854,13 @@ public class SSHDataClient implements ISSHDataClient
     }
 
     switch (operation) {
-      case ADD -> sb.append("-m ").append(aclEntries).append(" ");
-      case REMOVE -> sb.append("-x ").append(aclEntries).append(" ");
+      case ADD -> sb.append("-m ").append(safelySingleQuoteString(aclEntries)).append(" ");
+      case REMOVE -> sb.append("-x ").append(safelySingleQuoteString(aclEntries)).append(" ");
       case REMOVE_ALL -> sb.append("-b ");
       case REMOVE_DEFAULT -> sb.append("-k ");
     }
 
-    sb.append(absolutePathStr);
+    sb.append(safelySingleQuoteString(absolutePathStr));
 
     String cmdStr = sb.toString();
 
@@ -860,5 +876,13 @@ public class SSHDataClient implements ISSHDataClient
     }
     connectionHolder.returnExecChannel(cmdRunner);
     return new NativeLinuxOpResult(cmdStr, exitCode, String.valueOf(stdOut), String.valueOf(stdErr));
+  }
+
+  private String safelySingleQuoteString(String unquotedString) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("'");
+    sb.append(unquotedString.replace("'", "'\\''"));
+    sb.append("'");
+    return sb.toString();
   }
 }

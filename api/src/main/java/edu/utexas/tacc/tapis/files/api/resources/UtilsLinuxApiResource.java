@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import javax.inject.Inject;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -20,6 +21,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxFaclRequest;
+import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
@@ -143,13 +145,13 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
 
     // check system owner is obouser
 
-    NativeLinuxOpResult nativeLinuxOpResult;
+    List<AclEntry> aclEntries;
     try
     {
       IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
 
       // Make the service call
-      nativeLinuxOpResult = fileUtilsService.getfacl(client, path);
+      aclEntries = fileUtilsService.getfacl(client, path);
     }
     catch (TapisException | ServiceException | IOException e)
     {
@@ -161,7 +163,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
 
     // TODO fix messages
     String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, "getfacl", systemId, path);
-    TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, nativeLinuxOpResult);
+    TapisResponse<List<AclEntry>> resp = TapisResponse.createSuccessResponse(msg, aclEntries);
     return Response.ok(resp).build();
   }
 
