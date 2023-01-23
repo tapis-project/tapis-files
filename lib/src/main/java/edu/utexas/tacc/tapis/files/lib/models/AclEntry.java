@@ -11,9 +11,25 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class AclEntry {
+
+    /**
+     * true if the acl entry represents a default entry (starts with "default:").
+     */
     boolean defaultAcl;
+
+    /**
+     * type of acl entry.  Typically this would be file, group, or mask.
+     */
     String type;
+
+    /**
+     * principal for the acl entry.  Typically the groupid or userid.
+     */
     String principal;
+
+    /**
+     * the actual permissions granted.  For example, rwx or rw-.
+     */
     String permissions;
 
     public AclEntry() {

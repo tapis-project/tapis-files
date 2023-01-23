@@ -783,13 +783,9 @@ public class SSHDataClient implements ISSHDataClient
   public List<AclEntry> runLinuxGetfacl(String path) throws IOException, TapisException {
     String opName = "getfacl";
 
-    // Path should have already been normalized and checked but for safety and security do it
-    //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
-    // Get path relative to system rootDir and protect against ../..
+    // Check that path exists. This will throw a NotFoundException if path is not there
     String relativePathStr = PathUtils.getRelativePath(path).toString();
     String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relativePathStr).toString();
-
-    // Check that path exists. This will throw a NotFoundException if path is not there
     this.ls(relativePathStr);
 
     // Build the command and execute it.
@@ -849,14 +845,23 @@ public class SSHDataClient implements ISSHDataClient
     sb.append(" ");
 
     switch (recursion) {
+      // recurse - don't follow symlinks
       case PHYSICAL -> sb.append("-RP ");
+      // recurse - follow symlinks
       case LOGICAL -> sb.append("-RL ");
     }
 
     switch (operation) {
+      // add ACLs
       case ADD -> sb.append("-m ").append(safelySingleQuoteString(aclEntries)).append(" ");
+
+      // remove ACLs
       case REMOVE -> sb.append("-x ").append(safelySingleQuoteString(aclEntries)).append(" ");
+
+      // remove all ACLs
       case REMOVE_ALL -> sb.append("-b ");
+
+      // remove all "default:" ACLs
       case REMOVE_DEFAULT -> sb.append("-k ");
     }
 
@@ -878,6 +883,10 @@ public class SSHDataClient implements ISSHDataClient
     return new NativeLinuxOpResult(cmdStr, exitCode, String.valueOf(stdOut), String.valueOf(stdErr));
   }
 
+  // This method will single quote a string and convert all embedded single quotes
+  // into '\'' - so file'name would be converted to 'file'\''name'.  This is to prevent
+  // unix command injection (something like embedding ;rm -rf / in a command that we will
+  // execute in the bash shell.
   private String safelySingleQuoteString(String unquotedString) {
     StringBuilder sb = new StringBuilder();
     sb.append("'");

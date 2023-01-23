@@ -143,8 +143,6 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     // Make sure the Tapis System exists and is enabled
     TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
-    // check system owner is obouser
-
     List<AclEntry> aclEntries;
     try
     {
@@ -155,13 +153,11 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     }
     catch (TapisException | ServiceException | IOException e)
     {
-      // TODO fix error
       String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, "getfacl", systemId, path, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
 
-    // TODO fix messages
     String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, "getfacl", systemId, path);
     TapisResponse<List<AclEntry>> resp = TapisResponse.createSuccessResponse(msg, aclEntries);
     return Response.ok(resp).build();
@@ -169,6 +165,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
 
   @POST
   @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
   @Path("facl/{systemId}/{path:.+}")
   public Response runLinuxSetfacl(@PathParam("systemId") String systemId,
                                   @PathParam("path") String path,
@@ -182,8 +179,6 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     // Make sure the Tapis System exists and is enabled
     TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
 
-    // check system owner is obouser
-
     NativeLinuxOpResult nativeLinuxOpResult;
     try
     {
@@ -195,13 +190,11 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     }
     catch (TapisException | ServiceException | IOException e)
     {
-      // TODO fix error
       String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, "setfacl", systemId, path, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
 
-    // TODO fix messages
     String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, "setfacl", systemId, path);
     TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, nativeLinuxOpResult);
     return Response.ok(resp).build();
