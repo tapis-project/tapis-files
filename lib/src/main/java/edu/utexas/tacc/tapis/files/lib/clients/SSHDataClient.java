@@ -792,7 +792,7 @@ public class SSHDataClient implements ISSHDataClient
     var cmdRunner = connectionHolder.getExecChannel();
 
     StringBuilder sb = new StringBuilder(opName);
-    sb.append(" -cp ").append(safelySingleQuoteString(absolutePathStr));
+    sb.append(" -cpE ").append(safelySingleQuoteString(absolutePathStr));
     String cmdStr = sb.toString();
 
     // Execute the command

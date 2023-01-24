@@ -161,8 +161,10 @@ public class FileUtilsService
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     boolean isOwner = false;
+    //TODO:  Should this be client.getOboUser, or tenaant?  i see checking owner to tenant in other places .. but that
+    // seems wrong to me - maybe I just dont understand it though?
     if (client.getSystem().getOwner() != null) {
-      isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+      isOwner = client.getSystem().getOwner().equals(client.getOboUser());
     }
 
     // Get normalized path relative to system rootDir and protect against ../..
@@ -191,8 +193,10 @@ public class FileUtilsService
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     boolean isOwner = false;
+    //TODO:  Should this be client.getOboUser, or tenaant?  i see checking owner to tenant in other places .. but that
+    // seems wrong to me - maybe I just dont understand it though?
     if (client.getSystem().getOwner() != null) {
-      isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+      isOwner = client.getSystem().getOwner().equals(client.getOboUser());
     }
 
     // Get normalized path relative to system rootDir and protect against ../..
