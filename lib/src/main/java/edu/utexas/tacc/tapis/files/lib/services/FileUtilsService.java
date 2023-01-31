@@ -161,14 +161,18 @@ public class FileUtilsService
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     boolean isOwner = false;
-    //TODO:  Should this be client.getOboUser, or tenaant?  i see checking owner to tenant in other places .. but that
-    // seems wrong to me - maybe I just dont understand it though?
     if (client.getSystem().getOwner() != null) {
       isOwner = client.getSystem().getOwner().equals(client.getOboUser());
     }
 
     // Get normalized path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
+    if (!isOwner)
+    {
+      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+              relativePathStr, Permission.MODIFY);
+    }
+
     try {
       aclEntries = sshClient.runLinuxGetfacl(relativePathStr);
     } catch (IOException ex) {
@@ -193,14 +197,18 @@ public class FileUtilsService
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     boolean isOwner = false;
-    //TODO:  Should this be client.getOboUser, or tenaant?  i see checking owner to tenant in other places .. but that
-    // seems wrong to me - maybe I just dont understand it though?
     if (client.getSystem().getOwner() != null) {
       isOwner = client.getSystem().getOwner().equals(client.getOboUser());
     }
 
     // Get normalized path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
+    if (!isOwner)
+    {
+      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+              relativePathStr, Permission.MODIFY);
+    }
+
     try {
       nativeLinuxOpResult = sshClient.runLinuxSetfacl(relativePathStr, operation, recursion, aclEntries);
     } catch (IOException ex) {

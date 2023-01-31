@@ -131,7 +131,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
 
   @GET
   @Produces(MediaType.APPLICATION_JSON)
-  @Path("facl/{systemId}/{path:.+}")
+  @Path("facl/{systemId}/{path:.*+}")
   public Response runLinuxGetfacl(@PathParam("systemId") String systemId,
                                    @PathParam("path") String path,
                                    @Context SecurityContext securityContext)
@@ -166,7 +166,7 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
   @POST
   @Produces(MediaType.APPLICATION_JSON)
   @Consumes(MediaType.APPLICATION_JSON)
-  @Path("facl/{systemId}/{path:.+}")
+  @Path("facl/{systemId}/{path:.*+}")
   public Response runLinuxSetfacl(@PathParam("systemId") String systemId,
                                   @PathParam("path") String path,
                                   @Valid NativeLinuxFaclRequest request,

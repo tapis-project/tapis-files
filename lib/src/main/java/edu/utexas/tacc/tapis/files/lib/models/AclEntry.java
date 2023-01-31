@@ -15,17 +15,17 @@ public class AclEntry {
     /**
      * true if the acl entry represents a default entry (starts with "default:").
      */
-    boolean defaultAcl;
+    private boolean defaultAcl;
 
     /**
      * type of acl entry.  Typically this would be file, group, or mask.
      */
-    String type;
+    private String type;
 
     /**
      * principal for the acl entry.  Typically the groupid or userid.
      */
-    String principal;
+    private String principal;
 
     /**
      * the actual permissions granted.  For example, rwx or rw-.

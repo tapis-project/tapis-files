@@ -717,7 +717,7 @@ public class SSHDataClient implements ISSHDataClient
     if (exitCode != 0)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
-              path, opName, exitCode, stdOut.toString(), stdErr.toString());
+              path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
       log.warn(msg);
     }
     connectionHolder.returnExecChannel(cmdRunner);
@@ -802,7 +802,7 @@ public class SSHDataClient implements ISSHDataClient
     if (exitCode != 0)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
-              path, opName, exitCode, stdOut.toString(), stdErr.toString());
+              path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
       log.warn(msg);
     }
     connectionHolder.returnExecChannel(cmdRunner);
@@ -822,12 +822,6 @@ public class SSHDataClient implements ISSHDataClient
                                              FileUtilsService.NativeLinuxFaclRecursion recursion,
                                              String aclEntries) throws IOException, TapisException {
     String opName = "setfacl";
-
-    //TODO - this causes problems with semi-colons - can we just escape and single qquote?
-//    if((PathSanitizer.hasDangerousChars(path)) || (PathSanitizer.hasParentTraversal(path))){
-//      throw new TapisException("The path '" + path + "' contains unsafe characters and is not allowed.");
-//    }
-
 
     // Path should have already been normalized and checked but for safety and security do it
     //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
@@ -872,13 +866,21 @@ public class SSHDataClient implements ISSHDataClient
     // Execute the command
     ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
     ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
-    int exitCode = cmdRunner.execute(cmdStr, stdOut, stdErr);
-    if (exitCode != 0)
-    {
+    int exitCode = 0;
+    try {
+      exitCode = cmdRunner.execute(cmdStr, stdOut, stdErr);
+      if (exitCode != 0) {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
+                path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
+        log.warn(msg);
+      }
+    } catch (IOException | TapisException ex) {
+      // log some information about the failure, then rethrow the exception
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
-              path, opName, exitCode, stdOut.toString(), stdErr.toString());
-      log.warn(msg);
+              path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
+      log.error(msg);
     }
+
     connectionHolder.returnExecChannel(cmdRunner);
     return new NativeLinuxOpResult(cmdStr, exitCode, String.valueOf(stdOut), String.valueOf(stdErr));
   }
