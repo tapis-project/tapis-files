@@ -16,6 +16,10 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
+
+import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
+import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
+import edu.utexas.tacc.tapis.shared.utils.PathSanitizer;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -544,6 +548,7 @@ public class SSHDataClient implements ISSHDataClient
   {
     String opName = "chmod";
     // Parse and validate the chmod perms argument
+
     try
     {
       int permsInt = Integer.parseInt(permsStr, 8);
@@ -561,6 +566,7 @@ public class SSHDataClient implements ISSHDataClient
               path, permsStr, e.getMessage());
       throw new TapisException(msg, e);
     }
+
     // Run the command
     return runLinuxChangeOp(opName, permsStr, path, recursive);
   }
@@ -711,7 +717,7 @@ public class SSHDataClient implements ISSHDataClient
     if (exitCode != 0)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
-              path, opName, exitCode, stdOut.toString(), stdErr.toString());
+              path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
       log.warn(msg);
     }
     connectionHolder.returnExecChannel(cmdRunner);
@@ -772,5 +778,122 @@ public class SSHDataClient implements ISSHDataClient
       else throw e;
     }
     return fileInfo;
+  }
+
+  public List<AclEntry> runLinuxGetfacl(String path) throws IOException, TapisException {
+    String opName = "getfacl";
+
+    // Check that path exists. This will throw a NotFoundException if path is not there
+    String relativePathStr = PathUtils.getRelativePath(path).toString();
+    String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relativePathStr).toString();
+    this.ls(relativePathStr);
+
+    // Build the command and execute it.
+    var cmdRunner = connectionHolder.getExecChannel();
+
+    StringBuilder sb = new StringBuilder(opName);
+    sb.append(" -cpE ").append(safelySingleQuoteString(absolutePathStr));
+    String cmdStr = sb.toString();
+
+    // Execute the command
+    ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
+    ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
+    int exitCode = cmdRunner.execute(cmdStr, stdOut, stdErr);
+    if (exitCode != 0)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
+              path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
+      log.warn(msg);
+    }
+    connectionHolder.returnExecChannel(cmdRunner);
+    if(exitCode != 0) {
+      StringBuilder msg = new StringBuilder("Native Linux operation getfacl returned a non-zero exit code.");
+      msg.append(System.lineSeparator());
+      msg.append(stdErr);
+      msg.append(System.lineSeparator());
+      throw new TapisException(msg.toString());
+    }
+
+    return AclEntry.parseAclEntries(String.valueOf(stdOut));
+  }
+
+  @Override
+  public NativeLinuxOpResult runLinuxSetfacl(String path, FileUtilsService.NativeLinuxFaclOperation operation,
+                                             FileUtilsService.NativeLinuxFaclRecursion recursion,
+                                             String aclEntries) throws IOException, TapisException {
+    String opName = "setfacl";
+
+    // Path should have already been normalized and checked but for safety and security do it
+    //   again here. FilenameUtils.normalize() is expected to protect against escaping via ../..
+    // Get path relative to system rootDir and protect against ../..
+    String relativePathStr = PathUtils.getRelativePath(path).toString();
+    String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relativePathStr).toString();
+
+    // Check that path exists. This will throw a NotFoundException if path is not there
+    this.ls(relativePathStr);
+
+    // Build the command and execute it.
+    var cmdRunner = connectionHolder.getExecChannel();
+
+    StringBuilder sb = new StringBuilder(opName);
+    sb.append(" ");
+
+    switch (recursion) {
+      // recurse - don't follow symlinks
+      case PHYSICAL -> sb.append("-RP ");
+      // recurse - follow symlinks
+      case LOGICAL -> sb.append("-RL ");
+    }
+
+    switch (operation) {
+      // add ACLs
+      case ADD -> sb.append("-m ").append(safelySingleQuoteString(aclEntries)).append(" ");
+
+      // remove ACLs
+      case REMOVE -> sb.append("-x ").append(safelySingleQuoteString(aclEntries)).append(" ");
+
+      // remove all ACLs
+      case REMOVE_ALL -> sb.append("-b ");
+
+      // remove all "default:" ACLs
+      case REMOVE_DEFAULT -> sb.append("-k ");
+    }
+
+    sb.append(safelySingleQuoteString(absolutePathStr));
+
+    String cmdStr = sb.toString();
+
+    // Execute the command
+    ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
+    ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
+    int exitCode = 0;
+    try {
+      exitCode = cmdRunner.execute(cmdStr, stdOut, stdErr);
+      if (exitCode != 0) {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
+                path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
+        log.warn(msg);
+      }
+    } catch (IOException | TapisException ex) {
+      // log some information about the failure, then rethrow the exception
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
+              path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
+      log.error(msg);
+    }
+
+    connectionHolder.returnExecChannel(cmdRunner);
+    return new NativeLinuxOpResult(cmdStr, exitCode, String.valueOf(stdOut), String.valueOf(stdErr));
+  }
+
+  // This method will single quote a string and convert all embedded single quotes
+  // into '\'' - so file'name would be converted to 'file'\''name'.  This is to prevent
+  // unix command injection (something like embedding ;rm -rf / in a command that we will
+  // execute in the bash shell.
+  private String safelySingleQuoteString(String unquotedString) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("'");
+    sb.append(unquotedString.replace("'", "'\\''"));
+    sb.append("'");
+    return sb.toString();
   }
 }

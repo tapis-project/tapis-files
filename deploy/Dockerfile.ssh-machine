@@ -8,3 +8,11 @@ RUN chmod 600 /home/testuser/.ssh/authorized_keys
 RUN mkdir -p /data/home/testuser/
 RUN chown -R testuser:testuser /home/testuser
 RUN chown -R testuser:testuser /data/home/testuser/
+RUN apt update
+RUN apt-get install acl
+RUN groupadd faclgrp1
+RUN groupadd faclgrp2
+RUN groupadd faclgrp3
+RUN useradd -g faclgrp1 facluser1
+RUN useradd -g faclgrp1 facluser2
+RUN useradd -g faclgrp1 facluser3
