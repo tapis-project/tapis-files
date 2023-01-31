@@ -17,7 +17,7 @@
     </parent>
 
     <artifactId>tapis-files</artifactId>
-    <version>1.1.2</version>
+    <version>1.2.8</version>
     <packaging>pom</packaging>
 
     <name>TACC Tapis Files Parent POM</name>
@@ -32,10 +32,9 @@
       <!-- Most properties set in parent tapis-bom   -->
       <!-- Properties can be overridden here         -->
       <!-- Individual projects may want to override. -->
-        <java.version>17</java.version>
-        <tapis-client-java.version>[2.0.0, 3.0.0]</tapis-client-java.version>
-        <tapis-shared.version>[2.0.0, 3.0]</tapis-shared.version>
-        <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>
+<!--        <tapis-client-java.version>[2.0.0, 3.0.0]</tapis-client-java.version>-->
+<!--        <tapis-shared.version>[2.0.0, 3.0]</tapis-shared.version>-->
+<!--        <maven-dependency-plugin.version>3.1.0</maven-dependency-plugin.version>-->
         <jetbrains.annotations.version>20.1.0</jetbrains.annotations.version>
         <apache-commons-exec.version>1.3</apache-commons-exec.version>
         <globus.version>2.1.0</globus.version>
@@ -149,14 +148,6 @@
                 </configuration>
             </plugin>
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <release>15</release>
-                </configuration>
-            </plugin>
-
             <!-- Capture the git commit hash and branch identifiers. -->
             <!-- See parent pom for configuration details.           -->
             <plugin>
@@ -220,7 +211,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <!-- NOTE: Using mockito-inline rather than mockito-core allows us to mock static methods -->
             <groupId>org.mockito</groupId>
             <artifactId>mockito-inline</artifactId>
 <!--            <version>3.6.28</version>-->
@@ -293,7 +283,6 @@
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
         </dependency>
-
     </dependencies>
 
     <modules>

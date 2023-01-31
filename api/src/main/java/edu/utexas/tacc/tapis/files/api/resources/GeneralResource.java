@@ -35,13 +35,13 @@ import static edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils.RESPONSE_STAT
  *  NOTE: For OpenAPI spec please see file FilesApi.yaml located in repo openapi-files.
  */
 @Path("/v3/files")
-public class FilesResource
+public class GeneralResource
 {
   /* **************************************************************************** */
   /*                                   Constants                                  */
   /* **************************************************************************** */
   // Local logger.
-  private static final Logger _log = LoggerFactory.getLogger(FilesResource.class);
+  private static final Logger _log = LoggerFactory.getLogger(GeneralResource.class);
 
   /* **************************************************************************** */
   /*                                    Fields                                    */
@@ -85,6 +85,8 @@ public class FilesResource
     resp.status = RESPONSE_STATUS.success.name();
     resp.message = MsgUtils.getMsg("TAPIS_HEALTHY", "Files Service");
     resp.version = TapisUtils.getTapisFullVersion();
+    resp.commit = TapisUtils.getGitCommit();
+    resp.build = TapisUtils.getBuildTime();
     return Response.ok(resp).build();
   }
 
@@ -194,6 +196,8 @@ public class FilesResource
     resp.status = RESPONSE_STATUS.success.name();
     resp.message = MsgUtils.getMsg("TAPIS_READY", "Files Service");
     resp.version = TapisUtils.getTapisFullVersion();
+    resp.commit = TapisUtils.getGitCommit();
+    resp.build = TapisUtils.getBuildTime();
     return Response.ok(resp).build();
   }
 

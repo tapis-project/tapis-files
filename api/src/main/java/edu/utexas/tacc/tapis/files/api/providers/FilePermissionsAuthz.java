@@ -1,7 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.providers;
 
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -34,8 +34,8 @@ public class FilePermissionsAuthz implements ContainerRequestFilter
   private ResourceInfo resourceInfo;
 
   @Override
-  public void filter(ContainerRequestContext requestContext) throws ForbiddenException, IOException {
-
+  public void filter(ContainerRequestContext requestContext) throws ForbiddenException, IOException
+  {
     AuthenticatedUser user = (AuthenticatedUser) requestContext.getSecurityContext().getUserPrincipal();
     String username = user.getOboUser();
     String tenantId = user.getOboTenantId();
@@ -45,7 +45,8 @@ public class FilePermissionsAuthz implements ContainerRequestFilter
     try
     {
       TapisSystem system = systemsCache.getSystem(tenantId, systemId, username);
-      if (!Objects.equals(system.getOwner(), username)) {
+      if (!Objects.equals(system.getOwner(), username))
+      {
         throw new ForbiddenException(LibUtils.getMsgAuth("FILES_PERM_NOT_AUTH", user, systemId));
       }
     }

@@ -18,9 +18,12 @@ public class SSHConnectionExpire implements RemovalListener<SSHConnectionCacheKe
   {
     SSHConnectionHolder holder = notification.getValue();
     SSHConnectionCacheKey key = notification.getKey();
-    TapisSystem sys = key.getSystem();
-    holder.makeStale();
-    String msg = LibUtils.getMsg("FILES_CLIENT_CONN_STALE", sys.getTenant(), sys.getId(), sys.getEffectiveUserId());
+    TapisSystem sys = (key == null) ? null : key.getSystem();
+    String tenant = (sys == null) ? null : sys.getTenant();
+    String sysId = (sys == null) ? null : sys.getId();
+    String effUser = (sys == null) ? null : sys.getEffectiveUserId();
+    if (holder != null) holder.makeStale();
+    String msg = LibUtils.getMsg("FILES_CLIENT_CONN_STALE", tenant, sysId, effUser);
     log.debug(msg);
   }
 }

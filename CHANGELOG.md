@@ -9,6 +9,140 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.2.8 - 2023-01-14
+
+Incremental improvements. Improved logging.
+
+### New features:
+- None
+
+### Bug fixes:
+- Fix bug in expiring of system cache entry when ssh connection fails.
+
+---------------------------------------------------------------------------
+## 1.2.7 - 2022-11-14
+
+Incremental improvements and bug fixes.
+
+### New features:
+- Invalidate SSH cache entry when there is an error. Error may get resolved.
+  For example, error could be due to invalid credentials or no route to host.
+- Support zip download for system *rootDir* as long as not all files on host would be included.
+- For certain endpoints that take a path make the trailing slash optional when dealing with top level directory: getContents, getListing, sharing.
+
+### Bug fixes:
+- When there are multiple transfer elements in a request and one finishes quickly it is possible for some to be missed.
+- Fix problems with zip downloads. Require zip when path is directory. Disallow zip if request would include all files on host.
+- Fix bugs in updating start times for top level task and parent tasks.
+- Fix bug: Listing and download not authorized when path is shared.
+
+---------------------------------------------------------------------------
+## 1.2.6 - 2022-10-20
+
+Incremental improvements and bug fix.
+
+### New features:
+- Review, refactor and strengthen transfer code. Additional integration tests.
+
+### Bug fixes:
+- Fix issue with S3 to LINUX transfer. Destination paths were being constructed incorrectly.
+- Fix issue with S3 path contained in FileInfo. Should be relative path and not absolute path.
+- Fix issues with populating path and url in FileInfo objects for all system types.
+
+---------------------------------------------------------------------------
+## 1.2.5 - 2022-09-26
+
+Incremental improvements and preview of new feature.
+
+### New features:
+- Support sharedAppCtx for getContents operation.
+
+### Bug fixes:
+- Remove hard coded default value for TAPIS_SITE_ID. Site ID must now be set in the environment at service start.
+
+---------------------------------------------------------------------------
+## 1.2.4 - 2022-09-08
+
+Incremental improvements and preview of new feature.
+
+### New features
+- Support sharedAppCtx for listFiles operation.
+- Add warning messages for when permission is denied.
+- Add error messages for service exceptions.
+
+### Bug fixes:
+- None.
+
+---------------------------------------------------------------------------
+## 1.2.3 - 2022-08-30
+
+Incremental improvements and preview of new feature.
+
+### New features:
+- Support sharing of a path with one or more users. Includes support for sharing with all users in a tenant.
+- Support sharedAppCtx for mkdir operation and transfer requests (srcSharedAppCtx, destSharedAppCtx).
+- Perform DB migration at service startup.
+
+### Bug fixes:
+- Update so MODIFY permission implies READ.
+
+---------------------------------------------------------------------------
+## 1.2.2 - 2022-07-06
+
+Incremental improvements, new preview features and bug fix.
+
+### New features:
+- Add support for impersonationId query parameter to getTransferTaskDetails.
+- Improve handling of paths in S3 support. Keys updated to never start with "/".
+
+### Bug fixes:
+- Fix issue with S3 support by updating to the latest AWS java libraries.
+
+---------------------------------------------------------------------------
+## 1.2.1 - 2022-06-21
+
+Incremental improvements and bug fix.
+
+### New features:
+- None.
+
+### Bug fixes:
+- Fix issue with getSKClient() that breaks associate site support.
+
+---------------------------------------------------------------------------
+## 1.2.0 - 2022-05-23
+
+Incremental improvements and preview of new feature.
+
+### New features:
+- Support impersonationId for service to service requests.
+
+### Bug fixes:
+- None
+
+---------------------------------------------------------------------------
+## 1.1.4 - 2022-05-07
+
+Incremental improvements and preview of new feature.
+
+### New features:
+- Replace skipTapisAuthorization with impersonationId for requests from Jobs and Apps services.
+
+### Bug fixes:
+- None
+
+---------------------------------------------------------------------------
+## 1.1.3 - 2022-04-08
+
+Preview of new feature.
+
+### New features:
+- Support skipTapisAuthorization for requests from Jobs and Apps services.
+
+### Bug fixes:
+- None
+
+---------------------------------------------------------------------------
 ## 1.1.2 - 2022-03-10
 
 Fix issues with Jackson mapper and with worker startup..

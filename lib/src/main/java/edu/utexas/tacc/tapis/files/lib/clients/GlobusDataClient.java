@@ -23,6 +23,7 @@ import edu.utexas.tacc.tapis.globusproxy.client.gen.model.ReqMakeDir;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
@@ -30,8 +31,8 @@ import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
 import edu.utexas.tacc.tapis.globusproxy.client.GlobusProxyClient;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /**
@@ -80,9 +81,17 @@ public class GlobusDataClient implements IRemoteDataClient
   @Override
   public void release() {}
 
-  public String getApiTenant() { return oboTenant; }
-  public String getApiUser() { return oboUser; }
+  @Override
+  public String getOboTenant() { return oboTenant; }
+  @Override
+  public String getOboUser() { return oboUser; }
+  @Override
   public String getSystemId() { return system.getId(); }
+  @Override
+  public SystemTypeEnum getSystemType() { return system.getSystemType(); }
+  @Override
+  public TapisSystem getSystem() { return system; }
+
   public GlobusProxyClient getClient() { return client; }
 
   /**
@@ -205,11 +214,9 @@ public class GlobusDataClient implements IRemoteDataClient
         //       RFC 3339 allows either a space or a 'T' to separate date and time.
         //       ISO 8601 requires a 'T'
         // If we have a last_modified timestamp then convert it to an instant
-        if (!StringUtils.isBlank(globusFileInfo.getLastModified()))
+        if (globusFileInfo.getLastModified() != null)
         {
-          Instant lastModified =
-             OffsetDateTime.parse(globusFileInfo.getLastModified(), DateTimeFormatter.ofPattern(pat)).toInstant();
-          fileInfo.setLastModified(lastModified);
+          fileInfo.setLastModified(globusFileInfo.getLastModified().toInstant());
         }
         fileInfo.setNativePermissions(globusFileInfo.getPermissions());
         if (globusFileInfo.getSize() != null)
@@ -253,17 +260,17 @@ public class GlobusDataClient implements IRemoteDataClient
 // TODO    String clientId = getClientId(opName);
 
     String status = null;
-    try
-    {
-      // TODO for now use hard coded values for cliendId, endpointId, path
-      status = client.makeDir(clientId, endpointId, accessToken, refreshToken, tmpPath);
-    }
-    catch (TapisClientException e)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_ERR", oboTenant, oboUser, opName, system.getId(),
-                                   endpointId, path, e.getMessage());
-      throw new IOException(msg, e);
-    }
+//    try
+//    {
+//      // TODO for now use hard coded values for cliendId, endpointId, path
+//      status = client.makeDir(clientId, endpointId, accessToken, refreshToken, tmpPath);
+//    }
+//    catch (TapisClientException e)
+//    {
+//      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_ERR", oboTenant, oboUser, opName, system.getId(),
+//                                   endpointId, path, e.getMessage());
+//      throw new IOException(msg, e);
+//    }
       // TODO/TBD check status string returned by client?
   }
 
@@ -292,17 +299,17 @@ public class GlobusDataClient implements IRemoteDataClient
 // TODO    String clientId = getClientId(opName);
 
     String status = null;
-    try
-    {
-      // TODO for now use hard coded values for cliendId, endpointId
-      status = client.renamePath(clientId, endpointId, accessToken, refreshToken, oldAbsolutePath, newAbsolutePath);
-    }
-    catch (TapisClientException e)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_ERR2", oboTenant, oboUser, opName, system.getId(),
-                                   endpointId, oldPath, newPath, e.getMessage());
-      throw new IOException(msg, e);
-    }
+//    try
+//    {
+//      // TODO for now use hard coded values for cliendId, endpointId
+//      status = client.renamePath(clientId, endpointId, accessToken, refreshToken, oldAbsolutePath, newAbsolutePath);
+//    }
+//    catch (TapisClientException e)
+//    {
+//      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_ERR2", oboTenant, oboUser, opName, system.getId(),
+//                                   endpointId, oldPath, newPath, e.getMessage());
+//      throw new IOException(msg, e);
+//    }
       // TODO How to check if path exists?
 //      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
 //      {
@@ -459,11 +466,9 @@ public class GlobusDataClient implements IRemoteDataClient
     fileInfo.setGroup(globusFileInfo.getGroup());
     fileInfo.setOwner(globusFileInfo.getUser());
     // If we have a last_modified timestamp then convert it to an instant
-    if (!StringUtils.isBlank(globusFileInfo.getLastModified()))
+    if (globusFileInfo.getLastModified() != null)
     {
-      Instant lastModified =
-              OffsetDateTime.parse(globusFileInfo.getLastModified(), DateTimeFormatter.ofPattern(pat)).toInstant();
-      fileInfo.setLastModified(lastModified);
+      fileInfo.setLastModified(globusFileInfo.getLastModified().toInstant());
     }
     fileInfo.setNativePermissions(globusFileInfo.getPermissions());
     if (globusFileInfo.getSize() != null)

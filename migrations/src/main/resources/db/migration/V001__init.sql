@@ -1,3 +1,10 @@
+-- Reset DB for Tapis Files Service by dropping and re-creating the schema
+-- This prepares the DB for flyway to create the initial tables when the service is first started.
+-- ------------------------------------------------------
+-- DROP SCHEMA IF EXISTS public CASCADE;
+-- CREATE SCHEMA IF NOT EXISTS public;
+-- GRANT ALL ON SCHEMA public TO public;
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS transfer_tasks

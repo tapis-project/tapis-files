@@ -3,6 +3,16 @@ package edu.utexas.tacc.tapis.files.lib.caches;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import org.jvnet.hk2.annotations.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import java.time.Duration;
+import java.util.concurrent.ExecutionException;
+
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
@@ -11,13 +21,6 @@ import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
-import org.jvnet.hk2.annotations.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import java.time.Duration;
-import java.util.concurrent.ExecutionException;
 
 @Service
 public class FilePermsCache
@@ -36,6 +39,10 @@ public class FilePermsCache
   {
     cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).build(new PermsLoader());
   }
+
+  private static final String svcUserName = TapisConstants.SERVICE_NAME_FILES;
+  private String siteId = null;
+  private String svcTenantName = null;
 
   /**
    * Return Permission or null if no permission granted
@@ -101,11 +108,13 @@ public class FilePermsCache
     @Override
     public Boolean load(FilePermCacheKey key) throws Exception
     {
-      SKClient skClient = getSKClient(key.getTenantId(), key.getUsername());
+      log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOADING", key.getTenantId(), key.getSystemId(), key.getUsername(),
+                                key.getPerm().name(), key.getPath()));
       String permSpec = String.format(PERMSPEC, key.getTenantId(), key.getPerm(), key.getSystemId(), key.getPath());
-      log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOAD", key.getTenantId(), key.getSystemId(), key.getUsername(),
-                             key.getPath()));
-      return skClient.isPermitted(key.getTenantId(), key.getUsername(), permSpec);
+      boolean isPermitted = getSKClient().isPermitted(key.getTenantId(), key.getUsername(), permSpec);
+      log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOADED", key.getTenantId(), key.getSystemId(), key.getUsername(),
+                                key.getPerm().name(), key.getPath()));
+      return isPermitted;
     }
   }
 
@@ -179,21 +188,25 @@ public class FilePermsCache
 
   /**
    * Get Security Kernel client
-   *
-   * @param tenantName -
-   * @param username   -
+   * Need to use serviceClients.getClient() every time because it checks for expired service jwt token and
+   *   refreshes it as needed.
+   * Files service always calls SK as itself.
    * @return SK client
    * @throws TapisClientException - for Tapis related exceptions
    */
-  private SKClient getSKClient(String tenantName, String username) throws TapisClientException
+  private SKClient getSKClient() throws TapisClientException
   {
-    SKClient skClient;
-    try {
-      skClient = serviceClients.getClient(username, tenantName, SKClient.class);
-    } catch (Exception e) {
-      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_FILES, tenantName, username);
+    // Init if necessary
+    if (siteId == null)
+    {
+      siteId = RuntimeSettings.get().getSiteId();
+      svcTenantName = TenantManager.getInstance().getSiteAdminTenantId(siteId);
+    }
+    try { return serviceClients.getClient(svcUserName, svcTenantName, SKClient.class); }
+    catch (Exception e)
+    {
+      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, svcTenantName, svcUserName);
       throw new TapisClientException(msg, e);
     }
-    return skClient;
   }
 }

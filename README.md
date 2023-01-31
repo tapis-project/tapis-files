@@ -1,5 +1,27 @@
 # tapis-files
 
+Tapis Files Service
+
+There are three primary branches: *local*, *dev*, and *main*.
+
+All changes should first be made in the branch *local*.
+
+When it is time to deploy to the **DEV** kubernetes environment
+run the jenkins job TapisJava->3_ManualBuildDeploy->files.
+
+This job will:
+* Merge changes from *local* to *dev*
+* Build, tag and push docker images
+* Deploy to **DEV** environment
+* Push the merged *local* changes to the *dev* branch.
+
+To move docker images from **DEV** to **STAGING** run the following jenkins job:
+* TapisJava->2_Release->promote-dev-to-staging
+
+To move docker images from **STAGING** to **PROD** run the following jenkins job:
+* TapisJava->2_Release->promote-staging-to-prod-ver
+
+
 ## Setup steps
 
 Start up the supporting containers using the docker-compose file in the `deploy` directory.
@@ -15,11 +37,12 @@ Exec into the irods container
 Run admin commands to add the user
 
 ``` 
-iinit (host=localhost, user=rods, passwd=rods)
+iinit
 iadmin mkuser dev rodsuser
 iadmin moduser dev password dev
 ```
 
+Inputs for iinit: host=localhost, user=rods, passwd=rods
 
 ### Database setup
 We need to create a test database and user for integration tests also. A dev database
@@ -51,6 +74,26 @@ mvn clean install
 ## Run tests
 
 The integration tests are configured to use the `test` database created above.
+
+Unfortunately TestTransfers takes a long time to run. And some tests in TestTransfers fail when all tests are
+  run from command line, even though they pass individually when run from IDE.
+When a git commit message says "Integ tests pass" or "Most integ tests pass" it usually means all tests except
+  TestTransfers were run from the IDE and a few tests from TestTransfers were run from the IDE.
+
+Currently, tests run using mvn from the command line appear to have concurrency issues. They sometimes fail.
+Tests to run manually from IDE:
+ - TestOpsRoutes (1.5 minutes)
+ - TestFileOpsService (1 minute)
+ - TestFileShareService (1 minute)
+ - TestContentsRoutes (3 minutes)
+ - TestLibUtilsRoutes (5 seconds)
+ - TestSSHConnectionCache (10 seconds)
+ - TestIrodsClient (10 seconds)
+ - TestS3Client (5 seconds)
+ - TestTransfersRoutes (5 seconds)
+ - TestFileTransfersDAO (5 seconds)
+ - TestTransfers (approx 17 minutes, intermittent fails - test10Files, testDoesTransferAtRoot, testMultipleChildren, testNestedDirectories, testSameSystemForSourceAndDest)
+ -   intermittent failures succeed when run individually from IDE
 
 ```
 mvn clean install -DskipITs=false -DAPP_ENV=test

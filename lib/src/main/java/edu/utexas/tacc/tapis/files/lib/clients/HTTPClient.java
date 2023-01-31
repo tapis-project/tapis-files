@@ -1,39 +1,49 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import org.jetbrains.annotations.NotNull;
-import javax.ws.rs.NotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import javax.ws.rs.NotFoundException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.jetbrains.annotations.NotNull;
 import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 
-public class HTTPClient implements IRemoteDataClient {
-
-    private static final Logger log = LoggerFactory.getLogger(HTTPClient.class);
+public class HTTPClient implements IRemoteDataClient
+{
+  private static final Logger log = LoggerFactory.getLogger(HTTPClient.class);
 
   @Override
   public void reserve() {}
   @Override
   public void release() {}
 
-    public String getApiTenant() { return oboTenant; }
-    public String getApiUser() { return oboUser; }
-    // Since no system use srcDstURIs instead
-    public String getSystemId() { return srcDstURIs; }
-    private final String oboTenant;
-    private final String oboUser;
-    private final String srcDstURIs;
+  @Override
+  public String getOboTenant() { return oboTenant; }
+  @Override
+  public String getOboUser() { return oboUser; }
+  @Override
+  public SystemTypeEnum getSystemType() { return null; }
+  @Override
+  public TapisSystem getSystem() { return null; }
 
-    public HTTPClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull String srcUri, @NotNull String dstUri) {
+  // Since no system use srcDstURIs instead
+  @Override
+  public String getSystemId() { return srcDstURIs; }
+
+  private final String oboTenant;
+  private final String oboUser;
+  private final String srcDstURIs;
+
+  public HTTPClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull String srcUri, @NotNull String dstUri) {
       oboTenant = oboTenant1;
       oboUser = oboUser1;
       srcDstURIs = String.format("SRC:%s,DST:%s", srcUri, dstUri);

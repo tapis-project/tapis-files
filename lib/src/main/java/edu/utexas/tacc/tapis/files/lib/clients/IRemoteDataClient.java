@@ -1,20 +1,22 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-
-import org.jetbrains.annotations.NotNull;
 import javax.ws.rs.NotFoundException;
+import org.jetbrains.annotations.NotNull;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 public interface IRemoteDataClient
 {
   // A remote data client always has at a minimum an associated oboUser, oboTenant and systemId
-  String getApiTenant();
-  String getApiUser();
+  String getOboTenant();
+  String getOboUser();
   String getSystemId();
+  SystemTypeEnum getSystemType();
+  TapisSystem getSystem();
 
   /**
    * Record a reservation for a client. Only used for SSH clients.

@@ -1,25 +1,25 @@
 package edu.utexas.tacc.tapis.files.lib.utils;
 
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
-import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-
-import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import java.text.MessageFormat;
+import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.WebApplicationException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.ForbiddenException;
-import javax.ws.rs.NotAuthorizedException;
-import javax.ws.rs.NotFoundException;
-import java.nio.file.Path;
-import java.text.MessageFormat;
-import java.util.Locale;
-import java.util.ResourceBundle;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 /*
    Utility class containing general use static methods.
@@ -148,23 +148,49 @@ public class LibUtils
   }
 
   /**
-   * Standard perms check and throw given obo tenant+user, system, path, perm required.
+   * Standard perms check and throw, given obo tenant+user, system, path, perm required.
+   * Path can be the non-normalized path provided as part of the user request.
+   * It will be normalized here. OK if already a normalized relative path.
    * @param svc - Perms service
    * @param oboTenant - obo tenant
    * @param oboUser - obo user
    * @param systemId - system
-   * @param pathToCheck - path to check
+   * @param pathToCheck - path provided as part of request
    * @param perm - perm to check for
-   * @throws NotAuthorizedException - perm check failed
    * @throws ServiceException - other exceptions
    */
   public static void checkPermitted(FilePermsService svc, String oboTenant, String oboUser, String systemId,
-                                    Path pathToCheck, Permission perm)
+                                    String pathToCheck, Permission perm)
           throws ForbiddenException, ServiceException
   {
-    if (!svc.isPermitted(oboTenant, oboUser, systemId, pathToCheck.toString(), perm))
+    if (!svc.isPermitted(oboTenant, oboUser, systemId, PathUtils.getSKRelativePath(pathToCheck).toString(), perm))
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, perm);
+      log.warn(msg);
+      throw new ForbiddenException(msg);
+    }
+  }
+
+  /**
+   * Perms check and throw, given obo tenant+user, system, path, perm required.
+   * Path can be the non-normalized path provided as part of the user request.
+   * It will be normalized here. OK if already a normalized relative path.
+   * @param svc - Perms service
+   * @param oboTenant - obo tenant
+   * @param oboUser - obo user
+   * @param systemId - system
+   * @param pathToCheck - path provided as part of request
+   * @throws ServiceException - other exceptions
+   */
+  public static void checkPermittedReadOrModify(FilePermsService svc, String oboTenant, String oboUser, String systemId,
+                                                String pathToCheck)
+          throws ForbiddenException, ServiceException
+  {
+    if (!svc.isPermitted(oboTenant, oboUser, systemId, PathUtils.getSKRelativePath(pathToCheck).toString(), Permission.READ)
+        && !svc.isPermitted(oboTenant, oboUser, systemId, PathUtils.getSKRelativePath(pathToCheck).toString(), Permission.MODIFY))
+    {
+      String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathToCheck, Permission.READ);
+      log.warn(msg);
       throw new ForbiddenException(msg);
     }
   }
@@ -174,36 +200,117 @@ public class LibUtils
    *   which results in a response status of BAD_REQUEST (400).
    * Mapping happens in edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper
    */
-  public static void checkEnabled(AuthenticatedUser authenticatedUser, TapisSystem sys) throws BadRequestException
+  public static void checkEnabled(ResourceRequestUser rUser, TapisSystem sys) throws BadRequestException
   {
     if (sys.getEnabled() == null || !sys.getEnabled())
-      throw new BadRequestException(getMsgAuth("FILES_SYS_NOTENABLED", authenticatedUser, sys.getId()));
+    {
+      String msg = getMsgAuthR("FILES_SYS_NOTENABLED", rUser, sys.getId());
+      log.warn(msg);
+      throw new BadRequestException(msg);
+    }
   }
+
+  /*
+   * Convenience wrapper for callers that do not need to support sharing
+   */
+  public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
+                                               @NotNull String systemId)
+          throws NotFoundException { return getSystemIfEnabled(rUser, systemsCache, systemId, null, null); }
 
   /**
    * Check to see if a Tapis System exists and is enabled
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - System to check
+   * @param systemsCache - Cache of systems
    * @throws NotFoundException System not found or not enabled
    */
   public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
-                                               @NotNull String systemId) throws NotFoundException
+                                               @NotNull String systemId, String impersonationId, String sharedCtxGrantor)
+          throws NotFoundException
   {
     // Check for the system
     TapisSystem sys;
     try
     {
-      sys = systemsCache.getSystem(rUser.getOboTenantId(), systemId, rUser.getOboUserId());
-      if (sys == null) throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
+      sys = systemsCache.getSystem(rUser.getOboTenantId(), systemId, rUser.getOboUserId(), impersonationId, sharedCtxGrantor);
+      if (sys == null)
+      {
+        String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId);
+        log.warn(msg);
+        throw new NotFoundException(msg);
+      }
       if (sys.getEnabled() == null || !sys.getEnabled())
       {
-        throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTENABLED", rUser, systemId));
+        String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTENABLED", rUser, systemId);
+        log.warn(msg);
+        throw new NotFoundException(msg);
       }
     }
     catch (ServiceException ex)
     {
-      throw new NotFoundException(LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId));
+      String msg = LibUtils.getMsgAuthR("FILES_SYSOPS_ERR", rUser, "getSystemIfEnabled", systemId, ex.getMessage());
+      log.warn(msg);
+      throw new WebApplicationException(msg);
     }
     return sys;
   }
+
+  /**
+   * Construct message containing list of errors for
+   */
+  public static String getListOfTxfrErrors(ResourceRequestUser rUser, String txfrTaskTag, List<String> msgList)
+  {
+    var sb = new StringBuilder(LibUtils.getMsgAuthR("FILES_TXFR_ERRORLIST", rUser, txfrTaskTag));
+    sb.append(System.lineSeparator());
+    if (msgList == null || msgList.isEmpty()) return sb.toString();
+    for (String msg : msgList) { sb.append("  ").append(msg).append(System.lineSeparator()); }
+    return sb.toString();
+  }
+
+//  /* TODO Do we need this? Now that auth is getting more complex with share by priv, shareGrantor. Probably best
+//           to always get the system if enabled and do auth check separately.
+//   * Fetch a system, include authorization checks.
+//   * If fileOpsService is null then we do not check for sharing of the path.
+//   * TODO previously sharedCtx was a bool and if true we skipped auth. Now? Do we need to check that
+//   *       owner or share grantor has access to system? Or is that already done elsewhere?
+//   *       Also, if path is shared previously this meant system was implicitly shared. Is that still true? do we need
+//   *       deal with that?
+//   */
+//  public static TapisSystem getSysWithAuth(ResourceRequestUser rUser, FileOpsService fileOpsService,
+//                                           ISystemsCache systemsCacheNoAuth, ISystemsCache systemsCacheWithAuth,
+//                                           String systemId, String path, String sharedCtxGrantor, String impersonationId)
+//  {
+//    // Get system without auth. We need it for authorization checking.
+//    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
+//    // Is the requester the owner of the system?
+//    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
+//
+//    // Check authorization for the system.
+//    // If owner or in sharedAppCtx allow it, else check for explicit sharing of path
+//    boolean permitted;
+//    if (isOwner || sharedCtxGrantor)
+//    {
+//      permitted = true;
+//    }
+//    else
+//    {
+//      // If no fileOpsSvc, we do not check for sharing of the path.
+//      if (fileOpsService == null)
+//      {
+//        permitted = false;
+//      }
+//      else
+//      {
+//        // Determine if path is shared. If so it means system is implicitly allowed for the oboUser
+//        permitted = fileOpsService.isPathShared(rUser, sys, path, impersonationId);
+//      }
+//    }
+//    // If not owner, not in shared app ctx and path is not shared get the system with auth check.
+//    // This confirms oboUser has read access to the system.
+//    if (!permitted)
+//    {
+//      sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
+//    }
+//    return sys;
+//  }
 }

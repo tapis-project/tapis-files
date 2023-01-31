@@ -1,80 +1,74 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
-import edu.utexas.tacc.tapis.files.lib.utils.PathUtils;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-
-import javax.validation.constraints.NotNull;
-import java.nio.file.Path;
 import java.util.StringJoiner;
 import java.util.UUID;
+import javax.validation.constraints.NotNull;
+
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 public class TransferTaskChild extends TransferTaskParent
 {
-    private int parentTaskId;
-    private int retries;
-    private boolean isDir;
+  private int parentTaskId;
+  private int retries;
+  private boolean isDir;
 
-    public TransferTaskChild() {}
+  /* *********************************************************************** */
+  /*            Constructors                                                 */
+  /* *********************************************************************** */
 
-    public TransferTaskChild(String tenantId, String username,
-                             TransferURI sourceURI, TransferURI destinationURI,
-                             int parentTaskId) {
-        this.tenantId = tenantId;
-        this.username = username;
-        this.sourceURI = sourceURI;
-        this.destinationURI = destinationURI;
-        this.uuid = UUID.randomUUID();
-        this.status = TransferTaskStatus.ACCEPTED;
-        this.parentTaskId = parentTaskId;
-    }
+  public TransferTaskChild() {}
 
-    /**
-     *  @param transferTaskParent The TransferTask from which to derive this child
-     * @param fileInfo The path to the single file in the source system
-     */
-    public TransferTaskChild(@NotNull TransferTaskParent transferTaskParent, @NotNull FileInfo fileInfo) throws TapisException {
+  public TransferTaskChild(String tenantId1, String username1, TransferURI srcUri1, TransferURI dstUri1, int parentId1, String tag1)
+  {
+    tenantId = tenantId1;
+    username = username1;
+    sourceURI = srcUri1;
+    destinationURI = dstUri1;
+    uuid = UUID.randomUUID();
+    status = TransferTaskStatus.ACCEPTED;
+    parentTaskId = parentId1;
+    tag = tag1;
+  }
 
-        TransferURI sourceURL = transferTaskParent.getSourceURI();
-        TransferURI destURL =transferTaskParent.getDestinationURI();
+  /**
+   * Constructor
+   * @param transferTaskParent The TransferTask from which to derive this child
+   * @param fileInfo The path to the single file in the source system
+   */
+  public TransferTaskChild(@NotNull TransferTaskParent transferTaskParent, @NotNull FileInfo fileInfo,
+                           @NotNull TapisSystem sourceSystem)
+          throws TapisException
+  {
+    TransferURI sourceUri = transferTaskParent.getSourceURI();
+    TransferURI destUri = transferTaskParent.getDestinationURI();
 
-        Path destPath = PathUtils.relativizePaths(
-            sourceURL.getPath(),
-            fileInfo.getPath(),
-            destURL.getPath()
-        );
+    // Build the destination path
+    String destPathStr;
+    // To support proper creation of directories at target we need to relativize the paths.
+    // TODO: E.g. if file1, file2 are on source at absolute path /a/b, and we are transferring to /c/b
+    destPathStr = PathUtils.relativizePaths(sourceUri.getPath(), fileInfo.getPath(), destUri.getPath()).toString();
 
-        TransferURI newSourceURL = new TransferURI(sourceURL.getProtocol(), sourceURL.getSystemId(), fileInfo.getPath());
-        TransferURI newDestURL = new TransferURI(destURL.getProtocol(), destURL.getSystemId(), destPath.toString());
+    // Create source and destination URIs
+    TransferURI newSourceUri = new TransferURI(sourceUri, fileInfo.getPath());
+    TransferURI newDestUri = new TransferURI(destUri, destPathStr);
 
-        this.setParentTaskId(transferTaskParent.getId());
-        this.setTaskId(transferTaskParent.getTaskId());
-        this.setSourceURI(newSourceURL.toString());
-        this.setDestinationURI(newDestURL.toString());
-        this.setStatus(TransferTaskStatus.ACCEPTED.name());
-        this.setTenantId(transferTaskParent.getTenantId());
-        this.setUsername(transferTaskParent.getUsername());
-        this.setBytesTransferred(0L);
-        this.setTotalBytes(fileInfo.getSize());
-        this.setDir(fileInfo.isDir());
-    }
+    // Set attributes for child we are constructing.
+    setTag(transferTaskParent.getTag());
+    setParentTaskId(transferTaskParent.getId());
+    setTaskId(transferTaskParent.getTaskId());
+    setSourceURI(newSourceUri.toString());
+    setDestinationURI(newDestUri.toString());
+    setStatus(TransferTaskStatus.ACCEPTED.name());
+    setTenantId(transferTaskParent.getTenantId());
+    setUsername(transferTaskParent.getUsername());
+    setBytesTransferred(0L);
+    setTotalBytes(fileInfo.getSize());
+    setDir(fileInfo.isDir());
+  }
 
-    public int getParentTaskId() {
-        return parentTaskId;
-    }
-
-    public void setParentTaskId(int parentTaskId) { this.parentTaskId = parentTaskId; }
-    public int getRetries() { return retries; }
-    public void setRetries(int retries) { this.retries = retries; }
-    public boolean isDir() {
-        return isDir;
-    }
-    public void setDir(boolean dir) {
-        this.isDir = dir;
-    }
-
-
-
-    @Override
+  @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -92,6 +86,7 @@ public class TransferTaskChild extends TransferTaskParent
     public String toString() {
         return new StringJoiner(", ", TransferTaskChild.class.getSimpleName() + "[", "]")
             .add("id=" + id)
+            .add("tag=" + tag)
             .add("parentTaskId=" + parentTaskId)
             .add("taskId=" + getTaskId())
             .add("retries=" + retries)
@@ -108,4 +103,11 @@ public class TransferTaskChild extends TransferTaskParent
             .add("endTime=" + endTime)
             .toString();
     }
+
+  public int getParentTaskId() { return parentTaskId; }
+  public void setParentTaskId(int i) { parentTaskId = i; }
+  public int getRetries() { return retries; }
+  public void setRetries(int i) { retries = i; }
+  public boolean isDir() { return isDir; }
+  public void setDir(boolean b) { isDir = b; }
 }

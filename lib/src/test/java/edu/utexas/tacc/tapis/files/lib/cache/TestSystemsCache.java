@@ -3,11 +3,8 @@ package edu.utexas.tacc.tapis.files.lib.cache;
 
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
-import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
-import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -19,7 +16,8 @@ import static org.mockito.Mockito.any;
 
 
 @Test(enabled = false)
-public class TestSystemsCache {
+public class TestSystemsCache
+{
 
     private final SystemsClient systemsClient = Mockito.mock(SystemsClient.class);
     private final ServiceClients serviceClients = Mockito.mock(ServiceClients.class);
@@ -32,7 +30,7 @@ public class TestSystemsCache {
         TapisSystem testSystem = new TapisSystem();
         testSystem.setId("12345");
         testSystem.setHost("test.edu");
-        when(systemsClient.getSystemWithCredentials(any(), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem);
 
     }
 

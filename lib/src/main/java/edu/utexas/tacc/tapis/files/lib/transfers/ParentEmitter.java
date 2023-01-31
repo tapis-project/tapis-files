@@ -11,6 +11,9 @@ import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceJWT;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.tenants.client.TenantsClient;
 import edu.utexas.tacc.tapis.tokens.client.TokensClient;
@@ -23,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class ParentEmitter {
     private Logger log = LoggerFactory.getLogger(ParentEmitter.class);
@@ -49,12 +51,16 @@ public class ParentEmitter {
 
         TransfersService transfersService = locator.getService(TransfersService.class);
 
-        List<TransferTaskRequestElement> elements = new ArrayList<>();
+      ResourceRequestUser rTestUser2 =
+          new ResourceRequestUser(new AuthenticatedUser("testuser2", "dev", TapisThreadContext.AccountType.user.name(),
+                                                        null, "testuser2", "dev", null, null, null));
+
+      List<TransferTaskRequestElement> elements = new ArrayList<>();
         TransferTaskRequestElement element = new TransferTaskRequestElement();
         element.setSourceURI("tapis://dev.develop.tapis.io/tapis-demo/IMG_20200516_144049_1.jpg");
         element.setDestinationURI("tapis://dev.edvelop.tapis.io/tapis-demo/destFolder");
         elements.add(element);
-        transfersService.createTransfer("testuser2", "dev", "testTag", elements);
+        transfersService.createTransfer(rTestUser2, "testTag", elements);
     }
 
     public static void main(String[] args) throws Exception {

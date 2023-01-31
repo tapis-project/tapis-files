@@ -3,12 +3,14 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -34,8 +36,6 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-
 import javax.inject.Singleton;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
@@ -118,6 +118,8 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
                     bind(serviceJWT).to(ServiceJWT.class);
                     bind(tenantManager).to(TenantManager.class);
                     bind(systemsCache).to(SystemsCache.class);
+                    bindAsContract(FileOpsService.class).in(Singleton.class);
+                    bindAsContract(FileShareService.class).in(Singleton.class);
                     bindAsContract(FilePermsCache.class).in(Singleton.class);
                     bindAsContract(FilePermsService.class).in(Singleton.class);
                     bindAsContract(TransfersService.class).in(Singleton.class);
@@ -127,6 +129,8 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
                 }
             });
         app.register(TransfersApiResource.class);
+      FilePermsService.setSiteAdminTenantId("admin");
+      FileShareService.setSiteAdminTenantId("admin");
         return app;
     }
 
@@ -144,9 +148,9 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
         when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
         when(systemsClient.getUserCredential(any(), any())).thenReturn(creds);
         when(skClient.isPermitted(any(), any(String.class), any(String.class))).thenReturn(true);
-        when(systemsClient.getSystemWithCredentials(any(String.class), any())).thenReturn(testSystem);
+        when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(testSystem);
         when(tenantManager.getSite(any())).thenReturn(testSite);
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     }
 
     @Test
@@ -220,7 +224,7 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
 
         TransferTaskResponse data = response.readEntity(TransferTaskResponse.class);
         Assert.assertEquals(response.getStatus(), 404);
-        Assert.assertEquals(data.getStatus(), "error");
+        Assert.assertEquals(data.getStatus(), Response.Status.NOT_FOUND.getReasonPhrase());
     }
 
     @Test
