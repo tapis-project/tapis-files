@@ -7,7 +7,7 @@ volumes:
 services:
 
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: rabbitmq:3.11.7-management
     environment:
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev

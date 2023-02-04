@@ -1,12 +1,15 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
+import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
+import edu.utexas.tacc.tapis.files.api.models.NativeLinuxFaclRequest;
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxOpRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
@@ -51,12 +54,19 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -66,12 +76,13 @@ import static org.mockito.Mockito.when;
 @Test(groups = {"integration"})
 public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 {
+
   private final Logger log = LoggerFactory.getLogger(TestLibUtilsRoutes.class);
 
   private static class FileStatInfoResponse extends TapisResponse<FileStatInfo> { }
   private static class NativeLinuxOpResultResponse extends TapisResponse<NativeLinuxOpResult> { }
   private static class FileStringResponse extends TapisResponse<String> { }
-
+  private static class GetFaclResponse extends TapisResponse<List<AclEntry>> { }
   private final List<TapisSystem> testSystems = new ArrayList<>();
 
   private static final String TENANT = "dev";
@@ -92,6 +103,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   private static final int TEST_FILE_SIZE = 10 * 1024;
   private static final String OPS_ROUTE = "/v3/files/ops";
   private static final String UTILS_ROUTE = "/v3/files/utils/linux";
+  private static final String FACL_ROUTE = UTILS_ROUTE + "/facl";
 
   // mocking out the services
   private ServiceClients serviceClients;
@@ -413,6 +425,326 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertTrue(result.getStdErr().contains("invalid group"));
   }
 
+  @Test(dataProvider = "testSystemsProvider")
+  public void testFileAclAddAndDelete(TapisSystem testSystem) throws Exception {
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+
+    // list acls to add for test
+    List<AclEntry> addAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "user", "facluser2", "r-x"),
+            new AclEntry(false, "user", "facluser3", "r-x"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(false, "group", "faclgrp2", "r--"),
+            new AclEntry(false, "group", "faclgrp3", "-w-"));
+
+    List<AclEntry> removeAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser2", null),
+            new AclEntry(false, "user", "facluser3", null),
+            new AclEntry(false, "group", "faclgrp2", null),
+            new AclEntry(false, "group", "faclgrp3", null));
+
+    List<AclEntry> afterRemoveAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "group", "faclgrp1", "--x"));
+
+    // create a couple of test files
+    addTestFilesToSystem(testSystem, TEST_FILE1, 1);
+
+    // add acls and check result
+    setfaclAndCheck(testSystem, TEST_FILE1, FileUtilsService.NativeLinuxFaclOperation.ADD,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, addAcls, addAcls);
+
+    // remove acls and check result
+    setfaclAndCheck(testSystem, TEST_FILE1, FileUtilsService.NativeLinuxFaclOperation.REMOVE,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, removeAcls, afterRemoveAcls);
+
+  }
+
+  @Test(dataProvider = "testSystemsProvider")
+  public void testFileAclAddAndDeleteWeirdFiles(TapisSystem testSystem) throws Exception {
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+
+    // list acls to add for test
+    List<AclEntry> addAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "user", "facluser2", "r-x"),
+            new AclEntry(false, "user", "facluser3", "r-x"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(false, "group", "faclgrp2", "r--"),
+            new AclEntry(false, "group", "faclgrp3", "-w-"));
+
+    List<AclEntry> removeAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser2", null),
+            new AclEntry(false, "user", "facluser3", null),
+            new AclEntry(false, "group", "faclgrp2", null),
+            new AclEntry(false, "group", "faclgrp3", null));
+
+    List<AclEntry> afterRemoveAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "group", "faclgrp1", "--x"));
+
+    // create a couple of test files
+    String fileWithSingleQuote = "test'file";
+    String fileWithSemiColon = "test;file";
+    addTestFilesToSystem(testSystem, fileWithSingleQuote, 1);
+    addTestFilesToSystem(testSystem, fileWithSemiColon, 1);
+
+    // add acls and check result
+    setfaclAndCheck(testSystem, fileWithSingleQuote, FileUtilsService.NativeLinuxFaclOperation.ADD,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, addAcls, addAcls);
+    setfaclAndCheck(testSystem, fileWithSemiColon, FileUtilsService.NativeLinuxFaclOperation.ADD,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, addAcls, addAcls);
+
+    // remove acls and check result
+    setfaclAndCheck(testSystem, fileWithSingleQuote, FileUtilsService.NativeLinuxFaclOperation.REMOVE,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, removeAcls, afterRemoveAcls);
+    setfaclAndCheck(testSystem, fileWithSemiColon, FileUtilsService.NativeLinuxFaclOperation.REMOVE,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, removeAcls, afterRemoveAcls);
+
+  }
+
+  @Test(dataProvider = "testSystemsProvider")
+  public void testDirAclAddAndDelete(TapisSystem testSystem) throws Exception {
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+
+    // list acls to add for test
+    List<AclEntry> addAcls = Arrays.asList(
+            new AclEntry(true, "user", "facluser1", "r-x"),
+            new AclEntry(true, "user", "facluser2", "rwx"),
+            new AclEntry(true, "user", "facluser3", "rw-"),
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "user", "facluser2", "r-x"),
+            new AclEntry(false, "user", "facluser3", "r-x"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(false, "group", "faclgrp2", "r--"),
+            new AclEntry(false, "group", "faclgrp3", "-w-"),
+            new AclEntry(true, "group", "faclgrp1", "--x"),
+            new AclEntry(true, "group", "faclgrp2", "r--"),
+            new AclEntry(true, "group", "faclgrp3", "-w-"));
+
+    List<AclEntry> removeAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser2", null),
+            new AclEntry(false, "user", "facluser3", null),
+            new AclEntry(true, "user", "facluser2", null),
+            new AclEntry(true, "user", "facluser3", null),
+            new AclEntry(false, "group", "faclgrp2", null),
+            new AclEntry(false, "group", "faclgrp3", null),
+            new AclEntry(true, "group", "faclgrp2", null),
+            new AclEntry(true, "group", "faclgrp3", null));
+
+    List<AclEntry> afterRemoveAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(true, "user", "facluser1", "r-x"),
+            new AclEntry(true, "group", "faclgrp1", "--x"));
+
+    // create a test directory and a couple of test files
+    String testDirectory = "testFaclDir";
+    String testFile1 = testDirectory + "/" + TEST_FILE1;
+    String testFile2 = testDirectory + "/" + TEST_FILE2;
+    makeDirectoryOnSystem(testSystem, testDirectory);
+    addTestFilesToSystem(testSystem, testFile1, 1);
+    addTestFilesToSystem(testSystem, testFile2, 2);
+
+    setfaclAndCheck(testSystem, testDirectory, FileUtilsService.NativeLinuxFaclOperation.ADD,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, addAcls, addAcls);
+    // make sure we didn't inadvertently supply the recursive flag
+    checkFacl(testSystem, testFile1, Collections.emptyList());
+    checkFacl(testSystem, testFile2, Collections.emptyList());
+
+    setfaclAndCheck(testSystem, testDirectory, FileUtilsService.NativeLinuxFaclOperation.REMOVE,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, removeAcls, afterRemoveAcls);
+    // make sure we didn't inadvertently supply the recursive flag
+    checkFacl(testSystem, testFile1, Collections.emptyList());
+    checkFacl(testSystem, testFile2, Collections.emptyList());
+  }
+
+  @Test(dataProvider = "testSystemsProvider")
+  public void testFileAclDeleteAll(TapisSystem testSystem) throws Exception {
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+
+    // list acls to add for test
+    List<AclEntry> addAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "user", "facluser2", "r-x"),
+            new AclEntry(false, "user", "facluser3", "r-x"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(false, "group", "faclgrp2", "r--"),
+            new AclEntry(false, "group", "faclgrp3", "-w-"));
+
+    // create a couple of test files
+    addTestFilesToSystem(testSystem, TEST_FILE1, 1);
+
+    // add acls and check result
+    setfaclAndCheck(testSystem, TEST_FILE1, FileUtilsService.NativeLinuxFaclOperation.ADD,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, addAcls, addAcls);
+
+    // remove acls and check result
+    setfaclAndCheck(testSystem, TEST_FILE1, FileUtilsService.NativeLinuxFaclOperation.REMOVE_ALL,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, null, Collections.emptyList());
+
+  }
+
+  @Test(dataProvider = "testSystemsProvider")
+  public void testDirAclDeleteAll(TapisSystem testSystem) throws Exception {
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+
+    // list acls to add for test
+    List<AclEntry> addAcls = Arrays.asList(
+            new AclEntry(true, "user", "facluser1", "r-x"),
+            new AclEntry(true, "user", "facluser2", "rwx"),
+            new AclEntry(true, "user", "facluser3", "rw-"),
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "user", "facluser2", "r-x"),
+            new AclEntry(false, "user", "facluser3", "r-x"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(false, "group", "faclgrp2", "r--"),
+            new AclEntry(false, "group", "faclgrp3", "-w-"),
+            new AclEntry(true, "group", "faclgrp1", "--x"),
+            new AclEntry(true, "group", "faclgrp2", "r--"),
+            new AclEntry(true, "group", "faclgrp3", "-w-"));
+
+    // create a couple of test files
+    String testDirectory = "testFaclDir";
+    makeDirectoryOnSystem(testSystem, testDirectory);
+
+    setfaclAndCheck(testSystem, testDirectory, FileUtilsService.NativeLinuxFaclOperation.ADD,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, addAcls, addAcls);
+
+    setfaclAndCheck(testSystem, testDirectory, FileUtilsService.NativeLinuxFaclOperation.REMOVE_ALL,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, null, Collections.emptyList());
+  }
+
+  @Test(dataProvider = "testSystemsProvider")
+  public void testDirAclDeleteDefault(TapisSystem testSystem) throws Exception {
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+
+    // list acls to add for test
+    List<AclEntry> addAcls = Arrays.asList(
+            new AclEntry(true, "user", "facluser1", "r-x"),
+            new AclEntry(true, "user", "facluser2", "rwx"),
+            new AclEntry(true, "user", "facluser3", "rw-"),
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "user", "facluser2", "r-x"),
+            new AclEntry(false, "user", "facluser3", "r-x"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(false, "group", "faclgrp2", "r--"),
+            new AclEntry(false, "group", "faclgrp3", "-w-"),
+            new AclEntry(true, "group", "faclgrp1", "--x"),
+            new AclEntry(true, "group", "faclgrp2", "r--"),
+            new AclEntry(true, "group", "faclgrp3", "-w-"));
+
+    List<AclEntry> afterRemoveAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "user", "facluser2", "r-x"),
+            new AclEntry(false, "user", "facluser3", "r-x"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(false, "group", "faclgrp2", "r--"),
+            new AclEntry(false, "group", "faclgrp3", "-w-"));
+
+    // create a couple of test files
+    String testDirectory = "testFaclDir";
+    makeDirectoryOnSystem(testSystem, testDirectory);
+
+    setfaclAndCheck(testSystem, testDirectory, FileUtilsService.NativeLinuxFaclOperation.ADD,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, addAcls, addAcls);
+
+    setfaclAndCheck(testSystem, testDirectory, FileUtilsService.NativeLinuxFaclOperation.REMOVE_DEFAULT,
+            FileUtilsService.NativeLinuxFaclRecursion.NONE, null, afterRemoveAcls);
+  }
+
+  @Test(dataProvider = "testSystemsProvider")
+  public void testDirAclAddAndDeleteRecursive(TapisSystem testSystem) throws Exception {
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+
+    // list acls to add for test
+    List<AclEntry> addAcls = Arrays.asList(
+            new AclEntry(true, "user", "facluser1", "r-x"),
+            new AclEntry(true, "user", "facluser2", "rwx"),
+            new AclEntry(true, "user", "facluser3", "rw-"),
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "user", "facluser2", "r-x"),
+            new AclEntry(false, "user", "facluser3", "r-x"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(false, "group", "faclgrp2", "r--"),
+            new AclEntry(false, "group", "faclgrp3", "-w-"),
+            new AclEntry(true, "group", "faclgrp1", "--x"),
+            new AclEntry(true, "group", "faclgrp2", "r--"),
+            new AclEntry(true, "group", "faclgrp3", "-w-"));
+
+    // Files will not have "default:" acls
+    List<AclEntry> afterAddFileAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "user", "facluser2", "r-x"),
+            new AclEntry(false, "user", "facluser3", "r-x"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(false, "group", "faclgrp2", "r--"),
+            new AclEntry(false, "group", "faclgrp3", "-w-"));
+
+
+    List<AclEntry> removeAcls = Arrays.asList(
+            new AclEntry(true, "user", "facluser2", null),
+            new AclEntry(true, "user", "facluser3", null),
+            new AclEntry(false, "user", "facluser2", null),
+            new AclEntry(false, "user", "facluser3", null),
+            new AclEntry(false, "group", "faclgrp2", null),
+            new AclEntry(false, "group", "faclgrp3", null),
+            new AclEntry(true, "group", "faclgrp2", null),
+            new AclEntry(true, "group", "faclgrp3", null));
+
+    List<AclEntry> afterRemoveDirAcls = Arrays.asList(
+            new AclEntry(true, "user", "facluser1", "r-x"),
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "group", "faclgrp1", "--x"),
+            new AclEntry(true, "group", "faclgrp1", "--x"));
+
+    List<AclEntry> afterRemoveFileAcls = Arrays.asList(
+            new AclEntry(false, "user", "facluser1", "rwx"),
+            new AclEntry(false, "group", "faclgrp1", "--x"));
+
+    // create a couple of test files and directories
+    // testFaclDir/
+    //   testfile1.txt
+    //   testfile2.txt
+    //   testFaclDir3/
+    //     testfile3.txt
+    //     testfile4.txt
+    String testDirectory1 = "testFaclDir1";
+    String testDirectory2 = testDirectory1 + "/testFaclDir2";
+    String testFile1 = testDirectory1 + "/" + TEST_FILE1;
+    String testFile2 = testDirectory1 + "/" + TEST_FILE2;
+    String testFile3 = testDirectory2 + "/" + TEST_FILE3;
+    String testFile4 = testDirectory2 + "/" + TEST_FILE4;
+
+    makeDirectoryOnSystem(testSystem, testDirectory1);
+    makeDirectoryOnSystem(testSystem, testDirectory2);
+    addTestFilesToSystem(testSystem, testFile1, 1);
+    addTestFilesToSystem(testSystem, testFile2, 1);
+    addTestFilesToSystem(testSystem, testFile3, 1);
+    addTestFilesToSystem(testSystem, testFile4, 1);
+
+    setfaclAndCheck(testSystem, testDirectory1, FileUtilsService.NativeLinuxFaclOperation.ADD,
+            FileUtilsService.NativeLinuxFaclRecursion.PHYSICAL, addAcls, addAcls);
+    // setfaclAndCheck only checks the target path - now check perms on files and directories
+    // in the directory path
+    checkFacl(testSystem, testDirectory2, addAcls);
+    checkFacl(testSystem, testFile1, afterAddFileAcls);
+    checkFacl(testSystem, testFile2, afterAddFileAcls);
+    checkFacl(testSystem, testFile3, afterAddFileAcls);
+    checkFacl(testSystem, testFile4, afterAddFileAcls);
+
+    setfaclAndCheck(testSystem, testDirectory1, FileUtilsService.NativeLinuxFaclOperation.REMOVE,
+            FileUtilsService.NativeLinuxFaclRecursion.LOGICAL, removeAcls, afterRemoveDirAcls);
+    // setfaclAndCheck only checks the target path - now check perms on files and directories
+    // in the directory path
+    checkFacl(testSystem, testDirectory2, afterRemoveDirAcls);
+    checkFacl(testSystem, testFile1, afterRemoveFileAcls);
+    checkFacl(testSystem, testFile2, afterRemoveFileAcls);
+    checkFacl(testSystem, testFile3, afterRemoveFileAcls);
+    checkFacl(testSystem, testFile4, afterRemoveFileAcls);
+  }
+
   // =======================================
   // ====== Private methods ================
   // =======================================
@@ -438,11 +770,135 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
     FormDataMultiPart form = new FormDataMultiPart();
     FormDataMultiPart multiPart = (FormDataMultiPart) form.bodyPart(filePart);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    FileStringResponse response = target(String.format("%s/%s/%s", OPS_ROUTE, system.getId(), fileName))
+    FileStringResponse response = target(String.format("%s/%s/%s", OPS_ROUTE, urlEncode(system.getId()), urlEncode(fileName)))
             .request()
             .accept(MediaType.APPLICATION_JSON)
             .header("x-tapis-token", getJwtForUser(TENANT, TEST_USR1))
             .post(Entity.entity(multiPart, MediaType.MULTIPART_FORM_DATA_TYPE), FileStringResponse.class);
+  }
+
+  /*
+   * Make a directory on a system.
+   */
+  private void makeDirectoryOnSystem(TapisSystem testSystem, String path) throws Exception {
+    MkdirRequest request = new MkdirRequest();
+    request.setPath(path);
+
+    target(String.format("%s/%s", OPS_ROUTE, testSystem.getId()))
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser(TENANT, TEST_USR1))
+            .post(Entity.json(request), TapisResponse.class);
+  }
+
+  private void setfaclAndCheck(TapisSystem testSystem, String path,
+                               FileUtilsService.NativeLinuxFaclOperation operation,
+                               FileUtilsService.NativeLinuxFaclRecursion recursion,
+                               List<AclEntry> acls, List<AclEntry> expectedResult) throws Exception {
+    // get the file acls for the path before anything is set
+    GetFaclResponse getCmdResponse = getFacl(testSystem, path);
+    Assert.assertNotNull(getCmdResponse);
+    List<AclEntry> getCmdResult = getCmdResponse.getResult();
+    Assert.assertNotNull(getCmdResult);
+
+    // call setfacl to remove all default acls
+    String aclString = null;
+    if((acls != null) && (acls.size() > 0)){
+      aclString = acls.stream().map(aclEntry -> {
+        StringBuilder sb = new StringBuilder();
+        if(aclEntry.isDefaultAcl()) {
+          sb.append("default:");
+        }
+        String type = aclEntry.getType();
+        if(type != null) {
+          sb.append(type);
+        }
+        sb.append(":");
+        String principal = aclEntry.getPrincipal();
+        if(principal != null) {
+          sb.append(aclEntry.getPrincipal());
+        }
+        sb.append(":");
+        String permission = aclEntry.getPermissions();
+        if(permission != null) {
+          sb.append(permission);
+        }
+        return sb.toString();
+      }).collect(Collectors.joining(","));
+    }
+
+    NativeLinuxOpResultResponse setCmdResponse = setFacl(testSystem, path,
+            recursion,
+            operation, aclString);
+    Assert.assertNotNull(setCmdResponse);
+    NativeLinuxOpResult setCmdResult = setCmdResponse.getResult();
+    Assert.assertNotNull(setCmdResult);
+    Assert.assertEquals(setCmdResult.getExitCode(), 0);
+
+    checkFacl(testSystem, path, expectedResult);
+  }
+
+  private NativeLinuxOpResultResponse setFacl(TapisSystem testSystem, String path,
+                                              FileUtilsService.NativeLinuxFaclRecursion recursion,
+                                              FileUtilsService.NativeLinuxFaclOperation operation,
+                                              String aclString) {
+    NativeLinuxFaclRequest request = new NativeLinuxFaclRequest();
+    request.setRecursionMethod(recursion);
+    request.setOperation(operation);
+    request.setAclString(aclString);
+    NativeLinuxOpResultResponse result = target(String.format("%s/%s/%s", FACL_ROUTE, urlEncode(testSystem.getId()),
+            urlEncode(path)))
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser(TENANT, TEST_USR1))
+            .post(Entity.json(request), NativeLinuxOpResultResponse.class);
+    return result;
+  }
+
+  private GetFaclResponse getFacl(TapisSystem testSystem, String path) {
+    GetFaclResponse result = target(String.format("%s/%s/%s", FACL_ROUTE,
+            urlEncode(testSystem.getId()), urlEncode(path)))
+            .request()
+            .accept(MediaType.APPLICATION_JSON)
+            .header("x-tapis-token", getJwtForUser(TENANT, TEST_USR1))
+            .get(GetFaclResponse.class);
+    return result;
+  }
+
+  private void checkFacl(TapisSystem testSystem, String path, List<AclEntry> expectedAcls) throws Exception {
+    // acls that get auto added after first add
+    List<AclEntry> defaultAndAutoAddedAcls = Arrays.asList(
+            new AclEntry(false, "user", null, null),
+            new AclEntry(false, "group", null, null),
+            new AclEntry(false, "other", null, null),
+            new AclEntry(false, "mask", null, null),
+            new AclEntry(true, "user", null, null),
+            new AclEntry(true, "group", null, null),
+            new AclEntry(true, "mask", null, null),
+            new AclEntry(true, "other", null, null));
+
+    TapisResponse<List<AclEntry>> response = getFacl(testSystem, path);
+    Assert.assertNotNull(response);
+    List<AclEntry> result = response.getResult();
+    Assert.assertNotNull(result);
+
+    for(AclEntry expectedEntry : expectedAcls) {
+      Assert.assertTrue(result.remove(expectedEntry), "Missing ACL: " + expectedEntry);
+    }
+
+    // ignore auto-added acls if they were not specified in the expect list
+    result = result.stream().filter( aclEntry -> {
+      for(AclEntry ignoredAcl : defaultAndAutoAddedAcls) {
+        if((aclEntry.isDefaultAcl() == ignoredAcl.isDefaultAcl()) &&
+                (Objects.equals(aclEntry.getType(), ignoredAcl.getType())) &&
+                (Objects.equals(aclEntry.getPrincipal(), ignoredAcl.getPrincipal()))) {
+          return false;
+        }
+      }
+      return true;
+    }).collect(Collectors.toList());
+
+    Assert.assertEquals(result.size(), 0, "Found unexpected ACLs: " + result);
   }
 
   /**
@@ -461,5 +917,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
     Assert.assertFalse(fileStatInfo.isLink());
     Assert.assertNotNull(fileStatInfo.getAccessTime());
     Assert.assertNotNull(fileStatInfo.getModifyTime());
+  }
+
+  private String urlEncode(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 }
