@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.rabbit;
 
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.impl.nio.NioParams;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 
@@ -23,6 +22,4 @@ public class RabbitMQConnection {
         }
         return INSTANCE;
     }
-
-
 }

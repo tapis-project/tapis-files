@@ -128,12 +128,6 @@ public class TransfersService
       return sender.unbind(binding(TRANSFERS_EXCHANGE, qName, qName)).then(sender.delete(QueueSpecification.queue(qName)));
     }
 
-    public void setControlExchange(String name)
-    {
-      CONTROL_EXCHANGE = name;
-      init();
-    }
-
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskUuid)
             throws ServiceException
     {
