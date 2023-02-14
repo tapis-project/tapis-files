@@ -66,7 +66,6 @@ public class TransfersApp
       }
     });
 
-    // TODO
     // Need to init the tenant manager for some reason.
     TenantManager tenantManager = locator.getService(TenantManager.class);
     tenantManager.getTenants();

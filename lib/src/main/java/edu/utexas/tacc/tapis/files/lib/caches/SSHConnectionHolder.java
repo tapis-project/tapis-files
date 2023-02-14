@@ -43,7 +43,10 @@ public class SSHConnectionHolder
   public long release()
   {
     long cnt = reservationCount.decrementAndGet();
-    if (cnt <= 0 && stale) sshConnection.stop();
+    if (cnt <= 0 && stale)
+    {
+      if (sshConnection != null) sshConnection.close();
+    }
     return cnt;
   }
 
@@ -66,13 +69,13 @@ public class SSHConnectionHolder
    */
   public synchronized SSHSftpClient getSftpClient() throws IOException
   {
-    SSHSftpClient client;
-    client = sshConnection.getSftpClient();
-    return client;
+    SSHSftpClient sftpClient;
+    sftpClient = sshConnection.getSftpClient();
+    return sftpClient;
   }
-  public synchronized void returnSftpClient(SSHSftpClient client) throws IOException
+  public synchronized void returnSftpClient(SSHSftpClient sftpClient) throws IOException
   {
-    client.close();
+    sftpClient.close();
   }
 
   /*
@@ -93,7 +96,7 @@ public class SSHConnectionHolder
     scpClient = sshConnection.getScpClient();
     return scpClient;
   }
-  public synchronized void returnScpClient(SSHScpClient client) { /*scpClientSet.remove(client);*/  }
+  public synchronized void returnScpClient(SSHScpClient scpClient) { /*scpClientSet.remove(scpClient);*/  }
 
   public synchronized SSHConnection getSshConnection() { return sshConnection; }
 
