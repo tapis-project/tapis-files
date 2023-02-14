@@ -224,25 +224,31 @@ public class SSHDataClient implements ISSHDataClient
   public void mkdir(@NotNull String path) throws IOException
   {
     path = FilenameUtils.normalize(path);
-    Path remote = Paths.get(rootDir, path);
-    Path rootDirPath = Paths.get(rootDir);
-    Path relativePath = rootDirPath.relativize(remote);
+    String remotePathStr = Paths.get(rootDir, path).toString();
+    // Do a stat to see if path already exists and is a dir or a file.
+    // If it exists, and it is a dir, we are done, else it is an error
+    try
+    {
+      FileStatInfo statInfo = getStatInfo(path, false);
+      if (statInfo.isDir())  return;
+      else
+      {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_MKDIR_FILE", oboTenant, oboUser, systemId, effectiveUserId, host, remotePathStr);
+        throw new IOException(msg);
+      }
+    }
+    catch (NotFoundException e) { /* Not found is good, it means mkdir should not throw an exception */ }
+
+    // Get the sftpClient so we can perform the operations
     SSHSftpClient sftpClient = connectionHolder.getSftpClient();
     try
     {
-      Path tmpPath = Paths.get(rootDir);
-      // Walk the path parts creating directories
-      for (Path part: relativePath)
-      {
-        tmpPath = tmpPath.resolve(part);
-        try
-        {
-          // TODO do a stat to see if dir exists rather than catch/ignore exception
-          // TODO: Check to see if path exists and is a file. That should return an error
-          sftpClient.mkdir(tmpPath.toString());
-        }
-        catch (SftpException ignored) {}
-      }
+      sftpClient.mkdir(remotePathStr);
+    }
+    catch (SftpException e)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_MKDIR_ERR", oboTenant, oboUser, systemId, effectiveUserId, host, remotePathStr, e.getMessage());
+      throw new IOException(msg);
     }
     finally
     {
@@ -576,7 +582,7 @@ public class SSHDataClient implements ISSHDataClient
           throws TapisException, IOException, NotFoundException
   {
     String opName = "chown";
-    // Validate that owner is valid linux user name
+    // Validate that owner is valid linux username
     if (!USER_REGEX.matcher(newOwner).matches()) {
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_USRGRP", oboTenant, oboUser, systemId, effectiveUserId, host,
               path, opName, newOwner);
