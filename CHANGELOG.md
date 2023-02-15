@@ -9,6 +9,17 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.2.9 - 2023-02-13
+
+Incremental improvements.
+
+### New features:
+- Added endpoint to get/set file acls on Linux systems
+
+### Bug fixes:
+- None
+
+---------------------------------------------------------------------------
 ## 1.2.8 - 2023-01-14
 
 Incremental improvements. Improved logging.
