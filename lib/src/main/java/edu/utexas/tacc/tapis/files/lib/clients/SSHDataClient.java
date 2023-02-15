@@ -224,36 +224,43 @@ public class SSHDataClient implements ISSHDataClient
   public void mkdir(@NotNull String path) throws IOException
   {
     path = FilenameUtils.normalize(path);
-    String remotePathStr = Paths.get(rootDir, path).toString();
-    // Do a stat to see if path already exists and is a dir or a file.
-    // If it exists, and it is a dir, we are done, else it is an error
-    try
+    Path remote = Paths.get(rootDir, path);
+    Path rootDirPath = Paths.get(rootDir);
+    Path relativePath = rootDirPath.relativize(remote);
+    String remotePathStr = remote.toString();
+    // Walk the path parts creating directories as we go
+    Path tmpPath = Paths.get(rootDir);
+    StringBuilder partRelativePathSB = new StringBuilder();
+    for (Path part : relativePath)
     {
-      FileStatInfo statInfo = getStatInfo(path, false);
-      if (statInfo.isDir())  return;
-      else
+      tmpPath = tmpPath.resolve(part);
+      String tmpPathStr = tmpPath.toString();
+      partRelativePathSB.append(part).append('/');
+      // Do a stat to see if path already exists and is a dir or a file.
+      // If it does not exist or exists and is a directory then all is good, if it exists and is a file it is an error
+      try
       {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_MKDIR_FILE", oboTenant, oboUser, systemId, effectiveUserId, host, remotePathStr);
+        FileStatInfo statInfo = getStatInfo(partRelativePathSB.toString(), false);
+        if (statInfo.isDir()) continue;
+        else
+        {
+          String msg = LibUtils.getMsg("FILES_CLIENT_SSH_MKDIR_FILE", oboTenant, oboUser, systemId,
+                                       effectiveUserId, host, tmpPathStr, remotePathStr);
+          throw new IOException(msg);
+        }
+      }
+      catch (NotFoundException e) { /* Not found is good, it means mkdir should not throw an exception */ }
+
+      // Get the sftpClient so we can perform operations
+      SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+      try { sftpClient.mkdir(tmpPathStr); }
+      catch (SftpException e)
+      {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_MKDIR_ERR", oboTenant, oboUser, systemId, effectiveUserId,
+                                     host, tmpPathStr, remotePathStr, e.getMessage());
         throw new IOException(msg);
       }
-    }
-    catch (NotFoundException e) { /* Not found is good, it means mkdir should not throw an exception */ }
-
-    // Get the sftpClient so we can perform the operations
-    SSHSftpClient sftpClient = connectionHolder.getSftpClient();
-    try
-    {
-      sftpClient.mkdir(remotePathStr);
-    }
-    catch (SftpException e)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_MKDIR_ERR", oboTenant, oboUser, systemId, effectiveUserId, host, remotePathStr, e.getMessage());
-      throw new IOException(msg);
-    }
-    finally
-    {
-      sftpClient.close();
-      connectionHolder.returnSftpClient(sftpClient);
+      finally { connectionHolder.returnSftpClient(sftpClient); }
     }
   }
 
