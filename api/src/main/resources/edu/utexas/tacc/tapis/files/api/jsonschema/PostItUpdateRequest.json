@@ -1,0 +1,37 @@
+{
+  "$id": "https://tapis.tacc.utexas.edu/files/postits/UpdateRequest",
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "description": "Schema for a request to update a PostIt",
+
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "allowedUses": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "integer",
+          "minimum": -1,
+          "maximum": -1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "validSeconds": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "null"
+        }
+      ],
+    }
+  }
+}

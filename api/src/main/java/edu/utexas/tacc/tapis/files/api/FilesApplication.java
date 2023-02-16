@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.files.api;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.TenantAdminCache;
+import edu.utexas.tacc.tapis.files.lib.dao.postits.PostItsDAO;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -10,6 +12,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
+import edu.utexas.tacc.tapis.files.lib.services.PostItsService;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -119,6 +122,7 @@ public class FilesApplication extends ResourceConfig
     register(GeneralResource.class);
     register(OperationsApiResource.class);
     register(UtilsLinuxApiResource.class);
+    register(PostItsResource.class);
 
     // We specify what packages JAX-RS should recursively scan to find annotations. By setting the value to the
     // top-level directory in all projects, we can use JAX-RS annotations in any tapis class. In particular, the filter
@@ -164,8 +168,11 @@ public class FilesApplication extends ResourceConfig
           bindAsContract(SystemsCache.class).in(Singleton.class);
           bindAsContract(FilePermsService.class).in(Singleton.class);
           bindAsContract(FilePermsCache.class).in(Singleton.class);
+          bindAsContract(TenantAdminCache.class).in(Singleton.class);
           bindAsContract(FileShareService.class).in(Singleton.class);
           bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
+          bindAsContract(PostItsService.class).in(Singleton.class);
+          bindAsContract(PostItsDAO.class).in(Singleton.class);
           bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
           bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
         }
