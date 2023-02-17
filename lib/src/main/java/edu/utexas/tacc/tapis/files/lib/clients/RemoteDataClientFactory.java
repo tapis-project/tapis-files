@@ -10,9 +10,9 @@ import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 
 @Service
 @Named
@@ -89,7 +89,6 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
     }
     else if (SystemTypeEnum.GLOBUS.equals(system.getSystemType()))
     {
-//      return new GlobusDataClient(apiTenant, apiUser, system, null /*TODO/TBD serviceClients*/);
       return new GlobusDataClient(oboTenant, oboUser, system, serviceClients);
     }
     else

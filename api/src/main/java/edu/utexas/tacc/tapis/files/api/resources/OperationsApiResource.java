@@ -83,6 +83,9 @@ public class OperationsApiResource extends BaseFileOpsResource
   /**
    * List files at path.
    *  If recursion is specified max depth is MAX_RECURSION = 20
+   * This is broken into two methods with a common method to perform the operation because of problems with
+   *   listing the "root" directory. The pattern "/{systemId}/{path:(.*+)}" does not work when requester
+   *   attempts the operation on "/{systemId}"
    * @param systemId - id of system
    * @param path - path on system relative to system rootDir
    * @param limit - pagination limit
