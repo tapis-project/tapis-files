@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.security.PermitAll;
 import javax.inject.Inject;
-import javax.servlet.ServletContext;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -48,11 +47,8 @@ import javax.ws.rs.core.UriInfo;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 @Path("/v3/files/postits")
 public class PostItsResource {
@@ -68,10 +64,7 @@ public class PostItsResource {
     @Context
     private SecurityContext securityContext;
     @Context
-    private ServletContext servletContext;
-    @Context
     private Request request;
-
     @Inject
     private PostItsService service;
 

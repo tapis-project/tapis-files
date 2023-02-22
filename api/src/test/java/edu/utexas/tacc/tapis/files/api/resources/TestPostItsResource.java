@@ -353,7 +353,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         // update the postit allowedUses, get and verify
         PostItUpdateRequest updateRequest = new PostItUpdateRequest();
         updateRequest.setAllowedUses(10);
-        TapisPostItResponse updateResponse = doPatch(updateRequest, postItId);
+        TapisPostItResponse updateResponse = doPatch(updateRequest, TEST_USR1, postItId);
         Assert.assertNotNull(updateResponse);
         Assert.assertNotNull(updateResponse.getResult().getId());
         // should see new allowed uses, but no change to expiration
@@ -366,6 +366,15 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         // should see new allowed uses, but no change to expiration
         Assert.assertEquals(Integer.valueOf(10), getResponse.getResult().getAllowedUses());
         Assert.assertEquals(createResponse.getResult().getExpiration(), getResponse.getResult().getExpiration());
+
+        // Attempt to update a postit owned by someone else
+        updateRequest.setAllowedUses(32);
+        doPatch(updateRequest, TEST_USR2, postItId, 403);
+        Assert.assertNotEquals(updateRequest.getAllowedUses(), doGet(postItId).getResult().getAllowedUses());
+
+        // Update a postit as the domain admin
+        doPatch(updateRequest, TEST_ADMIN_USR, postItId, 200);
+        Assert.assertEquals(updateRequest.getAllowedUses(), doGet(postItId).getResult().getAllowedUses());
     }
 
     @Test(dataProvider = "testSystemsProvider")
@@ -463,15 +472,15 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         return getResponse;
     }
 
-    private TapisPostItResponse doPatch(PostItUpdateRequest updateRequest, String postItId) {
-        Response response = doPatch(updateRequest, postItId, 200);
+    private TapisPostItResponse doPatch(PostItUpdateRequest updateRequest, String username, String postItId) {
+        Response response = doPatch(updateRequest, username, postItId, 200);
         return response.readEntity(TapisPostItResponse.class);
     }
 
-    private Response doPatch(PostItUpdateRequest updateRequest, String postItId, int expectedStatus) {
+    private Response doPatch(PostItUpdateRequest updateRequest, String username, String postItId, int expectedStatus) {
         Response patchResponse = target(String.format("%s/%s", POSTITS_ROUTE, postItId)).
                 request().accept(MediaType.APPLICATION_JSON).
-                header("x-tapis-token", getJwtForUser(TENANT, TEST_USR1)).
+                header("x-tapis-token", getJwtForUser(TENANT, username)).
                 build("PATCH", Entity.json(updateRequest)).
                 property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true).
                 invoke();

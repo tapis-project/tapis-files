@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import edu.utexas.tacc.tapis.files.gen.jooq.tables.FilesPostits;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.TenantAdminCache;
 import edu.utexas.tacc.tapis.files.lib.dao.postits.PostItsDAO;
@@ -14,7 +13,6 @@ import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.jooq.Condition;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,11 +45,16 @@ public class PostItsService {
     @Inject
     TenantAdminCache tenantAdminCache;
 
-    // Used to create a special ResourceRequestUser based on the information from a postit
+    /**
+     * Used to create a special AuthenticatedUser based on the information from a postit.
+     * This is used during redeeming a PostIt to act as the AuthenticatedUser for calls
+     * that require one - but it will have the owner and tenant of the postit as the
+     * OboUser and OboTenant
+     */
     class PostItUser extends AuthenticatedUser {
         public PostItUser(PostIt postIt) {
             super(null, null, null, null,
-                    postIt.getJwtUser(), postIt.getJwtTenantId(),
+                    postIt.getOwner(), postIt.getTenantId(),
                     null, null, null);
         }
     }
@@ -106,13 +109,22 @@ public class PostItsService {
         postIt.setJwtUser(rUser.getJwtUserId());
         postIt.setJwtTenantId(rUser.getJwtTenantId());
         postIt.setTimesUsed(0);
-        postIt.setCreated(null);
-        postIt.setUpdated(null);
-
 
         return postItsDAO.createPostIt(postIt);
     }
 
+    /**
+     * Get a PostIt by Id.  A user must own the PostIt and it must be in the
+     * OboTenant or the user must be a tenant admin of the tenant of the PostIt
+     * to get the PostIt.
+     *
+     * @param rUser ResourceRequestUser representing the user that is updating
+     *              the PostIt.
+     * @param postItId Id of the PostIt to update
+     * @return the requested PostIt
+     * @throws TapisException
+     * @throws ServiceException
+     */
     public PostIt getPostIt(ResourceRequestUser rUser, String postItId) throws TapisException, ServiceException {
         PostIt postIt = postItsDAO.getPostIt(postItId);
 
@@ -135,21 +147,57 @@ public class PostItsService {
         throw new ForbiddenException(msg);
     }
 
+    /**
+     * List PostIts.  The list will contain all PostIts owned by the OboUser in the OboDomain.  If the
+     * OboUser is a tenant admin, the list will contain all PostIts in the domain.
+     *
+     * @param rUser ResourceRequestUser representing the user that is updating
+     *              the PostIt.
+     * @return List containing the matching PostIts
+     * @throws TapisException
+     * @throws ServiceException
+     */
     public List<PostIt> listPostIts(ResourceRequestUser rUser) throws TapisException, ServiceException {
-        Condition condition = FilesPostits.FILES_POSTITS.TENANTID.eq(rUser.getOboTenantId());
-        condition = condition.and(FilesPostits.FILES_POSTITS.OWNER.eq(rUser.getOboUserId()));
-        // TODO:  Add something so that a tenant admin can get all postits for their tenant
-        // perhaps in the select criteria for list.
-        return postItsDAO.listPostIts(rUser.getOboTenantId(), checkPostIt -> {
-            return isOwnerOrAdmin(checkPostIt, rUser);
-        });
+        String tenantId = rUser.getOboTenantId();
+        String owner = rUser.getOboUserId();
+
+        // If the owner is a tenant admin, don't limit them to only the PostIts
+        // that they own.  Tenant admins can see all PostIts in thier tenant
+        if(isTenantAdmin(tenantId, owner)) {
+            owner = null;
+        }
+
+        return postItsDAO.listPostIts(tenantId, owner);
     }
 
+    /**
+     * Updates a PostIt by Id.  The allowed uses, and expirationSeconds can be
+     * updated.  No other fields of a PostIt can be updated.  A user must own
+     * the PostIt and it must be in the OboTenant or the user must be a tenant
+     * admin of the tenant of the PostIt to update.
+     *
+     * @param rUser ResourceRequestUser representing the user that is updating
+     *              the PostIt.
+     * @param postItId Id of the PostIt to update
+     * @param validSeconds number of seconds this PostIt is valid
+     * @param allowedUses number of times this PostIt can be redeemed
+     *
+     * @return the newly updated PostIt
+     * @throws TapisException
+     * @throws ServiceException
+     */
     public PostIt updatePostIt(ResourceRequestUser rUser, String postItId,
                                Integer validSeconds, Integer allowedUses)
             throws TapisException, ServiceException {
-        PostIt postIt = new PostIt();
-        postIt.setId(postItId);
+        PostIt postIt = postItsDAO.getPostIt(postItId);
+        if(!isOwnerOrAdmin(postIt, rUser)) {
+            String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED",
+                    postIt.getTenantId(), postIt.getOwner(),
+                    postIt.getSystemId(), postIt.getPath());
+            log.warn(msg);
+            throw new ForbiddenException(msg);
+        }
+
         if(validSeconds != null) {
             postIt.setExpiration(Instant.now().plus(validSeconds, ChronoUnit.SECONDS));
         }
@@ -160,13 +208,27 @@ public class PostItsService {
         PostIt updatedPostIt = postItsDAO.updatePostIt(postIt);
 
         if(updatedPostIt == null) {
-            String msg = LibUtils.getMsg("POSTIT_SERVICE_ERROR_ID", postIt.getId());
+            String msg = LibUtils.getMsg("POSTIT_SERVICE_ERROR_ID", updatedPostIt.getId());
             throw new NotFoundException(msg);
         }
 
         return updatedPostIt;
     }
 
+    /**
+     * Redeem a PostIt by id.  If zip is null, this method will automatically
+     * zip directories, and not zip files.  If zip is false for a directory,
+     * an Exception will be thrown - directories must always be zipped.  The
+     * usage count of the PostIt will be incremented just prior to the download
+     * beginning.
+     *
+     * @param postItId - the Id of the postit to redeem.
+     * @param zip true/false/null.  If null, directories will be zipped, but files
+     *            will not.  If false and the PostIt points to a directory, an
+     *            exception will be thrown.
+     * @return PostItRedeemContext containing information related to redeeming.
+     * @throws TapisException
+     */
     public PostItRedeemContext redeemPostIt(String postItId, Boolean zip)
             throws TapisException {
         PostItRedeemContext redeemContext = new PostItRedeemContext();
@@ -178,24 +240,21 @@ public class PostItsService {
             throw new NotFoundException(msg);
         }
 
-        String systemId = postIt.getSystemId();
-        String path = postIt.getPath();
         ResourceRequestUser rUser = new ResourceRequestUser(new PostItUser(postIt));
         redeemContext.setrUser(rUser);
 
+        String systemId = postIt.getSystemId();
+        String path = postIt.getPath();
+
         // Get system. This requires READ permission.
         TapisSystem tapisSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-
-        // ---------------------------- Make service calls to start data streaming -------------------------------
-        // Note that we do not use try/catch around service calls because exceptions are already either
-        //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
-        //   to responses (ApiExceptionMapper).
 
         // Determine the target file name to use in ContentDisposition (.zip will get added for zipStream)
         java.nio.file.Path inPath = Paths.get(path);
         java.nio.file.Path  filePath = inPath.getFileName();
         String fileName = (filePath == null) ? "root" : filePath.getFileName().toString();
 
+        // fileOpsService.getFileInfo() will check path permissions, so no need to check in this method.
         FileInfo fileInfo = fileOpsService.getFileInfo(rUser, tapisSystem, path, null, null);
         if (fileInfo == null)
         {
