@@ -265,7 +265,7 @@ public class PostItsService {
             // if no zip preference was supplied, we will zip if it's a directory,
             // and not zip if it's not a directory.
             zip = fileInfo.isDir() ? Boolean.TRUE : Boolean.FALSE;
-        } else if (zip.equals(Boolean.FALSE)) {
+        } else if (zip.equals(Boolean.FALSE) && (fileInfo.isDir())) {
             String msg = LibUtils.getMsgAuthR("POSTITS_REDEEM_DIR_NOZIP",
                     rUser, systemId, path);
             log.error(msg);
