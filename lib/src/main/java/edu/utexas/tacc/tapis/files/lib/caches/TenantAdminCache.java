@@ -17,7 +17,7 @@ public class TenantAdminCache extends BasePermsCache {
     private static final Logger log = LoggerFactory.getLogger(FilePermsCache.class);
 
     public TenantAdminCache() {
-        cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(60)).build(new TenantAdminLoader());
+        cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofMinutes(10)).build(new TenantAdminLoader());
     }
 
     public Boolean checkPerm(String tenantId, String username)

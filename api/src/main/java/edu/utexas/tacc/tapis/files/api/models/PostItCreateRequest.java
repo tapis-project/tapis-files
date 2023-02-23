@@ -3,7 +3,7 @@ package edu.utexas.tacc.tapis.files.api.models;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Request t create a PostIt
+ * Create PostIt Request
  */
 public class PostItCreateRequest {
 

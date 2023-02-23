@@ -18,7 +18,6 @@ import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import io.swagger.annotations.Api;
 import org.apache.commons.io.IOUtils;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.server.ManagedAsync;
@@ -83,7 +82,6 @@ public class PostItsResource {
                 "createPostIt", POSTIT_CREATE_REQUEST, PostItCreateRequest.class);
 
 
-        log.trace("createPostIt request: " + createRequest);
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "SystemId: ", systemId, "Path: ", path, jsonString);
         PostIt createdPostIt = null;
@@ -112,7 +110,8 @@ public class PostItsResource {
         PostIt postIt = null;
         ResourceRequestUser rUser =
                 new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
-        log.trace("getPostIt request PostItId: " + postItId);
+        ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
+                "PostItId: ", postItId);
         try {
             postIt = service.getPostIt(rUser, postItId);
             updateRedeemUrl(postIt);
@@ -137,7 +136,7 @@ public class PostItsResource {
         ResourceRequestUser rUser =
                 new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
-        ApiUtils.logRequest(rUser, className, "redeemPostIt", request.getRequestURL().toString());
+        ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString());
 
         try {
             postIts = service.listPostIts(rUser);
@@ -169,11 +168,14 @@ public class PostItsResource {
         String jsonString = getJsonString(payloadStream, opName);
         PostItUpdateRequest updateRequest = getJsonObjectFromString(jsonString,
                 opName, POSTIT_UPDATE_REQUEST, PostItUpdateRequest.class);
+        ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
+                "PostItId: ", postItId, jsonString);
 
         PostIt updatedPostIt = null;
         try {
             updatedPostIt = service.updatePostIt(rUser, postItId,
                     updateRequest.getValidSeconds(), updateRequest.getAllowedUses());
+            updateRedeemUrl(updatedPostIt);
         } catch (TapisException | ServiceException ex) {
             String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_ERROR_ID", rUser, opName, postItId, ex.getMessage());
             log.error(msg, ex);
