@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
-import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.MediaType;
 import java.nio.file.Paths;
@@ -144,7 +144,7 @@ public class PostItsService {
         String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", postIt.getTenantId(), postIt.getOwner(),
                 postIt.getSystemId(), postIt.getPath());
         log.warn(msg);
-        throw new ForbiddenException(msg);
+        throw new NotAuthorizedException(msg);
     }
 
     /**
@@ -195,7 +195,7 @@ public class PostItsService {
                     postIt.getTenantId(), postIt.getOwner(),
                     postIt.getSystemId(), postIt.getPath());
             log.warn(msg);
-            throw new ForbiddenException(msg);
+            throw new NotAuthorizedException(msg);
         }
 
         if(validSeconds != null) {
