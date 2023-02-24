@@ -14,3 +14,7 @@ CREATE TABLE IF NOT EXISTS files_postits
   updated          TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc')
 );
 CREATE INDEX files_postits_expiration_index ON files_postits (expiration);
+CREATE INDEX files_postits_owner_index ON files_postits (owner);
+CREATE INDEX files_postits_tenantid_index ON files_postits (tenantId);
+CREATE INDEX files_postits_timesused_index ON files_postits (timesUsed);
+

@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotAuthorizedException;
+import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.MediaType;
 import java.nio.file.Paths;
@@ -30,6 +30,14 @@ import java.util.List;
 @Service
 public class PostItsService {
     private static final Logger log = LoggerFactory.getLogger(PostItsService.class);
+
+    // Default allowed uses 1
+    private static Integer DEFAULT_ALLOWED_USES = Integer.valueOf(1);
+
+    // Default ttl 30 days
+    private static Integer DEFAULT_VALID_SECONDS =  Integer.valueOf(2592000);
+
+
     @Inject
     PostItsDAO postItsDAO;
 
@@ -92,10 +100,10 @@ public class PostItsService {
 
         // apply defaults
         if(allowedUses == null) {
-            allowedUses = Integer.valueOf(1);
+            allowedUses = DEFAULT_ALLOWED_USES;
         }
         if(validSeconds == null) {
-            validSeconds = Integer.valueOf(2592000);
+            validSeconds = DEFAULT_VALID_SECONDS;
         }
 
         // Set fields that are set by this service.
@@ -144,7 +152,7 @@ public class PostItsService {
         String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", postIt.getTenantId(), postIt.getOwner(),
                 postIt.getSystemId(), postIt.getPath());
         log.warn(msg);
-        throw new NotAuthorizedException(msg);
+        throw new ForbiddenException(msg);
     }
 
     /**
@@ -195,7 +203,7 @@ public class PostItsService {
                     postIt.getTenantId(), postIt.getOwner(),
                     postIt.getSystemId(), postIt.getPath());
             log.warn(msg);
-            throw new NotAuthorizedException(msg);
+            throw new ForbiddenException(msg);
         }
 
         if(validSeconds != null) {

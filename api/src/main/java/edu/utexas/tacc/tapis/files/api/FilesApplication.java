@@ -24,7 +24,11 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.ClearThreadLocalRequestFilter;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.ClearThreadLocalResponseFilter;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.QueryParametersRequestFilter;
+import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.TestParameterRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.providers.ApiExceptionMapper;
 import edu.utexas.tacc.tapis.sharedapi.providers.ObjectMapperContextResolver;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -124,10 +128,16 @@ public class FilesApplication extends ResourceConfig
     register(UtilsLinuxApiResource.class);
     register(PostItsResource.class);
 
-    // We specify what packages JAX-RS should recursively scan to find annotations. By setting the value to the
-    // top-level directory in all projects, we can use JAX-RS annotations in any tapis class. In particular, the filter
-    // classes in tapis-shared-api will be discovered whenever that project is included as a maven dependency.
-    packages("edu.utexas.tacc.tapis");
+    // we were previously calling - packages("edu.utexas.tacc.tapis");
+    // this was inadvertently bringing in TapisExceptionMapper.  I removed that, and replaced it with
+    // these register calls which are the classes (other than TapisExceptionMapper) that were being
+    // included by packages()
+    register(ClearThreadLocalRequestFilter.class);
+    register(QueryParametersRequestFilter.class);
+    register(ClearThreadLocalResponseFilter.class);
+    register(edu.utexas.tacc.tapis.files.api.providers.ObjectMapperContextResolver.class);
+    register(TestParameterRequestFilter.class);
+    // end of classes added when removing packages()
 
     // Set the application name. Note that this has no impact on base URL
     setApplicationName(TapisConstants.SERVICE_NAME_FILES);

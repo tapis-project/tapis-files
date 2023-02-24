@@ -205,7 +205,6 @@ public class LibUtils
   /**
    * Standard check that system is available for use. If not available throw BadRequestException
    *   which results in a response status of BAD_REQUEST (400).
-   * Mapping happens in edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper
    */
   public static void checkEnabled(ResourceRequestUser rUser, TapisSystem sys) throws BadRequestException
   {

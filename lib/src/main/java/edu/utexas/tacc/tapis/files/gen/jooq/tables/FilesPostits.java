@@ -154,7 +154,7 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
 
     @Override
     public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.FILES_POSTITS_EXPIRATION_INDEX);
+        return Arrays.asList(Indexes.FILES_POSTITS_EXPIRATION_INDEX, Indexes.FILES_POSTITS_OWNER_INDEX, Indexes.FILES_POSTITS_TENANTID_INDEX, Indexes.FILES_POSTITS_TIMESUSED_INDEX);
     }
 
     @Override

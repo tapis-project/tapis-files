@@ -9,6 +9,8 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisDBConnectionException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.shared.uuid.TapisUUID;
+import edu.utexas.tacc.tapis.shared.uuid.UUIDType;
 import edu.utexas.tacc.tapis.shareddb.datasource.TapisDataSource;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.DSLContext;
@@ -55,7 +57,7 @@ public class PostItsDAO {
             // Insert the PostIt in the database.
             LocalDateTime now = localDateTimeOfInstant(Instant.now());
             Record insertRecord = db.insertInto(FILES_POSTITS).
-                                    set(FILES_POSTITS.ID, UUID.randomUUID().toString()).
+                                    set(FILES_POSTITS.ID, new TapisUUID(UUIDType.POSTIT).toString()).
                                     set(FILES_POSTITS.SYSTEMID, postIt.getSystemId()).
                                     set(FILES_POSTITS.PATH, postIt.getPath()).
                                     set(FILES_POSTITS.ALLOWEDUSES, postIt.getAllowedUses()).

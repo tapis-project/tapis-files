@@ -105,7 +105,7 @@ public class PostItsResource {
     @GET
     @Path("/{postItId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getPostIt(@PathParam("postItId")String postItId) {
+    public Response getPostIt(@PathParam("postItId") String postItId) {
         String opName = "getPostIt";
         PostIt postIt = null;
         ResourceRequestUser rUser =
@@ -157,12 +157,23 @@ public class PostItsResource {
     }
 
 
+    @POST
+    public Response postUpdatePostIt(@PathParam("postItId") String postItId,
+                                 InputStream payloadStream) {
+        return updatePostit(postItId, payloadStream);
+    }
+
     @PATCH
     @Path("/{postItId}")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response updatePostIt(@PathParam("postItId") String postItId,
+    public Response patchUpdatePostIt(@PathParam("postItId") String postItId,
                                  InputStream payloadStream) {
+        return updatePostit(postItId, payloadStream);
+    }
+
+
+    public Response updatePostit(String postItId, InputStream payloadStream) {
         ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
         String opName = "updatePostIt";
         String jsonString = getJsonString(payloadStream, opName);
@@ -187,7 +198,6 @@ public class PostItsResource {
         TapisResponse<PostIt> tapisResponse = TapisResponse.createSuccessResponse(msg, updatedPostIt);
         return Response.status(Response.Status.OK).entity(tapisResponse).build();
     }
-
     @GET
     @ManagedAsync
     @PermitAll
@@ -200,9 +210,10 @@ public class PostItsResource {
 
         try {
             if (log.isTraceEnabled()) {
+                // The four nulls represent the token user/tenant etc.
                 String msg = ApiUtils.getMsg("FAPI_TRACE_REQUEST", null,
                         null, null, null, null, className, opName,
-                        request.getRequestURL().toString(), "PostItId=" + postItId);
+                        request.getRequestURL().toString(), "PostItId=" + postItId, "zip=", zip);
                 log.trace(msg);
             }
 
@@ -279,13 +290,14 @@ public class PostItsResource {
 
     private void updateRedeemUrl(PostIt postIt) {
         // if we don't have enough info to build the redeemUrl, just return
-        if((postIt == null) || (postIt.getId() == null)) {
+        if ((postIt == null) || (postIt.getId() == null)) {
             return;
         }
+
         URI redeemURI = uriInfo.getBaseUriBuilder().
                 path("v3/files/postits/redeem").
                 path(postIt.getId()).build();
-        if(redeemURI != null) {
+        if (redeemURI != null) {
             postIt.setRedeemUrl(redeemURI.toString());
         }
     }
