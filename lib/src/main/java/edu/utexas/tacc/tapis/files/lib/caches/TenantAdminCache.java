@@ -27,8 +27,7 @@ public class TenantAdminCache extends BasePermsCache {
             TenantAdminCacheKey key = new TenantAdminCacheKey(tenantId, username);
             return cache.get(key);
         } catch (ExecutionException ex) {
-            // TODO:  Wrong message - correct this
-            String msg = LibUtils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, username, ex.getMessage());
+            String msg = LibUtils.getMsg("FILES_TENANTADMIN_CACHE_ERR", "TenantAdmin", tenantId, username, ex.getMessage());
             throw new ServiceException(msg, ex);
         }
     }

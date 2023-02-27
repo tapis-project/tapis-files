@@ -75,15 +75,15 @@ public class PostItsResource {
                                  @PathParam("path") String path,
                                  InputStream payloadStream) {
 
-        ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
         String opName = "createPostIt";
+        ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
         String jsonString = getJsonString(payloadStream, opName);
+        ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
+                "SystemId: ", systemId, "Path: ", path, jsonString);
+
         PostItCreateRequest createRequest = getJsonObjectFromString(jsonString,
                 "createPostIt", POSTIT_CREATE_REQUEST, PostItCreateRequest.class);
 
-
-        ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
-                "SystemId: ", systemId, "Path: ", path, jsonString);
         PostIt createdPostIt = null;
         try {
             createdPostIt = service.createPostIt(rUser, systemId, path, createRequest.getValidSeconds(),
@@ -158,6 +158,9 @@ public class PostItsResource {
 
 
     @POST
+    @Path("/{postItId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
     public Response postUpdatePostIt(@PathParam("postItId") String postItId,
                                  InputStream payloadStream) {
         return updatePostit(postItId, payloadStream);
@@ -177,10 +180,11 @@ public class PostItsResource {
         ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
         String opName = "updatePostIt";
         String jsonString = getJsonString(payloadStream, opName);
-        PostItUpdateRequest updateRequest = getJsonObjectFromString(jsonString,
-                opName, POSTIT_UPDATE_REQUEST, PostItUpdateRequest.class);
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "PostItId: ", postItId, jsonString);
+
+        PostItUpdateRequest updateRequest = getJsonObjectFromString(jsonString,
+                opName, POSTIT_UPDATE_REQUEST, PostItUpdateRequest.class);
 
         PostIt updatedPostIt = null;
         try {

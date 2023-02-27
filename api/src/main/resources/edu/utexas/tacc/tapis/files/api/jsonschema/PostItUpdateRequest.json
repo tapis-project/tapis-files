@@ -7,31 +7,13 @@
   "additionalProperties": false,
   "properties": {
     "allowedUses": {
-      "anyOf": [
-        {
-          "type": "integer",
-          "minimum": 1
-        },
-        {
-          "type": "integer",
-          "minimum": -1,
-          "maximum": -1
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "type": "integer",
+      "minimum": -1
     },
     "validSeconds": {
-      "anyOf": [
-        {
-          "type": "integer",
-          "minimum": 1
-        },
-        {
-          "type": "null"
-        }
-      ]
-    }
-  }
+      "type": "integer",
+      "minimum": 1
+    },
+  },
+  "required" : []
 }

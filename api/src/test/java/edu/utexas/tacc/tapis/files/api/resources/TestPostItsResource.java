@@ -349,25 +349,30 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(postItId);
         Assert.assertEquals(Integer.valueOf(3), createResponse.getResult().getAllowedUses());
 
-        // update the postit allowedUses, get and verify
+        // update the postit allowedUses and valid seconds, get and verify
         PostItUpdateRequest updateRequest = new PostItUpdateRequest();
         updateRequest.setAllowedUses(10);
+        updateRequest.setValidSeconds(100);
         TapisPostItResponse updateResponse = doPatch(updateRequest, TEST_USR1, postItId);
         Assert.assertNotNull(updateResponse);
         Assert.assertNotNull(updateResponse.getResult().getId());
-        // should see new allowed uses, but no change to expiration
+
+        // should see new allowed uses and expiration
         Assert.assertEquals(Integer.valueOf(10), updateResponse.getResult().getAllowedUses());
-        Assert.assertEquals(createResponse.getResult().getExpiration(), updateResponse.getResult().getExpiration());
+        Assert.assertNotEquals(createResponse.getResult().getExpiration(), updateResponse.getResult().getExpiration());
+
         // now get the postit to make sure we set what the update said we set
         TapisPostItResponse getResponse = doGet(postItId);
         Assert.assertNotNull(getResponse);
         Assert.assertNotNull(getResponse.getResult().getId());
-        // should see new allowed uses, but no change to expiration
+
+        // should see new allowed uses and expiration
         Assert.assertEquals(Integer.valueOf(10), getResponse.getResult().getAllowedUses());
-        Assert.assertEquals(createResponse.getResult().getExpiration(), getResponse.getResult().getExpiration());
+        Assert.assertNotEquals(createResponse.getResult().getExpiration(), getResponse.getResult().getExpiration());
 
         // Attempt to update a postit owned by someone else
         updateRequest.setAllowedUses(32);
+        updateRequest.setValidSeconds(200);
         doPatch(updateRequest, TEST_USR2, postItId, 403);
         Assert.assertNotEquals(updateRequest.getAllowedUses(), doGet(postItId).getResult().getAllowedUses());
 
@@ -532,7 +537,6 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(p1.getRedeemUrl(), p2.getRedeemUrl());
     }
 
-    // TODO: share code with TestOpsRoutes?
     private byte[] makeFakeFile(int size)
     {
         byte[] b = new byte[size];
@@ -540,7 +544,6 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         return b;
     }
 
-    // TODO: share code with TestOpsRoutes?
     private void addFile(TapisSystem system, String fileName, byte[] fileBytes) throws Exception {
         InputStream inputStream = new ByteArrayInputStream(fileBytes);
         File tempFile = File.createTempFile("tempfile", null);

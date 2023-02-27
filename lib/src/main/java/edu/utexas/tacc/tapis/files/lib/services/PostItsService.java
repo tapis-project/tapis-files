@@ -149,8 +149,8 @@ public class PostItsService {
 
         // If the OboUser doesn't own the postit in the OboTenant, and is not a tenant admin,
         // they are not permitted.
-        String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", postIt.getTenantId(), postIt.getOwner(),
-                postIt.getSystemId(), postIt.getPath());
+        String msg = LibUtils.getMsg("POSTIT_NOT_AUTHORIZED", postIt.getTenantId(), postIt.getOwner(),
+                postIt.getSystemId(), postItId);
         log.warn(msg);
         throw new ForbiddenException(msg);
     }
@@ -199,9 +199,9 @@ public class PostItsService {
             throws TapisException, ServiceException {
         PostIt postIt = postItsDAO.getPostIt(postItId);
         if(!isOwnerOrAdmin(postIt, rUser)) {
-            String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED",
+            String msg = LibUtils.getMsg("POSTIT_NOT_AUTHORIZED",
                     postIt.getTenantId(), postIt.getOwner(),
-                    postIt.getSystemId(), postIt.getPath());
+                    postIt.getSystemId(), postItId);
             log.warn(msg);
             throw new ForbiddenException(msg);
         }
