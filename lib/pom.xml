@@ -29,54 +29,64 @@
                     </archive>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.jooq</groupId>
-                <artifactId>jooq-codegen-maven</artifactId>
-                <executions>
-                    <execution>
-                        <id>jooq-codegen</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                    </execution>
-                </executions>
-
-                <configuration>
-                    <jdbc>
-                        <driver>org.postgresql.Driver</driver>
-                        <url>${db.url}</url>
-                        <user>${db.username}</user>
-                        <password>${db.password}</password>
-                    </jdbc>
-                    <generator>
-                        <name>org.jooq.codegen.JavaGenerator</name>
-                        <generate>
-                            <javaTimeTypes>true</javaTimeTypes>
-                        </generate>
-                        <target>
-                            <!-- The destination package of your generated classes (within the destination directory) -->
-                            <packageName>edu.utexas.tacc.tapis.files.gen.jooq</packageName>
-                            <!-- The destination directory of your generated classes. Using Maven directory layout here -->
-                            <directory>src/main/java</directory>
-                        </target>
-                        <database>
-                            <name>org.jooq.meta.postgres.PostgresDatabase</name>
-                            <inputSchema>${db.schema}</inputSchema>
-                            <!-- Include everything from the schema -->
-                            <includes>.*</includes>
-                            <excludes>
-                                flyway_schema_history |
-                                transfer_tasks.*
-                            </excludes>
-                            <forcedTypes>
-                            </forcedTypes>
-                        </database>
-                    </generator>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
+    <profiles>
+      <profile>
+      <id>db-update</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.jooq</groupId>
+              <artifactId>jooq-codegen-maven</artifactId>
+              <executions>
+                <execution>
+                  <id>jooq-codegen</id>
+                  <phase>generate-sources</phase>
+                  <goals>
+                    <goal>generate</goal>
+                  </goals>
+                </execution>
+              </executions>
+
+              <configuration>
+                <jdbc>
+                  <driver>org.postgresql.Driver</driver>
+                  <url>${db.url}</url>
+                  <user>${db.username}</user>
+                  <password>${db.password}</password>
+                </jdbc>
+                <generator>
+                  <name>org.jooq.codegen.JavaGenerator</name>
+                  <generate>
+                    <javaTimeTypes>true</javaTimeTypes>
+                  </generate>
+                  <target>
+                    <!-- The destination package of your generated classes (within the destination directory) -->
+                    <packageName>edu.utexas.tacc.tapis.files.gen.jooq</packageName>
+                    <!-- The destination directory of your generated classes. Using Maven directory layout here -->
+                    <directory>src/main/java</directory>
+                  </target>
+                  <database>
+                    <name>org.jooq.meta.postgres.PostgresDatabase</name>
+                    <inputSchema>${db.schema}</inputSchema>
+                    <!-- Include everything from the schema -->
+                    <includes>.*</includes>
+                    <excludes>
+                      flyway_schema_history |
+                      transfer_tasks.*
+                    </excludes>
+                    <forcedTypes>
+                    </forcedTypes>
+                  </database>
+                </generator>
+              </configuration>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+    </profiles>
+
     <!-- properties>
         <tapis-client-java.version>1.1-SNAPSHOT</tapis-client-java.version>
     </properties -->
