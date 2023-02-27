@@ -9,11 +9,14 @@ import edu.utexas.tacc.tapis.files.lib.models.PostIt;
 import edu.utexas.tacc.tapis.files.lib.services.PostItRedeemContext;
 import edu.utexas.tacc.tapis.files.lib.services.PostItsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisJSONException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.schema.JsonValidator;
 import edu.utexas.tacc.tapis.shared.schema.JsonValidatorSpec;
+import edu.utexas.tacc.tapis.shared.security.RequestRouter;
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -43,6 +46,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 import java.io.InputStream;
 import java.net.URI;
@@ -91,7 +95,7 @@ public class PostItsResource {
         try {
             createdPostIt = service.createPostIt(rUser, systemId, path, createRequest.getValidSeconds(),
                     createRequest.getAllowedUses());
-            updateRedeemUrl(createdPostIt);
+            updateRedeemUrl(createdPostIt, rUser);
         } catch (TapisException | ServiceException ex) {
             String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_ERROR", rUser,
                     opName, systemId, path, ex.getMessage(), ex.getMessage());
@@ -117,7 +121,7 @@ public class PostItsResource {
                 "PostItId: ", postItId);
         try {
             postIt = service.getPostIt(rUser, postItId);
-            updateRedeemUrl(postIt);
+            updateRedeemUrl(postIt, rUser);
         } catch (TapisException | ServiceException ex) {
             String msg = LibUtils.getMsgAuthR("FAPI_POSTITS_OP_ERROR_ID", rUser,
                     opName, postItId, ex.getMessage());
@@ -153,7 +157,11 @@ public class PostItsResource {
                 "FAPI_POSTITS_LIST_COMPLETE", rUser, opName, postIts.size());
         TapisResponse<List<PostIt>> tapisResponse =
                 TapisResponse.createSuccessResponse(msg, postIts.stream().map(postIt -> {
-                    updateRedeemUrl(postIt);
+                    try {
+                        updateRedeemUrl(postIt, rUser);
+                    } catch (TapisException ex){
+                        log.warn("Unable to update redeem url for PostIt Id:", postIt.getId());
+                    }
                     return postIt;
                 }).toList());
         return Response.status(Response.Status.OK).entity(tapisResponse).build();
@@ -192,7 +200,7 @@ public class PostItsResource {
         try {
             updatedPostIt = service.updatePostIt(rUser, postItId,
                     updateRequest.getValidSeconds(), updateRequest.getAllowedUses());
-            updateRedeemUrl(updatedPostIt);
+            updateRedeemUrl(updatedPostIt, rUser);
         } catch (TapisException | ServiceException ex) {
             String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_ERROR_ID", rUser, opName, postItId, ex.getMessage());
             log.error(msg, ex);
@@ -294,14 +302,18 @@ public class PostItsResource {
         return getJsonObjectFromString(jsonString, opName, jsonSchemaFile, jsonObjectClass);
     }
 
-    private void updateRedeemUrl(PostIt postIt) {
+    private void updateRedeemUrl(PostIt postIt, ResourceRequestUser rUser) throws TapisException {
         // if we don't have enough info to build the redeemUrl, just return
         if ((postIt == null) || (postIt.getId() == null)) {
             return;
         }
 
-        URI redeemURI = uriInfo.getBaseUriBuilder().
-                path("v3/files/postits/redeem").
+        RequestRouter requestRouter = ServiceContext.getInstance().getRouter(
+                rUser.getOboTenantId(), TapisConstants.SERVICE_NAME_FILES);
+        URI redeemURI = UriBuilder.fromUri(requestRouter.getServiceBaseUrl()).
+                path("v3").
+                path(TapisConstants.SERVICE_NAME_FILES).
+                path("postits/redeem").
                 path(postIt.getId()).build();
         if (redeemURI != null) {
             postIt.setRedeemUrl(redeemURI.toString());
