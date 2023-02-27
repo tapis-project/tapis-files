@@ -1,5 +1,9 @@
 package edu.utexas.tacc.tapis.files.lib.utils;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.Locale;
@@ -8,6 +12,9 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
+
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -198,7 +205,6 @@ public class LibUtils
   /**
    * Standard check that system is available for use. If not available throw BadRequestException
    *   which results in a response status of BAD_REQUEST (400).
-   * Mapping happens in edu.utexas.tacc.tapis.sharedapi.providers.TapisExceptionMapper
    */
   public static void checkEnabled(ResourceRequestUser rUser, TapisSystem sys) throws BadRequestException
   {
@@ -266,6 +272,64 @@ public class LibUtils
     for (String msg : msgList) { sb.append("  ").append(msg).append(System.lineSeparator()); }
     return sb.toString();
   }
+
+  // =============== DB Transaction Management ============================
+  /**
+   * Close any DB connection related artifacts that are not null
+   * @throws SQLException - on sql error
+   */
+  public static void closeAndCommitDB(Connection conn, PreparedStatement pstmt, ResultSet rs) throws SQLException
+  {
+    if (rs != null) rs.close();
+    if (pstmt != null) pstmt.close();
+    if (conn != null) conn.commit();
+  }
+
+  /**
+   * Roll back a DB transaction and throw an exception
+   * This method always throws an exception, either IllegalStateException or TapisException
+   */
+  public static void rollbackDB(Connection conn, Exception e, String msgKey, Object... parms) throws TapisException
+  {
+    try
+    {
+      if (conn != null) conn.rollback();
+    }
+    catch (Exception e1)
+    {
+      log.error(MsgUtils.getMsg("DB_FAILED_ROLLBACK"), e1);
+    }
+
+    // If IllegalStateException or TapisException pass it back up
+    if (e instanceof IllegalStateException) throw (IllegalStateException) e;
+    if (e instanceof TapisException) throw (TapisException) e;
+
+    // Log the exception.
+    String msg = MsgUtils.getMsg(msgKey, parms);
+    log.error(msg, e);
+    throw new TapisException(msg, e);
+  }
+
+  /**
+   * Close DB connection, typically called from finally block
+   */
+  public static void finalCloseDB(Connection conn)
+  {
+    // Always return the connection back to the connection pool.
+    try
+    {
+      if (conn != null) conn.close();
+    }
+    catch (Exception e)
+    {
+      // If commit worked, we can swallow the exception.
+      // If not, the commit exception will have been thrown.
+      String msg = MsgUtils.getMsg("DB_FAILED_CONNECTION_CLOSE");
+      log.error(msg, e);
+    }
+  }
+
+
 
 //  /* TODO Do we need this? Now that auth is getting more complex with share by priv, shareGrantor. Probably best
 //           to always get the system if enabled and do auth check separately.
