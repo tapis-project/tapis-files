@@ -9,11 +9,14 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.2.9 - 2023-02-13
+## 1.3.0 - 2023-02-27
 
 Incremental improvements.
 
 ### New features:
+- Added PostIts feature.  This feature allows users to create a link that 
+  can be shared allowing files or directories to be downloaded without 
+  authentication (limited by time and/or usage count)
 - Added endpoint to get/set file acls on Linux systems
 
 ### Bug fixes:

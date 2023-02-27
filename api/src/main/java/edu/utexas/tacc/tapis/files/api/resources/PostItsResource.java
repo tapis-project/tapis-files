@@ -19,6 +19,7 @@ import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
@@ -81,9 +82,11 @@ public class PostItsResource {
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "SystemId: ", systemId, "Path: ", path, jsonString);
 
-        PostItCreateRequest createRequest = getJsonObjectFromString(jsonString,
-                "createPostIt", POSTIT_CREATE_REQUEST, PostItCreateRequest.class);
-
+        PostItCreateRequest createRequest = new PostItCreateRequest();
+        if(!StringUtils.isBlank(jsonString)) {
+            createRequest = getJsonObjectFromString(jsonString,
+                    "createPostIt", POSTIT_CREATE_REQUEST, PostItCreateRequest.class);
+        }
         PostIt createdPostIt = null;
         try {
             createdPostIt = service.createPostIt(rUser, systemId, path, createRequest.getValidSeconds(),
@@ -174,7 +177,6 @@ public class PostItsResource {
                                  InputStream payloadStream) {
         return updatePostit(postItId, payloadStream);
     }
-
 
     public Response updatePostit(String postItId, InputStream payloadStream) {
         ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
