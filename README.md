@@ -119,3 +119,33 @@ There is (was?) an issue with the python sdk generation where it would error out
 status codes in the openapi specs were integers and not strings. There is a little script called
 `specCleaner.sh` in the resources of the api module that cleans the spec up. This is run automatically
 as part of the maven build process. 
+
+## jooq information
+Any time a change is made to any database tables, new jooq classes will need to be generated.  Once the schema changes have been applied
+to the database the jooq code can be generated.  This is done with the following command:
+
+```
+mvn clean install -Pdb-update
+```
+
+There is a set of default credentials/db in the mvn file for development purposes, but you can easily set those as needed with the 
+following properties:
+
+```
+db.url        >jdbc:postgresql://localhost:5432/dev</db.url>
+db.username   >dev</db.username>
+db.password   >dev</db.password>
+db.schema     >public</db.schema>
+```
+
+for example
+```
+mvn -Ddb.username=myuser -Ddb.password=mypassword clean install -Pdb-update
+```
+or 
+```
+mvn -Ddb.url=jdbc:postgresql://localhost:5432/mydbname -Ddb.username=myuser -Ddb.password=mypassword -Ddb.schema=myschema clean install -Pdb-update
+```
+
+Once the jooq files are generated, they can be git added.
+
