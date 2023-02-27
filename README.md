@@ -132,10 +132,10 @@ There is a set of default credentials/db in the mvn file for development purpose
 following properties:
 
 ```
-db.url        >jdbc:postgresql://localhost:5432/dev</db.url>
-db.username   >dev</db.username>
-db.password   >dev</db.password>
-db.schema     >public</db.schema>
+<db.url>jdbc:postgresql://localhost:5432/dev</db.url>
+<db.username>dev</db.username>
+<db.password>dev</db.password>
+<db.schema>public</db.schema>
 ```
 
 for example
