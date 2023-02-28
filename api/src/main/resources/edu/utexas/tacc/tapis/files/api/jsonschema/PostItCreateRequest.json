@@ -1,0 +1,21 @@
+{
+  "$id": "https://tapis.tacc.utexas.edu/files/postits/CreateRequest",
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "description": "Schema for a request to create a PostIt",
+
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "allowedUses": {
+      "type": "integer",
+      "minimum": -1,
+      "default": 1
+    },
+    "validSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 2592000
+    }
+  },
+  "required" : []
+}
