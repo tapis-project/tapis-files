@@ -4,6 +4,7 @@ import com.google.gson.JsonSyntaxException;
 import edu.utexas.tacc.tapis.files.api.models.PostItCreateRequest;
 import edu.utexas.tacc.tapis.files.api.models.PostItUpdateRequest;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.PostIt;
 import edu.utexas.tacc.tapis.files.lib.services.PostItRedeemContext;
@@ -15,12 +16,12 @@ import edu.utexas.tacc.tapis.shared.exceptions.TapisJSONException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.schema.JsonValidator;
 import edu.utexas.tacc.tapis.shared.schema.JsonValidatorSpec;
-import edu.utexas.tacc.tapis.shared.security.RequestRouter;
-import edu.utexas.tacc.tapis.shared.security.ServiceContext;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
@@ -32,6 +33,7 @@ import javax.annotation.security.PermitAll;
 import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -62,6 +64,19 @@ public class PostItsResource {
     private static String POSTIT_CREATE_REQUEST="/edu/utexas/tacc/tapis/files/api/jsonschema/PostItCreateRequest.json";
     private static String POSTIT_UPDATE_REQUEST="/edu/utexas/tacc/tapis/files/api/jsonschema/PostItUpdateRequest.json";
     private static final String JSON_VALIDATION_ERR = "TAPIS_JSON_VALIDATION_ERROR";
+    TenantManager tenantManager = TenantManager.getInstance(RuntimeSettings.get().getTenantsServiceURL());
+
+    private class ChangeResult {
+        private final int changes;
+
+        public ChangeResult(int changes) {
+            this.changes = changes;
+        }
+
+        public int getChanges() {
+            return changes;
+        }
+    }
 
     @Context
     private UriInfo uriInfo;
@@ -254,6 +269,31 @@ public class PostItsResource {
 
     }
 
+    @DELETE
+    @Path("/{postItId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deletePostIt(@PathParam("postItId") String postItId) {
+        String opName = "deletePostIt";
+        int deleteCount = 0;
+        ResourceRequestUser rUser =
+                new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+        ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
+                "PostItId: ", postItId);
+        try {
+            deleteCount = service.deletePostIt(rUser, postItId);
+        } catch (TapisException | ServiceException ex) {
+            String msg = LibUtils.getMsgAuthR("FAPI_POSTITS_OP_ERROR_ID", rUser,
+                    opName, postItId, ex.getMessage());
+            log.error(msg, ex);
+            throw new WebApplicationException(msg, ex);
+        }
+
+        String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_DELETE_COMPLETE", rUser,
+                opName, postItId);
+        TapisResponse<ChangeResult> tapisResponse =
+                TapisResponse.createSuccessResponse(msg, new ChangeResult(deleteCount));
+        return Response.status(Response.Status.OK).entity(tapisResponse).build();
+    }
     private  String getJsonString(InputStream payloadStream, String opName) {
         String json;
         try {
@@ -308,15 +348,18 @@ public class PostItsResource {
             return;
         }
 
-        RequestRouter requestRouter = ServiceContext.getInstance().getRouter(
-                rUser.getOboTenantId(), TapisConstants.SERVICE_NAME_FILES);
-        URI redeemURI = UriBuilder.fromUri(requestRouter.getServiceBaseUrl()).
-                path("v3").
-                path(TapisConstants.SERVICE_NAME_FILES).
-                path("postits/redeem").
-                path(postIt.getId()).build();
-        if (redeemURI != null) {
-            postIt.setRedeemUrl(redeemURI.toString());
+        Tenant tenant = tenantManager.getTenant(rUser.getOboTenantId());
+        String baseUrl = null;
+        if(tenant != null) {
+            baseUrl = tenant.getBaseUrl();
+            if (!StringUtils.isBlank(baseUrl)) {
+                URI redeemURI = UriBuilder.fromUri(baseUrl).
+                        path("v3").
+                        path(TapisConstants.SERVICE_NAME_FILES).
+                        path("postits/redeem").
+                        path(postIt.getId()).build();
+                postIt.setRedeemUrl(redeemURI.toString());
+            }
         }
     }
 }
