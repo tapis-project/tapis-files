@@ -198,6 +198,11 @@ public class PostItsService {
                                Integer validSeconds, Integer allowedUses)
             throws TapisException, ServiceException {
         PostIt postIt = postItsDAO.getPostIt(postItId);
+        if(postIt == null) {
+            String msg = LibUtils.getMsg("POSTIT_NOT_FOUND", postItId);
+            log.warn(msg);
+            throw new NotFoundException(msg);
+        }
         if(!isOwnerOrAdmin(postIt, rUser)) {
             String msg = LibUtils.getMsg("POSTIT_NOT_AUTHORIZED",
                     postIt.getTenantId(), postIt.getOwner(),
@@ -303,6 +308,29 @@ public class PostItsService {
         }
 
         return redeemContext;
+    }
+
+    public int deletePostIt(ResourceRequestUser rUser, String postItId)
+            throws TapisException, ServiceException {
+        PostIt postIt = postItsDAO.getPostIt(postItId);
+
+        if(postIt == null) {
+            String msg = LibUtils.getMsg("POSTIT_NOT_FOUND", postItId);
+            log.warn(msg);
+            throw new NotFoundException(msg);
+        }
+
+        // Check to see if the OboUser is the owner or is a tenant admin for the postit's tenant
+        if(isOwnerOrAdmin(postIt, rUser)) {
+            return postItsDAO.deletePostIt(postItId);
+        }
+
+        // If the OboUser doesn't own the postit in the OboTenant, and is not a tenant admin,
+        // they are not permitted.
+        String msg = LibUtils.getMsg("POSTIT_NOT_AUTHORIZED", postIt.getTenantId(), postIt.getOwner(),
+                postIt.getSystemId(), postItId);
+        log.warn(msg);
+        throw new ForbiddenException(msg);
     }
 
     private boolean isOwnerOrAdmin(PostIt postIt, ResourceRequestUser rUser) {

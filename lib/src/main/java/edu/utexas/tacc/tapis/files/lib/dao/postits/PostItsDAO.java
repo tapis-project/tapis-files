@@ -13,6 +13,7 @@ import edu.utexas.tacc.tapis.shared.uuid.TapisUUID;
 import edu.utexas.tacc.tapis.shared.uuid.UUIDType;
 import edu.utexas.tacc.tapis.shareddb.datasource.TapisDataSource;
 import org.apache.commons.lang3.StringUtils;
+import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.jooq.impl.DSL;
@@ -278,6 +279,39 @@ public class PostItsDAO {
         }
 
         return true;
+    }
+
+    public int deletePostIt(String postItId) throws TapisException {
+        return deletePostIt(FILES_POSTITS.ID.eq(postItId));
+    }
+
+    public int deleteExpiredPostIts() throws TapisException {
+        return deletePostIt(FILES_POSTITS.EXPIRATION.lessThan(localDateTimeOfInstant(Instant.now())).
+                or(FILES_POSTITS.TIMESUSED.greaterOrEqual(FILES_POSTITS.ALLOWEDUSES)));
+    }
+
+    private int deletePostIt(Condition deleteCondition) throws TapisException {
+        Connection conn = null;
+        FilesPostitsRecord postItRecord = null;
+        int deleteCount = 0;
+        try {
+            conn = getConnection();
+            DSLContext db = DSL.using(conn);
+            deleteCount = db.delete(FILES_POSTITS).
+                    where(deleteCondition).
+                    execute();
+
+            LibUtils.closeAndCommitDB(conn, null, null);
+        } catch (Exception e) {
+            // Rollback transaction and throw an exception
+            LibUtils.rollbackDB(conn, e,"POSTITS_DAO_DELETE_ERROR",
+                    deleteCondition, e.getMessage());
+        } finally {
+            // Always return the connection back to the connection pool.
+            LibUtils.finalCloseDB(conn);
+        }
+
+        return deleteCount;
     }
 
     // Only support updating allowedUses, expiration, and usage
