@@ -1,10 +1,31 @@
-package edu.utexas.tacc.tapis.files.lib.models;
+package edu.utexas.tacc.tapis.files.api.responses;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import edu.utexas.tacc.tapis.files.lib.models.PostIt;
 
 import java.time.Instant;
 
-public class PostIt {
+public class PostItDTO {
+    public PostItDTO() {
+    }
+
+    public PostItDTO(PostIt postIt) {
+        this.id = postIt.getId();
+        this.systemId = postIt.getSystemId();
+        this.path = postIt.getPath();
+        this.allowedUses = postIt.getAllowedUses();
+        this.timesUsed = postIt.getTimesUsed();
+        this.jwtUser = postIt.getJwtUser();
+        this.jwtTenantId = postIt.getJwtTenantId();
+        this.owner = postIt.getOwner();
+        this.tenantId = postIt.getTenantId();
+        this.redeemUrl = "FIXME";
+        this.expiration = postIt.getExpiration();
+        this.created = postIt.getCreated();
+        this.updated = postIt.getUpdated();
+    }
+
+
     // Id for the PostIt (used for redeeming)
     private String id;
     // Id of the system containing the path
@@ -25,12 +46,15 @@ public class PostIt {
     // TenantId of the PostIt (used for redeem permission checks)
     private String tenantId;
     // Constructed field containing the url used to redeem the PostIt (no authentication needed)
+    private String redeemUrl;
+    // Expiration date/time
     private Instant expiration;
     // Date/time of creation
     private Instant created;
     // Date/time of last update
     private Instant updated;
 
+    @DTOProperty(summaryAttribute=true)
     public String getId() {
         return id;
     }
@@ -39,6 +63,7 @@ public class PostIt {
         this.id = id;
     }
 
+    @DTOProperty(summaryAttribute=true)
     public String getSystemId() {
         return systemId;
     }
@@ -46,6 +71,7 @@ public class PostIt {
     public void setSystemId(String systemId) {
         this.systemId = systemId;
     }
+    @DTOProperty(summaryAttribute=true)
     public String getPath() {
         return path;
     }
@@ -54,6 +80,7 @@ public class PostIt {
         this.path = path;
     }
 
+    @DTOProperty(summaryAttribute=true)
     public Integer getAllowedUses() {
         return allowedUses;
     }
@@ -62,6 +89,7 @@ public class PostIt {
         this.allowedUses = allowedUses;
     }
 
+    @DTOProperty(summaryAttribute=true)
     public Integer getTimesUsed() {
         return timesUsed;
     }
@@ -70,6 +98,7 @@ public class PostIt {
         this.timesUsed = timesUsed;
     }
 
+    @DTOProperty(summaryAttribute=true)
     public String getJwtUser() {
         return jwtUser;
     }
@@ -78,6 +107,7 @@ public class PostIt {
         this.jwtUser = jwtUser;
     }
 
+    @DTOProperty
     public String getJwtTenantId() {
         return jwtTenantId;
     }
@@ -86,6 +116,7 @@ public class PostIt {
         this.jwtTenantId = jwtTenantId;
     }
 
+    @DTOProperty(summaryAttribute=true)
     public String getOwner() {
         return owner;
     }
@@ -94,6 +125,7 @@ public class PostIt {
         this.owner = owner;
     }
 
+    @DTOProperty(summaryAttribute=true)
     public String getTenantId() {
         return tenantId;
     }
@@ -102,6 +134,16 @@ public class PostIt {
         this.tenantId = tenantId;
     }
 
+    @DTOProperty(summaryAttribute=true)
+    public String getRedeemUrl() {
+        return redeemUrl;
+    }
+
+    public void setRedeemUrl(String redeemUrl) {
+        this.redeemUrl = redeemUrl;
+    }
+
+    @DTOProperty(summaryAttribute=true)
     public Instant getExpiration() {
         return expiration;
     }
@@ -110,6 +152,7 @@ public class PostIt {
         this.expiration = expiration;
     }
 
+    @DTOProperty(summaryAttribute=true)
     public Instant getCreated() {
         return created;
     }
@@ -118,6 +161,7 @@ public class PostIt {
         this.created = created;
     }
 
+    @DTOProperty
     public Instant getUpdated() {
         return updated;
     }
@@ -161,4 +205,5 @@ public class PostIt {
 
         return true;
     }
+
 }

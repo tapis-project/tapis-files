@@ -6,16 +6,23 @@ import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.FilesPostitsRecord;
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.models.PostIt;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.search.SearchUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisDBConnectionException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.shared.threadlocal.OrderBy;
 import edu.utexas.tacc.tapis.shared.uuid.TapisUUID;
 import edu.utexas.tacc.tapis.shared.uuid.UUIDType;
 import edu.utexas.tacc.tapis.shareddb.datasource.TapisDataSource;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.Record;
+import org.jooq.SortField;
+import org.jooq.SortOrder;
 import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +34,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class PostItsDAO {
@@ -59,14 +65,14 @@ public class PostItsDAO {
             LocalDateTime now = localDateTimeOfInstant(Instant.now());
             Record insertRecord = db.insertInto(FILES_POSTITS).
                                     set(FILES_POSTITS.ID, new TapisUUID(UUIDType.POSTIT).toString()).
-                                    set(FILES_POSTITS.SYSTEMID, postIt.getSystemId()).
+                                    set(FILES_POSTITS.SYSTEM_ID, postIt.getSystemId()).
                                     set(FILES_POSTITS.PATH, postIt.getPath()).
-                                    set(FILES_POSTITS.ALLOWEDUSES, postIt.getAllowedUses()).
-                                    set(FILES_POSTITS.TIMESUSED, postIt.getTimesUsed()).
-                                    set(FILES_POSTITS.JWTUSER, postIt.getJwtUser()).
-                                    set(FILES_POSTITS.JWTTENANTID, postIt.getJwtTenantId()).
+                                    set(FILES_POSTITS.ALLOWED_USES, postIt.getAllowedUses()).
+                                    set(FILES_POSTITS.TIMES_USED, postIt.getTimesUsed()).
+                                    set(FILES_POSTITS.JWT_USER, postIt.getJwtUser()).
+                                    set(FILES_POSTITS.JWT_TENANT_ID, postIt.getJwtTenantId()).
                                     set(FILES_POSTITS.OWNER, postIt.getOwner()).
-                                    set(FILES_POSTITS.TENANTID, postIt.getTenantId()).
+                                    set(FILES_POSTITS.TENANT_ID, postIt.getTenantId()).
                                     set(FILES_POSTITS.EXPIRATION, localDateTimeOfInstant(postIt.getExpiration())).
                                     set(FILES_POSTITS.CREATED, now).
                                     set(FILES_POSTITS.UPDATED, now).
@@ -141,31 +147,41 @@ public class PostItsDAO {
      * the criteria in the condition.
      * @throws TapisException
      */
-    public List<PostIt> listPostIts(String tenantId, String ownerId) throws TapisException {
+    public List<PostIt> listPostIts(String tenantId, String ownerId, Integer limit,
+                                    List<OrderBy> orderByList, Integer skip,
+                                    String startAfter) throws TapisException {
         List<PostIt> postIts = new ArrayList<PostIt>();
         Connection conn = null;
+
+        if((skip > 0) && (!StringUtils.isBlank(startAfter))) {
+            String msg = LibUtils.getMsg("POSTITS_DAO_SKIP_STARTAFTER", skip, startAfter);
+            log.info(msg);
+            throw new TapisException(msg);
+        }
 
         try {
             conn = getConnection();
             DSLContext db = DSL.using(conn);
-            List<Record> selectRecords;
 
-            if(StringUtils.isBlank(ownerId)) {
-                selectRecords = db.select().from(FILES_POSTITS).
-                        where(FILES_POSTITS.TENANTID.equal(tenantId)).
-                        fetch();
-            } else {
-                selectRecords = db.select().from(FILES_POSTITS).
-                        where(FILES_POSTITS.TENANTID.equal(tenantId)).
-                        and(FILES_POSTITS.OWNER.equal(ownerId)).
-                        fetch();
+            Condition whereCondition = getWhereCondition(tenantId, ownerId);
+            List<SortField<?>> orderFields = getOrderFields(orderByList);
+
+            Condition startAfterCondition = getStartAfterCondition(orderByList, startAfter);
+            if(startAfterCondition != null) {
+                whereCondition = whereCondition.and(startAfterCondition);
             }
 
+            List<Record> selectRecords =
+                    db.select().from(FILES_POSTITS).
+                            where(whereCondition).
+                            orderBy(orderFields).
+                            offset(skip).
+                            limit(limit).
+                            fetch();
             postIts = selectRecords.stream().map( record -> {
                 FilesPostitsRecord postItRecord = FILES_POSTITS.from(record);
                 return createPostItFromRecord(postItRecord);
             }).collect(Collectors.toList());
-
             LibUtils.closeAndCommitDB(conn, null, null);
         } catch (Exception e) {
             // Rollback transaction and throw an exception
@@ -176,6 +192,89 @@ public class PostItsDAO {
         }
 
         return postIts;
+    }
+
+    private Condition getWhereCondition(String tenantId, String ownerId) {
+        Condition whereCondition = FILES_POSTITS.TENANT_ID.equal(tenantId);
+
+        if(!StringUtils.isBlank(ownerId)) {
+            whereCondition = whereCondition.and(FILES_POSTITS.OWNER.equal(ownerId));
+        }
+
+        return whereCondition;
+    }
+
+    private List<SortField<?>> getOrderFields(List<OrderBy> orderByList) throws TapisException {
+        List<SortField<?>> orderFields = new ArrayList<>();
+
+        for(OrderBy orderBy : orderByList) {
+            Pair<Field, SortOrder> fieldOrder = getFieldOrder(orderBy);
+            orderFields.add(fieldOrder.getLeft().sort(fieldOrder.getRight()));
+        }
+
+        return orderFields;
+    }
+
+    private Pair<Field, SortOrder> getFieldOrder(OrderBy orderBy)
+            throws TapisException {
+        SortOrder sortOrder = null;
+        switch(orderBy.getOrderByDir()) {
+            case ASC -> sortOrder = SortOrder.ASC;
+            case DESC -> sortOrder = SortOrder.DESC;
+            default -> sortOrder = SortOrder.DEFAULT;
+        }
+
+        String orderByAttr = orderBy.getOrderByAttr();
+        Field orderField = getField(orderByAttr);
+
+        return Pair.of(orderField, sortOrder);
+    }
+
+    private Field getField(String fieldName) throws TapisException {
+        Field field = FILES_POSTITS.field(DSL.name(SearchUtils.camelCaseToSnakeCase(fieldName)));
+
+        if(field == null) {
+            String msg = LibUtils.getMsg("POSTITS_SERVICE_FIELD_NOT_FOUND", fieldName);
+            log.error(msg);
+            throw new TapisException(msg);
+        }
+
+        return field;
+    }
+
+    private Condition getStartAfterCondition(List<OrderBy> orderByList, String startAfter)
+            throws TapisException {
+        Pair<Field, SortOrder> primaryKey = null;
+
+        if (!StringUtils.isBlank(startAfter)) {
+            if(!CollectionUtils.isEmpty(orderByList)) {
+                primaryKey = getFieldOrder(orderByList.get(0));
+            }
+        } else {
+            // no startAfter supplied
+            return null;
+        }
+
+        if(primaryKey == null) {
+            String msg = LibUtils.getMsg("POSTITS_DAO_STARTAFTER_REQUIRES_SORT");
+            log.info(msg);
+            throw new TapisException(msg);
+        }
+
+        Condition startAfterCondition = null;
+        Field field = primaryKey.getLeft();
+        SortOrder sortOrder = primaryKey.getRight();
+        if(sortOrder.equals(SortOrder.ASC)) {
+            startAfterCondition = field.greaterThan(startAfter);
+        } else if (sortOrder.equals(SortOrder.DESC)) {
+            startAfterCondition = field.lessThan(startAfter);
+        } else {
+            String msg = LibUtils.getMsg("POSTITS_DAO_STARTAFTER_REQUIRES_SORT");
+            log.info(msg);
+            throw new TapisException(msg);
+        }
+
+        return startAfterCondition;
     }
 
     /**
@@ -200,7 +299,7 @@ public class PostItsDAO {
             DSLContext db = DSL.using(conn);
             PostIt postIt = prepareUpdate(db, updatePostIt);
             Record updatedRecord = db.update(FILES_POSTITS).
-                    set(FILES_POSTITS.ALLOWEDUSES, postIt.getAllowedUses()).
+                    set(FILES_POSTITS.ALLOWED_USES, postIt.getAllowedUses()).
                     set(FILES_POSTITS.EXPIRATION, localDateTimeOfInstant(postIt.getExpiration())).
                     set(FILES_POSTITS.UPDATED, localDateTimeOfInstant(Instant.now())).
                     where(FILES_POSTITS.ID.equal(postIt.getId())).
@@ -248,7 +347,7 @@ public class PostItsDAO {
             }
             if (currentPostIt.isRedeemable()) {
                 Record updateRecord = db.update(FILES_POSTITS).
-                        set(FILES_POSTITS.TIMESUSED, FILES_POSTITS.TIMESUSED.plus(1)).
+                        set(FILES_POSTITS.TIMES_USED, FILES_POSTITS.TIMES_USED.plus(1)).
                         set(FILES_POSTITS.UPDATED, localDateTimeOfInstant(Instant.now())).
                         where(FILES_POSTITS.ID.equal(postItId)).
                         returningResult(FILES_POSTITS.asterisk()).
@@ -281,13 +380,28 @@ public class PostItsDAO {
         return true;
     }
 
+    /**
+     * Delete a PostIt by Id.
+     * @param postItId Id of the postit to delete.
+     * @return count of deleted objects (should be 1 assuming everything went well).
+     * @throws TapisException
+     */
     public int deletePostIt(String postItId) throws TapisException {
         return deletePostIt(FILES_POSTITS.ID.eq(postItId));
     }
 
+    /**
+     * Delete all expired PostIts.  A PostIt is expired if it is past the expiration
+     * date, or if it has been redeemed at the number of times allowed or more.  It
+     * could happen that a postit is updated to have fewer uses than have already been
+     * redeemed, so it's important to note that we are checking for uses equal or greater
+     * than the allowed uses.
+     * @return count of deleted objects
+     * @throws TapisException
+     */
     public int deleteExpiredPostIts() throws TapisException {
         return deletePostIt(FILES_POSTITS.EXPIRATION.lessThan(localDateTimeOfInstant(Instant.now())).
-                or(FILES_POSTITS.TIMESUSED.greaterOrEqual(FILES_POSTITS.ALLOWEDUSES)));
+                or(FILES_POSTITS.TIMES_USED.greaterOrEqual(FILES_POSTITS.ALLOWED_USES)));
     }
 
     private int deletePostIt(Condition deleteCondition) throws TapisException {
@@ -393,15 +507,15 @@ public class PostItsDAO {
 
         PostIt postIt = new PostIt();
         postIt.setId(record.getId());
-        postIt.setSystemId(record.getSystemid());
+        postIt.setSystemId(record.getSystemId());
         postIt.setPath(record.getPath());
         postIt.setExpiration(instantOfLocalDateTime(record.getExpiration()));
-        postIt.setAllowedUses(record.getAlloweduses());
+        postIt.setAllowedUses(record.getAllowedUses());
         postIt.setOwner(record.getOwner());
-        postIt.setTenantId(record.getTenantid());
-        postIt.setJwtUser(record.getJwtuser());
-        postIt.setJwtTenantId(record.getJwttenantid());
-        postIt.setTimesUsed(record.getTimesused());
+        postIt.setTenantId(record.getTenantId());
+        postIt.setJwtUser(record.getJwtUser());
+        postIt.setJwtTenantId(record.getJwtTenantId());
+        postIt.setTimesUsed(record.getTimesUsed());
         postIt.setCreated(instantOfLocalDateTime(record.getCreated()));
         postIt.setUpdated(instantOfLocalDateTime(record.getUpdated()));
         return postIt;

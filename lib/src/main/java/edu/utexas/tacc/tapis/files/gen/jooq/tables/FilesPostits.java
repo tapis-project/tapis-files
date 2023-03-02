@@ -60,9 +60,9 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
     public final TableField<FilesPostitsRecord, String> ID = createField(DSL.name("id"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
-     * The column <code>public.files_postits.systemid</code>.
+     * The column <code>public.files_postits.system_id</code>.
      */
-    public final TableField<FilesPostitsRecord, String> SYSTEMID = createField(DSL.name("systemid"), SQLDataType.CLOB, this, "");
+    public final TableField<FilesPostitsRecord, String> SYSTEM_ID = createField(DSL.name("system_id"), SQLDataType.CLOB, this, "");
 
     /**
      * The column <code>public.files_postits.path</code>.
@@ -70,24 +70,24 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
     public final TableField<FilesPostitsRecord, String> PATH = createField(DSL.name("path"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>public.files_postits.alloweduses</code>.
+     * The column <code>public.files_postits.allowed_uses</code>.
      */
-    public final TableField<FilesPostitsRecord, Integer> ALLOWEDUSES = createField(DSL.name("alloweduses"), SQLDataType.INTEGER, this, "");
+    public final TableField<FilesPostitsRecord, Integer> ALLOWED_USES = createField(DSL.name("allowed_uses"), SQLDataType.INTEGER, this, "");
 
     /**
-     * The column <code>public.files_postits.timesused</code>.
+     * The column <code>public.files_postits.times_used</code>.
      */
-    public final TableField<FilesPostitsRecord, Integer> TIMESUSED = createField(DSL.name("timesused"), SQLDataType.INTEGER, this, "");
+    public final TableField<FilesPostitsRecord, Integer> TIMES_USED = createField(DSL.name("times_used"), SQLDataType.INTEGER, this, "");
 
     /**
-     * The column <code>public.files_postits.jwtuser</code>.
+     * The column <code>public.files_postits.jwt_user</code>.
      */
-    public final TableField<FilesPostitsRecord, String> JWTUSER = createField(DSL.name("jwtuser"), SQLDataType.CLOB, this, "");
+    public final TableField<FilesPostitsRecord, String> JWT_USER = createField(DSL.name("jwt_user"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>public.files_postits.jwttenantid</code>.
+     * The column <code>public.files_postits.jwt_tenant_id</code>.
      */
-    public final TableField<FilesPostitsRecord, String> JWTTENANTID = createField(DSL.name("jwttenantid"), SQLDataType.CLOB, this, "");
+    public final TableField<FilesPostitsRecord, String> JWT_TENANT_ID = createField(DSL.name("jwt_tenant_id"), SQLDataType.CLOB, this, "");
 
     /**
      * The column <code>public.files_postits.owner</code>.
@@ -95,9 +95,9 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
     public final TableField<FilesPostitsRecord, String> OWNER = createField(DSL.name("owner"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>public.files_postits.tenantid</code>.
+     * The column <code>public.files_postits.tenant_id</code>.
      */
-    public final TableField<FilesPostitsRecord, String> TENANTID = createField(DSL.name("tenantid"), SQLDataType.CLOB, this, "");
+    public final TableField<FilesPostitsRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.CLOB, this, "");
 
     /**
      * The column <code>public.files_postits.expiration</code>.
