@@ -18,7 +18,6 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +25,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Builds a response that returns selected attributes.  Those attributes can
+ * have the special values "allAttributes" or "summaryAttributes".  If allAttributes
+ * is requested, than all properties in the DTO with the annotation DTOProperty
+ * on the getter or setter will be returned.  If "summaryAttributes" is requested,
+ * only those properties with the summaryAttributes set to true (or left blank since
+ * it's the default value) will be returned.  Individual attributes can be specified
+ * also - for example id, name, owner, etc.  If summaryAttributes is provided with
+ * other attributes - for example summaryAttributes,myvalue - the additional properties
+ * will be combinded with the summary set.
+ * @param <DT> - the DTO class (for example PostItsDTO.class)
+ */
 public class DTOResponseBuilder<DT> {
 
     Logger log = LoggerFactory.getLogger(DTOResponseBuilder.class);
@@ -66,6 +77,14 @@ public class DTOResponseBuilder<DT> {
     Map<String, PropertyInfo> propertyDescriptorMap = new HashMap<>();
     Set<String> selectedProperties = null;
 
+    /**
+     * Initializes the response builder.  This sets the fields to be returned.  It relies on
+     * reflection to get the annotations, and process the select list.
+     *
+     * @param dtoClass The class for the dto
+     * @param selectList The list of included attributes (can be allAttributes or summaryAttributes)
+     * @throws TapisException
+     */
     public DTOResponseBuilder(Class<DT> dtoClass, List<String> selectList) throws TapisException {
         populateMap(dtoClass);
         if (CollectionUtils.isEmpty(selectList)) {
@@ -86,13 +105,15 @@ public class DTOResponseBuilder<DT> {
         }
     }
 
-    private Set<String> getSummaryAttributes() {
-        return propertyDescriptorMap.keySet().stream().filter(key -> {
-            DTOProperty dtoProperty = propertyDescriptorMap.get(key).getDtoProperty();
-            return dtoProperty.summaryAttribute();
-        }).collect(Collectors.toSet());
-    }
-
+    /**
+     * Builds a response object with an array of dto's.  Each dto will contain only the
+     * selected fields.
+     *
+     * @param status Http Status
+     * @param message Message for the response
+     * @param dtos List of dto's to return
+     * @return the new response message
+     */
     public Response createSuccessResponse(Status status, String message, List<DT> dtos) {
         JsonArray result = new JsonArray();
 
@@ -105,8 +126,24 @@ public class DTOResponseBuilder<DT> {
         return createSuccessResponse(status, message, result);
     }
 
+    /**
+     * Builds a response object with dto as the result.  The dto will contain only the
+     * selected fields.
+     *
+     * @param status Http Status
+     * @param message Message for the response
+     * @param dto The dto to return
+     * @return the new response message
+     */
     public Response createSuccessResponse(Status status, String message, DT dto) {
         return createSuccessResponse(status, message, getJsonObject(dto));
+    }
+
+    private Set<String> getSummaryAttributes() {
+        return propertyDescriptorMap.keySet().stream().filter(key -> {
+            DTOProperty dtoProperty = propertyDescriptorMap.get(key).getDtoProperty();
+            return dtoProperty.summaryAttribute();
+        }).collect(Collectors.toSet());
     }
 
     private JsonObject getJsonObject(DT dto) {

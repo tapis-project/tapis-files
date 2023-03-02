@@ -138,15 +138,15 @@ public class PostItsResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getPostIt(@PathParam("postItId") String postItId) {
         String opName = "getPostIt";
-        PostItDTO postIt = null;
+        PostItDTO postItDto = null;
         ResourceRequestUser rUser =
                 new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "PostItId: ", postItId);
         try {
             PostIt retrievedPostIt = service.getPostIt(rUser, postItId);
-            postIt = new PostItDTO(retrievedPostIt);
-            updateRedeemUrl(postIt, rUser, opName);
+            postItDto = new PostItDTO(retrievedPostIt);
+            updateRedeemUrl(postItDto, rUser, opName);
         } catch (TapisException | ServiceException ex) {
             String msg = LibUtils.getMsgAuthR("FAPI_POSTITS_OP_ERROR_ID", rUser,
                     opName, postItId, ex.getMessage());
@@ -155,8 +155,8 @@ public class PostItsResource {
         }
 
         String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_COMPLETE", rUser,
-                opName, postIt.getSystemId(), postIt.getPath(), postIt.getId());
-        TapisResponse<PostItDTO> tapisResponse = TapisResponse.createSuccessResponse(msg, postIt);
+                opName, postItDto.getSystemId(), postItDto.getPath(), postItDto.getId());
+        TapisResponse<PostItDTO> tapisResponse = TapisResponse.createSuccessResponse(msg, postItDto);
         return Response.status(Response.Status.OK).entity(tapisResponse).build();
     }
 
