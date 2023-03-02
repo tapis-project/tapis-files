@@ -54,7 +54,7 @@ public class PostItDTO {
     // Date/time of last update
     private Instant updated;
 
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public String getId() {
         return id;
     }
@@ -63,7 +63,7 @@ public class PostItDTO {
         this.id = id;
     }
 
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public String getSystemId() {
         return systemId;
     }
@@ -71,7 +71,7 @@ public class PostItDTO {
     public void setSystemId(String systemId) {
         this.systemId = systemId;
     }
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public String getPath() {
         return path;
     }
@@ -80,7 +80,7 @@ public class PostItDTO {
         this.path = path;
     }
 
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public Integer getAllowedUses() {
         return allowedUses;
     }
@@ -89,7 +89,7 @@ public class PostItDTO {
         this.allowedUses = allowedUses;
     }
 
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public Integer getTimesUsed() {
         return timesUsed;
     }
@@ -98,7 +98,7 @@ public class PostItDTO {
         this.timesUsed = timesUsed;
     }
 
-    @DTOProperty(summaryAttribute=false)
+    @DTOProperty(summaryAttribute=true)
     public String getJwtUser() {
         return jwtUser;
     }
@@ -107,7 +107,7 @@ public class PostItDTO {
         this.jwtUser = jwtUser;
     }
 
-    @DTOProperty(summaryAttribute=false)
+    @DTOProperty
     public String getJwtTenantId() {
         return jwtTenantId;
     }
@@ -116,7 +116,7 @@ public class PostItDTO {
         this.jwtTenantId = jwtTenantId;
     }
 
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public String getOwner() {
         return owner;
     }
@@ -125,7 +125,7 @@ public class PostItDTO {
         this.owner = owner;
     }
 
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public String getTenantId() {
         return tenantId;
     }
@@ -134,7 +134,7 @@ public class PostItDTO {
         this.tenantId = tenantId;
     }
 
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public String getRedeemUrl() {
         return redeemUrl;
     }
@@ -143,7 +143,7 @@ public class PostItDTO {
         this.redeemUrl = redeemUrl;
     }
 
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public Instant getExpiration() {
         return expiration;
     }
@@ -152,7 +152,7 @@ public class PostItDTO {
         this.expiration = expiration;
     }
 
-    @DTOProperty
+    @DTOProperty(summaryAttribute=true)
     public Instant getCreated() {
         return created;
     }
@@ -161,7 +161,7 @@ public class PostItDTO {
         this.created = created;
     }
 
-    @DTOProperty(summaryAttribute=false)
+    @DTOProperty
     public Instant getUpdated() {
         return updated;
     }
