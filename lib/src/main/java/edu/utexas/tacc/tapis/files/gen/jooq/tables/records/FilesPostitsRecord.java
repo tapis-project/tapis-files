@@ -38,16 +38,16 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
     }
 
     /**
-     * Setter for <code>public.files_postits.systemid</code>.
+     * Setter for <code>public.files_postits.system_id</code>.
      */
-    public void setSystemid(String value) {
+    public void setSystemId(String value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.systemid</code>.
+     * Getter for <code>public.files_postits.system_id</code>.
      */
-    public String getSystemid() {
+    public String getSystemId() {
         return (String) get(1);
     }
 
@@ -66,58 +66,58 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
     }
 
     /**
-     * Setter for <code>public.files_postits.alloweduses</code>.
+     * Setter for <code>public.files_postits.allowed_uses</code>.
      */
-    public void setAlloweduses(Integer value) {
+    public void setAllowedUses(Integer value) {
         set(3, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.alloweduses</code>.
+     * Getter for <code>public.files_postits.allowed_uses</code>.
      */
-    public Integer getAlloweduses() {
+    public Integer getAllowedUses() {
         return (Integer) get(3);
     }
 
     /**
-     * Setter for <code>public.files_postits.timesused</code>.
+     * Setter for <code>public.files_postits.times_used</code>.
      */
-    public void setTimesused(Integer value) {
+    public void setTimesUsed(Integer value) {
         set(4, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.timesused</code>.
+     * Getter for <code>public.files_postits.times_used</code>.
      */
-    public Integer getTimesused() {
+    public Integer getTimesUsed() {
         return (Integer) get(4);
     }
 
     /**
-     * Setter for <code>public.files_postits.jwtuser</code>.
+     * Setter for <code>public.files_postits.jwt_user</code>.
      */
-    public void setJwtuser(String value) {
+    public void setJwtUser(String value) {
         set(5, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.jwtuser</code>.
+     * Getter for <code>public.files_postits.jwt_user</code>.
      */
-    public String getJwtuser() {
+    public String getJwtUser() {
         return (String) get(5);
     }
 
     /**
-     * Setter for <code>public.files_postits.jwttenantid</code>.
+     * Setter for <code>public.files_postits.jwt_tenant_id</code>.
      */
-    public void setJwttenantid(String value) {
+    public void setJwtTenantId(String value) {
         set(6, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.jwttenantid</code>.
+     * Getter for <code>public.files_postits.jwt_tenant_id</code>.
      */
-    public String getJwttenantid() {
+    public String getJwtTenantId() {
         return (String) get(6);
     }
 
@@ -136,16 +136,16 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
     }
 
     /**
-     * Setter for <code>public.files_postits.tenantid</code>.
+     * Setter for <code>public.files_postits.tenant_id</code>.
      */
-    public void setTenantid(String value) {
+    public void setTenantId(String value) {
         set(8, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.tenantid</code>.
+     * Getter for <code>public.files_postits.tenant_id</code>.
      */
-    public String getTenantid() {
+    public String getTenantId() {
         return (String) get(8);
     }
 
@@ -221,7 +221,7 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public Field<String> field2() {
-        return FilesPostits.FILES_POSTITS.SYSTEMID;
+        return FilesPostits.FILES_POSTITS.SYSTEM_ID;
     }
 
     @Override
@@ -231,22 +231,22 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public Field<Integer> field4() {
-        return FilesPostits.FILES_POSTITS.ALLOWEDUSES;
+        return FilesPostits.FILES_POSTITS.ALLOWED_USES;
     }
 
     @Override
     public Field<Integer> field5() {
-        return FilesPostits.FILES_POSTITS.TIMESUSED;
+        return FilesPostits.FILES_POSTITS.TIMES_USED;
     }
 
     @Override
     public Field<String> field6() {
-        return FilesPostits.FILES_POSTITS.JWTUSER;
+        return FilesPostits.FILES_POSTITS.JWT_USER;
     }
 
     @Override
     public Field<String> field7() {
-        return FilesPostits.FILES_POSTITS.JWTTENANTID;
+        return FilesPostits.FILES_POSTITS.JWT_TENANT_ID;
     }
 
     @Override
@@ -256,7 +256,7 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public Field<String> field9() {
-        return FilesPostits.FILES_POSTITS.TENANTID;
+        return FilesPostits.FILES_POSTITS.TENANT_ID;
     }
 
     @Override
@@ -281,7 +281,7 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public String component2() {
-        return getSystemid();
+        return getSystemId();
     }
 
     @Override
@@ -291,22 +291,22 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public Integer component4() {
-        return getAlloweduses();
+        return getAllowedUses();
     }
 
     @Override
     public Integer component5() {
-        return getTimesused();
+        return getTimesUsed();
     }
 
     @Override
     public String component6() {
-        return getJwtuser();
+        return getJwtUser();
     }
 
     @Override
     public String component7() {
-        return getJwttenantid();
+        return getJwtTenantId();
     }
 
     @Override
@@ -316,7 +316,7 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public String component9() {
-        return getTenantid();
+        return getTenantId();
     }
 
     @Override
@@ -341,7 +341,7 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public String value2() {
-        return getSystemid();
+        return getSystemId();
     }
 
     @Override
@@ -351,22 +351,22 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public Integer value4() {
-        return getAlloweduses();
+        return getAllowedUses();
     }
 
     @Override
     public Integer value5() {
-        return getTimesused();
+        return getTimesUsed();
     }
 
     @Override
     public String value6() {
-        return getJwtuser();
+        return getJwtUser();
     }
 
     @Override
     public String value7() {
-        return getJwttenantid();
+        return getJwtTenantId();
     }
 
     @Override
@@ -376,7 +376,7 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public String value9() {
-        return getTenantid();
+        return getTenantId();
     }
 
     @Override
@@ -402,7 +402,7 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public FilesPostitsRecord value2(String value) {
-        setSystemid(value);
+        setSystemId(value);
         return this;
     }
 
@@ -414,25 +414,25 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public FilesPostitsRecord value4(Integer value) {
-        setAlloweduses(value);
+        setAllowedUses(value);
         return this;
     }
 
     @Override
     public FilesPostitsRecord value5(Integer value) {
-        setTimesused(value);
+        setTimesUsed(value);
         return this;
     }
 
     @Override
     public FilesPostitsRecord value6(String value) {
-        setJwtuser(value);
+        setJwtUser(value);
         return this;
     }
 
     @Override
     public FilesPostitsRecord value7(String value) {
-        setJwttenantid(value);
+        setJwtTenantId(value);
         return this;
     }
 
@@ -444,7 +444,7 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
 
     @Override
     public FilesPostitsRecord value9(String value) {
-        setTenantid(value);
+        setTenantId(value);
         return this;
     }
 
@@ -497,18 +497,18 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
     /**
      * Create a detached, initialised FilesPostitsRecord
      */
-    public FilesPostitsRecord(String id, String systemid, String path, Integer alloweduses, Integer timesused, String jwtuser, String jwttenantid, String owner, String tenantid, LocalDateTime expiration, LocalDateTime created, LocalDateTime updated) {
+    public FilesPostitsRecord(String id, String systemId, String path, Integer allowedUses, Integer timesUsed, String jwtUser, String jwtTenantId, String owner, String tenantId, LocalDateTime expiration, LocalDateTime created, LocalDateTime updated) {
         super(FilesPostits.FILES_POSTITS);
 
         setId(id);
-        setSystemid(systemid);
+        setSystemId(systemId);
         setPath(path);
-        setAlloweduses(alloweduses);
-        setTimesused(timesused);
-        setJwtuser(jwtuser);
-        setJwttenantid(jwttenantid);
+        setAllowedUses(allowedUses);
+        setTimesUsed(timesUsed);
+        setJwtUser(jwtUser);
+        setJwtTenantId(jwtTenantId);
         setOwner(owner);
-        setTenantid(tenantid);
+        setTenantId(tenantId);
         setExpiration(expiration);
         setCreated(created);
         setUpdated(updated);

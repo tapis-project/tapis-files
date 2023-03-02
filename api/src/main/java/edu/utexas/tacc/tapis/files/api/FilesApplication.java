@@ -242,5 +242,22 @@ public class FilesApplication extends ResourceConfig
       tpc.setQueueLimit(-1).setCorePoolSize(100).setMaxPoolSize(100);
     }
     server.start();
+    PostItsService postItsService = locator.getService(PostItsService.class);
+
+    Thread filesShutdownThread = new FilesShutdownThread(postItsService);
+    Runtime.getRuntime().addShutdownHook(filesShutdownThread);
+    postItsService.startPostItsReaper(RuntimeSettings.get().getPostItsReaperIntervalMinutes());
+  }
+
+  private static class FilesShutdownThread extends Thread {
+    private final PostItsService postItsService;
+
+    public FilesShutdownThread(PostItsService postItsService) {
+      this.postItsService = postItsService;
+    }
+    @Override
+    public void run() {
+      postItsService.shutdown();
+    }
   }
 }

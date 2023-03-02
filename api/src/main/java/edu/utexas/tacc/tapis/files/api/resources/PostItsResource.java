@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import com.google.gson.JsonSyntaxException;
 import edu.utexas.tacc.tapis.files.api.models.PostItCreateRequest;
 import edu.utexas.tacc.tapis.files.api.models.PostItUpdateRequest;
+import edu.utexas.tacc.tapis.files.api.responses.DTOResponseBuilder;
+import edu.utexas.tacc.tapis.files.api.responses.PostItDTO;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -17,12 +19,16 @@ import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.schema.JsonValidator;
 import edu.utexas.tacc.tapis.shared.schema.JsonValidatorSpec;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import edu.utexas.tacc.tapis.shared.threadlocal.SearchParameters;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.server.ManagedAsync;
@@ -34,6 +40,7 @@ import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
@@ -64,6 +71,7 @@ public class PostItsResource {
     private static String POSTIT_CREATE_REQUEST="/edu/utexas/tacc/tapis/files/api/jsonschema/PostItCreateRequest.json";
     private static String POSTIT_UPDATE_REQUEST="/edu/utexas/tacc/tapis/files/api/jsonschema/PostItUpdateRequest.json";
     private static final String JSON_VALIDATION_ERR = "TAPIS_JSON_VALIDATION_ERROR";
+    private static Integer POSTIT_LIST_DEFAULT_LIMIT=Integer.valueOf(100);
     TenantManager tenantManager = TenantManager.getInstance(RuntimeSettings.get().getTenantsServiceURL());
 
     private class ChangeResult {
@@ -106,11 +114,12 @@ public class PostItsResource {
             createRequest = getJsonObjectFromString(jsonString,
                     "createPostIt", POSTIT_CREATE_REQUEST, PostItCreateRequest.class);
         }
-        PostIt createdPostIt = null;
+        PostItDTO createdPostIt = null;
         try {
-            createdPostIt = service.createPostIt(rUser, systemId, path, createRequest.getValidSeconds(),
+            PostIt postIt = service.createPostIt(rUser, systemId, path, createRequest.getValidSeconds(),
                     createRequest.getAllowedUses());
-            updateRedeemUrl(createdPostIt, rUser);
+            createdPostIt = new PostItDTO(postIt);
+            updateRedeemUrl(createdPostIt, rUser, opName);
         } catch (TapisException | ServiceException ex) {
             String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_ERROR", rUser,
                     opName, systemId, path, ex.getMessage(), ex.getMessage());
@@ -120,7 +129,7 @@ public class PostItsResource {
 
         String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_COMPLETE", rUser,
                 opName, systemId, path, createdPostIt.getId());
-        TapisResponse<PostIt> tapisResponse = TapisResponse.createSuccessResponse(msg, createdPostIt);
+        TapisResponse<PostItDTO> tapisResponse = TapisResponse.createSuccessResponse(msg, createdPostIt);
         return Response.status(Response.Status.OK).entity(tapisResponse).build();
     }
 
@@ -129,14 +138,15 @@ public class PostItsResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getPostIt(@PathParam("postItId") String postItId) {
         String opName = "getPostIt";
-        PostIt postIt = null;
+        PostItDTO postIt = null;
         ResourceRequestUser rUser =
                 new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "PostItId: ", postItId);
         try {
-            postIt = service.getPostIt(rUser, postItId);
-            updateRedeemUrl(postIt, rUser);
+            PostIt retrievedPostIt = service.getPostIt(rUser, postItId);
+            postIt = new PostItDTO(retrievedPostIt);
+            updateRedeemUrl(postIt, rUser, opName);
         } catch (TapisException | ServiceException ex) {
             String msg = LibUtils.getMsgAuthR("FAPI_POSTITS_OP_ERROR_ID", rUser,
                     opName, postItId, ex.getMessage());
@@ -146,40 +156,59 @@ public class PostItsResource {
 
         String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_COMPLETE", rUser,
                 opName, postIt.getSystemId(), postIt.getPath(), postIt.getId());
-        TapisResponse<PostIt> tapisResponse = TapisResponse.createSuccessResponse(msg, postIt);
+        TapisResponse<PostItDTO> tapisResponse = TapisResponse.createSuccessResponse(msg, postIt);
         return Response.status(Response.Status.OK).entity(tapisResponse).build();
     }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response listPostIts() {
+    public Response listPostIts(@QueryParam("listType") @DefaultValue("OWNED") String listType) {
         String opName = "listPostIts";
-        List<PostIt> postIts = Collections.emptyList();
+        List<PostItDTO> postItDtos = Collections.emptyList();
         ResourceRequestUser rUser =
                 new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString());
 
+        TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
+        Response response = ApiUtils.checkContext(threadContext, true);
+        if(response != null) {
+            return response;
+        }
+
+        SearchParameters searchParameters = threadContext.getSearchParameters();
+
+        if(!EnumUtils.isValidEnum(PostItsService.ListType.class, listType)) {
+            String msg = ApiUtils.getMsgAuth("FAPI_LISTTYPE_ERROR", rUser, listType);
+            log.error(msg);
+            throw new BadRequestException(msg);
+        }
+
+        PostItsService.ListType listTypeEnum = PostItsService.ListType.valueOf(listType);
         try {
-            postIts = service.listPostIts(rUser);
+            if(searchParameters.getLimit() == null) {
+                searchParameters.setLimit(POSTIT_LIST_DEFAULT_LIMIT);
+            }
+            List<PostIt> postIts = service.listPostIts(rUser, listTypeEnum, searchParameters.getLimit(),
+                    searchParameters.getOrderByList(), searchParameters.getSkip(),
+                    searchParameters.getStartAfter());
+            postItDtos = postIts.stream().map(postIt -> {
+                PostItDTO postItDTO = new PostItDTO(postIt);
+                updateRedeemUrl(postItDTO, rUser, opName);
+                return postItDTO;
+            }).toList();
+            DTOResponseBuilder<PostItDTO> responseBuilder =
+                    new DTOResponseBuilder<>(PostItDTO.class, searchParameters.getSelectList());
+
+            String msg = ApiUtils.getMsgAuth(
+                    "FAPI_POSTITS_LIST_COMPLETE", rUser, opName, postItDtos.size());
+
+            return responseBuilder.createSuccessResponse(Response.Status.OK, msg, postItDtos);
         } catch (TapisException | ServiceException ex) {
             String msg = LibUtils.getMsgAuthR("POSTITS_LIST_ERR", rUser, opName, ex.getMessage());
             log.error(msg, ex);
             throw new WebApplicationException(msg, ex);
         }
-
-        String msg = ApiUtils.getMsgAuth(
-                "FAPI_POSTITS_LIST_COMPLETE", rUser, opName, postIts.size());
-        TapisResponse<List<PostIt>> tapisResponse =
-                TapisResponse.createSuccessResponse(msg, postIts.stream().map(postIt -> {
-                    try {
-                        updateRedeemUrl(postIt, rUser);
-                    } catch (TapisException ex){
-                        log.warn("Unable to update redeem url for PostIt Id:", postIt.getId());
-                    }
-                    return postIt;
-                }).toList());
-        return Response.status(Response.Status.OK).entity(tapisResponse).build();
     }
 
 
@@ -211,11 +240,12 @@ public class PostItsResource {
         PostItUpdateRequest updateRequest = getJsonObjectFromString(jsonString,
                 opName, POSTIT_UPDATE_REQUEST, PostItUpdateRequest.class);
 
-        PostIt updatedPostIt = null;
+        PostItDTO updatedPostIt = null;
         try {
-            updatedPostIt = service.updatePostIt(rUser, postItId,
+            PostIt postIt = service.updatePostIt(rUser, postItId,
                     updateRequest.getValidSeconds(), updateRequest.getAllowedUses());
-            updateRedeemUrl(updatedPostIt, rUser);
+            updatedPostIt = new PostItDTO(postIt);
+            updateRedeemUrl(updatedPostIt, rUser, opName);
         } catch (TapisException | ServiceException ex) {
             String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_ERROR_ID", rUser, opName, postItId, ex.getMessage());
             log.error(msg, ex);
@@ -224,7 +254,7 @@ public class PostItsResource {
 
         String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_COMPLETE", rUser, opName,
                 updatedPostIt.getSystemId(), updatedPostIt.getPath(), updatedPostIt.getId());
-        TapisResponse<PostIt> tapisResponse = TapisResponse.createSuccessResponse(msg, updatedPostIt);
+        TapisResponse<PostItDTO> tapisResponse = TapisResponse.createSuccessResponse(msg, updatedPostIt);
         return Response.status(Response.Status.OK).entity(tapisResponse).build();
     }
     @GET
@@ -294,6 +324,7 @@ public class PostItsResource {
                 TapisResponse.createSuccessResponse(msg, new ChangeResult(deleteCount));
         return Response.status(Response.Status.OK).entity(tapisResponse).build();
     }
+
     private  String getJsonString(InputStream payloadStream, String opName) {
         String json;
         try {
@@ -342,24 +373,31 @@ public class PostItsResource {
         return getJsonObjectFromString(jsonString, opName, jsonSchemaFile, jsonObjectClass);
     }
 
-    private void updateRedeemUrl(PostIt postIt, ResourceRequestUser rUser) throws TapisException {
+    private void updateRedeemUrl(PostItDTO postItDto, ResourceRequestUser rUser, String opName) {
         // if we don't have enough info to build the redeemUrl, just return
-        if ((postIt == null) || (postIt.getId() == null)) {
+        if ((postItDto == null) || (postItDto.getId() == null)) {
             return;
         }
 
-        Tenant tenant = tenantManager.getTenant(rUser.getOboTenantId());
-        String baseUrl = null;
-        if(tenant != null) {
-            baseUrl = tenant.getBaseUrl();
-            if (!StringUtils.isBlank(baseUrl)) {
-                URI redeemURI = UriBuilder.fromUri(baseUrl).
-                        path("v3").
-                        path(TapisConstants.SERVICE_NAME_FILES).
-                        path("postits/redeem").
-                        path(postIt.getId()).build();
-                postIt.setRedeemUrl(redeemURI.toString());
+        try {
+            Tenant tenant = tenantManager.getTenant(rUser.getOboTenantId());
+            String baseUrl = null;
+            if (tenant != null) {
+                baseUrl = tenant.getBaseUrl();
+                if (!StringUtils.isBlank(baseUrl)) {
+                    URI redeemURI = UriBuilder.fromUri(baseUrl).
+                            path("v3").
+                            path(TapisConstants.SERVICE_NAME_FILES).
+                            path("postits/redeem").
+                            path(postItDto.getId()).build();
+                    postItDto.setRedeemUrl(redeemURI.toString());
+                }
             }
+        } catch (TapisException ex) {
+            // this is not a fatal exception, but we should probably log it so that we can see what's going on.
+            String msg = ApiUtils.getMsgAuth("FAPI_POSTITS_OP_ERROR", rUser,
+                    opName, postItDto.getSystemId(), postItDto.getPath(), ex.getMessage(), ex.getMessage());
+            log.info(msg, ex);
         }
     }
 }

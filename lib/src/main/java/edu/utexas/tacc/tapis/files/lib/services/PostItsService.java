@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.PostIt;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.threadlocal.OrderBy;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -26,6 +27,10 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class PostItsService {
@@ -37,6 +42,14 @@ public class PostItsService {
     // Default ttl 30 days
     private static Integer DEFAULT_VALID_SECONDS =  Integer.valueOf(2592000);
 
+    public static final long POSTITS_SHUTDOWN_TIMEOUT_MILLISECONDS = 5000;
+
+    // Used to start the postits reaper
+    private final ScheduledExecutorService reaperExecService = Executors.newSingleThreadScheduledExecutor();
+
+    public enum ListType { OWNED, ALL }
+
+    ScheduledFuture<?> postItsTaskFuture;
 
     @Inject
     PostItsDAO postItsDAO;
@@ -52,6 +65,33 @@ public class PostItsService {
 
     @Inject
     TenantAdminCache tenantAdminCache;
+
+    public void startPostItsReaper(long intervalMinutes) {
+        log.info(LibUtils.getMsg("POSTIT_REAPER_START", intervalMinutes));
+        postItsTaskFuture = reaperExecService.scheduleAtFixedRate(() -> {
+                PostItsReaper.cleanup(postItsDAO);
+        }, intervalMinutes, intervalMinutes, TimeUnit.MINUTES);
+    }
+
+    public void shutdown() {
+        log.info(LibUtils.getMsg("POSTIT_SERVICE_SHUTDOWN"));
+        if(postItsTaskFuture != null) {
+            postItsTaskFuture.cancel(true);
+        }
+        reaperExecService.shutdown();
+
+        try {
+            reaperExecService.awaitTermination(POSTITS_SHUTDOWN_TIMEOUT_MILLISECONDS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ex) {
+            log.warn(LibUtils.getMsg("POSTIT_SERVICE_SHUTDOWN_ERROR", ex.getMessage()), ex);
+        } finally {
+            if(!reaperExecService.isShutdown()) {
+                reaperExecService.shutdownNow();
+            }
+        }
+
+        log.warn(LibUtils.getMsg("POSTIT_SERVICE_SHUTDOWN_COMPLETE"));
+    }
 
     /**
      * Used to create a special AuthenticatedUser based on the information from a postit.
@@ -165,17 +205,20 @@ public class PostItsService {
      * @throws TapisException
      * @throws ServiceException
      */
-    public List<PostIt> listPostIts(ResourceRequestUser rUser) throws TapisException, ServiceException {
+    public List<PostIt> listPostIts(ResourceRequestUser rUser, ListType listType, Integer limit,
+                                    List<OrderBy> orderByList, Integer skip, String startAfter)
+            throws TapisException, ServiceException {
         String tenantId = rUser.getOboTenantId();
         String owner = rUser.getOboUserId();
 
-        // If the owner is a tenant admin, don't limit them to only the PostIts
-        // that they own.  Tenant admins can see all PostIts in thier tenant
-        if(isTenantAdmin(tenantId, owner)) {
+        // If the owner is a tenant admin and they have specified that they want to see all
+        // PostIts, don't limit them to only the PostIts that they own.  Tenant admins can
+        // see all PostIts in thier tenant
+        if(ListType.ALL.equals(listType) && isTenantAdmin(tenantId, owner)) {
             owner = null;
         }
 
-        return postItsDAO.listPostIts(tenantId, owner);
+        return postItsDAO.listPostIts(tenantId, owner, limit, orderByList, skip, startAfter);
     }
 
     /**
@@ -310,6 +353,18 @@ public class PostItsService {
         return redeemContext;
     }
 
+    /**
+     * Delete a single postit specified by postItId.  This is a hard
+     * delete.
+     *
+     * @param rUser ResourceRequestUser representing the user that is deleting
+     *              the PostIt.
+     * @param postItId Id of the PostIt to delete.
+     * @return count of deleted objects (should be 1 assuming everything
+     *              went well).
+     * @throws TapisException
+     * @throws ServiceException
+     */
     public int deletePostIt(ResourceRequestUser rUser, String postItId)
             throws TapisException, ServiceException {
         PostIt postIt = postItsDAO.getPostIt(postItId);
