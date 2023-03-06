@@ -190,6 +190,14 @@ public class TestFileOpsService
     return new TapisSystem[] { testSystemNotEnabled };
   }
 
+  // Data provider for SSH system
+  @DataProvider(name= "testSystemsSSH")
+  public Object[] testSystemsSSHDataProvider ()
+  {
+    return new TapisSystem[] { testSystemSSH };
+  }
+
+
   @BeforeSuite
   public void doBeforeSuite()
   {
@@ -518,6 +526,81 @@ public class TestFileOpsService
     listing = fileOpsService.ls(client, "/dir1/dir2", MAX_LISTING_SIZE, 0);
     for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
     Assert.assertEquals(listing.size(), 6);
+  }
+
+  // Test copy one directory to another
+  // We have subdirectories so cannot include S3 when checking the listing count.
+//  @Test(dataProvider = "testSystemsNoS3")
+  @Test(dataProvider = "testSystemsSSH")
+  public void testCopyDirToDir(TapisSystem testSystem) throws Exception
+  {
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
+    /*
+        Create the following files and directories:
+          /archive
+          /archive/test1.txt
+          /Test
+     */
+    cleanupAll(client, testSystem);
+    fileOpsService.mkdir(client, "Test");
+    InputStream in = Utils.makeFakeFile(100*1024);
+    fileOpsService.upload(client,"archive/test1.txt", in);
+    in.close();
+    // List files before copying
+    System.out.println("Before copying dir to dir. list for /: ");
+    List<FileInfo> listing = fileOpsService.lsRecursive(client, "/", 5);
+    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+    Assert.assertEquals(listing.size(), 3);
+    /* Now copy files. Should end up with following:
+          /archive
+          /archive/test1.txt
+          /Test
+          /Test/archive
+          /Test/archive/test1.txt
+     */
+    fileOpsService.moveOrCopy(client, OP_CP, "/archive", "/Test");
+    // Check listing for /
+    System.out.println("After copying dir to dir: list for /");
+    listing = fileOpsService.lsRecursive(client, "/", 5);
+    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+    Assert.assertEquals(listing.size(), 5);
+  }
+
+  // Test move of one directory to another
+  // We have subdirectories so cannot include S3 when checking the listing count.
+  @Test(dataProvider = "testSystemsNoS3")
+  public void testMoveDirToDir(TapisSystem testSystem) throws Exception
+  {
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
+    /*
+        Create the following files and directories:
+          /archive
+          /archive/test1.txt
+          /Test
+     */
+    cleanupAll(client, testSystem);
+    fileOpsService.mkdir(client, "Test");
+    InputStream in = Utils.makeFakeFile(100*1024);
+    fileOpsService.upload(client,"archive/test1.txt", in);
+    in.close();
+    // List files before copying
+    System.out.println("Before moving dir to dir. list for /: ");
+    List<FileInfo> listing = fileOpsService.lsRecursive(client, "/", 5);
+    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+    Assert.assertEquals(listing.size(), 3);
+    /* Now move files. Should end up with following:
+          /Test
+          /Test/archive
+          /Test/archive/test1.txt
+     */
+    fileOpsService.moveOrCopy(client, OP_MV, "/archive", "/Test");
+    // Check listing for /
+    System.out.println("After moving dir to dir: list for /");
+    listing = fileOpsService.lsRecursive(client, "/", 5);
+    for (FileInfo fi : listing) { System.out.println("Found file:"+ fi.getName() + " at path: " + fi.getPath()); }
+    Assert.assertEquals(listing.size(), 3);
   }
 
   @Test(dataProvider = "testSystems")

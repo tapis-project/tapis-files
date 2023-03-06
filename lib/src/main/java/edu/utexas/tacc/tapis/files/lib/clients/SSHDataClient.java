@@ -301,8 +301,6 @@ public class SSHDataClient implements ISSHDataClient
 
   /**
    * Copy oldPath to newPath using sshExecChannel to run linux commands
-   * TODO/TBD If newPath is an existing directory then oldPath will be copied into the directory newPath?
-   *          what about cp -R or similar?
    *
    * @param srcPath current location
    * @param dstPath desired location
@@ -323,6 +321,7 @@ public class SSHDataClient implements ISSHDataClient
     ls(relOldPathStr);
 
     // Construct and run linux commands to create the target dir and do the copy
+    int retCode;
     SSHExecChannel channel = connectionHolder.getExecChannel();
     try
     {
@@ -334,11 +333,11 @@ public class SSHDataClient implements ISSHDataClient
       // Command to make the directory including any intermediate directories
       CommandLine cmd = new CommandLine("mkdir").addArgument("-p").addArgument("${targetParentPath}").addArgument(";");
       // Command to do the copy
-      cmd.addArgument("cp").addArgument("${source}").addArgument("${target}");
+      cmd.addArgument("cp").addArgument("-r").addArgument("${source}").addArgument("${target}");
       // Fill in arguments and execute
       cmd.setSubstitutionMap(args);
       String toExecute = String.join(" ", cmd.toStrings());
-      channel.execute(toExecute);
+      retCode = channel.execute(toExecute);
     }
     catch (TapisException e)
     {
@@ -356,6 +355,11 @@ public class SSHDataClient implements ISSHDataClient
     finally
     {
       connectionHolder.returnExecChannel(channel);
+    }
+    if (retCode != 0)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_CMD_ERR", oboTenant, oboUser, "copy", systemId, effectiveUserId, host, relOldPathStr, relNewPathStr, retCode);
+      throw new IOException(msg);
     }
   }
 
