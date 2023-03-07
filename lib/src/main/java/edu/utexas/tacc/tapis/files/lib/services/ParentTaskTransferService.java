@@ -11,7 +11,6 @@ import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +42,10 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 
+/*
+ * Transfers service methods providing functionality for TransfersApp (a worker) and TestTransfers.
+ * Contains only one public method that is used to kick off a parent transfer pipeline.
+ */
 @Service
 public class ParentTaskTransferService
 {
@@ -118,7 +121,8 @@ public class ParentTaskTransferService
    *
    * We prepare a "bill of materials" for the total transfer task.
    * This includes doing a recursive listing and inserting the records into the DB, then publishing all the messages to
-   * rabbitmq. After that, the child task workers will pick them up and begin the transfer of data.
+   * rabbitmq. After that, the child task workers (see ChildTaskTransferService) will pick them up
+   * and begin the transfer of data.
    *
    * @param parentTask TransferTaskParent
    * @return Updated task

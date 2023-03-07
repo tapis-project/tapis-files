@@ -114,10 +114,8 @@ public class TransferTaskParent
 
   @JsonProperty("endTime")
   public void setEndTime(String s) { if (s != null) endTime = Instant.parse(s); }
-  public TransferURI getSourceURI() {
-    return sourceURI;
-  }
 
+  public TransferURI getSourceURI() { return sourceURI; }
   public void setSourceURI(String s) {
     sourceURI = new TransferURI(s);
   }
