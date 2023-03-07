@@ -18,6 +18,7 @@ Incremental improvements.
 
 ### Bug fixes:
 - Fixed issue where linux directories could not be copied.
+- Fixed issue where path permissions cache was not being invalidated when permissions where changed
 
 ---------------------------------------------------------------------------
 ## 1.3.0 - 2023-02-27
