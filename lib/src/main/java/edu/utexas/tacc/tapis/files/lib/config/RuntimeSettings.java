@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.config;
 
+import org.apache.commons.lang3.StringUtils;
+
 public class RuntimeSettings {
 
     private static final Settings settings = new Settings();
@@ -21,6 +23,7 @@ public class RuntimeSettings {
         protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String globusClientId = settings.get("TAPIS_GLOBUS_CLIENT_ID", "");
+        protected final int postItsReaperIntervalMinutes = getIntSetting("POSTITS_REAPER_INTERVAL_MINUTES", 1440);
 
         public String getHostName() {
             return hostName;
@@ -72,6 +75,17 @@ public class RuntimeSettings {
 
         public String getGlobusClientId() { return globusClientId; }
 
+        public int getPostItsReaperIntervalMinutes() {
+            return postItsReaperIntervalMinutes;
+        }
+
+        public static int getIntSetting(String settingName, int defaultValue) {
+            String settingValue = settings.get(settingName);
+            if(StringUtils.isBlank(settingValue)) {
+                return defaultValue;
+            }
+            return Integer.parseInt(settingValue);
+        }
     }
 
 
@@ -106,6 +120,7 @@ public class RuntimeSettings {
         }
     }
 
+
     public static IRuntimeConfig get() {
         if (settings.get("APP_ENV", "dev").equalsIgnoreCase("dev")) {
             return new BaseConfig();
@@ -116,5 +131,4 @@ public class RuntimeSettings {
             return new BaseConfig();
         }
     }
-
 }

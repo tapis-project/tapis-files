@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.PostItCreateRequest;
 import edu.utexas.tacc.tapis.files.api.models.PostItUpdateRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
+import edu.utexas.tacc.tapis.files.api.responses.PostItDTO;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.TenantAdminCache;
@@ -11,7 +12,6 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.postits.PostItsDAO;
-import edu.utexas.tacc.tapis.files.lib.models.PostIt;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
@@ -50,6 +50,7 @@ import org.testng.annotations.Test;
 
 import javax.inject.Singleton;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Application;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -60,6 +61,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -79,8 +81,9 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     private SystemsCache systemsCache;
     private FilePermsService permsService;
     private static class CreateFileResponse extends TapisResponse<String> {}
-    private static class TapisPostItResponse extends TapisResponse<PostIt> {}
-    private static class TapisPostItListResponse extends TapisResponse<List<PostIt>> {}
+    private static class TapisPostItResponse extends TapisResponse<PostItDTO> {}
+    private static class TapisPostItListResponse extends TapisResponse<List<PostItDTO>> {}
+    private static class TapisPostItGenericResponse extends TapisResponse<Map> {}
 
     TestPostItsResource() {
         // Create Tapis Systems used in test.
@@ -221,7 +224,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(postResponse.getResult());
         Assert.assertNotNull(postResponse.getResult().getId());
 
-        TapisPostItResponse getResponse = doGet(postResponse.getResult().getId());
+        TapisPostItResponse getResponse = doGet(postResponse.getResult().getId(), TEST_USR1);
         checkPostItsEqual(postResponse.getResult(), getResponse.getResult());
         Assert.assertEquals(getResponse.getResult().getTimesUsed(), Integer.valueOf(0));
 
@@ -229,7 +232,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertArrayEquals(fileBytes, recievedFileBytes);
 
         // now check that use count has increased;
-        getResponse = doGet(getResponse.getResult().getId());
+        getResponse = doGet(getResponse.getResult().getId(), TEST_USR1);
         Assert.assertEquals(getResponse.getResult().getTimesUsed(), Integer.valueOf(1));
     }
 
@@ -312,20 +315,40 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         PostItCreateRequest request = new PostItCreateRequest();
         request.setAllowedUses(3);
         request.setValidSeconds(30);
-        int usr1InitialCount = doList(TEST_USR1).getResult().size();
-        int usr2InitialCount = doList(TEST_USR2).getResult().size();
-        int adminUsrInitialCount = doList(TEST_ADMIN_USR).getResult().size();
+        int usr1InitialCount_owned = doList(TEST_USR1, PostItsService.ListType.OWNED).getResult().size();
+        int usr2InitialCount_owned = doList(TEST_USR2, PostItsService.ListType.OWNED).getResult().size();
+        int adminUsrInitialCount_owned = doList(TEST_ADMIN_USR, PostItsService.ListType.OWNED).getResult().size();
+        int usr1InitialCount_all = doList(TEST_USR1, PostItsService.ListType.ALL).getResult().size();
+        int usr2InitialCount_all = doList(TEST_USR2, PostItsService.ListType.ALL).getResult().size();
+        int adminUsrInitialCount_all = doList(TEST_ADMIN_USR, PostItsService.ListType.ALL).getResult().size();
 
         doPost(request, TEST_USR1, testSystem.getId(), fileName);
         doPost(request, TEST_USR1, testSystem.getId(), fileName);
         doPost(request, TEST_USR1, testSystem.getId(), fileName);
 
-        TapisPostItListResponse usr1PostIts = doList(TEST_USR1);
-        Assert.assertEquals(3 + usr1InitialCount, usr1PostIts.getResult().size());
-        TapisPostItListResponse usr2PostIts = doList(TEST_USR2);
-        Assert.assertEquals(0 + usr2InitialCount, usr2PostIts.getResult().size());
-        TapisPostItListResponse adminPostIts = doList(TEST_ADMIN_USR);
-        Assert.assertEquals(3 + adminUsrInitialCount, adminPostIts.getResult().size());
+        // these get only "owned" postits (by leaving listType query param out)
+        TapisPostItListResponse usr1PostIts_default = doList(TEST_USR1, null);
+        Assert.assertEquals(3 + usr1InitialCount_owned, usr1PostIts_default.getResult().size());
+        TapisPostItListResponse usr2PostIts_default = doList(TEST_USR2, null);
+        Assert.assertEquals(usr2InitialCount_owned, usr2PostIts_default.getResult().size());
+        TapisPostItListResponse adminPostIts_default = doList(TEST_ADMIN_USR, null);
+        Assert.assertEquals(adminUsrInitialCount_owned, adminPostIts_default.getResult().size());
+
+        // these get only "owned" postits
+        TapisPostItListResponse usr1PostIts_owned = doList(TEST_USR1, PostItsService.ListType.OWNED);
+        Assert.assertEquals(3 + usr1InitialCount_owned, usr1PostIts_owned.getResult().size());
+        TapisPostItListResponse usr2PostIts_owned = doList(TEST_USR2, PostItsService.ListType.OWNED);
+        Assert.assertEquals(usr2InitialCount_owned, usr2PostIts_owned.getResult().size());
+        TapisPostItListResponse adminPostIts_owned = doList(TEST_ADMIN_USR, PostItsService.ListType.OWNED);
+        Assert.assertEquals(adminUsrInitialCount_owned, adminPostIts_owned.getResult().size());
+
+        // these get all visible postits
+        TapisPostItListResponse usr1PostIts_all = doList(TEST_USR1, PostItsService.ListType.OWNED);
+        Assert.assertEquals(3 + usr1InitialCount_all, usr1PostIts_all.getResult().size());
+        TapisPostItListResponse usr2PostIts_all = doList(TEST_USR2, PostItsService.ListType.OWNED);
+        Assert.assertEquals(usr2InitialCount_all, usr2PostIts_all.getResult().size());
+        TapisPostItListResponse adminPostIts_all = doList(TEST_ADMIN_USR, PostItsService.ListType.OWNED);
+        Assert.assertEquals(adminUsrInitialCount_all, adminPostIts_all.getResult().size());
     }
 
     @Test(dataProvider = "testSystemsProvider")
@@ -362,7 +385,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertNotEquals(createResponse.getResult().getExpiration(), updateResponse.getResult().getExpiration());
 
         // now get the postit to make sure we set what the update said we set
-        TapisPostItResponse getResponse = doGet(postItId);
+        TapisPostItResponse getResponse = doGet(postItId, TEST_USR1);
         Assert.assertNotNull(getResponse);
         Assert.assertNotNull(getResponse.getResult().getId());
 
@@ -374,11 +397,11 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         updateRequest.setAllowedUses(32);
         updateRequest.setValidSeconds(200);
         doPatch(updateRequest, TEST_USR2, postItId, 403);
-        Assert.assertNotEquals(updateRequest.getAllowedUses(), doGet(postItId).getResult().getAllowedUses());
+        Assert.assertNotEquals(updateRequest.getAllowedUses(), doGet(postItId, TEST_USR1).getResult().getAllowedUses());
 
         // Update a postit as the domain admin
         doPatch(updateRequest, TEST_ADMIN_USR, postItId, 200);
-        Assert.assertEquals(updateRequest.getAllowedUses(), doGet(postItId).getResult().getAllowedUses());
+        Assert.assertEquals(updateRequest.getAllowedUses(), doGet(postItId, TEST_USR1).getResult().getAllowedUses());
     }
 
     @Test(dataProvider = "testSystemsProvider")
@@ -399,7 +422,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(postResponse);
         Assert.assertNotNull(postResponse.getResult());
 
-        PostIt newPostIt = postResponse.getResult();
+        PostItDTO newPostIt = postResponse.getResult();
         Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
         Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
         Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
@@ -427,7 +450,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(postResponse);
         Assert.assertNotNull(postResponse.getResult());
 
-        PostIt newPostIt = postResponse.getResult();
+        PostItDTO newPostIt = postResponse.getResult();
 
         // can't really test unlimited, but we can test a few
         Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
@@ -446,6 +469,43 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(bytes, null);
     }
 
+    @Test(dataProvider = "testSystemsProvider")
+    public void testDelete(TapisSystem testSystem) throws Exception
+    {
+        // setup external service mocks
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+
+        String fileName = "testPostItsFile.txt";
+        int fileSize = 100;
+
+        byte[] fileBytes = makeFakeFile(fileSize);
+        addFile(testSystem, fileName, fileBytes);
+        PostItCreateRequest request = new PostItCreateRequest();
+        request.setAllowedUses(3);
+        request.setValidSeconds(30);
+
+        TapisPostItResponse postResponse = doPost(request, TEST_USR1, testSystem.getId(), fileName);
+        Assert.assertNotNull(postResponse);
+        Assert.assertEquals("success", postResponse.getStatus());
+        Assert.assertNotNull(postResponse.getResult());
+        Assert.assertNotNull(postResponse.getResult().getId());
+
+        TapisPostItResponse getResponse = doGet(postResponse.getResult().getId(), TEST_USR1);
+        checkPostItsEqual(postResponse.getResult(), getResponse.getResult());
+        Assert.assertEquals(getResponse.getResult().getTimesUsed(), Integer.valueOf(0));
+
+        // try to delete as user with no permissions (should fail with 403)
+        doDelete(getResponse.getResult().getId(), TEST_USR2, 403);
+
+        // now delete as owner
+        Response response_success = doDelete(getResponse.getResult().getId(), TEST_USR1, 200);
+        TapisPostItGenericResponse deleteResponse = response_success.readEntity(TapisPostItGenericResponse.class);
+        Assert.assertEquals(1, deleteResponse.getResult().get("changes"));
+
+        // now check that it was really deleted
+        doGet(getResponse.getResult().getId(), TEST_USR1, 404);
+    }
+
     private byte[] doRedeem(String redeemUrl, int expectedStatus) throws IOException {
         // for test, we must strip of the host/port
         redeemUrl = redeemUrl.replaceFirst("^.*v3/", "v3/");
@@ -461,8 +521,8 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         return bytes;
     }
 
-    private TapisPostItResponse doGet(String postItId) {
-        TapisPostItResponse getResponse = doGet(postItId, TEST_USR1, 200).
+    private TapisPostItResponse doGet(String postItId, String user) {
+        TapisPostItResponse getResponse = doGet(postItId, user, 200).
                 readEntity(TapisPostItResponse.class);
         return getResponse;
     }
@@ -472,6 +532,21 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
                 request().accept(MediaType.APPLICATION_JSON).
                 header("x-tapis-token", getJwtForUser(TENANT, user)).
                 get();
+        Assert.assertEquals(expectedStatus, getResponse.getStatus());
+        return getResponse;
+    }
+
+    private TapisPostItResponse doDelete(String postItId, String user) {
+        TapisPostItResponse getResponse = doDelete(postItId, user, 200).
+                readEntity(TapisPostItResponse.class);
+        return getResponse;
+    }
+
+    private Response doDelete(String postItId, String user, int expectedStatus) {
+        Response getResponse = target(String.format("%s/%s", POSTITS_ROUTE, postItId)).
+                request().accept(MediaType.APPLICATION_JSON).
+                header("x-tapis-token", getJwtForUser(TENANT, user)).
+                delete();
         Assert.assertEquals(expectedStatus, getResponse.getStatus());
         return getResponse;
     }
@@ -508,20 +583,24 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         return postResponse;
     }
 
-    private TapisPostItListResponse doList(String username) {
-        return doList(username, 200).readEntity(TapisPostItListResponse.class);
+    private TapisPostItListResponse doList(String username, PostItsService.ListType getAll) {
+        return doList(username, getAll, 200).readEntity(TapisPostItListResponse.class);
     }
 
-    private Response doList(String username, int expectedStatus) {
-        Response postResponse = target(String.format(POSTITS_ROUTE)).
-                request().accept(MediaType.APPLICATION_JSON).
+    private Response doList(String username, PostItsService.ListType listType, int expectedStatus) {
+
+        WebTarget target = target(String.format(POSTITS_ROUTE));
+        if(listType != null) {
+            target.queryParam("listType", listType);
+        }
+        Response postResponse = target.request().accept(MediaType.APPLICATION_JSON).
                 header("x-tapis-token", getJwtForUser(TENANT, username)).
                 get();
         Assert.assertEquals(expectedStatus, postResponse.getStatus());
         return postResponse;
     }
 
-    private void checkPostItsEqual(PostIt p1, PostIt p2) {
+    private void checkPostItsEqual(PostItDTO p1, PostItDTO p2) {
         Assert.assertEquals(p1.getId(), p2.getId());
         Assert.assertEquals(p1.getTenantId(), p2.getTenantId());
         Assert.assertEquals(p1.getPath(), p2.getPath());

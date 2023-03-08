@@ -16,4 +16,5 @@ public interface IRuntimeConfig {
     String getTenantsServiceURL();
     String getSiteId();
     String getGlobusClientId();
+    int getPostItsReaperIntervalMinutes();
 }

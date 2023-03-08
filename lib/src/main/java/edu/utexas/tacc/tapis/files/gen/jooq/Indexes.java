@@ -24,6 +24,6 @@ public class Indexes {
 
     public static final Index FILES_POSTITS_EXPIRATION_INDEX = Internal.createIndex(DSL.name("files_postits_expiration_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.EXPIRATION }, false);
     public static final Index FILES_POSTITS_OWNER_INDEX = Internal.createIndex(DSL.name("files_postits_owner_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.OWNER }, false);
-    public static final Index FILES_POSTITS_TENANTID_INDEX = Internal.createIndex(DSL.name("files_postits_tenantid_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.TENANTID }, false);
-    public static final Index FILES_POSTITS_TIMESUSED_INDEX = Internal.createIndex(DSL.name("files_postits_timesused_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.TIMESUSED }, false);
+    public static final Index FILES_POSTITS_TENANTID_INDEX = Internal.createIndex(DSL.name("files_postits_tenantid_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.TENANT_ID }, false);
+    public static final Index FILES_POSTITS_TIMESUSED_INDEX = Internal.createIndex(DSL.name("files_postits_timesused_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.TIMES_USED }, false);
 }

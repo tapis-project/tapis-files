@@ -54,6 +54,8 @@ public class FilePermsService
     try
     {
       getSKClient().grantUserPermission(tenantId, username, permSpec);
+      // invalidate cache for this user on this system for this tenant
+      permsCache.invalidateUserPerms(tenantId, username, systemId);
     }
     catch (TapisClientException ex)
     {
@@ -113,6 +115,8 @@ public class FilePermsService
       getSKClient().revokeUserPermission(tenantId, username, permSpec);
       permSpec = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, pathStr);
       getSKClient().revokeUserPermission(tenantId, username, permSpec);
+      // invalidate cache for this user on this system for this tenant
+      permsCache.invalidateUserPerms(tenantId, username, systemId);
     }
     catch (TapisClientException ex)
     {
@@ -144,6 +148,8 @@ public class FilePermsService
         String permSpec2 = String.format(PERMSPEC, tenantId, Permission.MODIFY, systemId, path);
         getSKClient().removePermissionFromAllRoles(tenantId, permSpec2);
       }
+      // invalidate cache for this system/tenant
+      permsCache.invalidateSystemPerms(tenantId, systemId);
     } catch (TapisClientException ex) {
       String msg = LibUtils.getMsg("FILES_PERMC_ERR", tenantId, username, "revoke", systemId, path, ex.getMessage());
       log.error(msg, ex);

@@ -3,13 +3,17 @@ package edu.utexas.tacc.tapis.files.lib.caches;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.time.Duration;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
@@ -56,6 +60,33 @@ public class FilePermsCache extends BasePermsCache
       String msg = LibUtils.getMsg("FILES_CACHE_ERR", "FilePerms", tenantId, systemId, username, ex.getMessage());
       throw new ServiceException(msg, ex);
     }
+  }
+
+  public void invalidateSystemPerms(String tenantId, String systemId) {
+    invalidatePerms(key -> {
+      if((StringUtils.equals(tenantId, key.getTenantId())) &&
+              (StringUtils.equals(systemId, key.getSystemId()))) {
+        return true;
+      }
+      return false;
+    });
+  }
+
+  public void invalidateUserPerms(String tenantId, String username, String systemId) {
+    invalidatePerms(key -> {
+      if((StringUtils.equals(tenantId, key.getTenantId())) &&
+              (StringUtils.equals(systemId, key.getSystemId())) &&
+              (StringUtils.equals(username, key.getUsername()))) {
+        return true;
+      }
+      return false;
+    });
+  }
+
+  private void invalidatePerms(Predicate<FilePermCacheKey> keyInvalidator) {
+    Set<FilePermCacheKey> keysToInvalidate = cache.asMap().keySet().stream().
+            filter(keyInvalidator).collect(Collectors.toSet());
+    cache.invalidateAll(keysToInvalidate);
   }
 
   /**

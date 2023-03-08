@@ -340,6 +340,7 @@ public class SSHDataClient implements ISSHDataClient
 
     // Construct and run linux commands to create the target dir and do the copy
     SSHExecChannel channel = connectionHolder.getExecChannel();
+    int retCode = 0;
     try
     {
       // Set up arguments
@@ -350,11 +351,11 @@ public class SSHDataClient implements ISSHDataClient
       // Command to make the directory including any intermediate directories
       CommandLine cmd = new CommandLine("mkdir").addArgument("-p").addArgument("${targetParentPath}").addArgument(";");
       // Command to do the copy
-      cmd.addArgument("cp").addArgument("${source}").addArgument("${target}");
+      cmd.addArgument("cp").addArgument("-r").addArgument("${source}").addArgument("${target}");
       // Fill in arguments and execute
       cmd.setSubstitutionMap(args);
       String toExecute = String.join(" ", cmd.toStrings());
-      channel.execute(toExecute);
+      retCode = channel.execute(toExecute);
     }
     catch (TapisException e)
     {
@@ -372,6 +373,12 @@ public class SSHDataClient implements ISSHDataClient
     finally
     {
       connectionHolder.returnExecChannel(channel);
+      if(retCode != 0) {
+        {
+          String msg = LibUtils.getMsg("FILES_CLIENT_SSH_CMD_ERR", oboTenant, oboUser, "copy", systemId, effectiveUserId, host, relOldPathStr, relNewPathStr, retCode);
+          throw new IOException(msg);
+        }
+      }
     }
   }
 
