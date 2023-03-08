@@ -11,16 +11,17 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferItem;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusFileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
@@ -29,8 +30,8 @@ import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
-
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.globusproxy.client.GlobusProxyClient;
@@ -445,8 +446,7 @@ public class GlobusDataClient implements IRemoteDataClient
     fileInfo.setOwner(globusFileInfo.getUser());
     fileInfo.setLastModified(convertLastModified(globusFileInfo.getLastModified()));
     fileInfo.setNativePermissions(globusFileInfo.getPermissions());
-    if (globusFileInfo.getSize() != null)
-      fileInfo.setSize(globusFileInfo.getSize());
+    if (globusFileInfo.getSize() != null) fileInfo.setSize(globusFileInfo.getSize());
     // Set the type
     // NOTE: currently can use the type from Globus because they match our defined types of
     //       FileInfo.FILETYPE_FILE and FileInfo.FILETYPE_DIR.
@@ -458,101 +458,70 @@ public class GlobusDataClient implements IRemoteDataClient
     return fileInfo;
   }
 
-  /*
+  /**
    * Use the GlobusProxyClient to create a transfer task using this client's endpoint as the source endpoint.
    * The source path, destination endpoint and destination path must be passed in
-   * Return the globus transfer task id
+   * Return the globus transfer task
    *
-   * @param path - path on system relative to system rootDir
-   * @return Globus transfer task id as a string.
+   * @param srcPath - path on source system relative to system rootDir
+   * @param dstEndpointId - detination endpoint
+   * @param dstPath - path on destination system relative to system rootDir
+   * @return Globus transfer task
    * @throws ServiceException on error
    */
-  public GlobusTransferTask createTransferTaskFromEndpoint(String srcPath, String dstEndpint, String dstPath)
-          throws TapisClientException
+  public GlobusTransferTask createTransferTaskFromEndpoint(String srcPath, String dstEndpointId, String dstPath)
+          throws ServiceException
   {
     String opName = "createGlobusTransferTaskFromEndpoint";
 
+    // Build a single item list of Globus transfer items
+    GlobusTransferItem transferItem = new GlobusTransferItem();
+    transferItem.setSourcePath(srcPath);
+    transferItem.setDestinationPath(dstPath);
+    // TODO If dir must be set to true. Will we support txfr of directory?
+    //   Since this a child task will it always be file to file?
+    transferItem.setRecursive(false);
+    List<GlobusTransferItem> transferItems = Collections.singletonList(transferItem);
 
-
-    FileInfo fileInfo;
-    // Process the relative path string and make sure it is not empty.
-    String relativePathStr = PathUtils.getRelativePath(path).toString();
-    Path absolutePath = PathUtils.getAbsolutePath(rootDir, relativePathStr);
-    String absolutePathStr = absolutePath.toString();
-    // For Globus the listing must be for a directory and the filter is the target file/dir name.
-    // Determine name of specific file or directory we want.
-    String targetName = absolutePath.getFileName().toString();
-    String targetDir = absolutePath.getParent().toString();
-    int count = 1;
-    int startIdx = 0;
-    // Search for file by name
-    String filterStr = "name:="+ targetName;
-    TransferTask globusTransferTask;
+    GlobusTransferTask globusTransferTask;
     try
     {
-      globusFilesList = proxyClient.listFiles(globusClientId, endpointId, accessToken, refreshToken, targetDir,
-              count, startIdx, filterStr);
+      globusTransferTask = proxyClient.createTransferTask(globusClientId, accessToken, refreshToken,
+                                                          endpointId, dstEndpointId, transferItems);
     }
     catch (TapisClientException e)
     {
-      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_ERR", oboTenant, oboUser, opName, system.getId(),
-              endpointId, relativePathStr, absolutePathStr, e.getMessage());
-      throw new IOException(msg, e);
+      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_ERR", oboTenant, oboUser, opName, system.getId(),
+                                   endpointId, srcPath, dstEndpointId, dstPath, e.getMessage());
+      throw new ServiceException(msg, e);
     }
-    if (globusFilesList == null)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_NULL", oboTenant, oboUser, opName, system.getId(), relativePathStr, absolutePathStr);
-      throw new IOException(msg);
-    }
-
-    // If path exists there should be only one item
-    if (globusFilesList.size() == 0)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_NOT_FOUND", oboTenant, oboUser, opName, system.getId(), relativePathStr);
-      throw new NotFoundException(msg);
-    }
-    else if (globusFilesList.size() != 1)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_ERR3", oboTenant, oboUser, system.getId(),
-              endpointId, relativePathStr, absolutePathStr, globusFilesList.size());
-      throw new IOException(msg);
-    }
-
-    var globusFileInfo = globusFilesList.get(0);
-    fileInfo = new FileInfo();
-    // Set the fileInfo attributes from the retrieved globus files
-    fileInfo.setName(globusFileInfo.getName());
-    fileInfo.setGroup(globusFileInfo.getGroup());
-    fileInfo.setOwner(globusFileInfo.getUser());
-    fileInfo.setLastModified(convertLastModified(globusFileInfo.getLastModified()));
-    fileInfo.setNativePermissions(globusFileInfo.getPermissions());
-    if (globusFileInfo.getSize() != null)
-      fileInfo.setSize(globusFileInfo.getSize());
-    // Set the type
-    // NOTE: currently can use the type from Globus because they match our defined types of
-    //       FileInfo.FILETYPE_FILE and FileInfo.FILETYPE_DIR.
-    fileInfo.setType(globusFileInfo.getType());
-
-    // Fill in path with relativePath as is done for other clients such as SSH, S3 and IRODS.
-    fileInfo.setPath(relativePathStr);
-
-    return fileInfo;
+    return globusTransferTask;
   }
 
   /*
-   * Use the GlobusProxyClient to get a transfer task.
+   * Use the GlobusProxyClient to get status for a transfer task.
    *
    * @param path - path on system relative to system rootDir
    * @return Globus transfer task status.
    * @throws TapisClientException on error
    */
-  public String getGlobusTransferTaskStatus(String globusTaskId) throws TapisClientException
+  public String getGlobusTransferTaskStatus(String globusTaskId) throws ServiceException
   {
-    var transferTask = proxyClient.getTransferTask(globusClientId, accessToken, refreshToken, globusTaskId);
-    String taskDetailsStr = transferTask.toString();
+    GlobusTransferTask txfrTask;
+    try
+    {
+      txfrTask = proxyClient.getTransferTask(globusClientId, accessToken, refreshToken, globusTaskId);
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_STATUS_ERR", oboTenant, oboUser, system.getId(),
+                                   endpointId, globusTaskId, e.getMessage());
+      throw new ServiceException(msg, e);
+    }
+    String taskDetailsStr = txfrTask.toString();
     log.trace(LibUtils.getMsg("FILES_TXFR_ASYNCH_ETASK", oboTenant, oboUser, globusTaskId, taskDetailsStr));
-    var taskStatus = transferTask.getStatus();
-    return (taskStatus == null ? null : transferTask.getStatus().name());
+    var taskStatus = txfrTask.getStatus();
+    return (taskStatus == null ? null : txfrTask.getStatus().name());
   }
 
     /* **************************************************************************** */
