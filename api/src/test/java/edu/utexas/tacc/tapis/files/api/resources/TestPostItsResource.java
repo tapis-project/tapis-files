@@ -64,6 +64,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Test(groups = {"integration"})
 public class TestPostItsResource extends BaseDatabaseIntegrationTest {
@@ -433,6 +435,165 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     }
 
     @Test(dataProvider = "testSystemsProvider")
+    public void testRedeemFileAsZip(TapisSystem testSystem) throws Exception {
+        // setup external service mocks
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+
+        String fileInRoot = "testPostItsFile.txt";
+        String fileInDir = "dir/testPostItsFile.txt";
+        int fileSize = 12;
+
+        byte[] fileInRootBytes = makeFakeFile(fileSize);
+        byte[] fileInDirBytes = makeFakeFile(fileSize);
+        addFile(testSystem, fileInRoot, fileInRootBytes);
+        addFile(testSystem, fileInDir, fileInDirBytes);
+        PostItCreateRequest request = new PostItCreateRequest();
+        request.setAllowedUses(3);
+        request.setValidSeconds(30);
+
+        // create and redeem a file in the root directory
+        TapisPostItResponse postResponse = doPost(request, TEST_USR1, testSystem.getId(), fileInRoot);
+        Assert.assertNotNull(postResponse);
+        Assert.assertNotNull(postResponse.getResult());
+
+        PostItDTO newPostIt = postResponse.getResult();
+        byte[] zipBytes = doRedeem(newPostIt.getRedeemUrl(), 200, Boolean.TRUE);
+        ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes));
+        ZipEntry ze = zis.getNextEntry();
+        Assert.assertEquals(fileInRoot, ze.getName());
+
+        Assert.assertEquals(-1, ze.getSize());
+        byte[] unzippedBytes = zis.readAllBytes();
+        Assert.assertArrayEquals(fileInRootBytes, unzippedBytes);
+
+        // create and redeem a file in a directory off the root directory
+        postResponse = doPost(request, TEST_USR1, testSystem.getId(), fileInDir);
+        Assert.assertNotNull(postResponse);
+        Assert.assertNotNull(postResponse.getResult());
+
+        newPostIt = postResponse.getResult();
+        zipBytes = doRedeem(newPostIt.getRedeemUrl(), 200, Boolean.TRUE);
+        zis = new ZipInputStream(new ByteArrayInputStream(zipBytes));
+        ze = zis.getNextEntry();
+        // filename will be relative to dir, so strip that out.
+        Assert.assertEquals(fileInDir.replace("dir/", ""), ze.getName());
+
+        Assert.assertEquals(-1, ze.getSize());
+        unzippedBytes = zis.readAllBytes();
+        Assert.assertArrayEquals(fileInDirBytes, unzippedBytes);
+    }
+
+    class FakeFileInfo {
+        public String name;
+        public byte[] content;
+
+        public FakeFileInfo(String name, byte[] content) {
+            this.name = name;
+            this.content = content;
+        }
+    }
+    @Test(dataProvider = "testSystemsProvider")
+    public void testRedeemDirectoryAsZip(TapisSystem testSystem) throws Exception {
+        // setup external service mocks
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        List<FakeFileInfo> ffis = new ArrayList<>();
+        int fileSize = 12;
+        ffis.add(new FakeFileInfo("zipRoot/dir1/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir1/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir1/dir1.1/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir1/dir1.2/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir2/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir2/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir2/dir2.1/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir2/dir2.2/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir3/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir3/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir3/dir3.1/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("zipRoot/dir3/dir3.2/file2.txt", makeFakeFile(fileSize)));
+
+        for(FakeFileInfo ffi : ffis) {
+            addFile(testSystem, ffi.name, ffi.content);
+        }
+
+        PostItCreateRequest request = new PostItCreateRequest();
+        request.setAllowedUses(3);
+        request.setValidSeconds(30);
+
+        TapisPostItResponse postResponse = doPost(request, TEST_USR1, testSystem.getId(), "zipRoot");
+        Assert.assertNotNull(postResponse);
+        Assert.assertNotNull(postResponse.getResult());
+
+        PostItDTO newPostIt = postResponse.getResult();
+        byte[] zipBytes = doRedeem(newPostIt.getRedeemUrl(), 200, Boolean.TRUE);
+        ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes));
+        ZipEntry ze = zis.getNextEntry();
+        while (ze != null) {
+            if(!ze.isDirectory()) {
+                for(FakeFileInfo ffi : ffis) {
+                    String zipAdjustedPath = ze.getName().replace("zipRoot/", "");
+                    if(ffi.name.equals(ze.getName())) {
+                        Assert.assertArrayEquals(ffi.content, zis.readAllBytes());
+                        ffis.remove(ffi);
+                        break;
+                    }
+                }
+            }
+            ze = zis.getNextEntry();
+        }
+        Assert.assertEquals(0, ffis.size());
+    }
+
+    @Test(dataProvider = "testSystemsProvider")
+    public void testRedeemRootDirectoryAsZip(TapisSystem testSystem) throws Exception {
+        // setup external service mocks
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        List<FakeFileInfo> ffis = new ArrayList<>();
+        int fileSize = 12;
+        ffis.add(new FakeFileInfo("dir1/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir1/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir1/dir1.1/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir1/dir1.2/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir2/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir2/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir2/dir2.1/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir2/dir2.2/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir3/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir3/file2.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir3/dir3.1/file1.txt", makeFakeFile(fileSize)));
+        ffis.add(new FakeFileInfo("dir3/dir3.2/file2.txt", makeFakeFile(fileSize)));
+
+        for(FakeFileInfo ffi : ffis) {
+            addFile(testSystem, ffi.name, ffi.content);
+        }
+
+        PostItCreateRequest request = new PostItCreateRequest();
+        request.setAllowedUses(3);
+        request.setValidSeconds(30);
+
+        TapisPostItResponse postResponse = doPost(request, TEST_USR1, testSystem.getId(), "/");
+        Assert.assertNotNull(postResponse);
+        Assert.assertNotNull(postResponse.getResult());
+
+        PostItDTO newPostIt = postResponse.getResult();
+        byte[] zipBytes = doRedeem(newPostIt.getRedeemUrl(), 200, Boolean.TRUE);
+        ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes));
+        ZipEntry ze = zis.getNextEntry();
+        while (ze != null) {
+            if(!ze.isDirectory()) {
+                for(FakeFileInfo ffi : ffis) {
+                    if(ffi.name.equals(ze.getName())) {
+                        Assert.assertArrayEquals(ffi.content, zis.readAllBytes());
+                        ffis.remove(ffi);
+                        break;
+                    }
+                }
+            }
+            ze = zis.getNextEntry();
+        }
+        Assert.assertEquals(0, ffis.size());
+    }
+
+    @Test(dataProvider = "testSystemsProvider")
     public void testUnlimitedUsesLimit(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
@@ -507,11 +668,18 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     }
 
     private byte[] doRedeem(String redeemUrl, int expectedStatus) throws IOException {
+        return doRedeem(redeemUrl, expectedStatus, null);
+    }
+
+    private byte[] doRedeem(String redeemUrl, int expectedStatus, Boolean zip) throws IOException {
         // for test, we must strip of the host/port
         redeemUrl = redeemUrl.replaceFirst("^.*v3/", "v3/");
-        Response response = target(redeemUrl).
-                request().accept(MediaType.APPLICATION_JSON).
-                get(Response.class);
+        WebTarget webTarget = target(redeemUrl);
+        if(zip != null) {
+            webTarget = webTarget.queryParam("zip", zip);
+        }
+        Response response = webTarget.request().
+                accept(MediaType.APPLICATION_JSON).get(Response.class);
         Assert.assertEquals(expectedStatus, response.getStatus());
         byte[] bytes = null;
         if (response.getStatus() == 200) {
