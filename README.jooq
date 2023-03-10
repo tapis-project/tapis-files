@@ -1,0 +1,43 @@
+TapisV3 Files JOOQ Notes
+=======================================
+
+-------------------------------------
+Schema updates
+-------------------------------------
+Whenever the DB schema is updated it will be necessary to regenerate the jooq java code.
+To update the schema and re-create the jooq code:
+
+1. Create the flyway migration sql files under migrations/src/main/resources/db/migration.
+
+2. Make changes in Dao implementation under lib/src/main/java/edu/utexas/tacc/tapis/files/lib/dao. 
+   Be sure to update for tables and columns that have been renamed or removed.
+   Or proceed with steps 3,4,5 and see what compile failures happen, then make updates.
+
+3. Make sure local DB is up and lib/pom.xml has correct properties for db.url, db.username and db.password.
+   Since these are normal properties, they could also be overridden on the command line during the maven
+   build steps with -D (e.g. -D db.username=myuser) if you don't want to change the pom file for some reason. 
+   If using a new postgres the following commands should be used to create the initial DB:
+     CREATE DATABASE <dbname> ENCODING="UTF8" LC_COLLATE="en_US.utf8" LC_CTYPE="en_US.utf8"
+     CREATE ROLE <dbuser> WITH LOGIN;
+     ALTER USER <dbuser> WITH ENCRYPTED PASSWORD '<dbpassword>';
+     CREATE SCHEMA IF NOT EXISTS public;
+     GRANT ALL ON SCHEMA public TO public;
+
+   Where <dbname> <dbuser> and <dbpassword> are the db name, db user, and db password that have been placed 
+   in lib/pom.xml or will be passed in as properties on the mvn command line. 
+   The properties are db.url, db.username, db.password
+
+4. Run the maven profile to re-create the schema and generate/update the jooq source code:
+   a. cd lib
+   b. mvn clean install -Pdb-update
+
+5. If necessary fix any compile errors (such as in the Dao)
+
+6. Run a top level mvn clean install.
+
+7. Using "git status" you should be able to see the updates to the jooq source code.
+
+8. Make other updates as needed for Dao and service layers. For example, if columns added this is the time
+   to start adding the new model attributes to the code.
+
+9. Commit the updates.
