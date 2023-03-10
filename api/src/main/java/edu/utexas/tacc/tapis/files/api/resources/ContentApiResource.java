@@ -156,7 +156,11 @@ public class ContentApiResource extends BaseFileOpsResource
     // Determine the target file name to use in ContentDisposition (.zip will get added for zipStream)
     java.nio.file.Path inPath = Paths.get(path);
     java.nio.file.Path  filePath = inPath.getFileName();
-    String fileName = (filePath == null) ? "root" : filePath.getFileName().toString();
+    String fileName = filePath.getFileName().toString();
+    if(fileName.isBlank() || fileName.equals("/")) {
+      fileName = "systemRoot";
+    }
+
     // Make a different service call depending on type of response:
     //  - zipStream, byteRangeStream, paginatedStream, fullStream
     if (zip)

@@ -308,7 +308,10 @@ public class PostItsService {
         // Determine the target file name to use in ContentDisposition (.zip will get added for zipStream)
         java.nio.file.Path inPath = Paths.get(path);
         java.nio.file.Path  filePath = inPath.getFileName();
-        String fileName = (filePath == null) ? "root" : filePath.getFileName().toString();
+        String fileName = filePath.getFileName().toString();
+        if(fileName.isBlank() || fileName.equals("/")) {
+            fileName = "systemRoot";
+        }
 
         // fileOpsService.getFileInfo() will check path permissions, so no need to check in this method.
         FileInfo fileInfo = fileOpsService.getFileInfo(rUser, tapisSystem, path, null, null);
