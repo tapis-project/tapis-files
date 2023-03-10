@@ -120,5 +120,5 @@ status codes in the openapi specs were integers and not strings. There is a litt
 `specCleaner.sh` in the resources of the api module that cleans the spec up. This is run automatically
 as part of the maven build process. 
 
-[Informatin on jooq](README.jooq)
+[Information on jooq](README.jooq)
 
