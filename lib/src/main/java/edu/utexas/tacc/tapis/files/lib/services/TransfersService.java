@@ -72,6 +72,7 @@ public class TransfersService
   private final SystemsCache systemsCache;
   private final FileOpsService fileOpsService;
   private final FilePermsService permsService;
+  private final int MAX_CONNECT_RETRIES=6;
 
   private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]
   {
@@ -523,7 +524,7 @@ public class TransfersService
             .durable(true)
             .autoDelete(false);
 
-    Mono<AMQP.Queue.BindOk> mono = sender.declare(controlExSpec)
+    sender.declare(controlExSpec)
             .then(sender.declare(transferExSpec))
             .then(sender.declare(childSpec))
             .then(sender.declare(parentSpec))
@@ -531,10 +532,14 @@ public class TransfersService
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
             .retry(5);
 
-    // retry for about 5 mins (30 retries waiting 10 seconds)
-    for(int i=0;i<30;i++) {
+  }
+
+  public boolean isConnectionOk() {
+    // retry for about 5 mins (MAX_CONNECT_RETRIES retries waiting 10 seconds)
+    int i;
+    for (i=0;i<MAX_CONNECT_RETRIES;i++) {
       try {
-        mono.block(Duration.ofSeconds(10));
+        sender.send(Mono.empty()).block(Duration.ofSeconds(10));
         String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_SUCCEEDED");
         log.warn(msg);
         break;
@@ -543,6 +548,12 @@ public class TransfersService
         log.warn(msg);
       }
     }
+
+    if(i >= MAX_CONNECT_RETRIES) {
+      return false;
+    }
+
+    return true;
   }
 
   private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException

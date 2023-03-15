@@ -73,6 +73,12 @@ public class ParentTaskTransferService
                                    SystemsCache systemsCache1)
   {
     transfersService = transfersService1;
+    if(!transfersService1.isConnectionOk()) {
+      // exit if the rabbitmq connection is not up
+      String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_FAILED_EXITING");
+      log.error(msg);
+      System.exit(1);
+    }
     dao = dao1;
     fileOpsService = fileOpsService1;
     systemsCache = systemsCache1;
