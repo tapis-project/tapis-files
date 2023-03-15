@@ -523,14 +523,26 @@ public class TransfersService
             .durable(true)
             .autoDelete(false);
 
-    sender.declare(controlExSpec)
+    Mono<AMQP.Queue.BindOk> mono = sender.declare(controlExSpec)
             .then(sender.declare(transferExSpec))
             .then(sender.declare(childSpec))
             .then(sender.declare(parentSpec))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
-            .retry(5)
-            .block(Duration.ofSeconds(5));
+            .retry(5);
+
+    // retry for about 5 mins (30 retries waiting 10 seconds)
+    for(int i=0;i<30;i++) {
+      try {
+        mono.block(Duration.ofSeconds(10));
+        String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_SUCCEEDED");
+        log.warn(msg);
+        break;
+      } catch (RuntimeException ex) {
+        String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_FAILED");
+        log.warn(msg);
+      }
+    }
   }
 
   private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException
