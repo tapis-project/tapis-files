@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.security.PermitAll;
@@ -15,6 +16,7 @@ import javax.ws.rs.core.Response.Status;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.api.FilesApplication;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
@@ -56,10 +58,14 @@ public class GeneralResource
   private static final CallSiteToggle checkTenantsOK = new CallSiteToggle();
   private static final CallSiteToggle checkJWTOK = new CallSiteToggle();
   private static final CallSiteToggle checkDBOK = new CallSiteToggle();
+  private static final CallSiteToggle checkMQOK = new CallSiteToggle();
 
   // **************** Inject Services using HK2 ****************
   @Inject
   private ServiceContext serviceContext;
+
+  @Inject
+  private TransfersService transfersService;
 
   /* **************************************************************************** */
   /*                                Public Methods                                */
@@ -167,6 +173,24 @@ public class GeneralResource
     {
       // We succeeded so clear the log limiter check.
       if (checkJWTOK.toggleOn()) _log.info(ApiUtils.getMsg("FILES_READYCHECK_JWT_ERRTOGGLE_CLEARED"));
+    }
+
+    // Check that we can connect to the DB
+    if (!transfersService.isConnectionOk(Duration.ofSeconds(5), 1)) {
+      RespBasic r = new RespBasic("Readiness message queue check failed. Check number: " + checkNum);
+      String msg = MsgUtils.getMsg("TAPIS_NOT_READY", "Files Service");
+      // We failed so set the log limiter check.
+      if (checkMQOK.toggleOff())
+      {
+        _log.warn(msg, readyCheckException);
+        _log.warn(LibUtils.getMsg("FILES_READYCHECK_MQ_ERRTOGGLE_SET"));
+      }
+      return Response.status(Status.SERVICE_UNAVAILABLE).entity(TapisRestUtils.createErrorResponse(msg, false, r)).build();
+    }
+    else
+    {
+      // We succeeded so clear the log limiter check.
+      if (checkMQOK.toggleOn()) _log.info(LibUtils.getMsg("FILES_READYCHECK_MQ_ERRTOGGLE_CLEARED"));
     }
 
 //    // Check that we can connect to the DB
