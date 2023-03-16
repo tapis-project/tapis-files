@@ -239,8 +239,8 @@ public class FilesApplication extends ResourceConfig
       transport.setKeepAlive(true);
       transport.setWriteTimeout(0, TimeUnit.MINUTES);
       final ThreadPoolConfig tpc = transport.getWorkerThreadPoolConfig();
-      tpc.setQueueLimit(-1).setCorePoolSize(RuntimeSettings.get().getDbConnectionPoolCoreSize()).setMaxPoolSize(
-              RuntimeSettings.get().getDbConnectionPoolSize());
+      tpc.setQueueLimit(-1).setCorePoolSize(RuntimeSettings.get().getDbConnectionPoolCoreSize())
+              .setMaxPoolSize(RuntimeSettings.get().getDbConnectionPoolSize());
     }
     server.start();
     PostItsService postItsService = locator.getService(PostItsService.class);

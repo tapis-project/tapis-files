@@ -72,7 +72,6 @@ public class TransfersService
   private final SystemsCache systemsCache;
   private final FileOpsService fileOpsService;
   private final FilePermsService permsService;
-  private final int MAX_CONNECT_RETRIES=6;
 
   private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]
   {
@@ -534,12 +533,12 @@ public class TransfersService
 
   }
 
-  public boolean isConnectionOk() {
+  public boolean isConnectionOk(Duration timeout, int maxChecks) {
     // retry for about 5 mins (MAX_CONNECT_RETRIES retries waiting 10 seconds)
     int i;
-    for (i=0;i<MAX_CONNECT_RETRIES;i++) {
+    for (i=0;i<maxChecks;i++) {
       try {
-        sender.send(Mono.empty()).block(Duration.ofSeconds(10));
+        sender.send(Mono.empty()).block(timeout);
         String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_SUCCEEDED");
         log.warn(msg);
         break;
@@ -549,7 +548,7 @@ public class TransfersService
       }
     }
 
-    if(i >= MAX_CONNECT_RETRIES) {
+    if(i >= maxChecks) {
       return false;
     }
 
