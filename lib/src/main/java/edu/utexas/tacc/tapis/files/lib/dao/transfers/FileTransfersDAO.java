@@ -208,6 +208,7 @@ public class FileTransfersDAO {
           }
           insertParentTaskStmnt.executeBatch();
           connection.commit();
+          connection.close();
           // Primary task has been inserted into transfer_tasks table and
           //   all parent tasks have been inserted into transfer_tasks_parent table
           // Now create a fully populated TransferTask object and return it.
@@ -218,8 +219,10 @@ public class FileTransfersDAO {
         }
         finally
         {
-          connection.rollback();
-          connection.setAutoCommit(true);
+            if(!connection.isClosed()) {
+                connection.rollback();
+            }
+          connection.close();
         }
       }
       catch (SQLException ex)
