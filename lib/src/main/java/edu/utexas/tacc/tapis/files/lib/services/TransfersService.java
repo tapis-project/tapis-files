@@ -529,8 +529,29 @@ public class TransfersService
             .then(sender.declare(parentSpec))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
-            .retry(5)
-            .block(Duration.ofSeconds(5));
+            .retry(5);
+  }
+
+  public boolean isConnectionOk(Duration timeout, int maxChecks) {
+    // retry for about 5 mins (MAX_CONNECT_RETRIES retries waiting 10 seconds)
+    int i;
+    for (i=0;i<maxChecks;i++) {
+      try {
+        sender.send(Mono.empty()).block(timeout);
+        String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_SUCCEEDED");
+        log.warn(msg);
+        break;
+      } catch (RuntimeException ex) {
+        String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_FAILED");
+        log.warn(msg);
+      }
+    }
+
+    if(i >= maxChecks) {
+      return false;
+    }
+
+    return true;
   }
 
   private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException
