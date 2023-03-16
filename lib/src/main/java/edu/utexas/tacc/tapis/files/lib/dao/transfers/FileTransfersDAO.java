@@ -221,8 +221,8 @@ public class FileTransfersDAO {
         {
             if(!connection.isClosed()) {
                 connection.rollback();
+                connection.close();
             }
-          connection.close();
         }
       }
       catch (SQLException ex)
@@ -257,7 +257,6 @@ public class FileTransfersDAO {
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskByUUID", taskUUID), ex);
         }
-    }
 
     public TransferTask getTransferTaskByID(@NotNull int taskId) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
