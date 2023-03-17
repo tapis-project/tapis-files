@@ -459,7 +459,8 @@ public class GlobusDataClient implements IRemoteDataClient
   }
 
   /**
-   * Use the GlobusProxyClient to create a transfer task using this client's endpoint as the source endpoint.
+   * Use the GlobusProxyClient to create a task for a single file to file transfer using this client's endpoint
+   *   as the source endpoint.
    * The source path, destination endpoint and destination path must be passed in
    * Return the globus transfer task
    *
@@ -469,7 +470,7 @@ public class GlobusDataClient implements IRemoteDataClient
    * @return Globus transfer task
    * @throws ServiceException on error
    */
-  public GlobusTransferTask createTransferTaskFromEndpoint(String srcPath, String dstEndpointId, String dstPath)
+  public GlobusTransferTask createFileTransferTaskFromEndpoint(String srcPath, String dstEndpointId, String dstPath)
           throws ServiceException
   {
     String opName = "createGlobusTransferTaskFromEndpoint";
@@ -478,8 +479,9 @@ public class GlobusDataClient implements IRemoteDataClient
     GlobusTransferItem transferItem = new GlobusTransferItem();
     transferItem.setSourcePath(srcPath);
     transferItem.setDestinationPath(dstPath);
-    // TODO If dir must be set to true. Will we support txfr of directory?
-    //   Since this a child task will it always be file to file?
+    // Set recursive to false since this is a file transfer.
+    // If the srcPath is a directory then the directory should have been created by a different child task.
+    // If we ever use Globus dir to dir transfers we will need to re-visit this.
     transferItem.setRecursive(false);
     List<GlobusTransferItem> transferItems = Collections.singletonList(transferItem);
 

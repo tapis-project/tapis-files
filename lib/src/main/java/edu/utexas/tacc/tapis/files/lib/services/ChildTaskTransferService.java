@@ -26,7 +26,6 @@ import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.util.retry.Retry;
 
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
-import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.clients.GlobusDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
@@ -816,7 +815,7 @@ public class ChildTaskTransferService
       // Use srcClient to call GlobusProxy to kick off a transfer originating from the source Globus system
       var gSrcClient = ((GlobusDataClient) srcClient);
       GlobusTransferTask externalTask =
-              gSrcClient.createTransferTaskFromEndpoint(srcUri.getPath(), dstSys.getHost(), dstUri.getPath());
+              gSrcClient.createFileTransferTaskFromEndpoint(srcUri.getPath(), dstSys.getHost(), dstUri.getPath());
       if (externalTask == null || StringUtils.isBlank(externalTask.getTaskId()))
       {
         throw new ServiceException(LibUtils.getMsg("FILES_TXFR_ASYNCH_NULL_TASK", externalTask));
