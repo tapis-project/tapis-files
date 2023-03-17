@@ -1,38 +1,46 @@
+---
 version: "3"
 
 volumes:
+  postgres-data:
   miniodata:
-  files-pgdata:
+
+networks:
+  rabbitmq_netwrk:
+    driver: bridge
 
 services:
+  postgres:
+    image: postgres:12.4
+    container_name: tapis-postgres
+    labels:
+      name: tapis-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_DATABASE=dev
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
 
   rabbitmq:
-    image: rabbitmq:3.11.7-management
+    image: rabbitmq:3.8.11-management
+    container_name: tapis-rabbitmq
+    labels:
+      name: tapis-rabbitmq
     environment:
       - HOSTNAME=localhost
       - RABBITMQ_NODENAME=tapis-files
-      - RABBITMQ_MNESIA_DIR=/var/lib/rabbitmq/mnesia/rabbit@tapis-files
-      - RABBITMQ_PLUGINS_EXPAND_DIR=/var/lib/rabbitmq/mnesia/rabbit@tapis-files-plugins-expand
-      - RABBITMQ_PID_FILE=/var/lib/rabbitmq/mnesia/rabbit@tapis-files.pid
-      - RABBITMQ_FEATURE_FLAGS_FILE=/var/lib/rabbitmq/mnesia/rabbit@tapis-files-feature_flags
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev
       - RABBITMQ_DEFAULT_VHOST=dev
     ports:
       - 5672:5672
       - 15672:15672
-
-  postgres:
-    container_name: postgres
-    image: postgres:11
-    environment:
-      - POSTGRES_USER=dev
-      - POSTGRES_PASSWORD=dev
-      - POSTGRES_DATABASE=dev
-    volumes:
-      - files-pgdata:/var/lib/postgresql/data
-    ports:
-      - 5432:5432
+    networks:
+      - rabbitmq_netwrk
 
   minio:
     image: minio/minio
@@ -66,6 +74,4 @@ services:
       dockerfile: ./deploy/Dockerfile.ssh-machine
     ports:
       - "2223:22"
-    
-    
-   
+
