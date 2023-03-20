@@ -172,6 +172,7 @@ public class FileTransfersDAO {
     public TransferTask createTransferTask(TransferTask task, List<TransferTaskRequestElement> elements)
             throws DAOException
     {
+      int taskId = 0;
       try (Connection connection = HikariConnectionPool.getConnection())
       {
         connection.setAutoCommit(false);
@@ -188,7 +189,6 @@ public class FileTransfersDAO {
           insertTaskStmnt.execute();
 
           ResultSet rs = insertTaskStmnt.getGeneratedKeys();
-          int taskId = 0;
           if (rs.next()) taskId = rs.getInt(1);
 
           // For each transfer task request element create a parent task
@@ -208,20 +208,13 @@ public class FileTransfersDAO {
           }
           insertParentTaskStmnt.executeBatch();
           connection.commit();
-          connection.close();
-          // Primary task has been inserted into transfer_tasks table and
-          //   all parent tasks have been inserted into transfer_tasks_parent table
-          // Now create a fully populated TransferTask object and return it.
-          TransferTask newTask = getTransferTaskByID(taskId);
-          List<TransferTaskParent> parents = getAllParentsForTaskByID(newTask.getId());
-          newTask.setParentTasks(parents);
-          return newTask;
+
         }
         finally
         {
             if(!connection.isClosed()) {
                 connection.rollback();
-                connection.close();
+                connection.setAutoCommit(true);
             }
         }
       }
@@ -230,6 +223,13 @@ public class FileTransfersDAO {
         throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
                 "createTransferTask", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
       }
+      // Primary task has been inserted into transfer_tasks table and
+      //   all parent tasks have been inserted into transfer_tasks_parent table
+      // Now create a fully populated TransferTask object and return it.
+      TransferTask newTask = getTransferTaskByID(taskId);
+      List<TransferTaskParent> parents = getAllParentsForTaskByID(newTask.getId());
+      newTask.setParentTasks(parents);
+      return newTask;
     }
 
     public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID) throws DAOException {
@@ -240,7 +240,7 @@ public class FileTransfersDAO {
             String query = FileTransfersDAOStatements.GET_TASK_BY_UUID;
             QueryRunner runner = new QueryRunner();
             TransferTask task = runner.query(connection, query, handler, taskUUID);
-            if (task ==null) {
+            if (task == null) {
                 return null;
             }
 
@@ -257,6 +257,7 @@ public class FileTransfersDAO {
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskByUUID", taskUUID), ex);
         }
+    }
 
     public TransferTask getTransferTaskByID(@NotNull int taskId) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();

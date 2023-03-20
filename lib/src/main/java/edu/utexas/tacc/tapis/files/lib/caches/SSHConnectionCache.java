@@ -4,6 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.LoadingCache;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,6 +12,7 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -51,7 +53,14 @@ public class SSHConnectionCache
             .build(new SSHConnectionCacheLoader());
     // Start a thread to signal the cache to clean up. The cache itself does not have a thread. Instead, it performs
     //   small amounts of maintenance during read/write. By starting a thread we can make sure it happens regularly.
-    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+      @Override
+      public Thread newThread(@NotNull Runnable runnable) {
+        Thread thread = Executors.defaultThreadFactory().newThread(runnable);
+        thread.setDaemon(true);
+        return thread;
+      }
+    });
     executorService.scheduleAtFixedRate(() -> sessionCache.cleanUp(), timeout, timeout, timeUnit);
   }
 

@@ -9,6 +9,18 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.3.2 - 2023-3-20
+
+Incremental improvements.
+
+### New features:
+- None
+
+### Bug fixes:
+- Fixed issues connecting to rabbitmq on worker startup
+- Allow db connection pool to be configurable, and fix issue causing long running transactions.
+
+---------------------------------------------------------------------------
 ## 1.3.1 - 2023-03-07
 
 Incremental improvements.
