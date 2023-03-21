@@ -5,7 +5,7 @@
     <parent>
         <artifactId>tapis-files</artifactId>
         <groupId>edu.utexas.tacc.tapis</groupId>
-        <version>1.3.3</version>
+        <version>1.3.2</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tapis-files-api</artifactId>
