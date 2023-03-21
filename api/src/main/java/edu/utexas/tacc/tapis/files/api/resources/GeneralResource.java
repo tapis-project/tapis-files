@@ -175,8 +175,8 @@ public class GeneralResource
       if (checkJWTOK.toggleOn()) _log.info(ApiUtils.getMsg("FILES_READYCHECK_JWT_ERRTOGGLE_CLEARED"));
     }
 
-    // Check that we can connect to the DB
-    if (!transfersService.isConnectionOk(Duration.ofSeconds(5), 1)) {
+    // Check that we can connect to the message queue
+    if (!transfersService.isConnectionOk()) {
       RespBasic r = new RespBasic("Readiness message queue check failed. Check number: " + checkNum);
       String msg = MsgUtils.getMsg("TAPIS_NOT_READY", "Files Service");
       // We failed so set the log limiter check.
