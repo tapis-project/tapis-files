@@ -10,18 +10,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
 
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
-import edu.utexas.tacc.tapis.shared.utils.PathSanitizer;
-import org.apache.commons.exec.CommandLine;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sshd.sftp.client.SftpClient.Attributes;
 import org.apache.sshd.sftp.client.SftpClient.DirEntry;
@@ -53,6 +50,8 @@ public class SSHDataClient implements ISSHDataClient
   private static final int MAX_PERMS_INT = Integer.parseInt("777", 8);
   // SFTP client throws IOException containing this string if a path does not exist.
   private static final String NO_SUCH_FILE = "no such file";
+  private static final int MAX_STDOUT_SIZE = 1000;
+  private static final int MAX_STDERR_SIZE = 1000;
 
   private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
 
@@ -287,31 +286,45 @@ public class SSHDataClient implements ISSHDataClient
     String relNewPathStr = PathUtils.getRelativePath(dstPath).toString();
     Path absoluteOldPath = PathUtils.getAbsolutePath(rootDir, relOldPathStr);
     Path absoluteNewPath = PathUtils.getAbsolutePath(rootDir, relNewPathStr);
-    SSHSftpClient sftpClient = connectionHolder.getSftpClient();
+    Path targetParentPath = absoluteNewPath.getParent();
+
+    //This will throw a NotFoundException if source is not there
+    ls(relOldPathStr);
+
+    // Construct and run linux commands to create the target dir and do the copy
+    SSHExecChannel channel = connectionHolder.getExecChannel();
+    int retCode = 0;
+
     try
     {
-      // If newPath is an existing directory then append the oldPath file/dir name to the newPath
-      //  so the oldPath is moved into the target directory.
-      FileInfo fileInfo = getFileInfo(sftpClient, relNewPathStr);
-      if (fileInfo != null && fileInfo.isDir()) {
-        absoluteNewPath = Paths.get(absoluteNewPath.toString(), absoluteOldPath.getFileName().toString());
+      // Set command to make the destination directory and copy the file.
+      StringBuilder sb = new StringBuilder();
+      sb.append("mkdir -p ");
+      sb.append(safelySingleQuoteString(targetParentPath.toString()));
+      sb.append(";mv ");
+      sb.append(safelySingleQuoteString(absoluteOldPath.toString()));
+      sb.append(" ");
+      sb.append(safelySingleQuoteString(absoluteNewPath.toString()));
+      ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
+      ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
+      retCode = channel.execute(sb.toString(), stdOut, stdErr);
+      if(retCode != 0) {
+        String partialStdOut = new String(ArrayUtils.subarray(stdOut.toByteArray(), 0, MAX_STDOUT_SIZE));
+        String partialStdErr = new String(ArrayUtils.subarray(stdErr.toByteArray(), 0, MAX_STDERR_SIZE));
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_CMD_ERR", oboTenant, oboUser, "copy", systemId,
+                effectiveUserId, host, relOldPathStr, relNewPathStr, retCode, partialStdOut, partialStdErr);
+        log.error(msg);
+        throw new IOException(msg);
       }
-      sftpClient.rename(absoluteOldPath.toString(), absoluteNewPath.toString());
     }
-    catch (IOException e)
+    catch (TapisException e)
     {
-      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, srcPath);
-        throw new NotFoundException(msg);
-      } else {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "move", systemId, effectiveUserId, host, srcPath, dstPath, e.getMessage());
-        throw new IOException(msg, e);
-      }
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "move", systemId, effectiveUserId, host, srcPath, dstPath, e.getMessage());
+      throw new IOException(msg, e);
     }
     finally
     {
-      sftpClient.close();
-      connectionHolder.returnSftpClient(sftpClient);
+      connectionHolder.returnExecChannel(channel);
     }
   }
 
@@ -343,19 +356,25 @@ public class SSHDataClient implements ISSHDataClient
     int retCode = 0;
     try
     {
-      // Set up arguments
-      Map<String, String> args = new HashMap<>();
-      args.put("targetParentPath", targetParentPath.toString());
-      args.put("source", absoluteOldPath.toString());
-      args.put("target", absoluteNewPath.toString());
-      // Command to make the directory including any intermediate directories
-      CommandLine cmd = new CommandLine("mkdir").addArgument("-p").addArgument("${targetParentPath}").addArgument(";");
-      // Command to do the copy
-      cmd.addArgument("cp").addArgument("-r").addArgument("${source}").addArgument("${target}");
-      // Fill in arguments and execute
-      cmd.setSubstitutionMap(args);
-      String toExecute = String.join(" ", cmd.toStrings());
-      retCode = channel.execute(toExecute);
+      // Set command to make the destination directory and copy the file.
+      StringBuilder sb = new StringBuilder();
+      sb.append("mkdir -p ");
+      sb.append(safelySingleQuoteString(targetParentPath.toString()));
+      sb.append(";cp -r ");
+      sb.append(safelySingleQuoteString(absoluteOldPath.toString()));
+      sb.append(" ");
+      sb.append(safelySingleQuoteString(absoluteNewPath.toString()));
+      ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
+      ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
+      retCode = channel.execute(sb.toString(), stdOut, stdErr);
+      if(retCode != 0) {
+        String partialStdOut = new String(ArrayUtils.subarray(stdOut.toByteArray(), 0, MAX_STDOUT_SIZE));
+        String partialStdErr = new String(ArrayUtils.subarray(stdErr.toByteArray(), 0, MAX_STDERR_SIZE));
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_CMD_ERR", oboTenant, oboUser, "copy", systemId,
+                effectiveUserId, host, relOldPathStr, relNewPathStr, retCode, partialStdOut, partialStdErr);
+        log.error(msg);
+        throw new IOException(msg);
+      }
     }
     catch (TapisException e)
     {
@@ -373,12 +392,6 @@ public class SSHDataClient implements ISSHDataClient
     finally
     {
       connectionHolder.returnExecChannel(channel);
-      if(retCode != 0) {
-        {
-          String msg = LibUtils.getMsg("FILES_CLIENT_SSH_CMD_ERR", oboTenant, oboUser, "copy", systemId, effectiveUserId, host, relOldPathStr, relNewPathStr, retCode);
-          throw new IOException(msg);
-        }
-      }
     }
   }
 

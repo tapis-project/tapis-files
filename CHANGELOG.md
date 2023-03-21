@@ -9,6 +9,16 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.3.2 - 2023-03-16
+
+Incremental improvements.
+
+### New features:
+- None
+
+### Bug fixes:
+- Fixed issue where files worker was not responding if it couldnt connect to the message queue on startup
+---------------------------------------------------------------------------
 ## 1.3.1 - 2023-03-07
 
 Incremental improvements.
