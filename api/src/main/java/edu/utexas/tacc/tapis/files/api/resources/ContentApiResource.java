@@ -24,6 +24,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
@@ -156,7 +157,11 @@ public class ContentApiResource extends BaseFileOpsResource
     // Determine the target file name to use in ContentDisposition (.zip will get added for zipStream)
     java.nio.file.Path inPath = Paths.get(path);
     java.nio.file.Path  filePath = inPath.getFileName();
-    String fileName = (filePath == null) ? "root" : filePath.getFileName().toString();
+    String fileName = (filePath == null) ? "" : filePath.getFileName().toString();
+    if(StringUtils.isBlank(fileName) || fileName.equals("/")) {
+      fileName = "systemRoot";
+    }
+
     // Make a different service call depending on type of response:
     //  - zipStream, byteRangeStream, paginatedStream, fullStream
     if (zip)
