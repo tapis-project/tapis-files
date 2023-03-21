@@ -31,6 +31,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
+import org.glassfish.grizzly.http.util.MimeType;
 import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -263,6 +264,7 @@ public class PostItsResource {
     @Path("/redeem/{postItId}")
     public void redeemPostIt(@PathParam("postItId") String postItId,
                             @QueryParam("zip") Boolean zip,
+                            @QueryParam("download") @DefaultValue("false") Boolean download,
                             @Suspended final AsyncResponse asyncResponse) {
         String opName = "redeemPostIt";
         PostItRedeemContext redeemContext = null;
@@ -272,7 +274,8 @@ public class PostItsResource {
                 // The four nulls represent the token user/tenant etc.
                 String msg = ApiUtils.getMsg("FAPI_TRACE_REQUEST", null,
                         null, null, null, null, className, opName,
-                        request.getRequestURL().toString(), "PostItId=" + postItId, "zip=", zip);
+                        request.getRequestURL().toString(), "PostItId=" + postItId,
+                        "zip=", zip, "download=", download);
                 log.trace(msg);
             }
 
@@ -281,9 +284,16 @@ public class PostItsResource {
             // Build the response using the outStream, contentDisposition and mediaType
             // For some reason non-zip has cache-control max-age of 1 hour and zip has no header,
             //   presumably so if a very large directory takes more than 1 hour to zip up it will not time out.
-            Response.ResponseBuilder responseBuilder =
-                    Response.ok(redeemContext.getOutStream(), redeemContext.getMediaType()).
-                            header("content-disposition", redeemContext.getContentDisposition());
+            Response.ResponseBuilder responseBuilder = null;
+            String filename = redeemContext.getFilename();
+            if(download) {
+                responseBuilder = Response.ok(redeemContext.getOutStream(), MediaType.APPLICATION_OCTET_STREAM)
+                        .header("content-disposition", "attachment; filename=" + redeemContext.getFilename());
+            } else {
+                responseBuilder = Response.ok(redeemContext.getOutStream(), MimeType.getByFilename(filename))
+                        .header("content-disposition", "inline; filename=" + filename);
+            }
+
             if (!redeemContext.isZip()) {
                 responseBuilder.header("cache-control", "max-age=3600");
             }
