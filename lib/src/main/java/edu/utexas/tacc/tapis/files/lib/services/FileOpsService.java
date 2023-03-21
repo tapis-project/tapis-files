@@ -647,7 +647,7 @@ public class FileOpsService
         // Delete files and permissions
         delete(client, relativePathStr);
         // Remove shares with recurse=true
-        shareService.removeAllSharesForPath(rUser, sysId, relativePathStr, true);
+        shareService.removeAllSharesForPathWithoutAuth(oboTenant, sysId, relativePathStr, true);
       }
       catch (IOException | ServiceException ex)
       {
