@@ -23,6 +23,8 @@ public class RuntimeSettings {
         protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String globusClientId = settings.get("TAPIS_GLOBUS_CLIENT_ID", "");
+        // How often to poll when monitoring an asynchronous transfer. Default is 300 seconds.
+        protected final int asyncTransferPollSeconds = getIntSetting("ASYNC_TRANSFER_POLL_SECONDS", 300);
         protected final int postItsReaperIntervalMinutes = getIntSetting("POSTITS_REAPER_INTERVAL_MINUTES", 1440);
 
         public String getHostName() {
@@ -74,6 +76,8 @@ public class RuntimeSettings {
         public String getSiteId() { return siteId; }
 
         public String getGlobusClientId() { return globusClientId; }
+
+        public int getAsyncTransferPollSeconds() { return asyncTransferPollSeconds; }
 
         public int getPostItsReaperIntervalMinutes() {
             return postItsReaperIntervalMinutes;

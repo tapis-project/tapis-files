@@ -11,7 +11,7 @@ networks:
 
 services:
   postgres:
-    image: postgres:12.4
+    image: postgres:11
     container_name: tapis-postgres
     labels:
       name: tapis-postgres
@@ -32,10 +32,9 @@ services:
       name: tapis-rabbitmq
     environment:
       - HOSTNAME=localhost
-      - RABBITMQ_NODENAME=tapis-files
+      - RABBITMQ_DEFAULT_VHOST=dev
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev
-      - RABBITMQ_DEFAULT_VHOST=dev
     ports:
       - 5672:5672
       - 15672:15672

@@ -13,6 +13,7 @@ import java.util.concurrent.Future;
 import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -740,6 +741,10 @@ public class ChildTaskTransferService
   {
     String srcPath = srcUri.getPath();
     String dstPath = dstUri.getPath();
+    String msg = LibUtils.getMsg("FILES_TXFR_CHILD_SYNCH_BEGIN", taskChild.getTenantId(), taskChild.getUsername(),
+                                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
+                                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
+    log.trace(msg);
     // Stream the file contents to destination. While the InputStream is open,
     // we put a tap on it and send events that get grouped into 100 ms intervals. Progress
     // on the child tasks are updated during the reading of the source input stream.
@@ -755,6 +760,10 @@ public class ChildTaskTransferService
               .subscribe();
       dstClient.upload(dstPath, observableInputStream);
     }
+    msg = LibUtils.getMsg("FILES_TXFR_CHILD_SYNCH_END", taskChild.getTenantId(), taskChild.getUsername(),
+                          taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
+                          srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
+    log.trace(msg);
   }
 
   /**
@@ -782,11 +791,14 @@ public class ChildTaskTransferService
       throw new ServiceException(LibUtils.getMsg("FILES_TXFR_ASYNCH_NULL", taskChild, srcClient, srcUri, dstClient, dstUri));
     }
 
+    TapisSystem srcSys = srcClient.getSystem();
+    TapisSystem dstSys = dstClient.getSystem();
+    String srcPath = srcUri.getPath();
+    String dstPath = dstUri.getPath();
+    String dstHost = dstSys.getHost();
     String tag = taskChild.getTag();
 
     // Check that both src and dst are Globus. If not throw a ServiceException
-    TapisSystem srcSys = srcClient.getSystem();
-    TapisSystem dstSys = dstClient.getSystem();
     // If srcSys is GLOBUS and dstSys is not then we do not support it OR
     //    dstSys is GLOBUS and srcSys is not then we do not support it
     if ( ( SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType()) &&
@@ -807,21 +819,22 @@ public class ChildTaskTransferService
       throw new ServiceException(LibUtils.getMsg("FILES_TXFR_GLOBUS_WRONG_CLIENT", "Destination", dstUri, tag));
     }
 
-    // TODO: replace hard coded value with runtime setting. Use a backoff policy?
-    //       Start with 10 seconds and gradually back off to 60 seconds?
-    long pollIntervalMilliseconds = 10000;
+    String msg = LibUtils.getMsg("FILES_TXFR_CHILD_ASYNCH_BEGIN", taskChild.getTenantId(), taskChild.getUsername(),
+                                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
+                                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
+    log.trace(msg);
+    // TODO: Use a backoff policy?
+    long pollIntervalSeconds = RuntimeSettings.get().getAsyncTransferPollSeconds();
     try
     {
       // Use srcClient to call GlobusProxy to kick off a transfer originating from the source Globus system
       var gSrcClient = ((GlobusDataClient) srcClient);
-      GlobusTransferTask externalTask =
-              gSrcClient.createFileTransferTaskFromEndpoint(srcUri.getPath(), dstSys.getHost(), dstUri.getPath());
+      GlobusTransferTask externalTask = gSrcClient.createFileTransferTaskFromEndpoint(srcPath, dstHost, dstPath);
       if (externalTask == null || StringUtils.isBlank(externalTask.getTaskId()))
       {
         throw new ServiceException(LibUtils.getMsg("FILES_TXFR_ASYNCH_NULL_TASK", externalTask));
       }
       String externalTaskId = externalTask.getTaskId();
-      log.debug(MsgUtils.getMsg("FILES_TXFR_ASYNCH_TASK_ID",  taskChild.getUuid(), externalTaskId, tag));
 
       // Update child task with external task id.
       taskChild.setExternalTaskId(externalTaskId);
@@ -841,9 +854,9 @@ public class ChildTaskTransferService
           break;
         }
         // Wait poll interval between status checks.
-        log.debug(MsgUtils.getMsg("FILES_TXFR_ASYNCH_POLL", taskChild.getTenantId(), taskChild.getUsername(),
+        log.trace(MsgUtils.getMsg("FILES_TXFR_ASYNCH_POLL", taskChild.getTenantId(), taskChild.getUsername(),
                                   taskChild.getId(), tag, taskChild.getUuid(), iteration));
-        try {Thread.sleep(pollIntervalMilliseconds);}
+        try { Thread.sleep(pollIntervalSeconds*1000); }
         catch (InterruptedException e)
         {
           log.warn(MsgUtils.getMsg("FILES_TXFR_ASYNCH_INTERRUPTED", taskChild.getTenantId(), taskChild.getUsername(),
@@ -878,9 +891,9 @@ public class ChildTaskTransferService
           }
           default ->
           {
-            String msg = LibUtils.getMsg("FILES_TXFR_ASYNCH_BAD_STATUS", taskChild.getTenantId(), taskChild.getUsername(),
-                    taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), externalTaskId,
-                    externalTaskStatus, iteration);
+            msg = LibUtils.getMsg("FILES_TXFR_ASYNCH_BAD_STATUS", taskChild.getTenantId(), taskChild.getUsername(),
+                                  taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), externalTaskId,
+                                  externalTaskStatus, iteration);
             log.error(msg);
             throw new ServiceException(msg);
           }
@@ -891,10 +904,14 @@ public class ChildTaskTransferService
     }
     catch (DAOException ex)
     {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-              "stepTwoC", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+      msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                            "stepTwoC", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
+    msg = LibUtils.getMsg("FILES_TXFR_CHILD_ASYNCH_END", taskChild.getTenantId(), taskChild.getUsername(),
+                          taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
+                          srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
+    log.trace(msg);
   }
 }
