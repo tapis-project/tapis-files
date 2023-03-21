@@ -19,6 +19,7 @@ Incremental improvements.
 ### Bug fixes:
 - Fixed issues connecting to rabbitmq on worker startup
 - Allow db connection pool to be configurable, and fix issue causing long running transactions.
+- Fixed issue where when deleting a file, an error could be returned even though the file was successfully deleted.
  
 ---------------------------------------------------------------------------
 ## 1.3.1 - 2023-03-07
