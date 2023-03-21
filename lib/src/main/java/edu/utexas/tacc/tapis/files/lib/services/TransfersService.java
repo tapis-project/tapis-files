@@ -65,6 +65,8 @@ public class TransfersService
   private static String PARENT_QUEUE = "tapis.files.transfers.parent";
   private static String CHILD_QUEUE = "tapis.files.transfers.child";
   private static String CONTROL_EXCHANGE = "tapis.files.transfers.control";
+  private final int MAX_RABBIT_RETRIES=12;
+  private final int RABBIT_WAIT=5;
   private final Receiver receiver;
   private final Sender sender;
 
@@ -91,11 +93,11 @@ public class TransfersService
     ReceiverOptions receiverOptions = new ReceiverOptions()
             .connectionMonoConfigurator( cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5))) )
             .connectionFactory(connectionFactory)
-            .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "receiver"));
+            .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "receiver", 60, true));
     SenderOptions senderOptions = new SenderOptions()
             .connectionMonoConfigurator( cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5))) )
             .connectionFactory(connectionFactory)
-            .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "sender"));
+            .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "sender", 60, true));
     receiver = RabbitFlux.createReceiver(receiverOptions);
     sender = RabbitFlux.createSender(senderOptions);
     dao = dao1;
@@ -523,21 +525,33 @@ public class TransfersService
             .durable(true)
             .autoDelete(false);
 
-    sender.declare(controlExSpec)
+    // Setup (declare) sender to create queues and exchange, and do binding.
+    // The actual work happens in monoBlockWithRetries - the block() does a
+    // subscribe (which in mono terms is when the work begins).
+    Mono senderDeclaration = sender.declare(controlExSpec)
             .then(sender.declare(transferExSpec))
             .then(sender.declare(childSpec))
             .then(sender.declare(parentSpec))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
             .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
             .retry(5);
+    if(!monoBlockWithRetries(Duration.ofSeconds(RABBIT_WAIT), MAX_RABBIT_RETRIES, senderDeclaration)) {
+      String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_FAILED_EXITING");
+      log.error(msg);
+      throw new RuntimeException(msg);
+    }
   }
 
-  public boolean isConnectionOk(Duration timeout, int maxChecks) {
-    // retry for about 5 mins (MAX_CONNECT_RETRIES retries waiting 10 seconds)
+  public boolean isConnectionOk() {
+    // Quick check to see if Rabbit is responding.
+    return monoBlockWithRetries(Duration.ofMillis(100),1, sender.send(Mono.empty()));
+  }
+
+  private boolean monoBlockWithRetries(Duration timeout, int maxChecks, Mono mono) {
     int i;
     for (i=0;i<maxChecks;i++) {
       try {
-        sender.send(Mono.empty()).block(timeout);
+        mono.block(timeout);
         String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_SUCCEEDED");
         log.warn(msg);
         break;
@@ -779,4 +793,6 @@ public class TransfersService
       }
     }
   }
+
+
 }
