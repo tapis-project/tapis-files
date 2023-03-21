@@ -68,7 +68,7 @@
                 <repository>
                     <id>tapis-local-releases</id>
                     <name>Local repo for releases</name>
-                    <url>http://c002.rodeo.tacc.utexas.edu:30044/repository/maven-releases</url>
+                    <url>http://c006.rodeo.tacc.utexas.edu:30044/repository/maven-releases</url>
                 </repository>
             </repositories>
         </profile>

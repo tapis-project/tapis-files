@@ -23,6 +23,8 @@ public class RuntimeSettings {
         protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected final int postItsReaperIntervalMinutes = getIntSetting("POSTITS_REAPER_INTERVAL_MINUTES", 1440);
+        protected final int dbConnectionPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 15);
+        protected final int dbConnectionPoolSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 20);
 
         public String getHostName() {
             return hostName;
@@ -74,6 +76,14 @@ public class RuntimeSettings {
 
         public int getPostItsReaperIntervalMinutes() {
             return postItsReaperIntervalMinutes;
+        }
+
+        public int getDbConnectionPoolCoreSize() {
+            return dbConnectionPoolCoreSize;
+        }
+
+        public int getDbConnectionPoolSize() {
+            return dbConnectionPoolSize;
         }
 
         public static int getIntSetting(String settingName, int defaultValue) {

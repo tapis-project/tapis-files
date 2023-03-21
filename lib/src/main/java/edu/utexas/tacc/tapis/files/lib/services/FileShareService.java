@@ -497,14 +497,42 @@ public class FileShareService
       throw new ForbiddenException(msg);
     }
 
+    removeAllSharesForPathWithoutAuth(oboTenant, systemId, path, recurse);
+  }
+
+  /**
+   * Remove all share access for a path on a system including public.
+   * NOTE:  This will not check permissions!  It will just delete the
+   * shares.  One use of this is when files are deleted, we need to
+   * remove the shares for that file.  If you had permission to delete
+   * the file, the shares should be removed regardless of permissions.
+   * Retrieve all shares and use deleteShareById.
+   *
+   * @param tenant - The tenant of the system/path to remove shares for
+   * @param systemId - Tapis system
+   * @param path - path on system relative to system rootDir
+   * @param recurse - if true include all sub-paths as well
+   * @throws WebApplicationException - on error
+   */
+  public void removeAllSharesForPathWithoutAuth (
+          String tenant, String systemId, String path, boolean recurse)
+          throws WebApplicationException
+  {
+    String opName = "removeAllSharesForPath";
+
+    // Get path relative to system rootDir and protect against ../.. and make sure starts with /
+    String pathStr = PathUtils.getSKRelativePath(path).toString();
+
     // Create request objects needed for SK calls.
     String pathToSearch = pathStr;
     // If recursive add "%" to the end of the path to search
-    if (recurse) pathToSearch = String.format("%s%s", pathStr, SK_WILDCARD);
+    if (recurse) {
+      pathToSearch = String.format("%s%s", pathStr, SK_WILDCARD);
+    }
 
     var skGetParms = new SKShareGetSharesParms();
     skGetParms.setResourceType(RESOURCE_TYPE);
-    skGetParms.setTenant(sys.getTenant());
+    skGetParms.setTenant(tenant);
     skGetParms.setResourceId1(systemId);
     skGetParms.setResourceId2(pathToSearch);
 
@@ -518,13 +546,16 @@ public class FileShareService
       {
         for (SkShare skShare : shareList.getShares())
         {
-          if (skShare.getId() != null) getSKClient().deleteShareById(skShare.getId(), sys.getTenant());
+          if (skShare.getId() != null) {
+            getSKClient().deleteShareById(skShare.getId(), tenant);
+          }
         }
       }
     }
     catch (TapisClientException e)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_SHARE_ERR", rUser, OP_UNSHARE, systemId, path, pathStr, e.getMessage());
+      String msg = LibUtils.getMsg("FILES_REMOVE_SHARE_ERR", OP_UNSHARE, tenant,
+              systemId, path, pathStr, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
