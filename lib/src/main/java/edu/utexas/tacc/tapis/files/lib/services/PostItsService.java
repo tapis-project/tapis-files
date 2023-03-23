@@ -308,7 +308,10 @@ public class PostItsService {
         // Determine the target file name to use in ContentDisposition (.zip will get added for zipStream)
         java.nio.file.Path inPath = Paths.get(path);
         java.nio.file.Path  filePath = inPath.getFileName();
-        String fileName = (filePath == null) ? "root" : filePath.getFileName().toString();
+        String fileName = (filePath == null) ? "" : filePath.getFileName().toString();
+        if(StringUtils.isBlank(fileName) || fileName.equals("/")) {
+            fileName = "systemRoot";
+        }
 
         // fileOpsService.getFileInfo() will check path permissions, so no need to check in this method.
         FileInfo fileInfo = fileOpsService.getFileInfo(rUser, tapisSystem, path, null, null);
@@ -336,12 +339,10 @@ public class PostItsService {
             // Send a zip stream. This can handle a path ending in /
             redeemContext.setOutStream(fileOpsService.getZipStream(rUser, tapisSystem, path, null, null));
             String newName = FilenameUtils.removeExtension(fileName) + ".zip";
-            redeemContext.setContentDisposition(String.format("attachment; filename=%s", newName));
-            redeemContext.setMediaType(MediaType.APPLICATION_OCTET_STREAM);
+            redeemContext.setFilename(newName);
         } else {
             redeemContext.setOutStream(fileOpsService.getFullStream(rUser, tapisSystem, path, null, null));
-            redeemContext.setContentDisposition(String.format("attachment; filename=%s", fileName));
-            redeemContext.setMediaType(MediaType.APPLICATION_OCTET_STREAM);
+            redeemContext.setFilename(fileName);
         }
 
         if(!postItsDAO.incrementUseIfRedeemable(postItId)) {

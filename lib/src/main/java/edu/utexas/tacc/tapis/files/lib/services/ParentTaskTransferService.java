@@ -57,7 +57,6 @@ public class ParentTaskTransferService
   private final FilePermsService permsService;
   private final SystemsCache systemsCache;
   private final FileOpsService fileOpsService;
-  private final int MAX_RABBIT_RETRIES=6;
   private static final Logger log = LoggerFactory.getLogger(ParentTaskTransferService.class);
 
   /* *********************************************************************** */
@@ -77,12 +76,6 @@ public class ParentTaskTransferService
                                    SystemsCache systemsCache1)
   {
     transfersService = transfersService1;
-    if(!transfersService1.isConnectionOk(Duration.ofSeconds(10), MAX_RABBIT_RETRIES)) {
-      // exit if the rabbitmq connection is not up
-      String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_FAILED_EXITING");
-      log.error(msg);
-      System.exit(1);
-    }
     dao = dao1;
     fileOpsService = fileOpsService1;
     systemsCache = systemsCache1;

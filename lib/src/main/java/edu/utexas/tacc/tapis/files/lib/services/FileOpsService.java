@@ -647,7 +647,7 @@ public class FileOpsService
         // Delete files and permissions
         delete(client, relativePathStr);
         // Remove shares with recurse=true
-        shareService.removeAllSharesForPath(rUser, sysId, relativePathStr, true);
+        shareService.removeAllSharesForPathWithoutAuth(oboTenant, sysId, relativePathStr, true);
       }
       catch (IOException | ServiceException ex)
       {
@@ -1126,9 +1126,8 @@ public class FileOpsService
     // Check for READ/MODIFY permission or share
     checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
 
-    String cleanedRelativePath = FilenameUtils.normalize(pathStr);
-    if (StringUtils.isEmpty(cleanedRelativePath)) cleanedRelativePath = "/";
-    cleanedRelativePath = StringUtils.prependIfMissing(cleanedRelativePath, "/");
+    String cleanedRelativePathString = FilenameUtils.normalize(pathStr);
+    cleanedRelativePathString = StringUtils.prependIfMissing(cleanedRelativePathString, "/");
 
     IRemoteDataClient client = null;
     // Create an output stream and start adding to it
@@ -1144,29 +1143,23 @@ public class FileOpsService
 
         // Build the path we will use for the zip entry
         // To relativize we need a leading slash
-        String tmpPath = StringUtils.prependIfMissing(fileInfo.getPath(), "/");
-        Path pth = Paths.get(cleanedRelativePath);
-        pth = pth.relativize(Paths.get(tmpPath));
+        Path fileInfoPath = Paths.get("/", fileInfo.getPath());
+        Path zipRootPath = Paths.get("/", FilenameUtils.getPath(cleanedRelativePathString));
+        Path currentPath = zipRootPath.relativize(fileInfoPath);
+
         // For final entry we do not want the leading slash
-        String entryPath = StringUtils.removeStart(pth.toString(), "/");
+        String entryPath = StringUtils.removeStart(currentPath.toString(), "/");
 
         // Always add an entry for a dir to be sure empty directories are included
         if (fileInfo.isDir())
         {
-          // Since it is a dir we add a trailing slash
-          entryPath = StringUtils.appendIfMissing(entryPath, "/");
-          ZipEntry entry = new ZipEntry(entryPath);
-          zipStream.putNextEntry(entry);
-          zipStream.closeEntry();
+          addDirectoryToZip(zipStream, entryPath);
         }
         else
         {
           try (InputStream inputStream = getAllBytes(rUser, sys, fileInfo.getPath()))
           {
-            ZipEntry entry = new ZipEntry(entryPath);
-            zipStream.putNextEntry(entry);
-            inputStream.transferTo(zipStream);
-            zipStream.closeEntry();
+            addFileToZip(zipStream, entryPath, inputStream);
           }
         }
       }
@@ -1183,6 +1176,19 @@ public class FileOpsService
     }
   }
 
+  private void addDirectoryToZip(ZipOutputStream zos, String directoryPath) throws IOException {
+    // Since it is a dir we add a trailing slash
+    directoryPath = StringUtils.appendIfMissing(directoryPath, "/");
+    ZipEntry entry = new ZipEntry(directoryPath);
+    zos.putNextEntry(entry);
+    zos.closeEntry();
+  }
+  private void addFileToZip(ZipOutputStream zos, String filePath, InputStream inputStream) throws IOException {
+    ZipEntry entry = new ZipEntry(filePath);
+    zos.putNextEntry(entry);
+    inputStream.transferTo(zos);
+    zos.closeEntry();
+  }
   /**
    * Recursive method to build up list of files at a path
    * @param client remote data client to use

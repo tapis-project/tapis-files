@@ -12,6 +12,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -21,7 +22,9 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import org.glassfish.hk2.api.ServiceHandle;
 import org.glassfish.hk2.api.ServiceLocator;
+import org.glassfish.hk2.internal.StarFilter;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.slf4j.Logger;
@@ -29,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 import javax.inject.Singleton;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /*
@@ -45,8 +49,10 @@ public class TransfersApp
   public static void main(String[] args)
   {
     log.info("Starting transfers worker application.");
+
     // Initialize bindings for HK2 dependency injection
     ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
+
     ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
       @Override
       protected void configure()
@@ -69,28 +75,33 @@ public class TransfersApp
       }
     });
 
-    // Need to init the tenant manager for some reason.
-    TenantManager tenantManager = locator.getService(TenantManager.class);
-    tenantManager.getTenants();
-    log.info("Getting serviceContext.");
-    ServiceContext serviceContext = locator.getService(ServiceContext.class);
-    log.info("Got serviceContext.");
+    try {
+      // Need to init the tenant manager for some reason.
+      TenantManager tenantManager = locator.getService(TenantManager.class);
+      tenantManager.getTenants();
+      log.info("Getting serviceContext.");
+      ServiceContext serviceContext = locator.getService(ServiceContext.class);
+      log.info("Got serviceContext.");
 
-    log.info("Getting childTxfrSvc.");
-    ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
-    log.info("Got childTxfrSvc.");
-    log.info("Getting parentTxfrSvc.");
-    ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
-    log.info("Got parentTxfrSvc.");
-    log.info("Starting parent pipeline.");
-    Flux<TransferTaskParent> parentTaskFlux = parentTaskTransferService.runPipeline();
-    parentTaskFlux.subscribe();
-    log.info("Started parent pipeline.");
+      log.info("Getting childTxfrSvc.");
+      ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
+      log.info("Got childTxfrSvc.");
+      log.info("Getting parentTxfrSvc.");
+      ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
+      log.info("Got parentTxfrSvc.");
+      log.info("Starting parent pipeline.");
+      Flux<TransferTaskParent> parentTaskFlux = parentTaskTransferService.runPipeline();
+      parentTaskFlux.subscribe();
+      log.info("Started parent pipeline.");
 
-    log.info("Starting child pipeline.");
-    Flux<TransferTaskChild> childTaskFlux = childTaskTransferService.runPipeline();
-    childTaskFlux.subscribe();
-    log.info("Started child pipeline.");
+      log.info("Starting child pipeline.");
+      Flux<TransferTaskChild> childTaskFlux = childTaskTransferService.runPipeline();
+      childTaskFlux.subscribe();
+      log.info("Started child pipeline.");
+    } catch(Exception ex) {
+      String msg = LibUtils.getMsg("FILES_WORKER_APPLICATION_FAILED_TO_START", ex.getMessage());
+      log.error(msg, ex);
+    }
   }
 
   private static void logSuccess(TransferTask t) { log.info(t.toString()); }

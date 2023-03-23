@@ -26,6 +26,8 @@ public class RuntimeSettings {
         // How often to poll when monitoring an asynchronous transfer. Default is 300 seconds.
         protected final int asyncTransferPollSeconds = getIntSetting("ASYNC_TRANSFER_POLL_SECONDS", 300);
         protected final int postItsReaperIntervalMinutes = getIntSetting("POSTITS_REAPER_INTERVAL_MINUTES", 1440);
+        protected final int dbConnectionPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 15);
+        protected final int dbConnectionPoolSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 20);
 
         public String getHostName() {
             return hostName;
@@ -81,6 +83,14 @@ public class RuntimeSettings {
 
         public int getPostItsReaperIntervalMinutes() {
             return postItsReaperIntervalMinutes;
+        }
+
+        public int getDbConnectionPoolCoreSize() {
+            return dbConnectionPoolCoreSize;
+        }
+
+        public int getDbConnectionPoolSize() {
+            return dbConnectionPoolSize;
         }
 
         public static int getIntSetting(String settingName, int defaultValue) {

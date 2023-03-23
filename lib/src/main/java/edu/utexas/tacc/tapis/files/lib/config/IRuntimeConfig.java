@@ -18,4 +18,6 @@ public interface IRuntimeConfig {
     String getGlobusClientId();
     int getAsyncTransferPollSeconds();
     int getPostItsReaperIntervalMinutes();
+    int getDbConnectionPoolCoreSize();
+    int getDbConnectionPoolSize();
 }
