@@ -156,7 +156,7 @@ public class OperationsApiResource extends BaseFileOpsResource
       ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
 
     // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, "true");
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -261,7 +261,7 @@ public class OperationsApiResource extends BaseFileOpsResource
                           "op="+mvCpReq.getOperation(), "newPath="+mvCpReq.getNewPath());
 
     // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, "true");
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -302,7 +302,7 @@ public class OperationsApiResource extends BaseFileOpsResource
       ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
 
     // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, "true");
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
