@@ -115,7 +115,13 @@
         <dependency>
             <groupId>org.irods.jargon</groupId>
             <artifactId>jargon-core</artifactId>
-            <version>${irods-jargon.version}</version>
+	    <version>${irods-jargon.version}</version>
+	    <exclusions>
+	        <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId> 
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.sshd</groupId>
