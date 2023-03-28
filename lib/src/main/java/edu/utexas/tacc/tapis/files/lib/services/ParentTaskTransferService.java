@@ -137,7 +137,7 @@ public class ParentTaskTransferService
     // Extract some values for convenience and clarity
     String taskTenant = parentTask.getTenantId();
     String taskUser = parentTask.getUsername();
-    // Keep these Integer and not int. When int the logger puts in commas which makes it harder to search the log.
+    // Keep these Integer and not int. When type int the logger puts in commas which makes it harder to search the log.
     Integer parentId = parentTask.getId();
     Integer topTaskId = parentTask.getTaskId();
     UUID parentUuid = parentTask.getUuid();
@@ -229,6 +229,7 @@ public class ParentTaskTransferService
 
     try
     {
+      // Handle tapis: and http/s: protocols separately
       if (srcUri.isTapisProtocol())
       {
         // Handle protocol tapis://
@@ -243,6 +244,7 @@ public class ParentTaskTransferService
         srcSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId, impersonationIdNull, srcSharedCtxGrantor);
         dstSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, dstId, impersonationIdNull, dstSharedCtxGrantor);
         boolean srcIsS3 = SystemTypeEnum.S3.equals(srcSystem.getSystemType());
+        boolean srcIsGlobus = SystemTypeEnum.GLOBUS.equals(srcSystem.getSystemType());
         boolean dstIsS3 = SystemTypeEnum.S3.equals(dstSystem.getSystemType());
 
         // Establish client

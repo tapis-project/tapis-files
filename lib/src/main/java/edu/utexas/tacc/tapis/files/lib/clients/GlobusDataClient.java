@@ -522,8 +522,9 @@ public class GlobusDataClient implements IRemoteDataClient
     }
     String taskDetailsStr = txfrTask.toString();
     log.trace(LibUtils.getMsg("FILES_TXFR_ASYNCH_ETASK", oboTenant, oboUser, globusTaskId, taskDetailsStr));
-    var taskStatus = txfrTask.getStatus();
-    return (taskStatus == null ? null : txfrTask.getStatus().name());
+//TODO/TBD    var taskStatus = txfrTask.getStatus();
+//    return (taskStatus == null ? null : txfrTask.getStatus().name());
+    return txfrTask.getStatus();
   }
 
     /* **************************************************************************** */

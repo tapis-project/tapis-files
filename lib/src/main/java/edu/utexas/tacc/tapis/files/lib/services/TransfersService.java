@@ -350,7 +350,10 @@ public class TransfersService
         log.trace(LibUtils.getMsgAuthR("FILES_TXFR_PERSIST_TASK", rUser, tag, elements.size()));
         TransferTask newTask = dao.createTransferTask(task, elements);
         // Put the parent transfer tasks onto the queue for asynchronous processing.
-        for (TransferTaskParent parent : newTask.getParentTasks()) { publishParentTaskMessage(parent); }
+        for (TransferTaskParent parent : newTask.getParentTasks())
+        {
+          publishParentTaskMessage(parent);
+        }
         return newTask;
       }
       catch (DAOException | ServiceException e)

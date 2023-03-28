@@ -24,7 +24,7 @@ public class RuntimeSettings {
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String globusClientId = settings.get("TAPIS_GLOBUS_CLIENT_ID", "");
         // How often to poll when monitoring an asynchronous transfer. Default is 300 seconds.
-        protected final int asyncTransferPollSeconds = getIntSetting("ASYNC_TRANSFER_POLL_SECONDS", 300);
+        protected final int asyncTransferPollSeconds = getIntSetting("ASYNC_TRANSFER_POLL_SECONDS", 120);
         protected final int postItsReaperIntervalMinutes = getIntSetting("POSTITS_REAPER_INTERVAL_MINUTES", 1440);
         protected final int dbConnectionPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 15);
         protected final int dbConnectionPoolSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 20);
