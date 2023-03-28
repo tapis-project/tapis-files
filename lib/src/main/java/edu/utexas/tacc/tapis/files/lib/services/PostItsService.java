@@ -125,8 +125,8 @@ public class PostItsService {
             throws TapisException, ServiceException {
 
         // check for path permissions
-        LibUtils.checkPermitted(permsService, rUser.getOboTenantId(),
-                rUser.getOboUserId(), systemId, path, FileInfo.Permission.READ);
+        LibUtils.checkPermittedReadOrModify(permsService, rUser.getOboTenantId(),
+                rUser.getOboUserId(), systemId, path);
 
         // make sure the file exists
         TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
