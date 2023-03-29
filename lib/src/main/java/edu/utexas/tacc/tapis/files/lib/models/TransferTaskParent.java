@@ -39,6 +39,7 @@ public class TransferTaskParent
   protected Instant endTime;
   protected List<TransferTaskChild> children;
   protected String errorMessage;
+  protected String finalMessage;
 
   public TransferTaskParent(){}
 
@@ -66,6 +67,12 @@ public class TransferTaskParent
     this.errorMessage = errorMessage;
   }
 
+  public String getFinalMessage() {
+    return finalMessage;
+  }
+  public void setFinalMessage(String finalMessage) {
+    this.finalMessage = finalMessage;
+  }
   /**
    * Unique ID of the task.
    * @return uuid
@@ -181,7 +188,7 @@ public class TransferTaskParent
    **/
   @JsonProperty("status")
   public TransferTaskStatus getStatus() {
-    return status;
+    return status != null ? status : TransferTaskStatus.UNKNOWN;
   }
   public void setStatus(TransferTaskStatus tts) {
     status = tts;

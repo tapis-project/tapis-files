@@ -194,11 +194,22 @@ public class GlobusDataClient implements IRemoteDataClient
     String filterStr = null;
     try
     {
+      // Use getFileInfo to make sure path exists
+      // If it does not exist this should throw NotFound
+      FileInfo fileInfo = getFileInfo(relPathStr);
+
+      // If it is a file we only have a single item which we already have, so we are done
+      if (!fileInfo.isDir())
+      {
+        return Collections.singletonList(fileInfo);
+      }
+
+      // It is a directory, make the client call to list
       var globusFilesList = proxyClient.listFiles(globusClientId, endpointId, accessToken, refreshToken,
                                              absolutePathStr, count, startIdx, filterStr);
       for (GlobusFileInfo globusFileInfo : globusFilesList)
       {
-        FileInfo fileInfo = new FileInfo();
+        fileInfo = new FileInfo();
         // Set the fileInfo attributes from the retrieved globus files
         fileInfo.setName(globusFileInfo.getName());
         fileInfo.setGroup(globusFileInfo.getGroup());
@@ -391,7 +402,7 @@ public class GlobusDataClient implements IRemoteDataClient
    * @throws IOException on error
    */
   @Override
-  public FileInfo getFileInfo(@NotNull String path) throws IOException
+  public FileInfo getFileInfo(@NotNull String path) throws IOException, NotFoundException
   {
     String opName = "getFileInfo";
     FileInfo fileInfo;

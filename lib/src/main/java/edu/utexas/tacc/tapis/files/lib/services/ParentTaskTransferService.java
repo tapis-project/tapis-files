@@ -192,6 +192,7 @@ public class ParentTaskTransferService
       {
         log.warn(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA01", topTaskId, parentId, parentTask.getStatus(), parentUuid, tag));
         parentTask.setEndTime(Instant.now());
+        parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_END_TERM", tag, parentTask.getStatus()));
         parentTask = dao.updateTransferTaskParent(parentTask);
         return parentTask;
       }
@@ -267,6 +268,20 @@ public class ParentTaskTransferService
         fileListing = fileOpsService.lsRecursive(srcClient, srcPath, FileOpsService.MAX_RECURSION);
         if (fileListing == null) fileListing = Collections.emptyList();
         log.trace(LibUtils.getMsg("FILES_TXFR_LSR2", taskTenant, taskUser, "doParentStepOneA08", parentId, parentUuid, srcId, srcPath, fileListing.size(), tag));
+
+        // If no items to transfer then no child tasks, so we are done.
+        // In theory this should be very unlikely since we just checked that source path exists.
+        // In practice, it could happen if source path is deleted around the same time.
+        // Also, in practice it has happened due to listing improperly returning an empty list.
+        // If we do not handle it here we can end up with tasks stuck in the IN_PROGRESS state.
+        if (fileListing.isEmpty())
+        {
+          parentTask.setEndTime(Instant.now());
+          parentTask.setStatus(TransferTaskStatus.COMPLETED);
+          parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_COMPLETE_NO_ITEMS", srcId, srcPath, tag));
+          parentTask = dao.updateTransferTaskParent(parentTask);
+          return parentTask;
+        }
 
         // Create child tasks for each file or object to be transferred.
         List<TransferTaskChild> children = new ArrayList<>();
