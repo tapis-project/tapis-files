@@ -170,6 +170,7 @@ public class ParentTaskTransferService
       parentTask = dao.updateTransferTaskParent(parentTask);
 
       // Check permission. If not permitted update status to FAILED and throw an exception
+//TODO - SHARED
       if (!isPermitted(parentTask))
       {
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", taskTenant, taskUser, "doParentStepOneA02", parentId, parentUuid, tag);
@@ -218,9 +219,6 @@ public class ParentTaskTransferService
     String dstId = dstUri.getSystemId();
     String srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
     String dstSharedCtxGrantor = parentTask.getDestSharedCtxGrantor();
-//TODO sharedCtxGrantor
-// TODO REMOVE    String srcSharedCtxGrantor = Boolean.toString(parentTask.isSrcSharedAppCtx()); //parentTask.getSrcSharedCtxGrantor();
-// TODO REMOVE    String dstSharedCtxGrantor = Boolean.toString(parentTask.isDestSharedAppCtx()); //parentTask.getDestSharedCtxGrantor();
     String impersonationIdNull = null;
 
     try
@@ -392,14 +390,12 @@ public class ParentTaskTransferService
     String srcPath = parentTask.getSourceURI().getPath();
     String destSystemId = parentTask.getDestinationURI().getSystemId();
     String destPath = parentTask.getDestinationURI().getPath();
-// TODO sharedCtxGrantor
-    String srcSharedCtxGrantor = Boolean.toString(parentTask.isSrcSharedAppCtx()); //parentTask.getSrcSharedCtxGrantor();
-    String dstSharedCtxGrantor = Boolean.toString(parentTask.isDestSharedAppCtx()); //parentTask.getDestSharedCtxGrantor();
-//    String srcSharedAppCtx = null; //parentTask.getSrcSharedCtxGrantor();
-//    String destSharedAppCtx = null; //parentTask.getDestSharedCtxGrantor();
+    String srcSharedAppCtx = parentTask.getSrcSharedCtxGrantor();
+    String destSharedAppCtx = parentTask.getDestSharedCtxGrantor();
 
     // TODO review when updating for sharedCtxGrantor. Seems like this should not return true before checking destination path
     //      return true for now. sharing not working properly
+//TODO - SHARED
     return true;
 //
 //    // Do source path perms check if it is not http/s

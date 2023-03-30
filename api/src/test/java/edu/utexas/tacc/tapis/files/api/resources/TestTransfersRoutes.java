@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.TransferTaskRequest;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
@@ -64,6 +65,8 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
     private final Tenant tenant;
     private final Site testSite;
     private SystemsCache systemsCache;
+    private SystemsCacheNoAuth systemsCacheNoAuth;
+    private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
     private final Map<String, Tenant> tenantMap = new HashMap<>();
 
     private TestTransfersRoutes()
@@ -101,6 +104,7 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
         systemsClient = Mockito.mock(SystemsClient.class);
         serviceJWT = Mockito.mock(ServiceJWT.class);
         systemsCache = Mockito.mock(SystemsCache.class);
+        systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
         JWTValidateRequestFilter.setSiteId("tacc");
         JWTValidateRequestFilter.setService("files");
         ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
@@ -117,7 +121,9 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
                     bind(systemsClient).to(SystemsClient.class);
                     bind(serviceJWT).to(ServiceJWT.class);
                     bind(tenantManager).to(TenantManager.class);
+                    bind(permsService).to(FilePermsService.class);
                     bind(systemsCache).to(SystemsCache.class);
+                    bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
                     bindAsContract(FileOpsService.class).in(Singleton.class);
                     bindAsContract(FileShareService.class).in(Singleton.class);
                     bindAsContract(FilePermsCache.class).in(Singleton.class);
@@ -138,6 +144,7 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     }
 
 
@@ -151,6 +158,7 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
         when(systemsClient.getSystemWithCredentials(any(String.class))).thenReturn(testSystem);
         when(tenantManager.getSite(any())).thenReturn(testSite);
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any())).thenReturn(testSystem);
     }
 
     @Test

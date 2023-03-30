@@ -12,6 +12,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
+import org.apache.commons.lang3.StringUtils;
 
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
@@ -19,14 +20,21 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_IMPERSONATE;
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SHAREDCTX;
 
 /*
    Utility class containing general use static methods.
@@ -216,6 +224,76 @@ public class LibUtils
     }
   }
 
+  /**
+   * Get a TapisSystem with credentials.
+   * Include auth checks as appropriate for system and path
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sysId - system
+   * @param relPathStr - normalized path to the file, dir or object. Relative to system rootDir
+   * @param perm - required permission (READ or MODIFY)
+   * @param impersonationId - use provided Tapis username instead of oboUser
+   * @param sharedCtxGrantor - Share grantor for the case of a shared context.
+   * @throws ForbiddenException - oboUserId not authorized to perform operation
+   */
+  public static TapisSystem getResolvedSysWithAuthCheck(ResourceRequestUser rUser, FileShareService shareService,
+                                                         SystemsCache sysCache, SystemsCacheNoAuth sysCacheNoAuth,
+                                                         FilePermsService permsService, String opName,
+                                                         String sysId, String relPathStr, Permission perm,
+                                                         String impersonationId, String sharedCtxGrantor)
+          throws ForbiddenException
+  {
+    String oboTenant = rUser.getOboTenantId();
+    String oboUser = rUser.getOboUserId();
+    boolean pathIsShared = false;
+    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+
+    // If sharedCtxGrantor set, confirm that it is allowed (can throw ForbiddenException)
+    if (!StringUtils.isBlank(sharedCtxGrantor)) checkSharedCtxAllowed(rUser, opName, sysId, relPathStr, sharedCtxGrantor);
+    // If impersonationId set, confirm that it is allowed (can throw ForbiddenException)
+    if (!StringUtils.isBlank(impersonationId)) checkImpersonationAllowed(rUser, opName, sysId, relPathStr, impersonationId);
+
+    // Get system details skipping auth, so we can figure out owner and if path is shared.
+    //   If owner then auth checks not needed.
+    //   If path is shared then user has implicit access to system.
+    TapisSystem sys = getSystemIfEnabledNoAuth(rUser, sysCacheNoAuth, sysId);
+
+    // Determine if requester is system owner, so we can bypass some auth checking.
+    boolean requesterIsOwner = oboOrImpersonatedUser.equals(sys.getOwner());
+
+    // TODO: When used by mkdir this means path sharing allows mkdir. Once share with MODIFY is implemented this will
+    //       need to be updated to include the perm
+    // If not system owner check if path is shared.
+    if (!requesterIsOwner) pathIsShared = isPathShared(rUser, shareService, sys, relPathStr, impersonationId, sharedCtxGrantor);
+
+    // Get fully resolved system including credentials for oboOrImpersonationId
+    // If path is shared then use sharedCtxGrantor = system owner in order to bypass auth check on Systems service side.
+    if (pathIsShared)
+    {
+      // Get system without requiring READ access
+      String tmpShareGrantor = sys.getOwner();
+      sys = getSystemIfEnabled(rUser, sysCache, sysId, impersonationId, tmpShareGrantor);
+    }
+    else
+    {
+      // Get system. This requires READ access.
+      sys = getSystemIfEnabled(rUser, sysCache, sysId, impersonationId, sharedCtxGrantor);
+    }
+
+    // If not owner and path not shared check for fine-grained permission on path
+    if (!requesterIsOwner && !pathIsShared)
+    {
+      try { checkAuthForPath(rUser, permsService , sys, relPathStr, perm, impersonationId, sharedCtxGrantor);}
+      catch (ServiceException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, sysId, relPathStr, ex.getMessage());
+        log.error(msg, ex);
+        throw new WebApplicationException(msg, ex);
+      }
+    }
+    return sys;
+  }
+
   /*
    * Convenience wrapper for callers that do not need to support sharing
    */
@@ -329,7 +407,188 @@ public class LibUtils
     }
   }
 
+  /* **************************************************************************** */
+  /*                                Private Methods                               */
+  /* **************************************************************************** */
 
+  /**
+   * Check to see if a Tapis System exists and is enabled
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param systemId - System to check
+   * @param cache - Cache of systems
+   * @throws NotFoundException System not found or not enabled
+   */
+  private static TapisSystem getSystemIfEnabledNoAuth(@NotNull ResourceRequestUser rUser, @NotNull SystemsCacheNoAuth cache,
+                                                      @NotNull String systemId)
+          throws NotFoundException
+  {
+    // Check for the system
+    TapisSystem sys;
+    try
+    {
+      sys = cache.getSystem(rUser.getOboTenantId(), systemId);
+      if (sys == null)
+      {
+        String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId);
+        log.warn(msg);
+        throw new NotFoundException(msg);
+      }
+      if (sys.getEnabled() == null || !sys.getEnabled())
+      {
+        String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTENABLED", rUser, systemId);
+        log.warn(msg);
+        throw new NotFoundException(msg);
+      }
+    }
+    catch (ServiceException ex)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_SYSOPS_ERR", rUser, "getSystemIfEnabled", systemId, ex.getMessage());
+      log.warn(msg);
+      throw new WebApplicationException(msg);
+    }
+    return sys;
+  }
+
+  /**
+   * Confirm that caller is allowed to set sharedCtxGrantor.
+   * Must be a service request from a service in the allowed list.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param opName - operation name
+   * @param sysId - name of the system
+   * @param relPathStr - path involved in operation, used for logging
+   * @throws ForbiddenException - user not authorized to perform operation
+   */
+  private static void checkSharedCtxAllowed(ResourceRequestUser rUser, String opName, String sysId, String relPathStr,
+                                            String sharedCtxGrantor)
+          throws ForbiddenException
+  {
+    // If a service request the username will be the service name. E.g. files, jobs, streams, etc
+    String svcName = rUser.getJwtUserId();
+    if (!rUser.isServiceRequest() || !SVCLIST_SHAREDCTX.contains(svcName))
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX", rUser, opName, sysId, relPathStr, sharedCtxGrantor);
+      log.warn(msg);
+      throw new ForbiddenException(msg);
+    }
+    // An allowed service is using a sharedCtx, log it
+    log.info(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX", rUser, opName, sysId, relPathStr, sharedCtxGrantor));
+  }
+
+  /**
+   * Confirm that caller is allowed to set impersonationId.
+   * Must be a service request from a service in the allowed list.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param opName - operation name
+   * @param sysId - name of the system
+   * @param pathStr - path involved in operation, used for logging
+   * @throws ForbiddenException - user not authorized to perform operation
+   */
+  private static void checkImpersonationAllowed(ResourceRequestUser rUser, String opName, String sysId, String pathStr,
+                                                String impersonationId)
+          throws ForbiddenException
+  {
+    // If a service request the username will be the service name. E.g. files, jobs, streams, etc
+    String svcName = rUser.getJwtUserId();
+    if (!rUser.isServiceRequest() || !SVCLIST_IMPERSONATE.contains(svcName))
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_IMPERSONATE", rUser, opName, sysId, pathStr, impersonationId);
+      log.warn(msg);
+      throw new ForbiddenException(msg);
+    }
+    // An allowed service is using impersonation, log it
+    log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE", rUser, opName, sysId, pathStr, impersonationId));
+  }
+
+  /**
+   * Determine if file path is shared with oboOrImpersonatedUser or share grantor
+   * Relative path should have already been normalized
+   * We do not check here that impersonation is allowed.
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param sys - System
+   * @param relPathStr - path on system relative to system rootDir
+   * @param impersonationId - use provided Tapis username instead of oboUser
+   * @param sharedCtxGrantor - Share grantor for the case of a shared context.
+   * @return true if shared else false
+   */
+  private static boolean isPathShared(@NotNull ResourceRequestUser rUser, FileShareService shareService,
+                                      @NotNull TapisSystem sys, @NotNull String relPathStr,
+                                      String impersonationId, String sharedCtxGrantor)
+          throws WebApplicationException
+  {
+    // Certain services are allowed to impersonate an OBO user for the purposes of authorization
+    //   and effectiveUserId resolution.
+    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+    try
+    {
+      if (shareService.isSharedWithUser(rUser, sys, relPathStr, oboOrImpersonatedUser)) return true;
+      if (!StringUtils.isBlank(sharedCtxGrantor) && shareService.isSharedWithUser(rUser, sys, relPathStr, sharedCtxGrantor)) return true;
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, sys.getId(), relPathStr, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+    return false;
+  }
+
+  /**
+   * Confirm that caller, impersonationId or sharedCtxGrantor has READ and/or MODIFY permission on a path
+   * If READ perm passed in then can be READ or MODIFY. If MODIFY passed in then it must be MODIFY.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param system - system containing path
+   * @param relPathStr - normalized path to the file, dir or object. Relative to system rootDir
+   * @param perm - required permission (READ or MODIFY)
+   * @param impersonationId - use provided Tapis username instead of oboUser
+   * @param sharedCtxGrantor - Share grantor for the case of a shared context.
+   * @throws ForbiddenException - oboUserId not authorized to perform operation
+   */
+  private static void checkAuthForPath(ResourceRequestUser rUser, FilePermsService permsService,
+                                       TapisSystem system, String relPathStr, Permission perm,
+                                       String impersonationId, String sharedCtxGrantor)
+          throws ForbiddenException, ServiceException
+  {
+    String sysId = system.getId();
+    String sysOwner = system.getOwner();
+    String oboTenant = rUser.getOboTenantId();
+    boolean modifyRequired = Permission.MODIFY.equals(perm);
+    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+    boolean sharedCtx = !StringUtils.isBlank(sharedCtxGrantor);
+
+    // If obo user is owner or in shared context and share grantor is owner then allow.
+    if (oboOrImpersonatedUser.equals(sysOwner) || (sharedCtx && sharedCtxGrantor.equals(sysOwner))) return;
+
+    // Check for fine-grained permission READ/MODIFY or MODIFY for obo user
+    if (modifyRequired)
+    {
+      if (permsService.isPermitted(oboTenant, oboOrImpersonatedUser, sysId, relPathStr, Permission.MODIFY)) return;
+    }
+    else
+    {
+      if (permsService.isPermitted(oboTenant, oboOrImpersonatedUser, sysId, relPathStr, Permission.READ) ||
+              permsService.isPermitted(oboTenant, oboOrImpersonatedUser, sysId, relPathStr, Permission.MODIFY)) return;
+    }
+
+    // Check for fine-grained permission READ/MODIFY or MODIFY for share grantor
+    if (sharedCtx && modifyRequired)
+    {
+      if (permsService.isPermitted(oboTenant, sharedCtxGrantor, sysId, relPathStr, Permission.MODIFY)) return;
+    }
+    else if (sharedCtx)
+    {
+      if (permsService.isPermitted(oboTenant, sharedCtxGrantor, sysId, relPathStr, Permission.READ) ||
+              permsService.isPermitted(oboTenant, sharedCtxGrantor, sysId, relPathStr, Permission.MODIFY)) return;
+    }
+
+    // No fine-grained permissions allowed the operation. Throw ForbiddenException
+    String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", rUser.getOboTenantId(), oboOrImpersonatedUser, sysId,
+            relPathStr, perm);
+    log.warn(msg);
+    throw new ForbiddenException(msg);
+  }
 
 //  /* TODO Do we need this? Now that auth is getting more complex with share by priv, shareGrantor. Probably best
 //           to always get the system if enabled and do auth check separately.

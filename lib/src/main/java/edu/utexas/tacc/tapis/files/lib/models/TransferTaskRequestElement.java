@@ -10,8 +10,6 @@ public class TransferTaskRequestElement
   private boolean optional;
   private String srcSharedCtxGrantor;
   private String destSharedCtxGrantor;
-  private boolean srcSharedAppCtx = false;  // TODO REMOVE
-  private boolean destSharedAppCtx = false; // TODO REMOVE
   private  String tag;
 
   @NotBlank
@@ -31,11 +29,6 @@ public class TransferTaskRequestElement
   public void setSrcSharedCtxGrantor(String s) { srcSharedCtxGrantor = s; }
   public String getDestSharedCtxGrantor() { return destSharedCtxGrantor; }
   public void setDestSharedCtxGrantor(String s) { destSharedCtxGrantor = s; }
-
-  public boolean isSrcSharedAppCtx() { return srcSharedAppCtx; }       // TODO REMOVE
-  public void setSrcSharedAppCtx(boolean b) { srcSharedAppCtx = b; }   // TODO REMOVE
-  public boolean isDestSharedAppCtx() { return destSharedAppCtx; }     // TODO REMOVE
-  public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; } // TODO REMOVE
 
   public String getTag() { return tag; }
   public void setTag(String s) { tag = s; }

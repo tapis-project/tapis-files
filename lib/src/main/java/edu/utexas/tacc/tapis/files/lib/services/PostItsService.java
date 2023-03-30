@@ -125,12 +125,13 @@ public class PostItsService {
             throws TapisException, ServiceException {
 
         // check for path permissions
+//TODO - SHARED
         LibUtils.checkPermittedReadOrModify(permsService, rUser.getOboTenantId(),
                 rUser.getOboUserId(), systemId, path);
 
         // make sure the file exists
-        TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, system, path, null, null);
+//TODO - SHARED        TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, null, null);
         if(fileInfo == null) {
             String msg = LibUtils.getMsgAuthR("POSTIT_SERVICE_ERROR", rUser,
                     systemId, path, "Unable to get file info");
@@ -314,7 +315,7 @@ public class PostItsService {
         }
 
         // fileOpsService.getFileInfo() will check path permissions, so no need to check in this method.
-        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, tapisSystem, path, null, null);
+        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, null, null);
         if (fileInfo == null)
         {
             throw new NotFoundException(LibUtils.getMsgAuthR("FILES_CONT_NO_FILEINFO", rUser, systemId, path));
@@ -337,11 +338,11 @@ public class PostItsService {
         //  - zipStream, byteRangeStream, paginatedStream, fullStream
         if (redeemContext.isZip()) {
             // Send a zip stream. This can handle a path ending in /
-            redeemContext.setOutStream(fileOpsService.getZipStream(rUser, tapisSystem, path, null, null));
+            redeemContext.setOutStream(fileOpsService.getZipStream(rUser, systemId, path, null, null));
             String newName = FilenameUtils.removeExtension(fileName) + ".zip";
             redeemContext.setFilename(newName);
         } else {
-            redeemContext.setOutStream(fileOpsService.getFullStream(rUser, tapisSystem, path, null, null));
+            redeemContext.setOutStream(fileOpsService.getFullStream(rUser, systemId, path, null, null));
             redeemContext.setFilename(fileName);
         }
 

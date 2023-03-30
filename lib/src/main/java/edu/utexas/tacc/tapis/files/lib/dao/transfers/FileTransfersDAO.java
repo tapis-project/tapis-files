@@ -99,12 +99,6 @@ public class FileTransfersDAO {
             task.setUuid(UUID.fromString(rs.getString("uuid")));
             task.setStatus(rs.getString("status"));
             task.setOptional(rs.getBoolean("optional"));
-          // TODO REMOVE
-            boolean srcShared = Boolean.getBoolean(rs.getString("src_shared_ctx"));
-            boolean dstShared = Boolean.getBoolean(rs.getString("dst_shared_ctx"));
-            task.setSrcSharedAppCtx(srcShared);
-            task.setDestSharedAppCtx(dstShared);
-          // TODO REMOVE
             task.setSrcSharedCtxGrantor(rs.getString("src_shared_ctx"));
             task.setDestSharedCtxGrantor(rs.getString("dst_shared_ctx"));
             task.setTag(rs.getString("tag"));
@@ -518,8 +512,6 @@ public class FileTransfersDAO {
                 task.isOptional(),
                 task.getSrcSharedCtxGrantor(),
                 task.getDestSharedCtxGrantor(),
-// TODO REMOVE                Boolean.toString(task.isSrcSharedAppCtx()), //TODO sharedCtxGrantor task.getSrcSharedCtxGrantor(),
-// TODO REMOVE                Boolean.toString(task.isDestSharedAppCtx()), //TODO sharedCtxGrantor task.getDestSharedCtxGrantor(),
                 task.getTag()
                 );
             return insertedTask;

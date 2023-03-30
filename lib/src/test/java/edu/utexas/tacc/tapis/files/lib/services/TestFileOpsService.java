@@ -4,6 +4,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
@@ -87,6 +88,7 @@ public class TestFileOpsService
   private static final Logger log  = LoggerFactory.getLogger(TestFileOpsService.class);
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
   private final SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
+  private final SystemsCacheNoAuth systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
 
   private static final MoveCopyOperation OP_MV = MoveCopyOperation.MOVE;
   private static final MoveCopyOperation OP_CP = MoveCopyOperation.COPY;
@@ -214,6 +216,7 @@ public class TestFileOpsService
         bindAsContract(FileOpsService.class).in(Singleton.class);
         bindAsContract(FileShareService.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
+        bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class).ranked(1);
         bind(permsService).to(FilePermsService.class).ranked(1);
         bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
         bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
@@ -267,24 +270,6 @@ public class TestFileOpsService
       client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3);
       cleanupAll(client, testSystemS3);
     }
-
-  // Check the getSystemIfEnabled() method
-  @Test
-  public void testGetSystemIfEnabled() throws Exception
-  {
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
-    when(systemsCache.getSystem(any(), eq("testSystemNotEnabled"), any(), any(), any())).thenReturn(testSystemNotEnabled);
-    when(systemsCache.getSystem(any(), eq("testSystemEnabled"), any(), any(), any())).thenReturn(testSystemSSH);
-    // For an enabled system this should return the system
-    TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemEnabled");
-    Assert.assertNotNull(tmpSys);
-    Assert.assertEquals(tmpSys.getId(), testSystemSSH.getId());
-    // For a disabled or missing this should throw NotFound
-    Assert.assertThrows(NotFoundException.class, () ->
-            LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "testSystemNotEnabled"));
-    Assert.assertThrows(NotFoundException.class, () ->
-            LibUtils.getSystemIfEnabled(rTestUser, systemsCache, "fakeSystemId"));
-  }
 
   @Test(dataProvider = "testSystems")
   public void testListingPath(TapisSystem testSystem) throws Exception
@@ -700,11 +685,13 @@ public class TestFileOpsService
   @Test(dataProvider = "testSystems")
   public void testGetFullStream(TapisSystem testSystem) throws Exception
   {
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any())).thenReturn(testSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     InputStream in = Utils.makeFakeFile( 1000 * 1024);
     fileOpsService.upload(client,"test.txt", in);
-    StreamingOutput streamingOutput = fileOpsService.getFullStream(rTestUser, testSystem,"test.txt", nullImpersonationId, sharedCtxGrantorNull);
+    StreamingOutput streamingOutput = fileOpsService.getFullStream(rTestUser, testSystem.getId(),"test.txt", nullImpersonationId, sharedCtxGrantorNull);
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
     streamingOutput.write(outStream);
     Assert.assertEquals(outStream.size(), 1000*1024);
@@ -758,10 +745,10 @@ public class TestFileOpsService
       client.delete("/");
       fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
       // MODIFY should imply read so ls should work
-      fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedCtxGrantorNull);
+      fileOpsService.ls(rTestUser, testSystem.getId(), "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedCtxGrantorNull);
       // Without MODIFY or READ should fail
       when(permsService.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(false);
-      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem, "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedCtxGrantorNull); });
+      Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(rTestUser, testSystem.getId(), "test.txt", MAX_LISTING_SIZE, 0, nullImpersonationId, sharedCtxGrantorNull); });
     }
 
   // NoAuthz tests for mkdir, move, copy and delete

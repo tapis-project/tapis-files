@@ -10,7 +10,6 @@ import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
-import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -28,9 +27,9 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 /*
  * Systems cache. Loads systems with credentials.
- *   Standard Tapis auth check for READ is done.
- *   effectiveUserId is resolved.
- *   Default AuthnMethod is used.
+ *   - Standard Tapis auth check for READ is done.
+ *   - Default AuthnMethod is used.
+ *   - Credentials are included
  */
 @Service
 public class SystemsCache
@@ -58,8 +57,8 @@ public class SystemsCache
     return getSystem(tenantId, systemId, tapisUser, null, null);
   }
 
-  public TapisSystem getSystem(String tenantId, String systemId, String tapisUser,
-                               String impersonationId, String sharedCtxGrantor)
+  public TapisSystem getSystem(String tenantId, String systemId, String tapisUser, String impersonationId,
+                               String sharedCtxGrantor)
           throws ServiceException
   {
     try
@@ -118,19 +117,16 @@ public class SystemsCache
     {
       log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADING", key.getTenantId(), key.getSystemId(), key.getTapisUser(),
                                  key.getImpersonationId(), key.getSharedCtxGrantor()));
+      // Create a client to call systems as <tapis-user>@<tenant>
       SystemsClient client = serviceClients.getClient(key.getTapisUser(), key.getTenantId(), SystemsClient.class);
 
       SystemsClient.AuthnMethod authnMethod = null;
       var requireExec = false;
       var selectStr = "allAttributes";
       var returnCreds = true;
-      // TODO sharedAppCtx - update to handle as grantor of share.
-      //      For now, set to true for any grantor.
-      boolean sharedAppCtx = false;
-      if (!StringUtils.isBlank(key.getSharedCtxGrantor())) sharedAppCtx = true;
+      String resourceTenantNull = null;
       TapisSystem system = client.getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
-// TODO                                            key.getImpersonationId(), key.getSharedCtxGrantor());
-                                            key.getImpersonationId(), sharedAppCtx);
+                                            key.getImpersonationId(), key.getSharedCtxGrantor(), resourceTenantNull);
       // If client returns null it means not found
       if (system == null)
       {

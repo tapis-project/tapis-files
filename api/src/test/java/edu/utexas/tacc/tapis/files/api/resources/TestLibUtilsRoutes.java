@@ -5,7 +5,9 @@ import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxFaclRequest;
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxOpRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
+import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
@@ -21,7 +23,6 @@ import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
@@ -76,7 +77,6 @@ import static org.mockito.Mockito.when;
 @Test(groups = {"integration"})
 public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 {
-
   private final Logger log = LoggerFactory.getLogger(TestLibUtilsRoutes.class);
 
   private static class FileStatInfoResponse extends TapisResponse<FileStatInfo> { }
@@ -162,6 +162,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
                 bindAsContract(SystemsCache.class).in(Singleton.class);
+                bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
                 bindAsContract(FileOpsService.class).in(Singleton.class);
                 bindAsContract(FileUtilsService.class).in(Singleton.class);
                 bindAsContract(FileShareService.class).in(Singleton.class);
@@ -238,11 +239,8 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetStatInfo(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystemWithCredentials(any())).thenReturn(testSystem); // For SystemsCacheWithAuth
-//TODO    when(systemsClient.getSystem(any(), any(), eq(false), any(), eq(true), any(), any())).thenReturn(testSystem); // For SystemsCache
-    when(systemsClient.getSystem(any(), any(), eq(false), any(), eq(true), any(), eq(false))).thenReturn(testSystem); // For SystemsCache
-// getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
-//                                            impersonationIdNull, sharedAppCtx);
+    when(systemsClient.getSystem(any(), any(), eq(false), any(), eq(true), any(), any())).thenReturn(testSystem); // For SystemsCache
+    when(systemsClient.getSystem(any(), any(), eq(false), any(), eq(false), any(), any())).thenReturn(testSystem); // For SystemsCacheNoAuth
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -427,7 +425,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testFileAclAddAndDelete(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -463,7 +461,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testFileAclAddAndDeleteWeirdFiles(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -506,7 +504,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testDirAclAddAndDelete(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -562,7 +560,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testFileAclDeleteAll(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -588,7 +586,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testDirAclDeleteAll(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -618,7 +616,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testDirAclDeleteDefault(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -656,7 +654,7 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testDirAclAddAndDeleteRecursive(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), anyBoolean())).thenReturn(testSystem);
+    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
