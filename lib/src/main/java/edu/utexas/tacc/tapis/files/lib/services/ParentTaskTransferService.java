@@ -131,7 +131,7 @@ public class ParentTaskTransferService
    */
   private TransferTaskParent doParentStepOne(TransferTaskParent parentTask) throws ServiceException, ForbiddenException
   {
-    log.debug("***** DOING doParentStepOne ****");
+    log.debug("***** Starting ParentStepOne ****");
     log.debug(parentTask.toString());
 
     // Extract some values for convenience and clarity
@@ -182,6 +182,7 @@ public class ParentTaskTransferService
         {
           parentTask.setEndTime(Instant.now());
           parentTask.setStatus(TransferTaskStatus.FAILED);
+          parentTask.setFinalMessage("Failed in doParentStepOne - Permission denied");
         }
         dao.updateTransferTaskParent(parentTask);
         throw new ForbiddenException(msg);
@@ -361,6 +362,7 @@ public class ParentTaskTransferService
       parent.setStatus(TransferTaskStatus.FAILED);
     parent.setEndTime(Instant.now());
     parent.setErrorMessage(e.getMessage());
+    parent.setFinalMessage("Failed - doErrorParentStepOne");
     try
     {
       parent = dao.updateTransferTaskParent(parent);

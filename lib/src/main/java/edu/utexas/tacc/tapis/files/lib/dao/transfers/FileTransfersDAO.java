@@ -148,6 +148,7 @@ public class FileTransfersDAO {
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             task.setErrorMessage(rs.getString("error_message"));
+            task.setExternalTaskId(rs.getString("external_task_id"));
             Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
             Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
             return task;
@@ -493,8 +494,8 @@ public class FileTransfersDAO {
                 startTime,
                 endTime,
                 task.getErrorMessage(),
-                task.getId(),
-                task.getExternalTaskId()
+                task.getExternalTaskId(),
+                task.getId()
             );
             return updatedTask;
         } catch (SQLException ex) {

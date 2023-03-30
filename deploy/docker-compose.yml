@@ -3,7 +3,8 @@ version: "3"
 
 volumes:
   postgres-data:
-  miniodata:
+  rabbitmq-data:
+  minio-data:
 
 networks:
   rabbitmq_netwrk:
@@ -38,18 +39,20 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
     networks:
       - rabbitmq_netwrk
 
   minio:
     image: minio/minio
-    ports:
-      - 9000:9000
     environment:
       - MINIO_ACCESS_KEY=user
       - MINIO_SECRET_KEY=password
+    ports:
+      - 9000:9000
     volumes:
-      - miniodata:/data
+      - minio-data:/data
     command: server /data
 
   irods:
@@ -73,4 +76,3 @@ services:
       dockerfile: ./deploy/Dockerfile.ssh-machine
     ports:
       - "2223:22"
-

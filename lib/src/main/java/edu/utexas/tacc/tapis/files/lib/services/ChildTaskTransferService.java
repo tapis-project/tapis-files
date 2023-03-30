@@ -178,14 +178,14 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepOne(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
-    log.info("***** Starting stepOne **** {}", taskChild);
+    log.info("***** Starting ChildStepOne **** {}", taskChild);
     // Update parent task and then child task
     try
     {
       taskChild = dao.getTransferTaskChild(taskChild.getUuid());
-      log.info("***** StepOne childTask **** {}", taskChild);
+      log.debug("***** ChildStepOne childTask **** {}", taskChild);
       TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-      log.info("***** StepOne parentTask **** {}", parentTask);
+      log.debug("***** ChildStepOne parentTask **** {}", parentTask);
       // If the parent task not in final state and not yet set to IN_PROGRESS do it here.
       if (!parentTask.isTerminal() && !parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS))
       {
@@ -212,7 +212,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepOne", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepOne", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -233,7 +233,7 @@ public class ChildTaskTransferService
     TapisSystem destSystem = null;
     IRemoteDataClient sourceClient;
     IRemoteDataClient destClient;
-    log.info("***** DOING stepTwo **** {}", taskChild);
+    log.info("***** Starting ChildStepTwo **** {}", taskChild);
     TransferTaskParent parentTask;
     try
     {
@@ -258,7 +258,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepTwoA", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepTwoA", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -315,7 +315,7 @@ public class ChildTaskTransferService
     catch (IOException | ServiceException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepTwoB", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepTwoB", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -365,7 +365,7 @@ public class ChildTaskTransferService
   private TransferTaskChild stepThree(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
     // If it cancelled/failed somehow, just push it through unchanged.
-    log.info("***** DOING stepThree **** {}", taskChild);
+    log.info("***** Starting ChildStepThree **** {}", taskChild);
     try
     {
       // If we are cancelled/failed, update end time, and we are done
@@ -385,7 +385,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepThree", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepThree", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -410,7 +410,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepFour", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepFour", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -424,7 +424,7 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepFive(@NotNull TransferTaskChild taskChild)
   {
-    log.info("***** DOING stepFive NO-OP **** {}", taskChild);
+    log.info("***** DOING ChildStepFive NO-OP **** {}", taskChild);
     return taskChild;
   }
 
@@ -482,6 +482,7 @@ public class ChildTaskTransferService
         }
         parent.setEndTime(Instant.now());
         parent.setErrorMessage(cause.getMessage());
+        parent.setFinalMessage("Failed - Child doErrorStepOne");
         log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR14", parent.getId(), parent.getTag(), parent.getUuid(), child.getId(), child.getUuid(), parent.getStatus()));
         dao.updateTransferTaskParent(parent);
         // If parent is required update top level task to FAILED and set error message
@@ -662,6 +663,7 @@ public class ChildTaskTransferService
       {
         parentTask.setStatus(TransferTaskStatus.COMPLETED);
         parentTask.setEndTime(Instant.now());
+        parentTask.setFinalMessage("Completed");
         log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_COMPLETE", topTaskId, topTask.getUuid(), parentTaskId, parentTask.getUuid(), parentTask.getTag()));
         dao.updateTransferTaskParent(parentTask);
       }
@@ -912,7 +914,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                            "stepTwoC", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                            "ChildStepTwoC", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
