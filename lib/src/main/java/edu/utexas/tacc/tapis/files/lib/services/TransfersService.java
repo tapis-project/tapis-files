@@ -615,8 +615,8 @@ public class TransfersService
   {
     // If nothing to check or sharedCtxGrantor not set for src or dest then we are done.
     if (e == null) return;
-    String srcGrantor = e.getSrcSharedCtxGrantor();
-    String dstGrantor = e.getDestSharedCtxGrantor();
+    String srcGrantor = e.getSrcSharedCtx();
+    String dstGrantor = e.getDestSharedCtx();
 
     // Grantor not null indicates attempt to share.
     boolean srcShared = !StringUtils.isBlank(srcGrantor);
@@ -717,8 +717,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcId = srcUri.getSystemId();
       String dstId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
-      String dstGrantor = txfrElement.getDestSharedCtxGrantor();
+      String srcGrantor = txfrElement.getSrcSharedCtx();
+      String dstGrantor = txfrElement.getDestSharedCtx();
       String impersonationIdNull = null;
 
       // Get any Tapis systems. If protocol is http/s then leave as null.
@@ -776,8 +776,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcSystemId = srcUri.getSystemId();
       String dstSystemId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
-      String dstGrantor = txfrElement.getDestSharedCtxGrantor();
+      String srcGrantor = txfrElement.getSrcSharedCtx();
+      String dstGrantor = txfrElement.getDestSharedCtx();
       // Check source system
       if (!StringUtils.isBlank(srcSystemId) && srcUri.isTapisProtocol())
       {
