@@ -36,7 +36,6 @@ import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 /*
  * JAX-RS REST resource for Tapis File content downloads (file or directory)
@@ -76,7 +75,7 @@ public class ContentApiResource extends BaseFileOpsResource
    * @param zip - flag indicating if a zip stream should be created
    * @param startPage -
    * @param impersonationId - use provided Tapis username instead of oboUser when checking auth, getSystem (effUserId)
-   * @param sharedAppCtx - Indicates that request is part of a shared app context. Tapis auth bypassed.
+   * @param sharedCtx - Grantor for the case of a shared context.
    * @param securityContext - user identity
    */
   @GET
@@ -88,12 +87,12 @@ public class ContentApiResource extends BaseFileOpsResource
                           @QueryParam("zip") @DefaultValue("false") boolean zip,
                           @HeaderParam("more") @Min(1) Long startPage,
                           @QueryParam("impersonationId") String impersonationId,
-                          @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
+                          @QueryParam("sharedCtx") String sharedCtx,
                           @Context SecurityContext securityContext,
                           @Suspended final AsyncResponse asyncResponse)
   {
     String opName = "getContents";
-    downloadPath(opName, systemId, path, range, zip, startPage, impersonationId, sharedAppCtx, securityContext, asyncResponse);
+    downloadPath(opName, systemId, path, range, zip, startPage, impersonationId, sharedCtx, securityContext, asyncResponse);
   }
 
   @GET
@@ -104,12 +103,12 @@ public class ContentApiResource extends BaseFileOpsResource
                               @QueryParam("zip") @DefaultValue("false") boolean zip,
                               @HeaderParam("more") @Min(1) Long startPage,
                               @QueryParam("impersonationId") String impersonationId,
-                              @QueryParam("sharedAppCtx") @DefaultValue("false") boolean sharedAppCtx,
+                              @QueryParam("sharedCtx") String sharedCtx,
                               @Context SecurityContext securityContext,
                               @Suspended final AsyncResponse asyncResponse)
   {
     String opName = "getContents";
-    downloadPath(opName, systemId, "", range, zip, startPage, impersonationId, sharedAppCtx, securityContext, asyncResponse);
+    downloadPath(opName, systemId, "", range, zip, startPage, impersonationId, sharedCtx, securityContext, asyncResponse);
   }
 
   // ************************************************************************
@@ -120,7 +119,7 @@ public class ContentApiResource extends BaseFileOpsResource
    * Common routine to download
    */
   private void downloadPath(String opName, String systemId, String path, HeaderByteRange range, boolean zip,
-                            Long startPage, String impersonationId, boolean sharedAppCtx,
+                            Long startPage, String impersonationId, String sharedCtx,
                             SecurityContext securityContext, AsyncResponse asyncResponse)
   {
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
@@ -137,15 +136,7 @@ public class ContentApiResource extends BaseFileOpsResource
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
               "path="+path, "range="+range, "zip="+zip, "more="+startPage, "impersonationId="+impersonationId,
-              "sharedCtx="+sharedAppCtx);
-
-    // TODO REMOVE
-    //      Convert incoming boolean sharedAppCtx true/false into "true" / null for sharedCtxGrantor
-    //      From now on we can deal with strings.
-    String sharedCtxGrantor = sharedAppCtx ? Boolean.toString(sharedAppCtx) : null;
-
-    // Get system. This requires READ permission.
-    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, impersonationId, "true");
+              "sharedCtx="+sharedCtx);
 
     // ---------------------------- Make service calls to start data streaming -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -167,15 +158,15 @@ public class ContentApiResource extends BaseFileOpsResource
     if (zip)
     {
       // Send a zip stream. This can handle a path ending in /
-      outStream = fileOpsService.getZipStream(rUser, sys, path, impersonationId, sharedCtxGrantor);
+      outStream = fileOpsService.getZipStream(rUser, systemId, path, impersonationId, sharedCtx);
       String newName = FilenameUtils.removeExtension(fileName) + ".zip";
       contentDisposition = String.format("attachment; filename=%s", newName);
       mediaType = MediaType.APPLICATION_OCTET_STREAM;
     }
     else
     {
-      // Make sure the requested path is not a directory
-      FileInfo fileInfo = fileOpsService.getFileInfo(rUser, sys, path, impersonationId, sharedCtxGrantor);
+      // Make sure the requested path exists and is not a directory
+      FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, impersonationId, sharedCtx);
       if (fileInfo == null)
       {
         throw new NotFoundException(LibUtils.getMsgAuth("FILES_CONT_NO_FILEINFO", user, systemId, path));
@@ -187,19 +178,19 @@ public class ContentApiResource extends BaseFileOpsResource
       // Send a byteRange, page blocks or the full stream.
       if (range != null)
       {
-        outStream = fileOpsService.getByteRangeStream(rUser, sys, path, range, impersonationId, sharedCtxGrantor);
+        outStream = fileOpsService.getByteRangeStream(rUser, systemId, path, range, impersonationId, sharedCtx);
         contentDisposition = String.format("attachment; filename=%s", fileName);
         mediaType = MediaType.TEXT_PLAIN;
       }
       else if (!Objects.isNull(startPage))
       {
-        outStream = fileOpsService.getPagedStream(rUser, sys, path, startPage, impersonationId, sharedCtxGrantor);
+        outStream = fileOpsService.getPagedStream(rUser, systemId, path, startPage, impersonationId, sharedCtx);
         contentDisposition = "inline";
         mediaType = MediaType.TEXT_PLAIN;
       }
       else
       {
-        outStream = fileOpsService.getFullStream(rUser, sys, path, impersonationId, sharedCtxGrantor);
+        outStream = fileOpsService.getFullStream(rUser, systemId, path, impersonationId, sharedCtx);
         contentDisposition = String.format("attachment; filename=%s", fileName);
         mediaType = MediaType.APPLICATION_OCTET_STREAM;
       }

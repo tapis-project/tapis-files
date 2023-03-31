@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.caches.TenantAdminCache;
 import edu.utexas.tacc.tapis.files.lib.dao.postits.PostItsDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -36,7 +37,11 @@ import java.util.concurrent.TimeUnit;
 public class PostItsService {
     private static final Logger log = LoggerFactory.getLogger(PostItsService.class);
 
-    // Default allowed uses 1
+    // Some methods do not support impersonationId or sharedAppCtxGrantor
+    private static final String impersonationIdNull = null;
+    private static final String sharedCtxGrantorNull = null;
+
+  // Default allowed uses 1
     private static Integer DEFAULT_ALLOWED_USES = Integer.valueOf(1);
 
     // Default ttl 30 days
@@ -62,6 +67,12 @@ public class PostItsService {
 
     @Inject
     SystemsCache systemsCache;
+
+    @Inject
+    SystemsCacheNoAuth systemsCacheNoAuth;
+
+    @Inject
+    FileShareService shareService;
 
     @Inject
     TenantAdminCache tenantAdminCache;
@@ -124,13 +135,13 @@ public class PostItsService {
                                Integer validSeconds, Integer allowedUses)
             throws TapisException, ServiceException {
 
-        // check for path permissions
-        LibUtils.checkPermittedReadOrModify(permsService, rUser.getOboTenantId(),
-                rUser.getOboUserId(), systemId, path);
-
+        String opName = "createPostIt";
+        // Fetch system with credentials including auth checks for system and path
+        TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
+                                                               opName, systemId, path, FileInfo.Permission.READ,
+                                                               impersonationIdNull, sharedCtxGrantorNull);
         // make sure the file exists
-        TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
-        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, system, path, null, null);
+        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, null, null);
         if(fileInfo == null) {
             String msg = LibUtils.getMsgAuthR("POSTIT_SERVICE_ERROR", rUser,
                     systemId, path, "Unable to get file info");
@@ -314,7 +325,7 @@ public class PostItsService {
         }
 
         // fileOpsService.getFileInfo() will check path permissions, so no need to check in this method.
-        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, tapisSystem, path, null, null);
+        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, null, null);
         if (fileInfo == null)
         {
             throw new NotFoundException(LibUtils.getMsgAuthR("FILES_CONT_NO_FILEINFO", rUser, systemId, path));
@@ -337,11 +348,11 @@ public class PostItsService {
         //  - zipStream, byteRangeStream, paginatedStream, fullStream
         if (redeemContext.isZip()) {
             // Send a zip stream. This can handle a path ending in /
-            redeemContext.setOutStream(fileOpsService.getZipStream(rUser, tapisSystem, path, null, null));
+            redeemContext.setOutStream(fileOpsService.getZipStream(rUser, systemId, path, null, null));
             String newName = FilenameUtils.removeExtension(fileName) + ".zip";
             redeemContext.setFilename(newName);
         } else {
-            redeemContext.setOutStream(fileOpsService.getFullStream(rUser, tapisSystem, path, null, null));
+            redeemContext.setOutStream(fileOpsService.getFullStream(rUser, systemId, path, null, null));
             redeemContext.setFilename(fileName);
         }
 
