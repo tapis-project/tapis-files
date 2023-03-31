@@ -678,7 +678,7 @@ public class TestFileOpsService
         IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
-        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000, nullImpersonationId, sharedCtxGrantorNull);
+        InputStream result = fileOpsService.getByteRange(rTestUser, testSystem,"test.txt", 0 , 1000);
         Assert.assertEquals(result.readAllBytes().length, 1000);
     }
 
@@ -709,7 +709,7 @@ public class TestFileOpsService
 
         File file = File.createTempFile("test", ".zip");
         OutputStream outputStream = new FileOutputStream(file);
-        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a", nullImpersonationId, sharedCtxGrantorNull);
+        fileOpsService.getZip(rTestUser, outputStream, testSystem, "/a");
 
         try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis))
         {

@@ -24,6 +24,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.server.ManagedAsync;
 import org.slf4j.Logger;
@@ -35,7 +36,6 @@ import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 /*
  * JAX-RS REST resource for Tapis File content downloads (file or directory)

@@ -203,7 +203,7 @@ public class TestFileShareService
 
     // Create file at path
     InputStream in = Utils.makeFakeFile(10*1024);
-    fileOpsService.upload(rTestUser1, tmpSys, filePathStr, in);
+    fileOpsService.upload(rTestUser1, sysId, filePathStr, in);
 
     // Grant testUser1 full perms, testUser2 READ
     permsService.grantPermission(devTenant, testUser1, sysId, filePathStr, Permission.MODIFY);
@@ -305,12 +305,12 @@ public class TestFileShareService
     InputStream in = Utils.makeFakeFile(1024);
     if (StringUtils.isBlank(fileToCreate))
     {
-      fileOpsService.upload(rTestUser1, tSys, pathToShare, in);
+      fileOpsService.upload(rTestUser1, sysId, pathToShare, in);
       fileToCheck = pathToShare;
     }
     else
     {
-      fileOpsService.upload(rTestUser1, tSys, fileToCreate, in);
+      fileOpsService.upload(rTestUser1, sysId, fileToCreate, in);
       fileToCheck = pathToShare = "/" + fileToCreate;
     }
 

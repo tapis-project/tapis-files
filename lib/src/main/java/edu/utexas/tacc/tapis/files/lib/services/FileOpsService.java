@@ -17,9 +17,6 @@ import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
-
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -30,6 +27,8 @@ import org.slf4j.LoggerFactory;
 import org.jetbrains.annotations.NotNull;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
@@ -67,6 +66,11 @@ public class FileOpsService
   private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
 
   private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
+
+  // Some methods do not support impersonationId or sharedAppCtxGrantor
+  private static final String impersonationIdNull = null;
+  private static final String sharedCtxGrantorNull = null;
+
   // 0=systemId, 1=path, 2=tenant
   private final String TAPIS_FILES_URL_FORMAT = String.format("%s{0}/{1}?tenant={2}", TAPIS_PROTOCOL_PREFIX);
 
@@ -301,10 +305,6 @@ public class FileOpsService
     IRemoteDataClient client = null;
     try
     {
-//TODO - SHARED      // If not skipping auth then check for READ/MODIFY permission or share
-//TODO - SHARED//TODO REMOVE      if (!sharedCtx) checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
-//TODO - SHARED      // Check for READ/MODIFY permission or share
-//TODO - SHARED      checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
       // Get the connection and increment the reservation count
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
@@ -326,32 +326,36 @@ public class FileOpsService
   /**
    * Upload a file
    * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param sys - System
+   * @param systemId - System
    * @param pathStr - path on system relative to system rootDir
    * @param inStrm  data stream to be used when creating file
    * @throws ForbiddenException - user not authorized
    */
-  public void upload(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String pathStr,
+  public void upload(@NotNull ResourceRequestUser rUser, @NotNull String systemId, @NotNull String pathStr,
                      @NotNull InputStream inStrm)
           throws WebApplicationException
   {
+    String opName = "upload";
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
-    String sysId = sys.getId();
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+    // Fetch system with credentials including auth checks for system and path
+    TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
+                                                           opName, systemId, relPathStr, Permission.MODIFY,
+                                                           impersonationIdNull, sharedCtxGrantorNull);
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
     try
     {
-      LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, pathStr, Permission.MODIFY);
+      LibUtils.checkPermitted(permsService, oboTenant, oboUser, systemId, pathStr, Permission.MODIFY);
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
       upload(client, relPathStr, inStrm);
     }
     catch (IOException | ServiceException ex)
     {
-      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "upload", sysId, relPathStr, ex.getMessage());
+      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
     }
@@ -443,9 +447,6 @@ public class FileOpsService
     IRemoteDataClient client = null;
     try
     {
-//TODO - SHARED      // If not skipping auth then check auth
-//TODO - SHARED      if (!sharedCtx) LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, pathStr, Permission.MODIFY);
-
       // Get the connection and increment the reservation count
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, null, sharedCtxGrantor);
       client.reserve();
@@ -491,38 +492,57 @@ public class FileOpsService
    * Move or copy a file or directory
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param sys - System
+   * @param systemId - System
    * @param srcPathStr - source path on system relative to system rootDir
    * @param dstPathStr - destination path on system relative to system rootDir
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-    public void moveOrCopy(@NotNull ResourceRequestUser rUser, @NotNull MoveCopyOperation op, @NotNull TapisSystem sys,
+    public void moveOrCopy(@NotNull ResourceRequestUser rUser, @NotNull MoveCopyOperation op, @NotNull String systemId,
                            String srcPathStr, String dstPathStr)
             throws WebApplicationException
     {
       String opName = op.name().toLowerCase();
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
-      String sysId = sys.getId();
       // Get normalized paths relative to system rootDir and protect against ../..
       String srcRelPathStr = PathUtils.getRelativePath(srcPathStr).toString();
       String dstRelPathStr = PathUtils.getRelativePath(dstPathStr).toString();
+
+      // Fetch system with credentials including auth checks for system and source path
+      TapisSystem sys;
+      if (op.equals(MoveCopyOperation.COPY))
+      {
+        sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
+                                                   opName, systemId, srcRelPathStr, Permission.READ,
+                                                   impersonationIdNull, sharedCtxGrantorNull);
+      }
+      else
+      {
+        sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
+                                                   opName, systemId, srcRelPathStr, Permission.MODIFY,
+                                                   impersonationIdNull, sharedCtxGrantorNull);
+      }
+
+      // To simplify auth check fetch the system again with check for destination path.
+      // Since we just did the fetch everything should be cached, so we do not expect much of a performance hit.
+      // Also, this is the only place where we need to do the two checks so probably not worth refactoring the auth
+      // checks. Might consider refactoring in the long term. Plus, if we ever support share with MODIFY it will change.
+      sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
+                                                 opName, systemId, dstRelPathStr, Permission.MODIFY,
+                                                 impersonationIdNull, sharedCtxGrantorNull);
 
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
       try
       {
-        // Check the source and destination both have MODIFY perm
-        LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, srcRelPathStr, Permission.MODIFY);
-        LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, dstRelPathStr, Permission.MODIFY);
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
         client.reserve();
         moveOrCopy(client, op, srcRelPathStr, dstRelPathStr);
       }
       catch (IOException | ServiceException ex)
       {
-        String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, sysId, srcRelPathStr, ex.getMessage());
+        String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, systemId, srcRelPathStr, ex.getMessage());
         log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
       }
@@ -550,19 +570,6 @@ public class FileOpsService
     String oboTenant = client.getOboTenant();
     String oboUser = client.getOboUser();
     String sysId = client.getSystemId();
-    // Check permission for source. If Copy only need READ/MODIFY, if Move then must have MODIFY
-    // TODO: What about a shared path? Cannot use checkForReadOrShared here without significant refactoring of code.
-    if (op.equals(MoveCopyOperation.COPY))
-    {
-      LibUtils.checkPermittedReadOrModify(permsService, oboTenant, oboUser, sysId, srcRelPathStr);
-    }
-    else
-    {
-      LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, srcRelPathStr, Permission.MODIFY);
-    }
-    // Check permission for destination
-    LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, dstRelPathStr, Permission.MODIFY);
-
     try
     {
       // Get file info here, so we can do some basic checks independent of the system type
@@ -607,34 +614,39 @@ public class FileOpsService
    * Delete a file or directory. Remove all permissions and shares from SK
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param sys - System
+   * @param systemId - System
    * @param pathStr - path on system relative to system rootDir
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-    public void delete(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String pathStr)
+    public void delete(@NotNull ResourceRequestUser rUser, @NotNull String systemId, @NotNull String pathStr)
             throws WebApplicationException
     {
+      String opName = "delete";
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
-      String sysId = sys.getId();
       // Get normalized path relative to system rootDir and protect against ../..
       String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
+
+      // Fetch system with credentials including auth checks for system and path
+      TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
+                                                             opName, systemId, relativePathStr, Permission.MODIFY,
+                                                             impersonationIdNull, sharedCtxGrantorNull);
+
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
       try
       {
-        LibUtils.checkPermitted(permsService, oboTenant, oboUser, sysId, relativePathStr, Permission.MODIFY);
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
         client.reserve();
         // Delete files and permissions
         delete(client, relativePathStr);
         // Remove shares with recurse=true
-        shareService.removeAllSharesForPathWithoutAuth(oboTenant, sysId, relativePathStr, true);
+        shareService.removeAllSharesForPathWithoutAuth(oboTenant, systemId, relativePathStr, true);
       }
       catch (IOException | ServiceException ex)
       {
-        String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "delete", sysId, relativePathStr, ex.getMessage());
+        String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "delete", systemId, relativePathStr, ex.getMessage());
         log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
       }
@@ -709,8 +721,7 @@ public class FileOpsService
     StreamingOutput outStream = output -> {
       try
       {
-//TODO - SHARED
-        getZip(rUser, output, sys, pathStr, impersonationId, sharedCtxGrantor);
+        getZip(rUser, output, sys, pathStr);
       }
       catch (NotFoundException | ForbiddenException ex)
       {
@@ -754,8 +765,7 @@ public class FileOpsService
     InputStream stream = null;
     try
     {
-//TODO - SHARED
-      stream = getByteRange(rUser, sys, path, range.getMin(), range.getMax(), impersonationId, sharedCtxGrantor);
+      stream = getByteRange(rUser, sys, pathStr, range.getMin(), range.getMax());
       stream.transferTo(output);
     }
     catch (NotFoundException | ForbiddenException ex)
@@ -801,25 +811,6 @@ public class FileOpsService
                                                            opName, sysId, relPathStr, Permission.READ,
                                                            impersonationId, sharedCtxGrantor);
 
-//TODO - SHARED    // If sharedCtx set, confirm that it is allowed (can throw ForbiddenException)
-//TODO - SHARED    boolean sharedCtx = !StringUtils.isBlank(sharedCtxGrantor);
-//TODO - SHARED    if (sharedCtx) checkSharedCtxAllowed(rUser, opName, sys.getId(), relativePath.toString(), sharedCtxGrantor);
-
-    // Make sure user has permission for this path
-//TODO - SHARED    try
-//TODO - SHARED    {
-      // If not skipping auth check, check for READ/MODIFY permission or share
-//TODO - SHARED      if (!sharedCtx) checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
-//TODO      // Check for READ/MODIFY permission or share
-//TODO      checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
-//TODO - SHARED    }
-//TODO - SHARED    catch (ServiceException e)
-//TODO - SHARED    {
-//TODO - SHARED      String msg = LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), pathStr, e.getMessage());
-//TODO - SHARED      log.error(msg, e);
-//TODO - SHARED      throw new WebApplicationException(msg, e);
-//TODO - SHARED    }
-
     StreamingOutput outStream = output -> {
       InputStream stream = null;
       try
@@ -827,8 +818,7 @@ public class FileOpsService
         stream = getPaginatedBytes(rUser, sys, relPathStr, startPage);
         stream.transferTo(output);
       }
-//TODO - SHARED
-      catch (NotFoundException | ForbiddenException ex)
+      catch (NotFoundException ex)
       {
         throw ex;
       }
@@ -867,21 +857,6 @@ public class FileOpsService
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, sysId, relPathStr, Permission.READ,
                                                            impersonationId, sharedCtxGrantor);
-    // If sharedCtx set, confirm that it is allowed (can throw ForbiddenException)
-//TODO - SHARED    boolean sharedCtx = !StringUtils.isBlank(sharedCtxGrantor);
-//TODO - SHARED    if (sharedCtx) checkSharedCtxAllowed(rUser, opName, sys.getId(), relativePath.toString(), sharedCtxGrantor);
-
-//TODO - SHARED    try
-//TODO - SHARED    {
-      // Check for READ/MODIFY permission or share
-//TODO - SHARED      checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
-//TODO - SHARED    }
-//TODO - SHARED    catch (ServiceException e)
-//TODO - SHARED    {
-//TODO - SHARED      String msg = LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sys.getId(), pathStr, e.getMessage());
-//TODO - SHARED      log.error(msg, e);
-//TODO - SHARED      throw new WebApplicationException(msg, e);
-//TODO - SHARED    }
 
     StreamingOutput outStream = output -> {
       InputStream stream = null;
@@ -890,8 +865,7 @@ public class FileOpsService
         stream = getAllBytes(rUser, sys, pathStr);
         stream.transferTo(output);
       }
-//TODO - SHARED
-        catch (NotFoundException | ForbiddenException ex)
+      catch (NotFoundException ex)
       {
         throw ex;
       }
@@ -907,39 +881,6 @@ public class FileOpsService
       }
     };
     return outStream;
-  }
-
-//TODO - SHARED
-//// TODO remove once using sharedCtxGrantor?
-  /**
-   * Determine if file path is shared
-   * NOTE: We do not check here that impersonation is allowed. The 2 methods that call this method later call
-   *       checkAuthForReadOrShare which does the check
-   * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param sys - System
-   * @param path - path on system relative to system rootDir
-   * @param impersonationId - use provided Tapis username instead of oboUser
-   * @return true if shared else false
-   */
-  public boolean isPathShared(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String path,
-                              String impersonationId) throws WebApplicationException
-  {
-    // Get path relative to system rootDir and protect against ../..
-    String relativePathStr = PathUtils.getRelativePath(path).toString();
-    // Certain services are allowed to impersonate an OBO user for the purposes of authorization
-    //   and effectiveUserId resolution.
-    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
-    try
-    {
-      if (shareService.isSharedWithUser(rUser, sys, relativePathStr, oboOrImpersonatedUser)) return true;
-    }
-    catch (TapisClientException e)
-    {
-      String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, sys.getId(), relativePathStr, e.getMessage());
-      log.error(msg, e);
-      throw new WebApplicationException(msg, e);
-    }
-    return false;
   }
 
   /* **************************************************************************** */
@@ -1020,13 +961,10 @@ public class FileOpsService
    * Generate a stream for a range of bytes.
    *
    * @param pathStr - path on system relative to system rootDir
-   * @param sharedCtxGrantor - Share grantor for the case of a shared context.
    * @throws ServiceException general service error
-   * @throws ForbiddenException user not authorized
    */
-//TODO - SHARED
   InputStream getByteRange(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys, @NotNull String pathStr,
-                           long startByte, long count, String impersonationId, String sharedCtxGrantor)
+                           long startByte, long count)
           throws ServiceException
   {
     String oboTenant = rUser.getOboTenantId();
@@ -1034,12 +972,6 @@ public class FileOpsService
     String sysId = sys.getId();
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
-//TODO - SHARED
-    // If not skipping auth check, check for READ/MODIFY permission or share
-//TODO sharedCtxGrantor    if (!sharedAppCtx) checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
-    checkAuthForReadOrShare(rUser, sys, relativePath, impersonationId);
-//TODO    // Check for READ/MODIFY permission or share
-//TODO    checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
 
     IRemoteDataClient client = null;
     try
@@ -1068,7 +1000,6 @@ public class FileOpsService
    * @return InputStream
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
-   * @throws ForbiddenException - user not authorized
    */
   private InputStream getPaginatedBytes(@NotNull ResourceRequestUser rUser, @NotNull TapisSystem sys,
                                         @NotNull String relPathStr, long startPAge)
@@ -1103,12 +1034,10 @@ public class FileOpsService
    *
    * @param outputStream Stream receiving zip contents
    * @param pathStr - path on system relative to system rootDir
-   * @param sharedCtxGrantor - Share grantor for the case of a shared context.
    * @throws ServiceException general service error
-   * @throws ForbiddenException user not authorized
    */
   void getZip(@NotNull ResourceRequestUser rUser, @NotNull OutputStream outputStream, @NotNull TapisSystem sys,
-              @NotNull String pathStr, String impersonationId, String sharedCtxGrantor)
+              @NotNull String pathStr)
           throws ServiceException
   {
     String oboTenant = rUser.getOboTenantId();
@@ -1116,9 +1045,6 @@ public class FileOpsService
     String sysId = sys.getId();
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
-
-//TODO - SHARED    // Check for READ/MODIFY permission or share
-//TODO - SHARED    checkAuthForPath(rUser, sys, relativePath, Permission.READ, impersonationId, sharedCtxGrantor);
 
     String cleanedRelativePathString = FilenameUtils.normalize(pathStr);
     cleanedRelativePathString = StringUtils.prependIfMissing(cleanedRelativePathString, "/");
@@ -1182,6 +1108,7 @@ public class FileOpsService
     inputStream.transferTo(zos);
     zos.closeEntry();
   }
+
   /**
    * Recursive method to build up list of files at a path
    * @param client remote data client to use
@@ -1208,209 +1135,6 @@ public class FileOpsService
         listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth);
       }
     }
-  }
-
-//TODO - SHARED
-  /**
-   * Confirm that caller or impersonationId has READ/MODIFY permission or share on path
-   * To use impersonationId it must be a service request from a service allowed to impersonate.
-   * NOTE: Consider implementing as follows:
-   *   If it is allowed due to READ or MODIFY permission then return null
-   *   If it is allowed due to a share then return the UserShareInfo which contains the grantor.
-   *
-   * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param system - system containing path
-   * @param path - path to the file, dir or object
-   * @throws ForbiddenException - oboUserId not authorized to perform operation
-   */
-//  private UserShareInfo checkAuthForReadOrShare(ResourceRequestUser rUser, TapisSystem system, Path path, String impersonationId)
-  private void checkAuthForReadOrShare(ResourceRequestUser rUser, TapisSystem system, Path path, String impersonationId)
-          throws ForbiddenException, ServiceException
-  {
-    String systemId = system.getId();
-    String pathStr = path.toString();
-
-    // To impersonate must be a service request from an allowed service.
-    if (!StringUtils.isBlank(impersonationId))
-    {
-      // If a service request the username will be the service name. E.g. systems, jobs, streams, etc
-      String svcName = rUser.getJwtUserId();
-      if (!rUser.isServiceRequest() || !SVCLIST_IMPERSONATE.contains(svcName))
-      {
-        String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_IMPERSONATE", rUser, systemId, pathStr, impersonationId);
-        log.warn(msg);
-        throw new ForbiddenException(msg);
-      }
-      // An allowed service is impersonating, log it
-      log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE", rUser, systemId, pathStr, impersonationId));
-    }
-
-    // Finally, check for READ perm or share using oboUser or impersonationId
-    // Certain services are allowed to impersonate an OBO user for the purposes of authorization
-    //   and effectiveUserId resolution.
-    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
-
-    // If requesting user is the system owner no need to check
-    if (oboOrImpersonatedUser.equals(system.getOwner())) return;
-
-    // If user has READ or MODIFY permission then return
-    //  else if shared then return
-    if (permsService.isPermitted(rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, pathStr, Permission.READ) ||
-        permsService.isPermitted(rUser.getOboTenantId(), oboOrImpersonatedUser, systemId, pathStr, Permission.MODIFY))
-    {
-      return;
-//      return null;
-    }
-    else
-    {
-      try
-      {
-        if (shareService.isSharedWithUser(rUser, system, pathStr, oboOrImpersonatedUser)) return;
-//        UserShareInfo si =  shareService.isSharedWithUser(rUser, system, pathStr, oboOrImpersonatedUser);
-//        if (si != null) return si;
-      }
-      catch (TapisClientException e)
-      {
-        String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, systemId, pathStr, e.getMessage());
-        log.error(msg, e);
-        throw new ServiceException(msg, e);
-      }
-    }
-    // No READ, MODIFY or share, throw exception
-    String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", rUser.getOboTenantId(), oboOrImpersonatedUser, systemId,
-                                 pathStr, Permission.READ);
-    log.warn(msg);
-    throw new ForbiddenException(msg);
-  }
-
-//TODO - SHARED
-  /**
-   * Confirm that caller or impersonationId has READ and/or MODIFY permission or share on path
-   * To use impersonationId it must be a service request from a service allowed to impersonate.
-   * If READ perm passed in then can be READ or MODIFY. If MODIFY passed in must be MODIFY
-   *
-   * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param system - system containing path
-   * @param relativePath - normalized path to the file, dir or object. Relative to system rootDir
-   * @param perm - required permission (READ or MODIFY)
-   * @param impersonationId - use provided Tapis username instead of oboUser
-   * @param sharedCtxGrantor - Share grantor for the case of a shared context.
-   * @throws ForbiddenException - oboUserId not authorized to perform operation
-   */
-  private void checkAuthForPath(ResourceRequestUser rUser, TapisSystem system, Path relativePath, Permission perm,
-                                String impersonationId, String sharedCtxGrantor)
-          throws ForbiddenException, ServiceException
-  {
-    String systemId = system.getId();
-    String relativePathStr = relativePath.toString();
-    String sysOwner = system.getOwner();
-    String oboTenant = rUser.getOboTenantId();
-    boolean modifyRequired = Permission.MODIFY.equals(perm);
-    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
-    boolean sharedCtx = !StringUtils.isBlank(sharedCtxGrantor);
-
-    // To impersonate must be a service request from an allowed service.
-    if (!StringUtils.isBlank(impersonationId))
-    {
-      // If a service request the username will be the service name. E.g. systems, jobs, streams, etc
-      String svcName = rUser.getJwtUserId();
-      if (!rUser.isServiceRequest() || !SVCLIST_IMPERSONATE.contains(svcName))
-      {
-        String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_IMPERSONATE", rUser, systemId, relativePathStr, impersonationId);
-        log.warn(msg);
-        throw new ForbiddenException(msg);
-      }
-      // An allowed service is impersonating, log it
-      log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE", rUser, systemId, relativePathStr, impersonationId));
-    }
-    // TODO REMOVE
-    // TODO For now if sharedCtxGrantor set to anything then allow
-    // TODO REMOVE
-    if (sharedCtx) return;
-
-    // If obo user is owner or in shared context and share grantor is owner then allow.
-    if (oboOrImpersonatedUser.equals(sysOwner) || (sharedCtx && sharedCtxGrantor.equals(sysOwner))) return;
-
-    // Check for fine-grained permission READ/MODIFY or MODIFY for obo user
-    if (modifyRequired)
-    {
-      if (permsService.isPermitted(oboTenant, oboOrImpersonatedUser, systemId, relativePathStr, Permission.MODIFY)) return;
-    }
-    else
-    {
-      if (permsService.isPermitted(oboTenant, oboOrImpersonatedUser, systemId, relativePathStr, Permission.READ) ||
-          permsService.isPermitted(oboTenant, oboOrImpersonatedUser, systemId, relativePathStr, Permission.MODIFY)) return;
-    }
-
-    // Check for fine-grained permission READ/MODIFY or MODIFY for share grantor
-    if (sharedCtx && modifyRequired)
-    {
-      if (permsService.isPermitted(oboTenant, sharedCtxGrantor, systemId, relativePathStr, Permission.MODIFY)) return;
-    }
-    else if (sharedCtx)
-    {
-      if (permsService.isPermitted(oboTenant, sharedCtxGrantor, systemId, relativePathStr, Permission.READ) ||
-          permsService.isPermitted(oboTenant, sharedCtxGrantor, systemId, relativePathStr, Permission.MODIFY)) return;
-    }
-
-// TODO sharedCtxGrantor
-    // Check for share with obo user / impersonationId or shareGrantor
-    // TODO sharing must now include share by priv READ or MODIFY
-    //    Currently sharing only allows for READ. So check only for READ case.
-    //    When sharing updated to share by privilege then update here.
-    // TODO/TBD previously sharedCtx was bool and all auth checking turned off. Skip check for MODIFY for now?
-    //          Let READ be enough?
-    try
-    {
-      if (Permission.READ.equals(perm))
-      {
-        if (shareService.isSharedWithUser(rUser, system, relativePathStr, oboOrImpersonatedUser)) return;
-        if (sharedCtx)
-        {
-          if (shareService.isSharedWithUser(rUser, system, relativePathStr, sharedCtxGrantor)) return;
-        }
-      }
-    }
-    catch (TapisClientException e)
-    {
-      String msg = LibUtils.getMsgAuthR("FILES_SHARE_GET_ERR", rUser, systemId, relativePathStr, e.getMessage());
-      log.error(msg, e);
-      throw new ServiceException(msg, e);
-    }
-
-    // Nothing allowed the operation. Throw ForbiddenException
-    String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", rUser.getOboTenantId(), oboOrImpersonatedUser, systemId,
-                                 relativePathStr, perm);
-    log.warn(msg);
-    throw new ForbiddenException(msg);
-  }
-
-
-//TODO - SHARED REMOVE?
-  /**
-   * Confirm that caller is allowed to set sharedCtxGrantor.
-   * Must be a service request from a service in the allowed list.
-   *
-   * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param opName - operation name
-   * @param sysId - name of the system
-   * @param pathStr - path involved in operation, used for logging
-   * @throws ForbiddenException - user not authorized to perform operation
-   */
-  private static void checkSharedCtxAllowed(ResourceRequestUser rUser, String opName, String sysId, String pathStr,
-                                            String sharedCtxGrantor)
-          throws ForbiddenException
-  {
-    // If a service request the username will be the service name. E.g. files, jobs, streams, etc
-    String svcName = rUser.getJwtUserId();
-    if (!rUser.isServiceRequest() || !SVCLIST_SHAREDCTX.contains(svcName))
-    {
-      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX", rUser, opName, sysId, pathStr, sharedCtxGrantor);
-      log.warn(msg);
-      throw new ForbiddenException(msg);
-    }
-    // An allowed service is skipping auth, log it
-    log.debug(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX", rUser, opName, sysId, pathStr, sharedCtxGrantor));
   }
 
   /*

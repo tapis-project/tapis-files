@@ -155,14 +155,11 @@ public class OperationsApiResource extends BaseFileOpsResource
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
 
-// TODO-SHARED    // Get system. This requires READ permission.
-// TODO-SHARED    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, "true");
-
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.upload(rUser, sys, path, fileInputStream);
+    fileOpsService.upload(rUser, systemId, path, fileInputStream);
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
@@ -242,14 +239,11 @@ public class OperationsApiResource extends BaseFileOpsResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
                           "op="+mvCpReq.getOperation(), "newPath="+mvCpReq.getNewPath());
 
-// TODO-SHARED    // Get system. This requires READ permission.
-// TODO-SHARED    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, "true");
-
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.moveOrCopy(rUser, mvCpReq.getOperation(), sys, path, mvCpReq.getNewPath());
+    fileOpsService.moveOrCopy(rUser, mvCpReq.getOperation(), systemId, path, mvCpReq.getNewPath());
     String msg = ApiUtils.getMsgAuth("FAPI_MVCP_COMPLETE", rUser, mvCpReq.getOperation(), systemId, path, mvCpReq.getNewPath());
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
@@ -283,14 +277,11 @@ public class OperationsApiResource extends BaseFileOpsResource
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
 
-// TODO-SHARED    // Get system. This requires READ permission.
-// TODO-SHARED    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId, null, "true");
-
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.delete(rUser, sys, path);
+    fileOpsService.delete(rUser, systemId, path);
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
