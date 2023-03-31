@@ -38,14 +38,19 @@ import reactor.rabbitmq.SenderOptions;
 import reactor.util.retry.RetrySpec;
 import static reactor.rabbitmq.BindingSpecification.binding;
 
+import edu.utexas.tacc.tapis.shared.security.ServiceContext;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
@@ -64,6 +69,7 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SH
 public class TransfersService
 {
   private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
+  private static final String impersonationIdNull = null;
   private static final String TRANSFERS_EXCHANGE = "tapis.files";
   private static String PARENT_QUEUE = "tapis.files.transfers.parent";
   private static String CHILD_QUEUE = "tapis.files.transfers.child";
@@ -74,9 +80,7 @@ public class TransfersService
   private final Sender sender;
 
   private final FileTransfersDAO dao;
-  private final SystemsCache systemsCache;
   private final FileOpsService fileOpsService;
-  private final FilePermsService permsService;
 
   private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]
   {
@@ -84,6 +88,23 @@ public class TransfersService
   };
 
   private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
+
+  // TODO/TBD Can we inject all services needed? Seems like when trying this before it did not work out, had to pass
+  //          them in via the constructor? Something to do with test setup?
+
+  // **************** Inject Services using HK2 ****************
+  @Inject
+  FilePermsService permsService;
+  @Inject
+  FileShareService shareService;
+  @Inject
+  RemoteDataClientFactory remoteDataClientFactory;
+  @Inject
+  ServiceContext serviceContext;
+  @Inject
+  SystemsCache systemsCache;
+  @Inject
+  SystemsCacheNoAuth systemsCacheNoAuth;
 
   /*
    * Constructor for service.
@@ -313,22 +334,6 @@ public class TransfersService
       for (TransferTaskRequestElement e : elements) { e.setTag(tag); }
 
       // Check for srcSharedCtx or destSharedCtx in the request elements.
-      // TODO REMOVE
-      //      Convert incoming boolean sharedAppCtx true/false into "true" / null for sharedCtxGrantor
-      //      From now on we can deal with strings.
-      for (TransferTaskRequestElement e : elements)
-      {
-        if (e.isSrcSharedAppCtx())
-          e.setSrcSharedCtxGrantor(Boolean.toString(e.isSrcSharedAppCtx()));
-        else
-          e.setSrcSharedCtxGrantor(null);
-        if (e.isDestSharedAppCtx())
-          e.setDestSharedCtxGrantor(Boolean.toString(e.isDestSharedAppCtx()));
-        else
-          e.setDestSharedCtxGrantor(null);
-      }
-      // TODO REMOVE
-
       // Only certain services may set these to true. May throw ForbiddenException.
       for (TransferTaskRequestElement e : elements) { checkSharedCtxAllowed(rUser, tag, e); }
 
@@ -619,8 +624,8 @@ public class TransfersService
   {
     // If nothing to check or sharedCtxGrantor not set for src or dest then we are done.
     if (e == null) return;
-    String srcGrantor = e.getSrcSharedCtxGrantor();
-    String dstGrantor = e.getDestSharedCtxGrantor();
+    String srcGrantor = e.getSrcSharedCtx();
+    String dstGrantor = e.getDestSharedCtx();
 
     // Grantor not null indicates attempt to share.
     boolean srcShared = !StringUtils.isBlank(srcGrantor);
@@ -685,18 +690,19 @@ public class TransfersService
    * We check for READ access (owner, shared)
    * NOTE: Catch all exceptions, so we can collect and report as many errors as possible.
    */
-  private TapisSystem validateSystemIsEnabled(ResourceRequestUser rUser, String sysId, String path,
-                                              String sharedCtxGrantor, List<String> errMessages)
+  private void validateSystemIsEnabled(ResourceRequestUser rUser, String opName, String sysId, String pathStr,
+                                       String sharedCtxGrantor, Permission perm, List<String> errMessages)
   {
     TapisSystem sys = null;
+    // Get normalized path relative to system rootDir and protect against ../..
+    String relPathStr = PathUtils.getRelativePath(pathStr).toString();
     try
     {
-      // Get system
-      String impersonationIdNull = null;
-      sys = LibUtils.getSystemIfEnabled(rUser, systemsCache, sysId, impersonationIdNull, sharedCtxGrantor);
+      // Fetch system with credentials including auth checks for system and path
+      sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
+                                                 opName, sysId, relPathStr, perm, impersonationIdNull, sharedCtxGrantor);
     }
     catch (Exception e) { errMessages.add(e.getMessage()); }
-    return sys;
   }
 
   /*
@@ -720,8 +726,8 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcId = srcUri.getSystemId();
       String dstId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
-      String dstGrantor = txfrElement.getDestSharedCtxGrantor();
+      String srcGrantor = txfrElement.getSrcSharedCtx();
+      String dstGrantor = txfrElement.getDestSharedCtx();
       String impersonationIdNull = null;
 
       // Get any Tapis systems. If protocol is http/s then leave as null.
@@ -779,29 +785,20 @@ public class TransfersService
       TransferURI dstUri = txfrElement.getDestinationURI();
       String srcSystemId = srcUri.getSystemId();
       String dstSystemId = dstUri.getSystemId();
-      String srcGrantor = txfrElement.getSrcSharedCtxGrantor();
-      String dstGrantor = txfrElement.getDestSharedCtxGrantor();
+      String srcGrantor = txfrElement.getSrcSharedCtx();
+      String dstGrantor = txfrElement.getDestSharedCtx();
       // Check source system
       if (!StringUtils.isBlank(srcSystemId) && srcUri.isTapisProtocol())
       {
-        validateSystemIsEnabled(rUser, srcSystemId, srcUri.getPath(), srcGrantor, errMessages);
+        validateSystemIsEnabled(rUser, "srcSystemValidate", srcSystemId, srcUri.getPath(), srcGrantor,
+                                Permission.READ, errMessages);
       }
       // Check destination system
       if (!StringUtils.isBlank(dstSystemId) && dstUri.isTapisProtocol())
       {
-        TapisSystem sys = validateSystemIsEnabled(rUser, dstSystemId, dstUri.getPath(), dstGrantor, errMessages);
-// TODO Should we do this here?
-//        // For destination systems we also check that user has modify access to the path.
-//        // If not owner or shared, then must have MODIFY permission.
-//        if (sys != null && !rUser.getOboUserId().equals(sys.getOwner()) && !dstShared)
-//        {
-//          try { LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), rUser.getOboUserId(), dstSystemId,
-//                                        dstUri.getPath(), FileInfo.Permission.MODIFY); }
-//          catch (Exception e) { errMessages.add(e.getMessage()); }
-//        }
+        validateSystemIsEnabled(rUser, "dstSystemValidate", dstSystemId, dstUri.getPath(), dstGrantor,
+                                Permission.MODIFY, errMessages);
       }
     }
   }
-
-
 }

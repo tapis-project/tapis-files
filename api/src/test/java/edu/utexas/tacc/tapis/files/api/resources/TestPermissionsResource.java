@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.api.models.CreatePermissionRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.models.FilePermission;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
@@ -110,6 +111,7 @@ public class TestPermissionsResource extends BaseDatabaseIntegrationTest
                 bind(serviceClients).to(ServiceClients.class);
                 bind(new TenantCacheFactory().provide()).to(TenantManager.class);
                 bindAsContract(SystemsCache.class);
+                bindAsContract(SystemsCacheNoAuth.class);
                 bindAsContract(FileOpsService.class).in(Singleton.class);
                 bindAsContract(FileShareService.class).in(Singleton.class);
                 bindAsContract(FilePermsService.class);

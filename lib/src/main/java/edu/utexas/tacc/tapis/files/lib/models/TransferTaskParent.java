@@ -30,8 +30,6 @@ public class TransferTaskParent
   protected boolean optional;
   protected String srcSharedCtxGrantor;
   protected String destSharedCtxGrantor;
-  protected boolean srcSharedAppCtx; // TODO REMOVE
-  protected boolean destSharedAppCtx; // TODO REMOVE
   protected String tag;
 
   protected Instant created;
@@ -54,8 +52,6 @@ public class TransferTaskParent
     optional = optional1;
     srcSharedCtxGrantor = srcCtx1;
     destSharedCtxGrantor = dstCtx1;
-    srcSharedAppCtx = !StringUtils.isBlank(srcCtx1);  // TODO REMOVE
-    destSharedAppCtx = !StringUtils.isBlank(dstCtx1);  // TODO REMOVE
     tag = tag1;
     uuid = UUID.randomUUID();
   }
@@ -169,12 +165,6 @@ public class TransferTaskParent
 
   public String getDestSharedCtxGrantor() { return destSharedCtxGrantor; }
   public void setDestSharedCtxGrantor(String s) { destSharedCtxGrantor = s; }
-
-  public boolean isSrcSharedAppCtx() { return srcSharedAppCtx; }      // TODO REMOVE
-  public void setSrcSharedAppCtx(boolean b) { srcSharedAppCtx = b; }  // TODO REMOVE
-
-  public boolean isDestSharedAppCtx() { return destSharedAppCtx; } // TODO REMOVE
-  public void setDestSharedAppCtx(boolean b) { destSharedAppCtx = b; } // TODO REMOVE
 
   public String getTag() { return tag; }
   public void setTag(String s) { tag = s; }

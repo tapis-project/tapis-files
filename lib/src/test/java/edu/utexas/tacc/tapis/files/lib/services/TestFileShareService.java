@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
@@ -77,6 +78,7 @@ public class TestFileShareService
   private FileShareService fileShareService;
   private static final Logger log  = LoggerFactory.getLogger(TestFileShareService.class);
   private final SystemsCache systemsCache = Mockito.mock(SystemsCache.class);
+  private final SystemsCacheNoAuth systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
 
   private static final MoveCopyOperation OP_MV = MoveCopyOperation.MOVE;
   private static final MoveCopyOperation OP_CP = MoveCopyOperation.COPY;
@@ -119,6 +121,7 @@ public class TestFileShareService
         bindAsContract(FileOpsService.class).in(Singleton.class);
         bindAsContract(FileShareService.class).in(Singleton.class);
         bind(systemsCache).to(SystemsCache.class).ranked(1);
+        bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class).ranked(1);
         bind(FilePermsService.class).to(FilePermsService.class).in(Singleton.class);
         bind(FilePermsCache.class).to(FilePermsCache.class).in(Singleton.class);
         bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
@@ -167,6 +170,7 @@ public class TestFileShareService
   {
     // Set up the mocked systemsCache
     when(systemsCache.getSystem(any(), eq("testSystemSSH"), any(), any(), any())).thenReturn(testSystemSSH);
+    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"))).thenReturn(testSystemSSH);
 
     // Get the system
     TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser1, systemsCache, "testSystemSSH");
@@ -184,6 +188,7 @@ public class TestFileShareService
   {
     // Set up the mocked systemsCache
     when(systemsCache.getSystem(any(), eq("testSystemSSH"), any(), any(), any())).thenReturn(testSystemSSH);
+    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"))).thenReturn(testSystemSSH);
 
     // Get the system
     TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser1, systemsCache, "testSystemSSH");
@@ -198,7 +203,7 @@ public class TestFileShareService
 
     // Create file at path
     InputStream in = Utils.makeFakeFile(10*1024);
-    fileOpsService.upload(rTestUser1, tmpSys, filePathStr, in);
+    fileOpsService.upload(rTestUser1, sysId, filePathStr, in);
 
     // Grant testUser1 full perms, testUser2 READ
     permsService.grantPermission(devTenant, testUser1, sysId, filePathStr, Permission.MODIFY);
@@ -300,12 +305,12 @@ public class TestFileShareService
     InputStream in = Utils.makeFakeFile(1024);
     if (StringUtils.isBlank(fileToCreate))
     {
-      fileOpsService.upload(rTestUser1, tSys, pathToShare, in);
+      fileOpsService.upload(rTestUser1, sysId, pathToShare, in);
       fileToCheck = pathToShare;
     }
     else
     {
-      fileOpsService.upload(rTestUser1, tSys, fileToCreate, in);
+      fileOpsService.upload(rTestUser1, sysId, fileToCreate, in);
       fileToCheck = pathToShare = "/" + fileToCreate;
     }
 
@@ -316,27 +321,27 @@ public class TestFileShareService
     Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tSys, pathToShare, testUser2));
 
     // Check that testUser can see the file and testUser2 cannot
-    fileOpsService.ls(rTestUser1, tSys, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
-    fileOpsService.ls(rTestUser1, tSys, fileToCheck, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
-    fileOpsService.getFileInfo(rTestUser1, tSys, fileToCheck, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.ls(rTestUser1, sysId, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.ls(rTestUser1, sysId, fileToCheck, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.getFileInfo(rTestUser1, sysId, fileToCheck, nullImpersonationId, sharedCtxGrantorNull);
     boolean pass = false;
     try
     {
-      fileOpsService.ls(rTestUser2, tSys, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
+      fileOpsService.ls(rTestUser2, sysId, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
     }
     catch (ForbiddenException e) { pass = true; }
     Assert.assertTrue(pass, "User testUser2 should not be able to list path");
     pass = false;
     try
     {
-      fileOpsService.getFileInfo(rTestUser2, tSys, fileToCheck, nullImpersonationId, sharedCtxGrantorNull);
+      fileOpsService.getFileInfo(rTestUser2, sysId, fileToCheck, nullImpersonationId, sharedCtxGrantorNull);
     }
     catch (ForbiddenException e) { pass = true; }
     Assert.assertTrue(pass, "User testUser2 should not be able to getFileInfo");
     pass = false;
     try
     {
-      fileOpsService.ls(rTestUser2, tSys, fileToCheck, 1 , 0, nullImpersonationId, sharedCtxGrantorNull);
+      fileOpsService.ls(rTestUser2, sysId, fileToCheck, 1 , 0, nullImpersonationId, sharedCtxGrantorNull);
     }
     catch (ForbiddenException e) { pass = true; }
     Assert.assertTrue(pass, "User testUser2 should not be able to list path to file");
@@ -369,10 +374,10 @@ public class TestFileShareService
     Assert.assertTrue(fileShareService.isSharedWithUser(rTestUser2, tSys, fileToCheck, testUser2));
 
     // Check that testUser and testUser2 can now see the path
-    fileOpsService.ls(rTestUser1, tSys, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
-    fileOpsService.ls(rTestUser2, tSys, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
-    fileOpsService.getFileInfo(rTestUser2, tSys, pathToShare, nullImpersonationId, sharedCtxGrantorNull);
-    fileOpsService.getFileInfo(rTestUser2, tSys, fileToCheck, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.ls(rTestUser1, sysId, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.ls(rTestUser2, sysId, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.getFileInfo(rTestUser2, sysId, pathToShare, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.getFileInfo(rTestUser2, sysId, fileToCheck, nullImpersonationId, sharedCtxGrantorNull);
 
     // Remove share.
     fileShareService.unSharePath(rTestUser1, sysId, pathToShare, userSet);
@@ -388,11 +393,11 @@ public class TestFileShareService
     Assert.assertFalse(fileShareService.isSharedWithUser(rTestUser2, tSys, fileToCheck, testUser2));
 
     // Check that once again testUser can see the file and testUser2 cannot
-    fileOpsService.ls(rTestUser1, tSys, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.ls(rTestUser1, sysId, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
     pass = false;
     try
     {
-      fileOpsService.ls(rTestUser2, tSys, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
+      fileOpsService.ls(rTestUser2, sysId, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
     }
     catch (ForbiddenException e) { pass = true; }
     Assert.assertTrue(pass, "User testUser2 should not be able to list path");

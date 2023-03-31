@@ -20,21 +20,24 @@ import com.google.common.cache.LoadingCache;
 
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 /*
- * Systems cache. Loads systems with credentials.
- *   - Standard Tapis auth check for READ is done.
- *   - Default AuthnMethod is used.
- *   - Credentials are included
+ * Systems cache. Loads systems without checking auth.
+ * Allows service to get system details
+ *   Call is made as the Files service, files@<admin-tenant>
+ *   Resolved effectiveUserId should never be used, credentials are not retrieved
+ * Cache key is: (tenantId, systemId)
  */
 @Service
-public class SystemsCache
+public class SystemsCacheNoAuth
 {
-  private static final Logger log = LoggerFactory.getLogger(SystemsCache.class);
+  private static final Logger log = LoggerFactory.getLogger(SystemsCacheNoAuth.class);
 
   // NotAuthorizedException requires a Challenge
   private static final String NO_CHALLENGE = "NoChallenge";
@@ -43,27 +46,17 @@ public class SystemsCache
   private final ServiceClients serviceClients;
 
   @Inject
-  public SystemsCache(ServiceClients svcClients)
+  public SystemsCacheNoAuth(ServiceClients svcClients)
   {
     serviceClients = svcClients;
     cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).build(new SystemLoader());
   }
 
-  /*
-   * Convenience wrapper. Not all callers use impersonationId and/or sharedCtxGrantor.
-   */
-  public TapisSystem getSystem(String tenantId, String systemId, String tapisUser) throws ServiceException
-  {
-    return getSystem(tenantId, systemId, tapisUser, null, null);
-  }
-
-  public TapisSystem getSystem(String tenantId, String systemId, String tapisUser, String impersonationId,
-                               String sharedCtxGrantor)
-          throws ServiceException
+  public TapisSystem getSystem(String tenantId, String systemId) throws ServiceException
   {
     try
     {
-      SystemCacheKey key = new SystemCacheKey(tenantId, systemId, tapisUser, impersonationId, sharedCtxGrantor);
+      SystemCacheKey key = new SystemCacheKey(tenantId, systemId);
       return cache.get(key);
     }
     catch (ExecutionException ex)
@@ -86,20 +79,10 @@ public class SystemsCache
         }
       }
       // It was something other than a TapisClientException or fromStatusCode returned null or some unhandled code.
-      msg = LibUtils.getMsg("FILES_CACHE_ERR", "Systems", tenantId, systemId, tapisUser, ex.getMessage());
+      String usernameNull = null;
+      msg = LibUtils.getMsg("FILES_CACHE_ERR", "Systems", tenantId, systemId, usernameNull, ex.getMessage());
       throw new WebApplicationException(msg, ex);
     }
-  }
-
-  /**
-   * Invalidate the cache entry
-   */
-  public void invalidateEntry(@NotNull String tenant, @NotNull String sysId, @NotNull String tapisUser,
-                              String impersonationId, String sharedCtxGrantor)
-  {
-    log.warn(LibUtils.getMsg("FILES_CACHE_SYS_REMOVE", tenant, sysId, tapisUser, impersonationId, sharedCtxGrantor));
-    SystemCacheKey key = new SystemCacheKey(tenant, sysId, tapisUser, impersonationId, sharedCtxGrantor);
-    cache.invalidate(key);
   }
 
   // ====================================================================================
@@ -115,50 +98,39 @@ public class SystemsCache
     @Override
     public TapisSystem load(SystemCacheKey key) throws Exception
     {
-      log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADING", key.getTenantId(), key.getSystemId(), key.getTapisUser(),
-                                 key.getImpersonationId(), key.getSharedCtxGrantor()));
-      // Create a client to call systems as <tapis-user>@<tenant>
-      SystemsClient client = serviceClients.getClient(key.getTapisUser(), key.getTenantId(), SystemsClient.class);
-
+      log.debug(LibUtils.getMsg("FILES_CACHE_NOAUTH_SYS_LOADING", key.getTenantId(), key.getSystemId()));
+      // Create a client to call systems as files@<admin-tenant>
+      SystemsClient client = serviceClients.getClient(TapisConstants.SERVICE_NAME_FILES,
+                                                      FileOpsService.getServiceTenantId(),  SystemsClient.class);
+      // Use resourceTenant to pass in the tenant for the requested system. Because this is Files calling as
+      //    itself we must tell Systems which tenant to use. Systems normally gets the tenant from the jwt.
       SystemsClient.AuthnMethod authnMethod = null;
       var requireExec = false;
       var selectStr = "allAttributes";
-      var returnCreds = true;
-      String resourceTenantNull = null;
+      var returnCreds = false;
+      String impersonationIdNull = null;
+      String sharedCtxNull = null;
+      String resourceTenant = key.getTenantId();
       TapisSystem system = client.getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
-                                            key.getImpersonationId(), key.getSharedCtxGrantor(), resourceTenantNull);
-      // If client returns null it means not found
-      if (system == null)
-      {
-        String msg = LibUtils.getMsg("FILES_CACHE_SYS_NULL", key.getTenantId(), key.getSystemId(), key.getTapisUser(),
-                                     key.getImpersonationId(), key.getSharedCtxGrantor());
-        throw new NotFoundException(msg);
-      }
-      log.debug(LibUtils.getMsg("FILES_CACHE_SYS_LOADED", key.getTenantId(), key.getSystemId(), key.getTapisUser(),
-                                key.getImpersonationId(), key.getSharedCtxGrantor(), system.getDefaultAuthnMethod()));
+                                            impersonationIdNull, sharedCtxNull, resourceTenant);
+      log.debug(LibUtils.getMsg("FILES_CACHE_NOAUTH_SYS_LOADED", key.getTenantId(), key.getSystemId()));
       return system;
     }
   }
 
   /**
    * Class representing the cache key.
-   * Unique keys for tenantId+systemId+tapisUser+impersonationId+sharedCtxGrantor
+   * Unique keys for tenantId+systemId
    */
   private static class SystemCacheKey
   {
     private final String tenantId;
     private final String systemId;
-    private final String tapisUser;
-    private final String impersonationId;
-    private final String sharedCtxGrantor;
 
-    public SystemCacheKey(String tenantId1, String systemId1, String tapisUser1, String impersonationId1, String sharedCtxGrantor1)
+    public SystemCacheKey(String tenantId1, String systemId1)
     {
       systemId = systemId1;
       tenantId = tenantId1;
-      tapisUser = tapisUser1;
-      impersonationId = impersonationId1;
-      sharedCtxGrantor = sharedCtxGrantor1;
     }
 
     // ====================================================================================
@@ -166,9 +138,6 @@ public class SystemsCache
     // ====================================================================================
     public String getTenantId() { return tenantId; }
     public String getSystemId() { return systemId; }
-    public String getTapisUser() { return tapisUser; }
-    public String getImpersonationId() { return impersonationId; }
-    public String getSharedCtxGrantor() { return sharedCtxGrantor; }
 
     // ====================================================================================
     // =======  Support for equals ========================================================
@@ -176,17 +145,14 @@ public class SystemsCache
     @Override
     public boolean equals(Object o)
     {
-      if (o == this) return true;
+      if (this == o) return true;
       // Note: no need to check for o==null since instanceof will handle that case
       if (!(o instanceof SystemCacheKey)) return false;
-      var that = (SystemCacheKey) o;
-      return (Objects.equals(this.tenantId, that.tenantId) && Objects.equals(this.systemId, that.systemId)
-              && Objects.equals(this.tapisUser, that.tapisUser)
-              && Objects.equals(this.impersonationId, that.impersonationId)
-              && Objects.equals(this.sharedCtxGrantor, that.sharedCtxGrantor));
+      SystemCacheKey that = (SystemCacheKey) o;
+      return (Objects.equals(this.tenantId, that.tenantId) && Objects.equals(this.systemId, that.systemId));
     }
 
     @Override
-    public int hashCode() { return Objects.hash(tenantId, systemId, tapisUser, impersonationId, sharedCtxGrantor); }
+    public int hashCode() { return Objects.hash(tenantId, systemId); }
   }
 }

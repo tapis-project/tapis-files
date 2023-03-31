@@ -263,6 +263,7 @@ public class ChildTaskTransferService
       throw new ServiceException(msg, ex);
     }
 
+    String sourcePath;
     TransferURI destURL = taskChild.getDestinationURI();
     TransferURI sourceURL = taskChild.getSourceURI();
     String impersonationIdNull = null;
@@ -272,11 +273,13 @@ public class ChildTaskTransferService
     {
       // Source path is HTTP/S
       //This should be the full string URL such as http://google.com
+      sourcePath = sourceURL.toString();
       sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
     }
     else
     {
       // Source path is not HTTP/S
+      sourcePath = sourceURL.getPath();
       sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername(),
                                             impersonationIdNull, parentTask.getSrcSharedCtxGrantor());
       // If src system is not enabled throw an exception

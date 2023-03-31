@@ -9,6 +9,27 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.3.? - 2023-??-??
+
+Incremental improvements and bug fixes.
+
+### New features:
+- Support file operations and transfers for GLOBUS type systems
+
+### Bug fixes:
+- None
+
+---------------------------------------------------------------------------
+## 1.3.3 - 2023-03-31
+
+Incremental improvements and bug fixes.
+
+### New features:
+- 
+### Bug fixes:
+- Update sharedAppCtx to represent app share grantor. Fix for privilege escalation.
+
+---------------------------------------------------------------------------
 ## 1.3.2 - 2023-3-21
 
 Incremental improvements.
@@ -20,6 +41,9 @@ Incremental improvements.
 - Fixed issues connecting to rabbitmq on worker startup
 - Allow db connection pool to be configurable, and fix issue causing long running transactions.
 - Fixed issue where when deleting a file, an error could be returned even though the file was successfully deleted.
+- Fixed issue where zip entry for single file did not contain the name of file when downloading a single file.
+- When downloading the system root directory the file will now be called systemRoot.zip rather than zip
+- When downloading a file, skip the authorization check when retrieving the system.
  
 ---------------------------------------------------------------------------
 ## 1.3.1 - 2023-03-07

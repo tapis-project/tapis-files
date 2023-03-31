@@ -5,7 +5,7 @@
     <parent>
         <artifactId>tapis-files</artifactId>
         <groupId>edu.utexas.tacc.tapis</groupId>
-        <version>1.3.2</version>
+        <version>1.3.3</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tapis-files-lib</artifactId>
@@ -115,7 +115,13 @@
         <dependency>
             <groupId>org.irods.jargon</groupId>
             <artifactId>jargon-core</artifactId>
-            <version>${irods-jargon.version}</version>
+	    <version>${irods-jargon.version}</version>
+	    <exclusions>
+	        <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId> 
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.sshd</groupId>
