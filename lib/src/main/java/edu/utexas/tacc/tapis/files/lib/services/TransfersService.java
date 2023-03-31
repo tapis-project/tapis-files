@@ -789,16 +789,6 @@ public class TransfersService
       {
         validateSystemIsEnabled(rUser, "dstSystemValidate", dstSystemId, dstUri.getPath(), dstGrantor,
                                 Permission.MODIFY, errMessages);
-// TODO - SHARED
-// TODO Should we do this here?
-//        // For destination systems we also check that user has modify access to the path.
-//        // If not owner or shared, then must have MODIFY permission.
-//        if (sys != null && !rUser.getOboUserId().equals(sys.getOwner()) && !dstShared)
-//        {
-//          try { LibUtils.checkPermitted(permsService, rUser.getOboTenantId(), rUser.getOboUserId(), dstSystemId,
-//                                        dstUri.getPath(), FileInfo.Permission.MODIFY); }
-//          catch (Exception e) { errMessages.add(e.getMessage()); }
-//        }
       }
     }
   }

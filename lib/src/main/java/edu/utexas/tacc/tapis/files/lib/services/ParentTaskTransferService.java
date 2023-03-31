@@ -169,21 +169,6 @@ public class ParentTaskTransferService
       if (!parentTask.isTerminal()) parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
       parentTask = dao.updateTransferTaskParent(parentTask);
 
-      // Check permission. If not permitted update status to FAILED and throw an exception
-//TODO - SHARED
-      if (!isPermitted(parentTask))
-      {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_PERM", taskTenant, taskUser, "doParentStepOneA02", parentId, parentUuid, tag);
-        log.error(msg);
-        if (!parentTask.isTerminal())
-        {
-          parentTask.setEndTime(Instant.now());
-          parentTask.setStatus(TransferTaskStatus.FAILED);
-        }
-        dao.updateTransferTaskParent(parentTask);
-        throw new ForbiddenException(msg);
-      }
-
       // If already in a terminal state then set end time and return
       if (parentTask.isTerminal())
       {
@@ -370,75 +355,6 @@ public class ParentTaskTransferService
               "doParentErrorStepOne", parent.getId(), parent.getTag(), parent.getUuid(), ex.getMessage()), ex);
     }
     return Mono.just(parent);
-  }
-
-  /**
-   * This method checks the permissions on both the source and destination of the transfer.
-   *
-   * @param parentTask the TransferTaskParent
-   * @return boolean is/is not permitted.
-   * @throws ServiceException When api calls for permissions fail
-   */
-  private boolean isPermitted(TransferTaskParent parentTask) throws ServiceException
-  {
-    // For http inputs no need to do any permission checking on the source
-    boolean isHttpSource = parentTask.getSourceURI().getProtocol().equalsIgnoreCase("http");
-    String tenantId = parentTask.getTenantId();
-    String username = parentTask.getUsername();
-
-    String srcSystemId = parentTask.getSourceURI().getSystemId();
-    String srcPath = parentTask.getSourceURI().getPath();
-    String destSystemId = parentTask.getDestinationURI().getSystemId();
-    String destPath = parentTask.getDestinationURI().getPath();
-    String srcSharedAppCtx = parentTask.getSrcSharedCtxGrantor();
-    String destSharedAppCtx = parentTask.getDestSharedCtxGrantor();
-
-    // TODO review when updating for sharedCtxGrantor. Seems like this should not return true before checking destination path
-    //      return true for now. sharing not working properly
-//TODO - SHARED
-    return true;
-//
-//    // Do source path perms check if it is not http/s
-//    if (!isHttpSource)
-//    {
-//      // First check sharing, then check permissions
-//      // TODO review when updating for sharedCtxGrantor. Seems like this should not return true before checking destination path
-//      if (parentTask.isSrcSharedAppCtx()) return true;
-//// TODO Update for sharing
-////      // If sharedAppCtx is true then skip perm check
-////      if (!srcSharedAppCtx)
-////      {
-//      // TODO
-//      // TODO For now if sharedCtxGrantor set to anything other than false then allow
-//      // TODO
-////      boolean sharedCtx = !StringUtils.isBlank(srcSharedAppCtx);
-////      if (sharedCtx && !"FALSE".equalsIgnoreCase(srcSharedAppCtx)) return true;
-//      // TODO
-//
-//      boolean sourcePerms = permsService.isPermitted(tenantId, username, srcSystemId, srcPath, FileInfo.Permission.READ);
-//      if (!sourcePerms) return false;
-////      }
-//    }
-//
-//    // Do target path perms check
-//    // First check sharing, then check permissions
-//    if (parentTask.isDestSharedAppCtx()) return true;
-//// TODO Update for sharing
-////    // If sharedAppCtx is true then skip perm check
-////    if (!destSharedAppCtx)
-////    {
-//
-//    // TODO
-//    // TODO For now if sharedCtxGrantor set to anything other than false then allow
-//    // TODO
-////    boolean sharedCtx = !StringUtils.isBlank(dstSharedCtxGrantor);
-////    if (sharedCtx && !"FALSE".equalsIgnoreCase(dstSharedCtxGrantor)) return true;
-//    // TODO
-//
-//    //TODO ???????????? update when users can share with modify
-////TODO    return permsService.isPermitted(tenantId, username, destSystemId, destPath, FileInfo.Permission.MODIFY);
-////    }
-//    return true;
   }
 
   private Mono<TransferTaskParent> deserializeParentMessage(AcknowledgableDelivery message)

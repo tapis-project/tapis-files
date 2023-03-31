@@ -434,7 +434,6 @@ public class FileOpsService
     String opName = "mkdir";
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
-    String impersonationIdNull = null;
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
 

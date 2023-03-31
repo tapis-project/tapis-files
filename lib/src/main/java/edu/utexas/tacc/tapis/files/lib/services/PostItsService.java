@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.caches.TenantAdminCache;
 import edu.utexas.tacc.tapis.files.lib.dao.postits.PostItsDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -36,7 +37,11 @@ import java.util.concurrent.TimeUnit;
 public class PostItsService {
     private static final Logger log = LoggerFactory.getLogger(PostItsService.class);
 
-    // Default allowed uses 1
+    // Some methods do not support impersonationId or sharedAppCtxGrantor
+    private static final String impersonationIdNull = null;
+    private static final String sharedCtxGrantorNull = null;
+
+  // Default allowed uses 1
     private static Integer DEFAULT_ALLOWED_USES = Integer.valueOf(1);
 
     // Default ttl 30 days
@@ -62,6 +67,12 @@ public class PostItsService {
 
     @Inject
     SystemsCache systemsCache;
+
+    @Inject
+    SystemsCacheNoAuth systemsCacheNoAuth;
+
+    @Inject
+    FileShareService shareService;
 
     @Inject
     TenantAdminCache tenantAdminCache;
@@ -124,13 +135,12 @@ public class PostItsService {
                                Integer validSeconds, Integer allowedUses)
             throws TapisException, ServiceException {
 
-        // check for path permissions
-//TODO - SHARED
-        LibUtils.checkPermittedReadOrModify(permsService, rUser.getOboTenantId(),
-                rUser.getOboUserId(), systemId, path);
-
+        String opName = "createPostIt";
+        // Fetch system with credentials including auth checks for system and path
+        TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
+                                                               opName, systemId, path, FileInfo.Permission.READ,
+                                                               impersonationIdNull, sharedCtxGrantorNull);
         // make sure the file exists
-//TODO - SHARED        TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
         FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, null, null);
         if(fileInfo == null) {
             String msg = LibUtils.getMsgAuthR("POSTIT_SERVICE_ERROR", rUser,
