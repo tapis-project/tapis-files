@@ -2,8 +2,9 @@
 version: "3"
 
 volumes:
-  postgres-data:
-  miniodata:
+  files-postgres-data:
+  files-rabbitmq-data:
+  files-minio-data:
 
 networks:
   rabbitmq_netwrk:
@@ -11,7 +12,7 @@ networks:
 
 services:
   postgres:
-    image: postgres:12.4
+    image: postgres:11
     container_name: tapis-postgres
     labels:
       name: tapis-postgres
@@ -23,7 +24,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - files-postgres-data:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:3.8.11-management
@@ -32,25 +33,26 @@ services:
       name: tapis-rabbitmq
     environment:
       - HOSTNAME=localhost
-      - RABBITMQ_NODENAME=tapis-files
+      - RABBITMQ_DEFAULT_VHOST=dev
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev
-      - RABBITMQ_DEFAULT_VHOST=dev
     ports:
       - 5672:5672
       - 15672:15672
+    volumes:
+      - files-rabbitmq-data:/var/lib/rabbitmq
     networks:
       - rabbitmq_netwrk
 
   minio:
     image: minio/minio
-    ports:
-      - 9000:9000
     environment:
       - MINIO_ACCESS_KEY=user
       - MINIO_SECRET_KEY=password
+    ports:
+      - 9000:9000
     volumes:
-      - miniodata:/data
+      - files-minio-data:/data
     command: server /data
 
   irods:
@@ -74,4 +76,3 @@ services:
       dockerfile: ./deploy/Dockerfile.ssh-machine
     ports:
       - "2223:22"
-

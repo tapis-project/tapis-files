@@ -686,7 +686,7 @@ public class TestFileOpsService
   public void testGetFullStream(TapisSystem testSystem) throws Exception
   {
     when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
-    when(systemsCacheNoAuth.getSystem(any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
     InputStream in = Utils.makeFakeFile( 1000 * 1024);
