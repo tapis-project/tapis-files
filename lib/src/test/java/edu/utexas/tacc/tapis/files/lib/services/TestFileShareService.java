@@ -170,7 +170,7 @@ public class TestFileShareService
   {
     // Set up the mocked systemsCache
     when(systemsCache.getSystem(any(), eq("testSystemSSH"), any(), any(), any())).thenReturn(testSystemSSH);
-    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"))).thenReturn(testSystemSSH);
+    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
 
     // Get the system
     TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser1, systemsCache, "testSystemSSH");
@@ -188,7 +188,7 @@ public class TestFileShareService
   {
     // Set up the mocked systemsCache
     when(systemsCache.getSystem(any(), eq("testSystemSSH"), any(), any(), any())).thenReturn(testSystemSSH);
-    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"))).thenReturn(testSystemSSH);
+    when(systemsCacheNoAuth.getSystem(any(), eq("testSystemSSH"), any())).thenReturn(testSystemSSH);
 
     // Get the system
     TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rTestUser1, systemsCache, "testSystemSSH");

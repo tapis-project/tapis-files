@@ -234,6 +234,7 @@ public class LibUtils
    * @param perm - required permission (READ or MODIFY)
    * @param impersonationId - use provided Tapis username instead of oboUser
    * @param sharedCtxGrantor - Share grantor for the case of a shared context.
+   * @return fully resolved system with credentials
    * @throws ForbiddenException - oboUserId not authorized to perform operation
    */
   public static TapisSystem getResolvedSysWithAuthCheck(ResourceRequestUser rUser, FileShareService shareService,
@@ -253,10 +254,8 @@ public class LibUtils
     // If impersonationId set, confirm that it is allowed (can throw ForbiddenException)
     if (!StringUtils.isBlank(impersonationId)) checkImpersonationAllowed(rUser, opName, sysId, relPathStr, impersonationId);
 
-    // Get system details skipping auth, so we can figure out owner and if path is shared.
-    //   If owner then auth checks not needed.
-    //   If path is shared then user has implicit access to system.
-    TapisSystem sys = getSystemIfEnabledNoAuth(rUser, sysCacheNoAuth, sysId);
+    // Get fully resolved system including credentials for oboOrImpersonationId
+    TapisSystem sys = getSystemIfEnabledNoAuth(rUser, sysCacheNoAuth, sysId, oboOrImpersonatedUser);
 
     // Determine if requester is system owner, so we can bypass some auth checking.
     boolean requesterIsOwner = oboOrImpersonatedUser.equals(sys.getOwner());
@@ -266,31 +265,30 @@ public class LibUtils
     // If not system owner check if path is shared.
     if (!requesterIsOwner) pathIsShared = isPathShared(rUser, shareService, sys, relPathStr, impersonationId, sharedCtxGrantor);
 
-    // Get fully resolved system including credentials for oboOrImpersonationId
+    // If owner then auth checks not needed.
+    // If path is shared then user has implicit access to system.
+    // If owner or shared path we are done with auth checks, return the system.
+    if (requesterIsOwner || pathIsShared) return sys;
+
     // If path is shared then use sharedCtxGrantor = system owner in order to bypass auth check on Systems service side.
-    if (pathIsShared)
+
+    // If not owner and path not shared, user may still have fine-grained permission on path
+    // Throws ForbiddenException if user not authorized
+    try
     {
-      // Get system without requiring READ access
-      String tmpShareGrantor = sys.getOwner();
-      sys = getSystemIfEnabled(rUser, sysCache, sysId, impersonationId, tmpShareGrantor);
+      checkAuthForPath(rUser, permsService , sys, relPathStr, perm, impersonationId, sharedCtxGrantor);
     }
-    else
+    catch (ServiceException ex)
     {
-      // Get system. This requires READ access.
-      sys = getSystemIfEnabled(rUser, sysCache, sysId, impersonationId, sharedCtxGrantor);
+      String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, sysId, relPathStr, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
     }
 
-    // If not owner and path not shared check for fine-grained permission on path
-    if (!requesterIsOwner && !pathIsShared)
-    {
-      try { checkAuthForPath(rUser, permsService , sys, relPathStr, perm, impersonationId, sharedCtxGrantor);}
-      catch (ServiceException ex)
-      {
-        String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, sysId, relPathStr, ex.getMessage());
-        log.error(msg, ex);
-        throw new WebApplicationException(msg, ex);
-      }
-    }
+    // So user has fine-grained perm for the path, but they still need at least READ for the system.
+    // Check this by making an alternate call to a different cache that includes the check when fetching the system
+    sys = getSystemIfEnabled(rUser, sysCache, sysId, impersonationId, sharedCtxGrantor);
+
     return sys;
   }
 
@@ -299,7 +297,10 @@ public class LibUtils
    */
   public static TapisSystem getSystemIfEnabled(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
                                                @NotNull String systemId)
-          throws NotFoundException { return getSystemIfEnabled(rUser, systemsCache, systemId, null, null); }
+          throws NotFoundException
+  {
+    return getSystemIfEnabled(rUser, systemsCache, systemId, null, null);
+  }
 
   /**
    * Check to see if a Tapis System exists and is enabled
@@ -412,21 +413,24 @@ public class LibUtils
   /* **************************************************************************** */
 
   /**
-   * Check to see if a Tapis System exists and is enabled
+   * Check to see if a Tapis System exists and is enabled.
+   * Return fully resolve TapisSystem with credentials.
    * @param rUser - ResourceRequestUser containing tenant, user and request info
-   * @param systemId - System to check
    * @param cache - Cache of systems
+   * @param systemId - System to check
+   * @param tapisUser - oboUser or impersonationId to use as effective user for credentials.
+   * @return fully resolved system with credentials.
    * @throws NotFoundException System not found or not enabled
    */
   private static TapisSystem getSystemIfEnabledNoAuth(@NotNull ResourceRequestUser rUser, @NotNull SystemsCacheNoAuth cache,
-                                                      @NotNull String systemId)
+                                                      @NotNull String systemId, @NotNull String tapisUser)
           throws NotFoundException
   {
     // Check for the system
     TapisSystem sys;
     try
     {
-      sys = cache.getSystem(rUser.getOboTenantId(), systemId);
+      sys = cache.getSystem(rUser.getOboTenantId(), systemId, tapisUser);
       if (sys == null)
       {
         String msg = LibUtils.getMsgAuthR("FILES_SYS_NOTFOUND", rUser, systemId);
@@ -589,51 +593,4 @@ public class LibUtils
     log.warn(msg);
     throw new ForbiddenException(msg);
   }
-
-//  /* TODO Do we need this? Now that auth is getting more complex with share by priv, shareGrantor. Probably best
-//           to always get the system if enabled and do auth check separately.
-//   * Fetch a system, include authorization checks.
-//   * If fileOpsService is null then we do not check for sharing of the path.
-//   * TODO previously sharedCtx was a bool and if true we skipped auth. Now? Do we need to check that
-//   *       owner or share grantor has access to system? Or is that already done elsewhere?
-//   *       Also, if path is shared previously this meant system was implicitly shared. Is that still true? do we need
-//   *       deal with that?
-//   */
-//  public static TapisSystem getSysWithAuth(ResourceRequestUser rUser, FileOpsService fileOpsService,
-//                                           ISystemsCache systemsCacheNoAuth, ISystemsCache systemsCacheWithAuth,
-//                                           String systemId, String path, String sharedCtxGrantor, String impersonationId)
-//  {
-//    // Get system without auth. We need it for authorization checking.
-//    TapisSystem sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheNoAuth, systemId);
-//    // Is the requester the owner of the system?
-//    boolean isOwner = rUser.getOboUserId().equals(sys.getOwner());
-//
-//    // Check authorization for the system.
-//    // If owner or in sharedAppCtx allow it, else check for explicit sharing of path
-//    boolean permitted;
-//    if (isOwner || sharedCtxGrantor)
-//    {
-//      permitted = true;
-//    }
-//    else
-//    {
-//      // If no fileOpsSvc, we do not check for sharing of the path.
-//      if (fileOpsService == null)
-//      {
-//        permitted = false;
-//      }
-//      else
-//      {
-//        // Determine if path is shared. If so it means system is implicitly allowed for the oboUser
-//        permitted = fileOpsService.isPathShared(rUser, sys, path, impersonationId);
-//      }
-//    }
-//    // If not owner, not in shared app ctx and path is not shared get the system with auth check.
-//    // This confirms oboUser has read access to the system.
-//    if (!permitted)
-//    {
-//      sys = LibUtils.getSystemIfEnabled(rUser, systemsCacheWithAuth, systemId);
-//    }
-//    return sys;
-//  }
 }

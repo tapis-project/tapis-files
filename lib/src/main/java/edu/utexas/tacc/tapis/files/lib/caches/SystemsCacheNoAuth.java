@@ -52,11 +52,11 @@ public class SystemsCacheNoAuth
     cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).build(new SystemLoader());
   }
 
-  public TapisSystem getSystem(String tenantId, String systemId) throws ServiceException
+  public TapisSystem getSystem(String tenantId, String systemId, String tapisUser) throws ServiceException
   {
     try
     {
-      SystemCacheKey key = new SystemCacheKey(tenantId, systemId);
+      SystemCacheKey key = new SystemCacheKey(tenantId, systemId, tapisUser);
       return cache.get(key);
     }
     catch (ExecutionException ex)
@@ -98,39 +98,42 @@ public class SystemsCacheNoAuth
     @Override
     public TapisSystem load(SystemCacheKey key) throws Exception
     {
-      log.debug(LibUtils.getMsg("FILES_CACHE_NOAUTH_SYS_LOADING", key.getTenantId(), key.getSystemId()));
+      log.debug(LibUtils.getMsg("FILES_CACHE_NOAUTH_SYS_LOADING", key.getTenantId(), key.getSystemId(), key.getTapisUser()));
       // Create a client to call systems as files@<admin-tenant>
       SystemsClient client = serviceClients.getClient(TapisConstants.SERVICE_NAME_FILES,
                                                       FileOpsService.getServiceTenantId(),  SystemsClient.class);
-      // Use resourceTenant to pass in the tenant for the requested system. Because this is Files calling as
-      //    itself we must tell Systems which tenant to use. Systems normally gets the tenant from the jwt.
+      // Use impersonationId and resourceTenant to pass in the user and tenant for the requested system.
+      // Because this is Files calling as itself we must tell Systems which user and tenant to use.
+      // Systems normally gets these from the jwt.
       SystemsClient.AuthnMethod authnMethod = null;
       var requireExec = false;
       var selectStr = "allAttributes";
-      var returnCreds = false;
-      String impersonationIdNull = null;
+      var returnCreds = true;
       String sharedCtxNull = null;
+      String impersonationId = key.getTapisUser();
       String resourceTenant = key.getTenantId();
       TapisSystem system = client.getSystem(key.getSystemId(), authnMethod, requireExec, selectStr, returnCreds,
-                                            impersonationIdNull, sharedCtxNull, resourceTenant);
-      log.debug(LibUtils.getMsg("FILES_CACHE_NOAUTH_SYS_LOADED", key.getTenantId(), key.getSystemId()));
+                                            impersonationId, sharedCtxNull, resourceTenant);
+      log.debug(LibUtils.getMsg("FILES_CACHE_NOAUTH_SYS_LOADED", key.getTenantId(), key.getSystemId(), key.getTapisUser()));
       return system;
     }
   }
 
   /**
    * Class representing the cache key.
-   * Unique keys for tenantId+systemId
+   * Unique keys for tenantId+systemId+tapisUser+impersonationId+sharedCtxGrantor
    */
   private static class SystemCacheKey
   {
     private final String tenantId;
     private final String systemId;
+    private final String tapisUser;
 
-    public SystemCacheKey(String tenantId1, String systemId1)
+    public SystemCacheKey(String tenantId1, String systemId1, String tapisUser1)
     {
       systemId = systemId1;
       tenantId = tenantId1;
+      tapisUser = tapisUser1;
     }
 
     // ====================================================================================
@@ -138,6 +141,7 @@ public class SystemsCacheNoAuth
     // ====================================================================================
     public String getTenantId() { return tenantId; }
     public String getSystemId() { return systemId; }
+    public String getTapisUser() { return tapisUser; }
 
     // ====================================================================================
     // =======  Support for equals ========================================================
@@ -145,14 +149,15 @@ public class SystemsCacheNoAuth
     @Override
     public boolean equals(Object o)
     {
-      if (this == o) return true;
+      if (o == this) return true;
       // Note: no need to check for o==null since instanceof will handle that case
       if (!(o instanceof SystemCacheKey)) return false;
-      SystemCacheKey that = (SystemCacheKey) o;
-      return (Objects.equals(this.tenantId, that.tenantId) && Objects.equals(this.systemId, that.systemId));
+      var that = (SystemCacheKey) o;
+      return (Objects.equals(this.tenantId, that.tenantId) && Objects.equals(this.systemId, that.systemId)
+              && Objects.equals(this.tapisUser, that.tapisUser));
     }
 
     @Override
-    public int hashCode() { return Objects.hash(tenantId, systemId); }
+    public int hashCode() { return Objects.hash(tenantId, systemId, tapisUser); }
   }
 }
