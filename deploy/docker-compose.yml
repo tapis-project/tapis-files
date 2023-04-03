@@ -2,9 +2,9 @@
 version: "3"
 
 volumes:
-  postgres-data:
-  rabbitmq-data:
-  minio-data:
+  files-postgres-data:
+  files-rabbitmq-data:
+  files-minio-data:
 
 networks:
   rabbitmq_netwrk:
@@ -24,7 +24,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - files-postgres-data:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:3.8.11-management
@@ -40,7 +40,7 @@ services:
       - 5672:5672
       - 15672:15672
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
+      - files-rabbitmq-data:/var/lib/rabbitmq
     networks:
       - rabbitmq_netwrk
 
@@ -52,7 +52,7 @@ services:
     ports:
       - 9000:9000
     volumes:
-      - minio-data:/data
+      - files-minio-data:/data
     command: server /data
 
   irods:
