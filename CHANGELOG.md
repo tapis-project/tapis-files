@@ -11,7 +11,7 @@ https://tapis-project.github.io/live-docs
 ---------------------------------------------------------------------------
 ## 1.3.? - 2023-??-??
 
-Incremental improvements and bug fixes.
+Incremental improvements and new features.
 
 ### New features:
 - Support file operations and transfers for GLOBUS type systems
@@ -20,19 +20,20 @@ Incremental improvements and bug fixes.
 - None
 
 ---------------------------------------------------------------------------
-## 1.3.3 - 2023-03-31
+## 1.3.3 - 2023-04-02
 
 Incremental improvements and bug fixes.
 
 ### New features:
-- 
+- None
+
 ### Bug fixes:
 - Update sharedAppCtx to represent app share grantor. Fix for privilege escalation.
 
 ---------------------------------------------------------------------------
 ## 1.3.2 - 2023-3-21
 
-Incremental improvements.
+Incremental improvements and bug fixes.
 
 ### New features:
 - None
@@ -48,7 +49,7 @@ Incremental improvements.
 ---------------------------------------------------------------------------
 ## 1.3.1 - 2023-03-07
 
-Incremental improvements.
+Incremental improvements and bug fixes.
 
 ### New features:
 - None
