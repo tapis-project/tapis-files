@@ -206,7 +206,7 @@ public class GlobusDataClient implements IRemoteDataClient
 
       // It is a directory, make the client call to list
       var globusFilesList = proxyClient.listFiles(globusClientId, endpointId, accessToken, refreshToken,
-                                             absolutePathStr, count, startIdx, filterStr);
+                                                  absolutePathStr, count, startIdx, filterStr);
       for (GlobusFileInfo globusFileInfo : globusFilesList)
       {
         fileInfo = new FileInfo();
@@ -315,6 +315,14 @@ public class GlobusDataClient implements IRemoteDataClient
     String oldRelativePathStr = PathUtils.getRelativePath(oldPath).toString();
     String newRelativePathStr = PathUtils.getRelativePath(newPath).toString();
 
+    // If this is an attempt to move the Globus root dir then reject with error
+    if (isGlobusRootDir(oldAbsolutePathStr))
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_RENAME_ROOT", oboTenant, oboUser, system.getId(),
+                                    oldRelativePathStr, newRelativePathStr);
+      throw new BadRequestException(msg);
+    }
+
     // Make sure the old path exists
     // If it does not exist this should throw NotFound
     getFileInfo(oldRelativePathStr);
@@ -396,7 +404,11 @@ public class GlobusDataClient implements IRemoteDataClient
 
   /*
    * Returns file info for the file/dir or object if path exists, null if path does not exist
-   *
+   * NOTE: It seems that for Globus there is no way to directly get info for /~/
+   *       When listing files via the web based Globus file manager the paths ~, /~ and ~/ are all
+   *       resolved as "/~/".
+   *       So we do the same here and construct an appropriate FileInfo object.
+   * NOTE: The Globus root dir should never throw NotFoundException
    * @param path - path on system relative to system rootDir
    * @return FileInfo for the object or null if path does not exist.
    * @throws IOException on error
@@ -410,6 +422,11 @@ public class GlobusDataClient implements IRemoteDataClient
     String relativePathStr = PathUtils.getRelativePath(path).toString();
     Path absolutePath = PathUtils.getAbsolutePath(rootDir, relativePathStr);
     String absolutePathStr = absolutePath.toString();
+    // If our path is a variation of /~/ then construct a FileInfo and return
+    if (isGlobusRootDir(absolutePathStr))
+    {
+      return buildGlobusRootFileInfo(path);
+    }
     // For Globus the listing must be for a directory and the filter is the target file/dir name.
     // Determine name of specific file or directory we want.
     String targetName = absolutePath.getFileName().toString();
@@ -422,7 +439,7 @@ public class GlobusDataClient implements IRemoteDataClient
     try
     {
       globusFilesList = proxyClient.listFiles(globusClientId, endpointId, accessToken, refreshToken, targetDir,
-                                         count, startIdx, filterStr);
+                                              count, startIdx, filterStr);
     }
     catch (TapisClientException e)
     {
@@ -626,4 +643,25 @@ public class GlobusDataClient implements IRemoteDataClient
     LocalDateTime lastModified = LocalDateTime.parse(timeStr, timeFormatter);
     return lastModified.toInstant(ZoneOffset.UTC);
   }
+
+  /*
+   * Determine if a path corresponds to the Globus root dir path "/~/"
+   */
+  private boolean isGlobusRootDir(String path)
+  {
+    return path.isBlank() || path.equals("/") || path.equals("/~") || path.equals("~/") || path.equals("~");
+  }
+
+  /*
+   * Build a special FileInfo representing a Globus root dir path
+   */
+  private FileInfo buildGlobusRootFileInfo(String path)
+  {
+    FileInfo fileInfo = new FileInfo();
+    fileInfo.setName(path);
+    fileInfo.setType(FileInfo.FILETYPE_DIR);
+    fileInfo.setPath("/~/");
+    return fileInfo;
+  }
+
 }
