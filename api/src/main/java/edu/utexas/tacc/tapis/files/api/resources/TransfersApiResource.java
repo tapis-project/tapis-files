@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import javax.servlet.ServletContext;
 import javax.validation.Valid;
@@ -343,5 +344,10 @@ public class  TransfersApiResource
     if (task.getTenantId().equals(oboTenant) && task.getUsername().equals(oboUser)) return;
     throw new ForbiddenException(ApiUtils.getMsg("FAPI_TASK_UNAUTH", oboTenant, oboUser, task.getTenantId(),
                                                  task.getUsername(), task.getUuid(), opName));
+  }
+
+  @PreDestroy
+  public void cleanup() {
+    transfersService.cleanup();
   }
 }
