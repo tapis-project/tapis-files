@@ -792,4 +792,14 @@ public class TransfersService
       }
     }
   }
+
+  public void cleanup() {
+    if(sender != null) {
+      sender.close();
+    }
+
+    if(receiver != null) {
+      receiver.close();
+    }
+  }
 }
