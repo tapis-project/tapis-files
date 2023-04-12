@@ -685,7 +685,7 @@ public class TransfersService
   }
 
   /**
-   * Make sure a source system exists and is enabled (with authorization checking for READ)
+   * Make sure a Tapis system exists and is enabled (with authorization checking for READ)
    * For any not found or not enabled add a message to the list of error messages.
    * We check for READ access (owner, shared)
    * NOTE: Catch all exceptions, so we can collect and report as many errors as possible.
@@ -799,6 +799,16 @@ public class TransfersService
         validateSystemIsEnabled(rUser, "dstSystemValidate", dstSystemId, dstUri.getPath(), dstGrantor,
                                 Permission.MODIFY, errMessages);
       }
+    }
+  }
+
+  public void cleanup() {
+    if(sender != null) {
+      sender.close();
+    }
+
+    if(receiver != null) {
+      receiver.close();
     }
   }
 }

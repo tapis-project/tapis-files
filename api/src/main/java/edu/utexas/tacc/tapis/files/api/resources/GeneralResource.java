@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
+import javax.annotation.PreDestroy;
 import javax.annotation.security.PermitAll;
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -281,5 +282,10 @@ public class GeneralResource
     }
     catch (Exception e) { result = e; }
     return result;
+  }
+
+  @PreDestroy
+  public void cleanUp() {
+    transfersService.cleanup();
   }
 }

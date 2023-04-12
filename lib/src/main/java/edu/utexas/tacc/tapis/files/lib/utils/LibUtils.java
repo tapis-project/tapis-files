@@ -260,8 +260,8 @@ public class LibUtils
     // Determine if requester is system owner, so we can bypass some auth checking.
     boolean requesterIsOwner = oboOrImpersonatedUser.equals(sys.getOwner());
 
-    // TODO: When used by mkdir this means path sharing allows mkdir. Once share with MODIFY is implemented this will
-    //       need to be updated to include the perm
+    // TODO: When used by mkdir or during transfers this means path sharing allows mkdir/create/chmod+x.
+    //       Once share with MODIFY is implemented this will need to be updated to include the perm
     // If not system owner check if path is shared.
     if (!requesterIsOwner) pathIsShared = isPathShared(rUser, shareService, sys, relPathStr, impersonationId, sharedCtxGrantor);
 

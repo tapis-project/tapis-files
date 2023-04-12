@@ -349,7 +349,7 @@ public class ChildTaskTransferService
     // Note: sourceSystem will be null and srcIsLinux will be false if source is http/s.
     if (sourceSystem != null && srcIsLinux && dstIsLinux)
     {
-      updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL);
+      updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, parentTask.getDestSharedCtxGrantor());
     }
 
     // The ChildTransferTask may have been updated by calling thread, e.g. cancelled, so we look it up again
@@ -688,7 +688,7 @@ public class ChildTaskTransferService
 
 
   /**
-   * Perform synchronous transfer between two systems using a stream
+   * Update perm on LINUX exe file
    * @param taskChild task we are processing
    * @param srcClient Remote data client for source system
    * @param srcUri source path as URI
@@ -697,7 +697,8 @@ public class ChildTaskTransferService
    */
   private void updateLinuxExeFile(TransferTaskChild taskChild,
                                   IRemoteDataClient srcClient, TransferURI srcUri,
-                                  IRemoteDataClient dstClient, TransferURI dstUri)
+                                  IRemoteDataClient dstClient, TransferURI dstUri,
+                                  String destSharedCtxGrantor)
           throws IOException, ServiceException
   {
 
@@ -714,15 +715,12 @@ public class ChildTaskTransferService
     {
       try
       {
-        // TODO Before calling linuxOp, we need to know if we are in a sharedAppCtx
-        // So the linuxOp will skip the perm check
-//TODO           boolean isDestShared = !StringUtils.isBlank(parentTask.getDestSharedCtxGrantor());
-// TODO Update for sharing
-//          fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700",
-//                                   recurseFalse, isDestShared);
+        // If in a sharedAppCtx, tell linuxOp to skip the perms check.
+        // so the linuxOp will skip the perm check
+        boolean isDestShared = !StringUtils.isBlank(destSharedCtxGrantor);
         boolean recurseFalse = false;
         fileUtilsService.linuxOp(dstClient, dstPath, FileUtilsService.NativeLinuxOperation.CHMOD, "700",
-                recurseFalse);
+                                 recurseFalse, isDestShared);
       }
       catch (TapisException ex)
       {
