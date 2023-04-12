@@ -89,18 +89,27 @@ public class FileUtilsService
     }
   }
 
+  // Simple wrapper for backward compatibility. Only ChildTaskTransferService should use isShared
+  public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String pathStr, @NotNull NativeLinuxOperation op,
+                                     @NotNull String arg, boolean recursive)
+          throws TapisException, ServiceException
+  {
+    return linuxOp(client, pathStr, op, arg, recursive, false);
+  }
   /**
    * Run a native linux operation: chown, chmod, chgrp
+   *  parameter isShared for internal use only
    * @param client - remote data client
    * @param pathStr - target path for operation
    * @param op - operation to perform
    * @param arg - argument for operation
    * @param recursive - flag indicating if operation should be applied recursively for directories
+   * @param isShared - indicates path is shared, auth checks already done. Not for resource Ops calls.
    * @return - result of running the command
    * @throws ServiceException - General problem
    */
-  public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String pathStr, @NotNull NativeLinuxOperation op,
-                                     @NotNull String arg, boolean recursive)
+  NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String pathStr, @NotNull NativeLinuxOperation op,
+                              @NotNull String arg, boolean recursive, boolean isShared)
           throws TapisException, ServiceException
   {
     NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
@@ -120,19 +129,11 @@ public class FileUtilsService
     try
     {
       // If not skipping due to ownership or sharedAppCtx then check permissions
-      if (!isOwner)
+      if (!isOwner && !isShared)
       {
         LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                                 relativePathStr, Permission.MODIFY);
       }
-// TODO remove?
-//      else
-//      {
-//        // Log that we have skipped the perm check
-//        String msg = LibUtils.getMsg("FILES_AUTH_SHAREDCTX2", client.getOboTenant(), client.getOboUser(), op.name(),
-//                                     client.getSystemId(), path, sharedAppCtxGrantor);
-//        log.warn(msg);
-//      }
 
       // Make the remoteDataClient call
       switch (op) {
