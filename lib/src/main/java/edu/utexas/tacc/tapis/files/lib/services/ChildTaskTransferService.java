@@ -20,6 +20,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -355,15 +356,12 @@ public class ChildTaskTransferService
       {
         try
         {
-          // TODO Before calling linuxOp, we need to know if we are in a sharedAppCtx
-          // So the linuxOp will skip the perm check
-//TODO           boolean isDestShared = !StringUtils.isBlank(parentTask.getDestSharedCtxGrantor());
-// TODO Update for sharing
-//          fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700",
-//                                   recurseFalse, isDestShared);
+          // If in a sharedAppCtx, tell linuxOp to skip the perms check.
+          // so the linuxOp will skip the perm check
+          boolean isDestShared = !StringUtils.isBlank(parentTask.getDestSharedCtxGrantor());
           boolean recurseFalse = false;
           fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700",
-                                   recurseFalse);
+                                   recurseFalse, isDestShared);
         }
         catch (TapisException ex)
         {
