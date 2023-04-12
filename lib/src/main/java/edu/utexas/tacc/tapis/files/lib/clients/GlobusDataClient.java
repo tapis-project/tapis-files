@@ -21,6 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.utexas.tacc.tapis.globusproxy.client.gen.model.ResultCancelTask;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferItem;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusFileInfo;
@@ -530,12 +531,12 @@ public class GlobusDataClient implements IRemoteDataClient
 
   /*
    * Use the GlobusProxyClient to get status for a transfer task.
+   * On error log a message and return null.
    *
    * @param path - path on system relative to system rootDir
    * @return Globus transfer task status.
-   * @throws TapisClientException on error
    */
-  public String getGlobusTransferTaskStatus(String globusTaskId) throws ServiceException
+  public String getGlobusTransferTaskStatus(String globusTaskId)
   {
     GlobusTransferTask txfrTask;
     try
@@ -546,16 +547,61 @@ public class GlobusDataClient implements IRemoteDataClient
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_STATUS_ERR", oboTenant, oboUser, system.getId(),
                                    endpointId, globusTaskId, e.getMessage());
-      throw new ServiceException(msg, e);
+      log.error(msg);
+      return null;
+    }
+    if (txfrTask == null)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_NULL", oboTenant, oboUser, system.getId(),
+                                   endpointId, globusTaskId, "getGlobusTransferTaskStatus");
+      log.error(msg);
+      return null;
     }
     String taskDetailsStr = txfrTask.toString();
     log.trace(LibUtils.getMsg("FILES_TXFR_ASYNCH_ETASK", oboTenant, oboUser, globusTaskId, taskDetailsStr));
-//TODO/TBD    var taskStatus = txfrTask.getStatus();
-//    return (taskStatus == null ? null : txfrTask.getStatus().name());
     return txfrTask.getStatus();
   }
 
-    /* **************************************************************************** */
+  /*
+   * Use the GlobusProxyClient to cancel a transfer task.
+   * On error log a message and return null.
+   *
+   * @param path - path on system relative to system rootDir
+   * @return Globus transfer task status.
+   */
+  public String cancelGlobusTransferTask(String globusTaskId)
+  {
+    ResultCancelTask result;
+    try
+    {
+      result = proxyClient.cancelTransferTask(globusClientId, globusTaskId, accessToken, refreshToken);
+    }
+    catch (TapisClientException e)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_CANCEL_ERR", oboTenant, oboUser, system.getId(),
+              endpointId, globusTaskId, e.getMessage());
+      log.error(msg);
+      return null;
+    }
+    if (result == null)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_NULL", oboTenant, oboUser, system.getId(),
+                                   endpointId, globusTaskId, "cancelGlobusTransferTask");
+      log.error(msg);
+      return null;
+    }
+    if (result.getCode() == null)
+    {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_NULL", oboTenant, oboUser, system.getId(),
+                                   endpointId, globusTaskId, "cancelGlobusTransferTask.getCode");
+      log.error(msg);
+      return null;
+    }
+    log.trace(LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_CANCELLED", oboTenant, oboUser, globusTaskId, result.getCode()));
+    return result.getCode().toString();
+  }
+
+  /* **************************************************************************** */
   /*                   Unsupported Operations                                     */
   /* **************************************************************************** */
   /**

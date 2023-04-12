@@ -13,7 +13,6 @@ import java.util.concurrent.Future;
 import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -28,10 +27,12 @@ import reactor.util.retry.Retry;
 
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.GlobusDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -63,6 +64,7 @@ public class ChildTaskTransferService
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
     private final RemoteDataClientFactory remoteDataClientFactory;
     private final SystemsCache systemsCache;
+    private final SystemsCacheNoAuth systemsCacheNoAuth;
     private final FileUtilsService fileUtilsService;
     private static final Logger log = LoggerFactory.getLogger(ChildTaskTransferService.class);
 
@@ -78,11 +80,12 @@ public class ChildTaskTransferService
   public ChildTaskTransferService(TransfersService transfersService1, FileTransfersDAO dao1,
                                   FileUtilsService fileUtilsService1,
                                   RemoteDataClientFactory remoteDataClientFactory1,
-                                  SystemsCache cache1)
+                                  SystemsCache cache1, SystemsCacheNoAuth cache2)
   {
     transfersService = transfersService1;
     dao = dao1;
     systemsCache = cache1;
+    systemsCacheNoAuth = cache2;
     remoteDataClientFactory = remoteDataClientFactory1;
     fileUtilsService = fileUtilsService1;
   }
@@ -252,7 +255,7 @@ public class ChildTaskTransferService
 
       // Get the parent task. We will need it for shared ctx grantors.
       parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-      // TODO/TBD: For some reason taskChild does not have the tag set at this point. Not sure why.
+      // For some reason taskChild does not have the tag set at this point.
       taskChild.setTag(parentTask.getTag());
     }
     catch (DAOException ex)
@@ -603,21 +606,43 @@ public class ChildTaskTransferService
     }
   }
 
-  private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild)
+  private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild) throws ServiceException, IOException
   {
+    TransferTaskChild retChild;
     log.info("CANCELLING TRANSFER CHILD");
+    taskChild.setStatus(TransferTaskStatus.CANCELLED);
+    taskChild.setEndTime(Instant.now());
     try
     {
-      taskChild.setStatus(TransferTaskStatus.CANCELLED);
-      taskChild.setEndTime(Instant.now());
-      taskChild = dao.updateTransferTaskChild(taskChild);
-      return taskChild;
+      retChild = dao.updateTransferTaskChild(taskChild);
     }
     catch (DAOException ex)
     {
+      // On DAO error still might need to attempt the globus cancel, so log error and continue.
       log.error("CANCEL", ex);
-      return null;
+      retChild = null;
     }
+
+    // Get the source system, so we can check if it is a globus transfer
+    TransferURI srcUri = taskChild.getSourceURI();
+    TapisSystem srcSys =
+            systemsCacheNoAuth.getSystem(taskChild.getTenantId(), srcUri.getSystemId(), taskChild.getUsername());
+    // If an external globus transfer, send a cancel request to globus-proxy
+    if (!StringUtils.isBlank(taskChild.getExternalTaskId()) && srcSys!=null &&
+            SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType()))
+    {
+      // Get the client for the source system and make sure it is the expected type.
+      IRemoteDataClient srcClient =
+              remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(), srcSys);
+      if (!(srcClient instanceof GlobusDataClient))
+      {
+        throw new ServiceException(LibUtils.getMsg("FILES_TXFR_GLOBUS_WRONG_CLIENT", "Source", srcUri, taskChild.getTag()));
+      }
+      var gSrcClient = (GlobusDataClient) srcClient;
+      // Use srcClient to call GlobusProxy to cancel the task
+      gSrcClient.cancelGlobusTransferTask(taskChild.getExternalTaskId());
+    }
+    return retChild;
   }
 
   /**
@@ -877,9 +902,9 @@ public class ChildTaskTransferService
         // Expected enum values from client: ACTIVE, INACTIVE, SUCCEEDED, FAILED
         String externalTaskStatus = gSrcClient.getGlobusTransferTaskStatus(externalTaskId);
 
-        // If in a final state we are done.
+        // If in a final state we are done. Use valueOf in case string is null
         boolean isTerminal;
-        switch (externalTaskStatus)
+        switch (String.valueOf(externalTaskStatus))
         {
           case "ACTIVE", "INACTIVE" -> isTerminal = false;
           case "FAILED" ->
