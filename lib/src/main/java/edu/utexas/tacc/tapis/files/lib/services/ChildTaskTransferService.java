@@ -25,6 +25,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
@@ -559,7 +560,7 @@ public class ChildTaskTransferService
     });
 
     //Listen for control messages and filter on the top taskID
-    transfersService.streamControlMessages()
+    Disposable subscription = transfersService.streamControlMessages()
             .filter((controlAction)-> controlAction.getTaskId() == taskChild.getTaskId())
             .subscribe( (message)-> {
               future.cancel(true);
@@ -599,6 +600,7 @@ public class ChildTaskTransferService
     }
     finally
     {
+      subscription.dispose();
       executorService.shutdown();
     }
   }
