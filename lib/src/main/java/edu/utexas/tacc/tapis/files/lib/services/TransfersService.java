@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.ConsumeOptions;
@@ -106,6 +107,9 @@ public class TransfersService
   @Inject
   SystemsCacheNoAuth systemsCacheNoAuth;
 
+  private  final Scheduler receiverScheduler;
+  private  final Scheduler senderScheduler;
+
   /*
    * Constructor for service.
    * Note that this is never invoked explicitly. Arguments of constructor are initialized via Dependency Injection.
@@ -113,15 +117,17 @@ public class TransfersService
   @Inject
   public TransfersService(FileTransfersDAO dao1, SystemsCache cache1, FileOpsService svc1, FilePermsService svc2)
   {
+    receiverScheduler = Schedulers.newBoundedElastic(8, 1000, "receiver", 60, true);
+    senderScheduler = Schedulers.newBoundedElastic(8, 1000, "sender", 60, true);
     ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
     ReceiverOptions receiverOptions = new ReceiverOptions()
             .connectionMonoConfigurator( cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5))) )
             .connectionFactory(connectionFactory)
-            .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "receiver", 60, true));
+            .connectionSubscriptionScheduler(receiverScheduler);
     SenderOptions senderOptions = new SenderOptions()
             .connectionMonoConfigurator( cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5))) )
             .connectionFactory(connectionFactory)
-            .connectionSubscriptionScheduler(Schedulers.newBoundedElastic(8, 1000, "sender", 60, true));
+            .connectionSubscriptionScheduler(senderScheduler);
     receiver = RabbitFlux.createReceiver(receiverOptions);
     sender = RabbitFlux.createSender(senderOptions);
     dao = dao1;
@@ -805,10 +811,12 @@ public class TransfersService
   public void cleanup() {
     if(sender != null) {
       sender.close();
+      senderScheduler.dispose();
     }
 
     if(receiver != null) {
       receiver.close();
+      receiverScheduler.dispose();
     }
   }
 }

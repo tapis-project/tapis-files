@@ -20,6 +20,17 @@ Incremental improvements and new features.
 - None
 
 ---------------------------------------------------------------------------
+## 1.3.4 - 2023-04-13
+
+Incremental improvements and bug fixes.
+
+### New features:
+- None
+
+### Bug fixes:
+- Fixed a thread leak, and case where we were not cleaning up temporary control queues for file transfers
+
+---------------------------------------------------------------------------
 ## 1.3.3 - 2023-04-02
 
 Incremental improvements and bug fixes.

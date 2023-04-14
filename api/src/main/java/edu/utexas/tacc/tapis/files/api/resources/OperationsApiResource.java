@@ -206,6 +206,7 @@ public class OperationsApiResource extends BaseFileOpsResource
     //   to responses (ApiExceptionMapper).
     fileOpsService.mkdir(rUser, systemId, mkdirRequest.getPath(), sharedCtx);
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, mkdirRequest.getPath());
+    log.trace(msg);
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
   }

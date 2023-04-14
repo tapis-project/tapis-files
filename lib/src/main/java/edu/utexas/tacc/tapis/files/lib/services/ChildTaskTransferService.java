@@ -48,6 +48,18 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jvnet.hk2.annotations.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+import reactor.rabbitmq.AcknowledgableDelivery;
+import reactor.util.retry.Retry;
 
 
 /*
@@ -537,7 +549,7 @@ public class ChildTaskTransferService
     });
 
     //Listen for control messages (e.g. cancel) and filter on the top taskID
-    transfersService.streamControlMessages()
+    Disposable subscription = transfersService.streamControlMessages()
             .filter((controlAction)-> controlAction.getTaskId() == taskChild.getTaskId())
             .subscribe( (message)-> {
               future.cancel(true);
@@ -577,6 +589,7 @@ public class ChildTaskTransferService
     }
     finally
     {
+      subscription.dispose();
       executorService.shutdown();
     }
   }
