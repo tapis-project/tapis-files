@@ -9,15 +9,20 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.3.? - 2023-??-??
+## 1.3.6 - 2023-??-??
 
 Incremental improvements and new features.
 
 ### New features:
-- Support file operations and transfers for GLOBUS type systems
+- Support file operations and transfers for systems of type GLOBUS.
 
 ### Bug fixes:
 - None
+
+---------------------------------------------------------------------------
+## 1.3.5 - 2023-04-18
+
+Shorten system cache timeout from 5 minutes to 10 seconds.
 
 ---------------------------------------------------------------------------
 ## 1.3.4 - 2023-04-13

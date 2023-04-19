@@ -36,6 +36,9 @@ public class SystemsCache
 {
   private static final Logger log = LoggerFactory.getLogger(SystemsCache.class);
 
+  // Cache timeout
+  private static final long CACHE_TIMEOUT_SECONDS = 10;
+
   // NotAuthorizedException requires a Challenge
   private static final String NO_CHALLENGE = "NoChallenge";
 
@@ -46,7 +49,7 @@ public class SystemsCache
   public SystemsCache(ServiceClients svcClients)
   {
     serviceClients = svcClients;
-    cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofMinutes(5)).build(new SystemLoader());
+    cache = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofSeconds(CACHE_TIMEOUT_SECONDS)).build(new SystemLoader());
   }
 
   /*
