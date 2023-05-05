@@ -63,6 +63,9 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SHAREDCTX;
 
+/*
+ * Transfers service methods providing functionality for TransfersApiService and TestTransfers
+ */
 @Service
 public class TransfersService
 {
@@ -351,14 +354,17 @@ public class TransfersService
       task.setStatus(TransferTaskStatus.ACCEPTED);
       task.setTag(tag);
 
-      // Persist the transfer task
+      // Persist the transfer task and queue up parent transfer tasks.
       try
       {
         // Persist the transfer task to the DB
         log.trace(LibUtils.getMsgAuthR("FILES_TXFR_PERSIST_TASK", rUser, tag, elements.size()));
         TransferTask newTask = dao.createTransferTask(task, elements);
-        // Put the transfer task onto the queue for asynchronous processing.
-        for (TransferTaskParent parent : newTask.getParentTasks()) { publishParentTaskMessage(parent); }
+        // Put the parent transfer tasks onto the queue for asynchronous processing.
+        for (TransferTaskParent parent : newTask.getParentTasks())
+        {
+          publishParentTaskMessage(parent);
+        }
         return newTask;
       }
       catch (DAOException | ServiceException e)
@@ -579,6 +585,9 @@ public class TransfersService
     return true;
   }
 
+  /*
+   * Publish a parent task to RabbitMQ PARENT_QUEUE
+   */
   private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException
   {
     try

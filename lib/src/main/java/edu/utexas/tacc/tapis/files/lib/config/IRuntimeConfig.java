@@ -15,6 +15,8 @@ public interface IRuntimeConfig {
     String getTokensServiceURL();
     String getTenantsServiceURL();
     String getSiteId();
+    String getGlobusClientId();
+    int getAsyncTransferPollSeconds();
     int getPostItsReaperIntervalMinutes();
     int getDbConnectionPoolCoreSize();
     int getDbConnectionPoolSize();

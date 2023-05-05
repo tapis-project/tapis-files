@@ -36,6 +36,9 @@ import javax.inject.Singleton;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/*
+ * Class with main used to start a Files worker. See deploy/Dockerfile.workers
+ */
 public class TransfersApp
 {
   // SSHConnection cache settings

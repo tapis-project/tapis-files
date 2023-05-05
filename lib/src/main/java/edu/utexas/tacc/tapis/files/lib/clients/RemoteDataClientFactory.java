@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
@@ -19,6 +20,8 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
 {
   private final SSHConnectionCache sshConnectionCache;
 
+  @Inject
+  private ServiceClients serviceClients;
   @Inject
   SystemsCache systemsCache;
   @Inject
@@ -83,6 +86,10 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
     else if (SystemTypeEnum.IRODS.equals(system.getSystemType()))
     {
       return new IrodsDataClient(oboTenant, oboUser, system);
+    }
+    else if (SystemTypeEnum.GLOBUS.equals(system.getSystemType()))
+    {
+      return new GlobusDataClient(oboTenant, oboUser, system, serviceClients);
     }
     else
     {

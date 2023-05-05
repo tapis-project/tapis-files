@@ -41,7 +41,7 @@ public class PostItsService {
     private static final String impersonationIdNull = null;
     private static final String sharedCtxGrantorNull = null;
 
-  // Default allowed uses 1
+    // Default allowed uses 1
     private static Integer DEFAULT_ALLOWED_USES = Integer.valueOf(1);
 
     // Default ttl 30 days

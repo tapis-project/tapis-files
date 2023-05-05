@@ -105,6 +105,7 @@ public class FileTransfersDAO {
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             task.setErrorMessage(rs.getString("error_message"));
+            task.setFinalMessage(rs.getString("final_message"));
             Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
             Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
             return task;
@@ -141,6 +142,7 @@ public class FileTransfersDAO {
             task.setTotalBytes(rs.getLong("total_bytes"));
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             task.setErrorMessage(rs.getString("error_message"));
+            task.setExternalTaskId(rs.getString("external_task_id"));
             Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
             Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
             return task;
@@ -452,6 +454,7 @@ public class FileTransfersDAO {
                 endTime,
                 task.getBytesTransferred(),
                 task.getTotalBytes(),
+                task.getFinalMessage(),
                 task.getErrorMessage(),
                 task.getUuid()
             );
@@ -485,6 +488,7 @@ public class FileTransfersDAO {
                 startTime,
                 endTime,
                 task.getErrorMessage(),
+                task.getExternalTaskId(),
                 task.getId()
             );
             return updatedTask;
@@ -535,7 +539,8 @@ public class FileTransfersDAO {
                 child.getBytesTransferred(),
                 child.getTotalBytes(),
                 child.isDir(),
-                child.getTag()
+                child.getTag(),
+                child.getExternalTaskId()
             });
         });
         Object[][] t = new Object[params.size()][];
@@ -567,7 +572,8 @@ public class FileTransfersDAO {
                 task.getBytesTransferred(),
                 task.getTotalBytes(),
                 task.isDir(),
-                task.getTag()
+                task.getTag(),
+                task.getExternalTaskId()
             );
 
             return child;

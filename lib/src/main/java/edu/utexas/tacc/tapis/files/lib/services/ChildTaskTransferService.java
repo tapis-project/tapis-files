@@ -1,10 +1,38 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import javax.inject.Inject;
+import javax.ws.rs.NotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
+import org.jvnet.hk2.annotations.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+import reactor.rabbitmq.AcknowledgableDelivery;
+import reactor.util.retry.Retry;
+
+import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.clients.GlobusDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -33,19 +61,12 @@ import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.util.retry.Retry;
 
-import javax.inject.Inject;
-import javax.ws.rs.NotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
+/*
+ * Transfers service methods providing functionality for TransfersApp (a worker) and TestTransfers.
+ * Contains only one public method that is used to kick off a child transfer pipeline.
+ * This is the main processing workflow for individual file transfers.
+ */
 @Service
 public class ChildTaskTransferService
 {
@@ -55,6 +76,7 @@ public class ChildTaskTransferService
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
     private final RemoteDataClientFactory remoteDataClientFactory;
     private final SystemsCache systemsCache;
+    private final SystemsCacheNoAuth systemsCacheNoAuth;
     private final FileUtilsService fileUtilsService;
     private static final Logger log = LoggerFactory.getLogger(ChildTaskTransferService.class);
 
@@ -70,11 +92,12 @@ public class ChildTaskTransferService
   public ChildTaskTransferService(TransfersService transfersService1, FileTransfersDAO dao1,
                                   FileUtilsService fileUtilsService1,
                                   RemoteDataClientFactory remoteDataClientFactory1,
-                                  SystemsCache cache1)
+                                  SystemsCache cache1, SystemsCacheNoAuth cache2)
   {
     transfersService = transfersService1;
     dao = dao1;
     systemsCache = cache1;
+    systemsCacheNoAuth = cache2;
     remoteDataClientFactory = remoteDataClientFactory1;
     fileUtilsService = fileUtilsService1;
   }
@@ -170,12 +193,14 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepOne(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
-    log.info("***** DOING stepOne **** {}", taskChild);
+    log.info("***** Starting ChildStepOne **** {}", taskChild);
     // Update parent task and then child task
     try
     {
       taskChild = dao.getTransferTaskChild(taskChild.getUuid());
+      log.debug("***** ChildStepOne childTask **** {}", taskChild);
       TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
+      log.debug("***** ChildStepOne parentTask **** {}", parentTask);
       // If the parent task not in final state and not yet set to IN_PROGRESS do it here.
       if (!parentTask.isTerminal() && !parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS))
       {
@@ -202,7 +227,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepOne", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepOne", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -210,7 +235,6 @@ public class ChildTaskTransferService
 
   /**
    * Perform the transfer, this is the meat of the operation.
-   * NOTE: TBD Support a GLOBUS type point to point transfer
    *
    * @param taskChild the incoming child task
    * @return update child task
@@ -224,7 +248,7 @@ public class ChildTaskTransferService
     TapisSystem destSystem = null;
     IRemoteDataClient sourceClient;
     IRemoteDataClient destClient;
-    log.info("***** DOING stepTwo **** {}", taskChild);
+    log.info("***** Starting ChildStepTwo **** {}", taskChild);
     TransferTaskParent parentTask;
     try
     {
@@ -243,11 +267,13 @@ public class ChildTaskTransferService
 
       // Get the parent task. We will need it for shared ctx grantors.
       parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
+      // For some reason taskChild does not have the tag set at this point.
+      taskChild.setTag(parentTask.getTag());
     }
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepTwoA", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepTwoA", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -307,7 +333,7 @@ public class ChildTaskTransferService
     catch (IOException | ServiceException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepTwoB", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepTwoB", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -316,74 +342,36 @@ public class ChildTaskTransferService
     if (taskChild.isDir())
     {
       destClient.mkdir(destURL.getPath());
+      // The ChildTransferTask may have been updated by calling thread, e.g. cancelled, so we look it up again
+      // here before passing it on
+      try { taskChild = dao.getTransferTaskChild(taskChild.getUuid()); }
+      catch (DAOException ex) { taskChild = null; }
       return taskChild;
     }
 
-    // NOTE: TBD: Handle a GLOBUS type point to point txfr where we are not in control of the stream.
-    //       We will need to initiate the transfer, get the externalTransferId, update the child/parent task
-    //         with the externalTransferId (or will this be done in the synchronous call?).
-    //       Then monitor the transfer and update the progress.
-    // NOTE: TBD: Or, maybe the txfr will be initiated synchronously and all we will need to do here is
-    //           use the externalTransferId to monitor the progress and update the status.
-
-    // Stream the file contents to destination. While the InputStream is open,
-    // we put a tap on it and send events that get grouped into 100 ms intervals. Progress
-    // on the child tasks are updated during the reading of the source input stream.
-    try (InputStream sourceStream = sourceClient.getStream(sourcePath);
-         ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream) )
+    // Handle as Globus or non-Globus transfer
+    if ((sourceSystem!=null && SystemTypeEnum.GLOBUS.equals(sourceSystem.getSystemType())) ||
+        SystemTypeEnum.GLOBUS.equals(destSystem.getSystemType()))
     {
-      // Observe the progress event stream, just get the last event from the past 1 second.
-      final TransferTaskChild finalTaskChild = taskChild;
-      observableInputStream.getEventStream()
-              .window(Duration.ofMillis(100))
-              .flatMap(window -> window.takeLast(1))
-              .flatMap((progress) -> updateProgress(progress, finalTaskChild))
-              .subscribe();
-      destClient.upload(destURL.getPath(), observableInputStream);
+      performASynchFileTransfer(taskChild, sourceClient, sourceURL, destClient, destURL);
+    }
+    else
+    {
+      performSynchFileTransfer(taskChild, sourceClient, sourceURL, destClient, destURL);
     }
 
     // If it is an executable file on a posix system going to a posix system, chmod it to be +x.
     // Note: sourceSystem will be null and srcIsLinux will be false if source is http/s.
     if (sourceSystem != null && srcIsLinux && dstIsLinux)
     {
-      FileInfo item = sourceClient.getFileInfo(sourcePath);
-      if (item == null)
-      {
-        throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_CHILD_PATH_NOTFOUND", taskChild.getTenantId(),
-                                                    taskChild.getUsername(), taskChild.getId(),
-                                                    taskChild.getUuid(), sourcePath, taskChild.getTag()));
-      }
-      if (!item.isDir() && item.getNativePermissions().contains("x"))
-      {
-        try
-        {
-          // If in a sharedAppCtx, tell linuxOp to skip the perms check.
-          // so the linuxOp will skip the perm check
-          boolean isDestShared = !StringUtils.isBlank(parentTask.getDestSharedCtxGrantor());
-          boolean recurseFalse = false;
-          fileUtilsService.linuxOp(destClient, destURL.getPath(), FileUtilsService.NativeLinuxOperation.CHMOD, "700",
-                                   recurseFalse, isDestShared);
-        }
-        catch (TapisException ex)
-        {
-          String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                       "chmod", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
-          log.error(msg, ex);
-          throw new ServiceException(msg, ex);
-        }
-      }
+      updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, parentTask.getDestSharedCtxGrantor());
     }
 
-    //The ChildTransferTask gets updated in another thread, so we look it up again here before passing it on
-    try
-    {
-      taskChild = dao.getTransferTaskChild(taskChild.getUuid());
-      return taskChild;
-    }
-    catch (DAOException ex)
-    {
-      return null;
-    }
+    // The ChildTransferTask may have been updated by calling thread, e.g. cancelled, so we look it up again
+    // here before passing it on
+    try { taskChild = dao.getTransferTaskChild(taskChild.getUuid()); }
+    catch (DAOException ex) { taskChild = null; }
+    return taskChild;
   }
 
   /**
@@ -395,7 +383,7 @@ public class ChildTaskTransferService
   private TransferTaskChild stepThree(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
     // If it cancelled/failed somehow, just push it through unchanged.
-    log.info("***** DOING stepThree **** {}", taskChild);
+    log.info("***** Starting ChildStepThree **** {}", taskChild);
     try
     {
       // If we are cancelled/failed, update end time, and we are done
@@ -415,7 +403,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepThree", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepThree", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -440,7 +428,7 @@ public class ChildTaskTransferService
     catch (DAOException ex)
     {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                                   "stepFour", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                                   "ChildStepFour", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -454,7 +442,7 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepFive(@NotNull TransferTaskChild taskChild)
   {
-    log.info("***** DOING stepFive NO-OP **** {}", taskChild);
+    log.info("***** DOING ChildStepFive NO-OP **** {}", taskChild);
     return taskChild;
   }
 
@@ -512,6 +500,7 @@ public class ChildTaskTransferService
         }
         parent.setEndTime(Instant.now());
         parent.setErrorMessage(cause.getMessage());
+        parent.setFinalMessage("Failed - Child doErrorStepOne");
         log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR14", parent.getId(), parent.getTag(), parent.getUuid(), child.getId(), child.getUuid(), parent.getStatus()));
         dao.updateTransferTaskParent(parent);
         // If parent is required update top level task to FAILED and set error message
@@ -559,7 +548,7 @@ public class ChildTaskTransferService
       }
     });
 
-    //Listen for control messages and filter on the top taskID
+    //Listen for control messages (e.g. cancel) and filter on the top taskID
     Disposable subscription = transfersService.streamControlMessages()
             .filter((controlAction)-> controlAction.getTaskId() == taskChild.getTaskId())
             .subscribe( (message)-> {
@@ -630,21 +619,43 @@ public class ChildTaskTransferService
     }
   }
 
-  private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild)
+  private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild) throws ServiceException, IOException
   {
+    TransferTaskChild retChild;
     log.info("CANCELLING TRANSFER CHILD");
+    taskChild.setStatus(TransferTaskStatus.CANCELLED);
+    taskChild.setEndTime(Instant.now());
     try
     {
-      taskChild.setStatus(TransferTaskStatus.CANCELLED);
-      taskChild.setEndTime(Instant.now());
-      taskChild = dao.updateTransferTaskChild(taskChild);
-      return taskChild;
+      retChild = dao.updateTransferTaskChild(taskChild);
     }
     catch (DAOException ex)
     {
+      // On DAO error still might need to attempt the globus cancel, so log error and continue.
       log.error("CANCEL", ex);
-      return null;
+      retChild = null;
     }
+
+    // Get the source system, so we can check if it is a globus transfer
+    TransferURI srcUri = taskChild.getSourceURI();
+    TapisSystem srcSys =
+            systemsCacheNoAuth.getSystem(taskChild.getTenantId(), srcUri.getSystemId(), taskChild.getUsername());
+    // If an external globus transfer, send a cancel request to globus-proxy
+    if (!StringUtils.isBlank(taskChild.getExternalTaskId()) && srcSys!=null &&
+            SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType()))
+    {
+      // Get the client for the source system and make sure it is the expected type.
+      IRemoteDataClient srcClient =
+              remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(), srcSys);
+      if (!(srcClient instanceof GlobusDataClient))
+      {
+        throw new ServiceException(LibUtils.getMsg("FILES_TXFR_GLOBUS_WRONG_CLIENT", "Source", srcUri, taskChild.getTag()));
+      }
+      var gSrcClient = (GlobusDataClient) srcClient;
+      // Use srcClient to call GlobusProxy to cancel the task
+      gSrcClient.cancelGlobusTransferTask(taskChild.getExternalTaskId());
+    }
+    return retChild;
   }
 
   /**
@@ -693,6 +704,7 @@ public class ChildTaskTransferService
       {
         parentTask.setStatus(TransferTaskStatus.COMPLETED);
         parentTask.setEndTime(Instant.now());
+        parentTask.setFinalMessage("Completed");
         log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_COMPLETE", topTaskId, topTask.getUuid(), parentTaskId, parentTask.getUuid(), parentTask.getTag()));
         dao.updateTransferTaskParent(parentTask);
       }
@@ -710,5 +722,244 @@ public class ChildTaskTransferService
         dao.updateTransferTask(topTask);
       }
     }
+  }
+
+
+  /**
+   * Update perm on LINUX exe file
+   * @param taskChild task we are processing
+   * @param srcClient Remote data client for source system
+   * @param srcUri source path as URI
+   * @param dstClient Remote data client for destination system
+   * @param dstUri Destination path as URI
+   */
+  private void updateLinuxExeFile(TransferTaskChild taskChild,
+                                  IRemoteDataClient srcClient, TransferURI srcUri,
+                                  IRemoteDataClient dstClient, TransferURI dstUri,
+                                  String destSharedCtxGrantor)
+          throws IOException, ServiceException
+  {
+
+    String srcPath = srcUri.getPath();
+    String dstPath = dstUri.getPath();
+    FileInfo item = srcClient.getFileInfo(srcPath);
+    if (item == null)
+    {
+      throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_CHILD_PATH_NOTFOUND", taskChild.getTenantId(),
+                                                  taskChild.getUsername(), taskChild.getId(),
+                                                  taskChild.getUuid(), srcPath, taskChild.getTag()));
+    }
+    if (!item.isDir() && item.getNativePermissions().contains("x"))
+    {
+      try
+      {
+        // If in a sharedAppCtx, tell linuxOp to skip the perms check.
+        // so the linuxOp will skip the perm check
+        boolean isDestShared = !StringUtils.isBlank(destSharedCtxGrantor);
+        boolean recurseFalse = false;
+        fileUtilsService.linuxOp(dstClient, dstPath, FileUtilsService.NativeLinuxOperation.CHMOD, "700",
+                                 recurseFalse, isDestShared);
+      }
+      catch (TapisException ex)
+      {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                "chmod", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
+    }
+  }
+
+  /**
+   * Perform synchronous transfer between two systems using a stream
+   * @param taskChild task we are processing
+   * @param srcClient Remote data client for source system
+   * @param srcUri source path as URI
+   * @param dstClient Remote data client for destination system
+   * @param dstUri Destination path as URI
+   */
+  private void performSynchFileTransfer(TransferTaskChild taskChild,
+                                        IRemoteDataClient srcClient, TransferURI srcUri,
+                                        IRemoteDataClient dstClient, TransferURI dstUri)
+              throws IOException
+  {
+    String srcPath = srcUri.getPath();
+    String dstPath = dstUri.getPath();
+    String msg = LibUtils.getMsg("FILES_TXFR_CHILD_SYNCH_BEGIN", taskChild.getTenantId(), taskChild.getUsername(),
+                                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
+                                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
+    log.trace(msg);
+    // Stream the file contents to destination. While the InputStream is open,
+    // we put a tap on it and send events that get grouped into 100 ms intervals. Progress
+    // on the child tasks are updated during the reading of the source input stream.
+    try (InputStream sourceStream = srcClient.getStream(srcPath);
+         ObservableInputStream observableInputStream = new ObservableInputStream(sourceStream))
+    {
+      // Observe the progress event stream, just get the last event from the past 1 second.
+      final TransferTaskChild finalTaskChild = taskChild;
+      observableInputStream.getEventStream()
+              .window(Duration.ofMillis(100))
+              .flatMap(window -> window.takeLast(1))
+              .flatMap((progress) -> updateProgress(progress, finalTaskChild))
+              .subscribe();
+      dstClient.upload(dstPath, observableInputStream);
+    }
+    msg = LibUtils.getMsg("FILES_TXFR_CHILD_SYNCH_END", taskChild.getTenantId(), taskChild.getUsername(),
+                          taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
+                          srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
+    log.trace(msg);
+  }
+
+  /**
+   * Perform asynchronous transfer between two systems for the case where Tapis is not in control of the transfer.
+   * All incoming arguments must be non-null
+   * Handle a GLOBUS type point to point txfr where we are not in control of the stream.
+   * We initiate the transfer, get the externalTransferId, update the child task
+   *    with the externalTransferId and then monitor the transfer and update the progress.
+   *
+   * @param taskChild task we are processing
+   * @param srcClient Remote data client for source system
+   * @param srcUri source path as URI
+   * @param dstClient Remote data client for destination system
+   * @param dstUri Destination path as URI
+   */
+  private void performASynchFileTransfer(TransferTaskChild taskChild,
+                                         IRemoteDataClient srcClient, TransferURI srcUri,
+                                         IRemoteDataClient dstClient, TransferURI dstUri)
+          throws ServiceException
+  {
+    // None of the incoming arguments should be null
+    if (taskChild == null || srcClient == null || srcUri == null || dstUri == null ||
+        srcClient.getSystem() == null || dstClient.getSystem() == null)
+    {
+      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_ASYNCH_NULL", taskChild, srcClient, srcUri, dstClient, dstUri));
+    }
+
+    String tag = taskChild.getTag();
+    TapisSystem srcSys = srcClient.getSystem();
+    TapisSystem dstSys = dstClient.getSystem();
+    String srcPath = srcUri.getPath();
+    String dstPath = dstUri.getPath();
+    String dstHost = dstSys.getHost();
+
+    // Check that both src and dst are Globus. If not throw a ServiceException
+    // If srcSys is GLOBUS and dstSys is not then we do not support it OR
+    //    dstSys is GLOBUS and srcSys is not then we do not support it
+    if ( ( SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType()) &&
+           !SystemTypeEnum.GLOBUS.equals(dstSys.getSystemType()) ) ||
+         ( SystemTypeEnum.GLOBUS.equals(dstSys.getSystemType()) &&
+           !SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType()) ) )
+    {
+      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_GLOBUS_NOTSUPPORTED", srcUri, dstUri, tag));
+    }
+
+    // If we somehow get here both clients must be of type GlobusDataClient.
+    if (!(srcClient instanceof GlobusDataClient))
+    {
+      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_GLOBUS_WRONG_CLIENT", "Source", srcUri, tag));
+    }
+    if (!(dstClient instanceof GlobusDataClient))
+    {
+      throw new ServiceException(LibUtils.getMsg("FILES_TXFR_GLOBUS_WRONG_CLIENT", "Destination", dstUri, tag));
+    }
+
+    String msg = LibUtils.getMsg("FILES_TXFR_CHILD_ASYNCH_BEGIN", taskChild.getTenantId(), taskChild.getUsername(),
+                                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
+                                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
+    log.trace(msg);
+    // TODO: Use a backoff policy?
+    long pollIntervalSeconds = RuntimeSettings.get().getAsyncTransferPollSeconds();
+    String externalTaskId = null;
+    try
+    {
+      // Use srcClient to call GlobusProxy to kick off a transfer originating from the source Globus system
+      var gSrcClient = ((GlobusDataClient) srcClient);
+      GlobusTransferTask externalTask = gSrcClient.createFileTransferTaskFromEndpoint(srcPath, dstHost, dstPath);
+      if (externalTask == null || StringUtils.isBlank(externalTask.getTaskId()))
+      {
+        throw new ServiceException(LibUtils.getMsg("FILES_TXFR_ASYNCH_NULL_TASK", externalTask));
+      }
+      externalTaskId = externalTask.getTaskId();
+      msg = LibUtils.getMsg("FILES_TXFR_CHILD_ASYNCH_EXTERNAL", taskChild.getTenantId(), taskChild.getUsername(),
+                            taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), externalTask.toString());
+      log.trace(msg);
+
+      // Update child task with external task id.
+      taskChild.setExternalTaskId(externalTaskId);
+      taskChild = dao.updateTransferTaskChild(taskChild);
+      // Monitor the status of the transfer until it is in a final state.
+      // Loop forever waiting for task to finish or be cancelled.
+      int iteration = 1;
+      while (true)
+      {
+        // Get latest taskChild info to see if it has been cancelled
+        taskChild = dao.getTransferTaskChild(taskChild.getUuid());
+        // If in a terminal state, e.g. cancelled, set the end time and exit loop
+        if (taskChild.isTerminal())
+        {
+          taskChild.setEndTime(Instant.now());
+          taskChild = dao.updateTransferTaskChild(taskChild);
+          break;
+        }
+        // Wait poll interval between status checks.
+        log.trace(LibUtils.getMsg("FILES_TXFR_ASYNCH_POLL", taskChild.getTenantId(), taskChild.getUsername(),
+                                  taskChild.getId(), tag, taskChild.getUuid(), pollIntervalSeconds, iteration));
+        try { Thread.sleep(pollIntervalSeconds*1000); }
+        catch (InterruptedException e)
+        {
+          log.warn(LibUtils.getMsg("FILES_TXFR_ASYNCH_INTERRUPTED", taskChild.getTenantId(), taskChild.getUsername(),
+                                   taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), iteration));
+         }
+
+        // Get the external task status
+        // Expected enum values from client: ACTIVE, INACTIVE, SUCCEEDED, FAILED
+        String externalTaskStatus = gSrcClient.getGlobusTransferTaskStatus(externalTaskId);
+
+        // If in a final state we are done. Use valueOf in case string is null
+        boolean isTerminal;
+        switch (String.valueOf(externalTaskStatus))
+        {
+          case "ACTIVE", "INACTIVE" -> isTerminal = false;
+          case "FAILED" ->
+          {
+            isTerminal = true;
+            // Update status of taskChild.
+            if (taskChild.isOptional()) taskChild.setStatus(TransferTaskStatus.FAILED_OPT);
+            else taskChild.setStatus(TransferTaskStatus.FAILED);
+            taskChild.setEndTime(Instant.now());
+            taskChild = dao.updateTransferTaskChild(taskChild);
+          }
+          case "SUCCEEDED" ->
+          {
+            isTerminal = true;
+            // Update status of taskChild.
+            taskChild.setStatus(TransferTaskStatus.COMPLETED);
+            taskChild.setEndTime(Instant.now());
+            taskChild = dao.updateTransferTaskChild(taskChild);
+          }
+          default ->
+          {
+            msg = LibUtils.getMsg("FILES_TXFR_ASYNCH_BAD_STATUS", taskChild.getTenantId(), taskChild.getUsername(),
+                                  taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), externalTaskId,
+                                  externalTaskStatus, iteration);
+            log.error(msg);
+            throw new ServiceException(msg);
+          }
+        }
+        if (isTerminal) break;
+        iteration++;
+      }
+    }
+    catch (DAOException ex)
+    {
+      msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                            "ChildStepTwoC", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+    msg = LibUtils.getMsg("FILES_TXFR_CHILD_ASYNCH_END", taskChild.getTenantId(), taskChild.getUsername(),
+                          taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), externalTaskId,
+                          srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
+    log.trace(msg);
   }
 }

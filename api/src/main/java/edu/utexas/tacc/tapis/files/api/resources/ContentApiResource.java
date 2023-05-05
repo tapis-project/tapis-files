@@ -69,6 +69,9 @@ public class ContentApiResource extends BaseFileOpsResource
 
   /**
    * Start an async data stream that can be used to receive contents of a file
+   * This is broken into two methods with a common method to start the download because of problems with
+   *   downloading the "root" directory. The pattern "/{systemId}/{path:(.*+)}" does not work when requester
+   *   attempts to download "/{systemId}"
    * @param systemId - id of system
    * @param path - path on system relative to system rootDir
    * @param range - range of bytes to include in the stream
@@ -214,6 +217,8 @@ public class ContentApiResource extends BaseFileOpsResource
               .build();
     }
     // Start the streaming response
+// In case we want a timeout, we can use something like this:
+//    asyncResponse.setTimeout(1, TimeUnit.DAYS);
     asyncResponse.resume(response);
   }
 }

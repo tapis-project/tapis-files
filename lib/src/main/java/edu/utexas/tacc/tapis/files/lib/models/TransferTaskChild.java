@@ -13,6 +13,7 @@ public class TransferTaskChild extends TransferTaskParent
   private int parentTaskId;
   private int retries;
   private boolean isDir;
+  private String externalTaskId = ""; // Id for an external async txfr, such as Globus
 
   /* *********************************************************************** */
   /*            Constructors                                                 */
@@ -20,7 +21,8 @@ public class TransferTaskChild extends TransferTaskParent
 
   public TransferTaskChild() {}
 
-  public TransferTaskChild(String tenantId1, String username1, TransferURI srcUri1, TransferURI dstUri1, int parentId1, String tag1)
+  public TransferTaskChild(String tenantId1, String username1, TransferURI srcUri1, TransferURI dstUri1, int parentId1,
+                           String tag1, String externalTaskId1)
   {
     tenantId = tenantId1;
     username = username1;
@@ -30,6 +32,7 @@ public class TransferTaskChild extends TransferTaskParent
     status = TransferTaskStatus.ACCEPTED;
     parentTaskId = parentId1;
     tag = tag1;
+    externalTaskId = (externalTaskId1==null) ? "" : externalTaskId1;
   }
 
   /**
@@ -55,6 +58,7 @@ public class TransferTaskChild extends TransferTaskParent
     TransferURI newDestUri = new TransferURI(destUri, destPathStr);
 
     // Set attributes for child we are constructing.
+    externalTaskId = "";
     setTag(transferTaskParent.getTag());
     setParentTaskId(transferTaskParent.getId());
     setTaskId(transferTaskParent.getTaskId());
@@ -88,7 +92,8 @@ public class TransferTaskChild extends TransferTaskParent
             .add("id=" + id)
             .add("tag=" + tag)
             .add("parentTaskId=" + parentTaskId)
-            .add("taskId=" + getTaskId())
+            .add("taskId=" + taskId)
+            .add("externalTaskId=" + externalTaskId)
             .add("retries=" + retries)
             .add("tenantId='" + tenantId + "'")
             .add("username='" + username + "'")
@@ -110,4 +115,6 @@ public class TransferTaskChild extends TransferTaskParent
   public void setRetries(int i) { retries = i; }
   public boolean isDir() { return isDir; }
   public void setDir(boolean b) { isDir = b; }
+  public String getExternalTaskId() { return (externalTaskId==null) ? "" : externalTaskId; }
+  public void setExternalTaskId(String s) { externalTaskId = (s==null) ? "" : s; }
 }
