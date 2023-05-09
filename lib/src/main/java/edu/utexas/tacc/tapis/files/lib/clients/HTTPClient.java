@@ -85,7 +85,7 @@ public class HTTPClient implements IRemoteDataClient
     }
 
   @Override
-  public FileInfo getFileInfo(@NotNull String path) throws NotFoundException
+  public FileInfo getFileInfo(@NotNull String path, boolean followLinks) throws NotFoundException
   {
     throw new NotImplementedException(LibUtils.getMsg("FILES_CLIENT_HTTP_NOT_IMPL", oboTenant, oboUser, "getFileInfo") );
   }

@@ -97,7 +97,7 @@ public interface IRemoteDataClient
    * @return FileInfo for the object or null if path does not exist.
    * @throws IOException on error
    */
-  FileInfo getFileInfo(@NotNull String path) throws IOException;
+  FileInfo getFileInfo(@NotNull String path, boolean followLinks) throws IOException;
 
   /**
    * Returns a stream of the entire contents of a file or object.

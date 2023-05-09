@@ -742,7 +742,7 @@ public class ChildTaskTransferService
 
     String srcPath = srcUri.getPath();
     String dstPath = dstUri.getPath();
-    FileInfo item = srcClient.getFileInfo(srcPath);
+    FileInfo item = srcClient.getFileInfo(srcPath, true);
     if (item == null)
     {
       throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_CHILD_PATH_NOTFOUND", taskChild.getTenantId(),

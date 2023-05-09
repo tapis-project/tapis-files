@@ -197,7 +197,7 @@ public class GlobusDataClient implements IRemoteDataClient
     {
       // Use getFileInfo to make sure path exists
       // If it does not exist this should throw NotFound
-      FileInfo fileInfo = getFileInfo(relPathStr);
+      FileInfo fileInfo = getFileInfo(relPathStr, true);
 
       // If it is a file we only have a single item which we already have, so we are done
       if (!fileInfo.isDir())
@@ -219,10 +219,8 @@ public class GlobusDataClient implements IRemoteDataClient
         fileInfo.setNativePermissions(globusFileInfo.getPermissions());
         if (globusFileInfo.getSize() != null)
           fileInfo.setSize(globusFileInfo.getSize());
-        // Set the type
-        // NOTE: currently can use the type from Globus because they match our defined types of
-        //       FileInfo.FILETYPE_FILE and FileInfo.FILETYPE_DIR.
-        fileInfo.setType(globusFileInfo.getType());
+
+        fileInfo.setType(getFileInfoType(globusFileInfo));
 
         // Fill in path with relativePath as is done for other clients such as SSH, S3 and IRODS.
         fileInfo.setPath(Paths.get(relPathStr, globusFileInfo.getName()).toString());
@@ -266,7 +264,7 @@ public class GlobusDataClient implements IRemoteDataClient
       // If it does not exist or exists and is a directory then all is good, if it exists and is a file it is an error
       try
       {
-        FileInfo fileInfo = getFileInfo(partRelativePathSB.toString());
+        FileInfo fileInfo = getFileInfo(partRelativePathSB.toString(), true);
         if (fileInfo.isDir()) continue;
         else
         {
@@ -326,13 +324,13 @@ public class GlobusDataClient implements IRemoteDataClient
 
     // Make sure the old path exists
     // If it does not exist this should throw NotFound
-    getFileInfo(oldRelativePathStr);
+    getFileInfo(oldRelativePathStr, true);
 
     // Get file info for destination path to see if it already exists and is a dir or a file.
     // If it does not exist or exists and is a directory then all is good, if it exists and is a file it is an error
     try
     {
-      FileInfo fileInfo = getFileInfo(newRelativePathStr);
+      FileInfo fileInfo = getFileInfo(newRelativePathStr, true);
       if (fileInfo.isDir())
       {
         // newPath is an existing directory. Append the oldPath file/dir name to the newPath so the oldPath is
@@ -385,7 +383,7 @@ public class GlobusDataClient implements IRemoteDataClient
 
       // Make sure the path exists
       // If it does not exist this should throw NotFound
-      FileInfo fileInfo = getFileInfo(relativePath.toString());
+      FileInfo fileInfo = getFileInfo(relativePath.toString(), true);
 
       String status;
       try
@@ -415,7 +413,7 @@ public class GlobusDataClient implements IRemoteDataClient
    * @throws IOException on error
    */
   @Override
-  public FileInfo getFileInfo(@NotNull String path) throws IOException, NotFoundException
+  public FileInfo getFileInfo(@NotNull String path, boolean followLinks) throws IOException, NotFoundException
   {
     String opName = "getFileInfo";
     FileInfo fileInfo;
@@ -476,10 +474,8 @@ public class GlobusDataClient implements IRemoteDataClient
     fileInfo.setLastModified(convertLastModified(globusFileInfo.getLastModified()));
     fileInfo.setNativePermissions(globusFileInfo.getPermissions());
     if (globusFileInfo.getSize() != null) fileInfo.setSize(globusFileInfo.getSize());
-    // Set the type
-    // NOTE: currently can use the type from Globus because they match our defined types of
-    //       FileInfo.FILETYPE_FILE and FileInfo.FILETYPE_DIR.
-    fileInfo.setType(globusFileInfo.getType());
+
+    fileInfo.setType(getFileInfoType(globusFileInfo));
 
     // Fill in path with relativePath as is done for other clients such as SSH, S3 and IRODS.
     fileInfo.setPath(relativePathStr);
@@ -705,9 +701,22 @@ public class GlobusDataClient implements IRemoteDataClient
   {
     FileInfo fileInfo = new FileInfo();
     fileInfo.setName(path);
-    fileInfo.setType(FileInfo.FILETYPE_DIR);
+    fileInfo.setType(FileInfo.FileType.DIR);
     fileInfo.setPath("/~/");
     return fileInfo;
+  }
+
+  private FileInfo.FileType getFileInfoType(GlobusFileInfo globusFileInfo) {
+    switch(globusFileInfo.getType()) {
+      case "file":
+        return FileInfo.FileType.FILE;
+
+      case "dir":
+        return FileInfo.FileType.DIR;
+
+      default:
+        return FileInfo.FileType.UNKNOWN;
+    }
   }
 
 }

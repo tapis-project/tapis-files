@@ -236,7 +236,7 @@ public class ParentTaskTransferService
         srcClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, srcSystem);
 
         // Check that src path exists. If not found it is an error.
-        FileInfo fileInfo = srcClient.getFileInfo(srcPath);
+        FileInfo fileInfo = srcClient.getFileInfo(srcPath, true);
         if (fileInfo == null)
         {
           String msg = LibUtils.getMsg("FILES_TXFR_SVC_SRCPATH_NOTFOUND", taskTenant, taskUser, parentId, parentUuid, srcPath, tag);
@@ -249,7 +249,7 @@ public class ParentTaskTransferService
         List<FileInfo> fileListing;
         // NOTE Treat all source system types the same. For S3 it will be all objects matching the srcPath as a prefix.
         log.trace(LibUtils.getMsg("FILES_TXFR_LSR1", taskTenant, taskUser, "doParentStepOneA07", parentId, parentUuid, srcId, srcPath, tag));
-        fileListing = fileOpsService.lsRecursive(srcClient, srcPath, FileOpsService.MAX_RECURSION);
+        fileListing = fileOpsService.lsRecursive(srcClient, srcPath, false, FileOpsService.MAX_RECURSION);
         if (fileListing == null) fileListing = Collections.emptyList();
         log.trace(LibUtils.getMsg("FILES_TXFR_LSR2", taskTenant, taskUser, "doParentStepOneA08", parentId, parentUuid, srcId, srcPath, fileListing.size(), tag));
 

@@ -1,0 +1,23 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd" >
+
+<suite name="Tapis File Service" verbose="1" parallel="none">
+  <groups>
+    <run>
+      <exclude name="broken"/>
+      <exclude name="notReady"/>
+      <exclude name="slow"/>
+    </run>
+  </groups>
+  <test name="filesapi.full">
+    <classes>
+      <class name="edu.utexas.tacc.tapis.files.api.resources.TestLibUtilsRoutes"/>
+      <class name="edu.utexas.tacc.tapis.files.api.resources.TestContentsRoutes"/>
+      <class name="edu.utexas.tacc.tapis.files.api.resources.TestPostItsResource"/>
+      <class name="edu.utexas.tacc.tapis.files.api.resources.TestOpsRoutes"/>
+      <class name="edu.utexas.tacc.tapis.files.api.resources.TestPermissionsResource"/>
+      <class name="edu.utexas.tacc.tapis.files.api.resources.TestTransfersRoutes"/>
+    </classes>
+  </test>
+</suite>
+
+

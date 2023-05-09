@@ -630,7 +630,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
 
         Assert.assertEquals(listing.getResult().size(), 1);
         Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
-        Assert.assertEquals(listing.getResult().get(0).getType(), FileInfo.FILETYPE_DIR);
+        Assert.assertEquals(listing.getResult().get(0).getType(), FileInfo.FileType.DIR);
     }
 
     @Test(dataProvider = "testSystemsProviderNoS3")
@@ -654,7 +654,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
 
         Assert.assertEquals(listing.getResult().size(), 1);
         Assert.assertEquals(listing.getResult().get(0).getName(), "newDirectory");
-        Assert.assertEquals(listing.getResult().get(0).getType(), FileInfo.FILETYPE_DIR);
+        Assert.assertEquals(listing.getResult().get(0).getType(), FileInfo.FileType.DIR);
     }
 
   @DataProvider(name="mkdirDataProviderNoS3")

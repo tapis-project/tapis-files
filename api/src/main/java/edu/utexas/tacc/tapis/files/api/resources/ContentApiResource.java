@@ -169,7 +169,7 @@ public class ContentApiResource extends BaseFileOpsResource
     else
     {
       // Make sure the requested path exists and is not a directory
-      FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, impersonationId, sharedCtx);
+      FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, true, impersonationId, sharedCtx);
       if (fileInfo == null)
       {
         throw new NotFoundException(LibUtils.getMsgAuth("FILES_CONT_NO_FILEINFO", user, systemId, path));

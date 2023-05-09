@@ -243,7 +243,7 @@ public class FileOpsService
         // Get the connection and increment the reservation count
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
         client.reserve();
-        return lsRecursive(client, relPathStr, depth);
+        return lsRecursive(client, relPathStr, false, depth);
       }
       catch (IOException | ServiceException ex)
       {
@@ -263,16 +263,19 @@ public class FileOpsService
    * NOTE: This method does not check permissions. Callers should check first
    * @param client - Remote data client
    * @param relPathStr - normalized path on system relative to system rootDir
+   * @param followLinks - if true, symlinks will be followed.  This really means that we will go look at the
+   *                    file pointed to by the link to get it's attributes.  The path will not be updated to
+   *                    the path of the file pointed to by the link - it just affects the attributes.
    * @return Collection of FileInfo objects
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    */
-  public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String relPathStr, int depth)
+  public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String relPathStr, boolean followLinks, int depth)
           throws ServiceException
   {
     List<FileInfo> listing = new ArrayList<>();
     // Make the call that does recursion
-    listDirectoryRecurse(client, relPathStr, listing, 0, Math.min(depth, MAX_RECURSION));
+    listDirectoryRecurse(client, relPathStr, listing, followLinks, 0, Math.min(depth, MAX_RECURSION));
     return listing;
   }
 
@@ -281,13 +284,16 @@ public class FileOpsService
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param sysId - System
    * @param pathStr - path on system relative to system rootDir
+   * @param followLinks - if true, symlinks will be followed.  This really means that we will go look at the
+   *                    file pointed to by the link to get it's attributes.  The path will not be updated to
+   *                    the path of the file pointed to by the link - it just affects the attributes.
    * @param impersonationId - use provided Tapis username instead of oboUser
    * @param sharedCtxGrantor - Share grantor for the case of a shared context.
    * @return FileInfo or null if not found
    * @throws NotFoundException - requested path not found
    */
   public FileInfo getFileInfo(@NotNull ResourceRequestUser rUser, @NotNull String sysId, @NotNull String pathStr,
-                              String impersonationId, String sharedCtxGrantor)
+                              boolean followLinks, String impersonationId, String sharedCtxGrantor)
           throws WebApplicationException
   {
     String opName = "getFileInfo";
@@ -308,7 +314,7 @@ public class FileOpsService
       // Get the connection and increment the reservation count
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
-      return client.getFileInfo(pathStr);
+      return client.getFileInfo(pathStr, followLinks);
     }
     catch (IOException ex)
     {
@@ -348,7 +354,6 @@ public class FileOpsService
     IRemoteDataClient client = null;
     try
     {
-      LibUtils.checkPermitted(permsService, oboTenant, oboUser, systemId, pathStr, Permission.MODIFY);
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
       upload(client, relPathStr, inStrm);
@@ -398,7 +403,7 @@ public class FileOpsService
       try
       {
         // Make sure file does not already exist as a directory
-        var fInfo = client.getFileInfo(relPathStr);
+        var fInfo = client.getFileInfo(relPathStr, true);
         if (fInfo != null && fInfo.isDir())
         {
           String msg = LibUtils.getMsg("FILES_ERR_UPLOAD_DIR", client.getOboTenant(), client.getOboUser(),
@@ -572,7 +577,7 @@ public class FileOpsService
     try
     {
       // Get file info here, so we can do some basic checks independent of the system type
-      FileInfo srcFileInfo = client.getFileInfo(srcRelPathStr);
+      FileInfo srcFileInfo = client.getFileInfo(srcRelPathStr, true);
       // Make sure srcPath exists
       if (srcFileInfo == null)
       {
@@ -1056,7 +1061,7 @@ public class FileOpsService
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       client.reserve();
       // Step through a recursive listing up to some max depth
-      List<FileInfo> listing = lsRecursive(client, relPathStr, MAX_RECURSION);
+      List<FileInfo> listing = lsRecursive(client, relPathStr, true, MAX_RECURSION);
       for (FileInfo fileInfo : listing)
       {
         // Build the path we will use for the zip entry
@@ -1068,17 +1073,28 @@ public class FileOpsService
         // For final entry we do not want the leading slash
         String entryPath = StringUtils.removeStart(currentPath.toString(), "/");
 
+        // the file info that we got from the directory listing will not follow links, so we must
+        // get file info with followLinks=true to get the info for the link.
+        if(fileInfo.isSymLink()) {
+          FileInfo tmpInfo = getFileInfo(rUser, sysId, fileInfo.getPath(), true, null, null);
+          if(tmpInfo == null) {
+            log.warn("Could not get file info for path:" + fileInfo.getPath());
+            continue;
+          }
+          fileInfo = tmpInfo;
+        }
+
         // Always add an entry for a dir to be sure empty directories are included
         if (fileInfo.isDir())
         {
           addDirectoryToZip(zipStream, entryPath);
-        }
-        else
-        {
+        } else if(fileInfo.isFile()) {
           try (InputStream inputStream = getAllBytes(rUser, sys, fileInfo.getPath()))
           {
             addFileToZip(zipStream, entryPath, inputStream);
           }
+        } else {
+          log.warn("Ignoring file type: " + fileInfo.getType() + " path: " + fileInfo.getPath());
         }
       }
     }
@@ -1119,7 +1135,7 @@ public class FileOpsService
    * @throws NotFoundException - requested path not found
    */
   private void listDirectoryRecurse(@NotNull IRemoteDataClient client, String basePath, List<FileInfo> listing,
-                                    int depth, int maxDepth)
+                                    boolean followLinks, int depth, int maxDepth)
           throws ServiceException
   {
     List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0);
@@ -1128,10 +1144,24 @@ public class FileOpsService
     if (SystemTypeEnum.S3.equals(client.getSystemType())) return;
     for (FileInfo fileInfo: currentListing)
     {
+      if(followLinks && fileInfo.isSymLink()) {
+        FileInfo tmpInfo = null;
+        try {
+          tmpInfo = client.getFileInfo(fileInfo.getPath(), true);
+        } catch (IOException e) {
+          log.error("Could not get file info for path:" + fileInfo.getPath(), e);
+          continue;
+        }
+        if(tmpInfo == null) {
+          log.warn("Could not get file info for path:" + fileInfo.getPath());
+          continue;
+        }
+        fileInfo = tmpInfo;
+      }
       if (fileInfo.isDir() && depth < maxDepth)
       {
         depth++;
-        listDirectoryRecurse(client, fileInfo.getPath(), listing, depth, maxDepth);
+        listDirectoryRecurse(client, fileInfo.getPath(), listing, followLinks, depth, maxDepth);
       }
     }
   }

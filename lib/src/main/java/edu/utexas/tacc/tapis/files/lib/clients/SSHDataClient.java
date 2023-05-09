@@ -183,14 +183,7 @@ public class SSHDataClient implements ISSHDataClient
       //Try to determine the Mimetype
       Path tmpPath = Paths.get(entry.getFilename());
       fileInfo.setMimeType(Files.probeContentType(tmpPath));
-      if (attrs.isDirectory())
-      {
-        fileInfo.setType(FileInfo.FILETYPE_DIR);
-      }
-      else
-      {
-        fileInfo.setType(FileInfo.FILETYPE_FILE);
-      }
+      fileInfo.setType(getFileInfoType(attrs));
       fileInfo.setOwner(String.valueOf(attrs.getUserId()));
       fileInfo.setGroup(String.valueOf(attrs.getGroupId()));
       fileInfo.setNativePermissions(FileStatInfo.getPermsFromInt(attrs.getPermissions()));
@@ -430,10 +423,10 @@ public class SSHDataClient implements ISSHDataClient
    * @throws IOException Generally a network error
    */
   @Override
-  public FileInfo getFileInfo(@NotNull String path) throws IOException, NotFoundException
+  public FileInfo getFileInfo(@NotNull String path, boolean followLinks) throws IOException, NotFoundException
   {
     SSHSftpClient sftpClient = connectionHolder.getSftpClient();
-    try  { return getFileInfo(sftpClient, path); }
+    try  { return getFileInfo(sftpClient, path, followLinks); }
     finally
     {
       sftpClient.close();
@@ -765,7 +758,7 @@ public class SSHDataClient implements ISSHDataClient
    * @return FileInfo for the path or null if path not found
    * @throws IOException on IO error
    */
-  private FileInfo getFileInfo(SSHSftpClient sftpClient, String path) throws IOException, NotFoundException
+  private FileInfo getFileInfo(SSHSftpClient sftpClient, String path, boolean followLinks) throws IOException, NotFoundException
   {
     FileInfo fileInfo = new FileInfo();
     // Process the relative path string and make sure it is not empty.
@@ -775,8 +768,9 @@ public class SSHDataClient implements ISSHDataClient
     try
     {
       // Get stat attributes and fill in FileInfo.
-      Attributes attributes = sftpClient.stat(absolutePath.toString());
-      if (attributes.isDirectory()) fileInfo.setType(FileInfo.FILETYPE_DIR); else fileInfo.setType(FileInfo.FILETYPE_FILE);
+      Attributes attributes = followLinks ? sftpClient.stat(absolutePath.toString())
+              : sftpClient.lstat(absolutePath.toString());
+      fileInfo.setType(getFileInfoType(attributes));
       DirEntry entry = new DirEntry(relativePathStr, relativePathStr, attributes);
       Path entryPath = Paths.get(entry.getFilename());
       fileInfo.setName(entryPath.getFileName().toString());
@@ -928,5 +922,19 @@ public class SSHDataClient implements ISSHDataClient
     sb.append(unquotedString.replace("'", "'\\''"));
     sb.append("'");
     return sb.toString();
+  }
+
+  private FileInfo.FileType getFileInfoType(Attributes attributes) {
+    if(attributes.isDirectory()) {
+      return FileInfo.FileType.DIR;
+    } else if (attributes.isRegularFile()) {
+      return FileInfo.FileType.FILE;
+    } else if (attributes.isSymbolicLink()) {
+      return FileInfo.FileType.SYMLINK;
+    } else if (attributes.isOther()) {
+      return FileInfo.FileType.OTHER;
+    } else {
+      return FileInfo.FileType.UNKNOWN;
+    }
   }
 }

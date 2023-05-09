@@ -1,0 +1,28 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd" >
+<suite name="Tapis File Service" verbose="2" parallel="none">
+  <groups>
+    <run>
+      <exclude name="broken"/>
+      <exclude name="notReady"/>
+      <exclude name="slow"/>
+    </run>
+  </groups>
+  <test name="fileslib">
+    <classes>
+      <class name="edu.utexas.tacc.tapis.files.lib.services.TestFileShareService"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.cache.TestSSHConnectionCache"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.utils.PathUtilsTest"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.utils.S3URLParserTest"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.transfers.TestTransfers"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.config.TestSettings"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.dao.transfers.TestFileTransfersDAO"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.clients.TestHTTPClient"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.clients.TestIrodsClient"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.clients.TestS3Client"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.services.TestFileOpsService"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.services.TestPermissions"/>
+    </classes>
+  </test>
+</suite>
+
+
