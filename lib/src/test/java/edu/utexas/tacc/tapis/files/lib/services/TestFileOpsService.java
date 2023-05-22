@@ -856,12 +856,12 @@ public class TestFileOpsService
     }
   }
   @Test
-  public void thing() throws JsonProcessingException {
+  public void testFileTypeObjectMapping() throws JsonProcessingException {
 
     ObjectMapper mapper = new ObjectMapper();
     String fileString = mapper.writeValueAsString(new FileInfoTestClass("file"));
     String dirString = mapper.writeValueAsString(new FileInfoTestClass("dir"));
-    String linkString = mapper.writeValueAsString(new FileInfoTestClass("symbolicLink"));
+    String linkString = mapper.writeValueAsString(new FileInfoTestClass("symbolic_link"));
     String otherString = mapper.writeValueAsString(new FileInfoTestClass("other"));
     String unknownString = mapper.writeValueAsString(new FileInfoTestClass("unknown"));
 
@@ -873,7 +873,7 @@ public class TestFileOpsService
 
     Assert.assertEquals(file.getFileType(), FileInfo.FileType.FILE);
     Assert.assertEquals(dir.getFileType(), FileInfo.FileType.DIR);
-    Assert.assertEquals(link.getFileType(), FileInfo.FileType.SYMLINK);
+    Assert.assertEquals(link.getFileType(), FileInfo.FileType.SYMBOLIC_LINK);
     Assert.assertEquals(other.getFileType(), FileInfo.FileType.OTHER);
     Assert.assertEquals(unknown.getFileType(), FileInfo.FileType.UNKNOWN);
   }

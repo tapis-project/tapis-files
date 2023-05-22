@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.NotSupportedException;
+
 import org.jetbrains.annotations.NotNull;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -88,7 +90,7 @@ public interface IRemoteDataClient
    * @throws NotFoundException if path not found
    * @throws IOException on error
    */
-  void delete(@NotNull String path) throws NotFoundException, IOException;
+  void delete(@NotNull String path) throws NotFoundException, NotSupportedException, IOException;
 
   /**
    * Returns file info for the file/dir or object if path exists, null if path does not exist

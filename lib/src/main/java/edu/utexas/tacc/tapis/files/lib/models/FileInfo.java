@@ -23,7 +23,7 @@ public class FileInfo
     public  enum FileType {
         FILE("file"),
         DIR("dir"),
-        SYMLINK("symbolicLink"),
+        SYMBOLIC_LINK("symbolic_link"),
         OTHER("other"),
         UNKNOWN("unknown");
 
@@ -105,6 +105,9 @@ public class FileInfo
 
     public FileType getType() { return type; }
     public void setType(FileType s) { type = s; }
+    public void setType(String s) {
+      type = FileType.fromString(s);
+    }
 
     public String getOwner() { return owner; }
     public void setOwner(String s) { owner = s; }
@@ -122,7 +125,7 @@ public class FileInfo
     public boolean isFile() { return FileType.FILE.equals(type); }
 
     @JsonIgnore
-    public boolean isSymLink() { return FileType.SYMLINK.equals(type); }
+    public boolean isSymLink() { return FileType.SYMBOLIC_LINK.equals(type); }
 
     @JsonProperty("lastModified")
     public Instant getLastModified() { return lastModified; }

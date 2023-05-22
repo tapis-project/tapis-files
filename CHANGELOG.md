@@ -9,12 +9,13 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.3.6 - 2023-??-??
+## 1.3.6 - 2023-05-22
 
 Incremental improvements and new features.
 
 ### New features:
 - Support file operations and transfers for systems of type GLOBUS.
+- Improve support of symbolic links on linux systems.
 
 ### Bug fixes:
 - None
