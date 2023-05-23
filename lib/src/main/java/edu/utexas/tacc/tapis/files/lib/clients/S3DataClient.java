@@ -374,7 +374,7 @@ public class S3DataClient implements IRemoteDataClient
   }
 
   @Override
-  public FileInfo getFileInfo(@NotNull String path) throws IOException
+  public FileInfo getFileInfo(@NotNull String path, boolean followLinks) throws IOException
   {
     FileInfo fileInfo = null;
     try

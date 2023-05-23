@@ -119,7 +119,7 @@ public class IrodsDataClient implements IRemoteDataClient
         List<FileInfo> outListing = new ArrayList<>();
         FileInfo fileInfo = new FileInfo();
         fileInfo.setSize(collection.length());
-        fileInfo.setType(FileInfo.FILETYPE_FILE);
+        fileInfo.setType(FileInfo.FileType.FILE);
         fileInfo.setName(collection.getName());
         Path tmpPath = Paths.get(collection.getPath());
         Path relPath = rootDirPath.relativize(tmpPath);
@@ -137,7 +137,14 @@ public class IrodsDataClient implements IRemoteDataClient
         FileInfo fileInfo = new FileInfo();
         fileInfo.setPath(relPath.toString());
         fileInfo.setName(file.getName());
-        fileInfo.setType(file.isDirectory() ? FileInfo.FILETYPE_DIR : FileInfo.FILETYPE_FILE);
+        fileInfo.setType(getFileInfoType(collection));
+        if(file.isDirectory()) {
+            fileInfo.setType(FileInfo.FileType.DIR);
+        } else if (file.isFile()) {
+            fileInfo.setType(FileInfo.FileType.FILE);
+        } else {
+            fileInfo.setType(FileInfo.FileType.UNKNOWN);
+        }
         fileInfo.setSize(file.length());
         try {
           fileInfo.setMimeType(Files.probeContentType(tmpPath));
@@ -331,7 +338,7 @@ public class IrodsDataClient implements IRemoteDataClient
     }
 
   @Override
-  public FileInfo getFileInfo(@NotNull String path) throws IOException
+  public FileInfo getFileInfo(@NotNull String path, boolean followLinks) throws IOException
   {
     FileInfo fileInfo = null;
     if (StringUtils.isEmpty(path)) path="/";
@@ -354,8 +361,7 @@ public class IrodsDataClient implements IRemoteDataClient
       fileInfo.setPath(StringUtils.removeStart(relPath.toString(), "/"));
       fileInfo.setUrl(PathUtils.getTapisUrlFromPath(fileInfo.getPath(), systemId));
       fileInfo.setLastModified(Instant.ofEpochSecond(collection.lastModified()));
-      if (collection.isFile()) fileInfo.setType(FileInfo.FILETYPE_FILE);
-      else fileInfo.setType(FileInfo.FILETYPE_DIR);
+      fileInfo.setType(getFileInfoType(collection));
     }
     catch (JargonException ex)
     {
@@ -482,5 +488,15 @@ public class IrodsDataClient implements IRemoteDataClient
       String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenant, "", oboTenant, oboUser);
       throw new IOException(msg, ex);
     }
+  }
+
+  FileInfo.FileType getFileInfoType(IRODSFile collection) {
+      if(collection.isFile()) {
+          return FileInfo.FileType.FILE;
+      } else if (collection.isDirectory()) {
+          return FileInfo.FileType.DIR;
+      } else {
+          return FileInfo.FileType.UNKNOWN;
+      }
   }
 }

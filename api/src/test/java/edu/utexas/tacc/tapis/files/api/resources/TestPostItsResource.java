@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.api.responses.PostItDTO;
 import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.caches.TenantAdminCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
@@ -44,6 +45,7 @@ import static org.mockito.Mockito.when;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -81,6 +83,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     private ServiceClients serviceClients;
     private SKClient skClient;
     private SystemsCache systemsCache;
+    private SystemsCacheNoAuth systemsCacheNoAuth;
     private FilePermsService permsService;
     private static class CreateFileResponse extends TapisResponse<String> {}
     private static class TapisPostItResponse extends TapisResponse<PostItDTO> {}
@@ -116,6 +119,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         skClient = Mockito.mock(SKClient.class);
         serviceClients = Mockito.mock(ServiceClients.class);
         systemsCache = Mockito.mock(SystemsCache.class);
+        systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
         permsService = Mockito.mock(FilePermsService.class);
         JWTValidateRequestFilter.setSiteId("tacc");
         JWTValidateRequestFilter.setService("files");
@@ -138,6 +142,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
                         bind(tenantManager).to(TenantManager.class);
                         bind(permsService).to(FilePermsService.class);
                         bind(systemsCache).to(SystemsCache.class);
+                        bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
                         bindAsContract(RemoteDataClientFactory.class);
                         bind(serviceContext).to(ServiceContext.class);
                     }
@@ -152,10 +157,14 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         return rc;
     }
 
+    @BeforeClass
+    public void beforeClass() throws Exception {
+        super.setUp();
+    }
     @BeforeMethod
     public void initMocks() throws Exception
     {
-        Mockito.reset(skClient, systemsCache, serviceClients, permsService);
+        Mockito.reset(skClient, systemsCache, systemsCacheNoAuth, serviceClients, permsService);
         when(serviceClients.getClient(any(), any(), eq(SKClient.class))).thenReturn(skClient);
 
         // setup who is a domain admin
@@ -179,6 +188,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
             try {
                 when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
                 when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(sys);
+                when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(sys);
                 when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
                 target(String.format("%s/%s/", OPS_ROUTE, SYSTEM_ID))
                         .request()
@@ -210,6 +220,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileName = "testPostItsFile.txt";
         int fileSize = 100;
@@ -242,6 +253,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testCreateNotPermitted(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileName = "testPostItsFile.txt";
         int fileSize = 100;
@@ -260,6 +272,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testCreateBadPath(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileName = "bogus.filename";
         PostItCreateRequest request = new PostItCreateRequest();
@@ -277,6 +290,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testGetSpecialCases(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileName = "testPostItsFile.txt";
         int fileSize = 100;
@@ -308,6 +322,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testList(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileName = "testPostItsFile.txt";
         int fileSize = 100;
@@ -357,6 +372,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testUpdate(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileName = "testPostItsFile.txt";
         int fileSize = 100;
@@ -410,6 +426,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testRedeemUsesLimit(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileName = "testPostItsFile.txt";
         int fileSize = 12;
@@ -438,6 +455,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testRedeemFileAsZip(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileInRoot = "testPostItsFile.txt";
         String fileInDir = "dir/testPostItsFile.txt";
@@ -496,6 +514,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testRedeemDirectoryAsZip(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
         List<FakeFileInfo> ffis = new ArrayList<>();
         int fileSize = 12;
         ffis.add(new FakeFileInfo("zipRoot/dir1/file1.txt", makeFakeFile(fileSize)));
@@ -547,6 +566,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testRedeemRootDirectoryAsZip(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
         List<FakeFileInfo> ffis = new ArrayList<>();
         int fileSize = 12;
         ffis.add(new FakeFileInfo("dir1/file1.txt", makeFakeFile(fileSize)));
@@ -597,6 +617,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void testUnlimitedUsesLimit(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileName = "testPostItsFile.txt";
         int fileSize = 12;
@@ -624,6 +645,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     public void redeemInvalidPostItId(TapisSystem testSystem) throws Exception {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         byte[] bytes = doRedeem("v3/files/postits/redeem/49", 404);
         // redeem should fail - no more allowedUsesk
@@ -635,6 +657,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
     {
         // setup external service mocks
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         String fileName = "testPostItsFile.txt";
         int fileSize = 100;
