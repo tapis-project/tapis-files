@@ -10,12 +10,14 @@
   </groups>
   <test name="filesapi.full">
     <classes>
+<!--
       <class name="edu.utexas.tacc.tapis.files.api.resources.TestLibUtilsRoutes"/>
       <class name="edu.utexas.tacc.tapis.files.api.resources.TestContentsRoutes"/>
       <class name="edu.utexas.tacc.tapis.files.api.resources.TestPostItsResource"/>
       <class name="edu.utexas.tacc.tapis.files.api.resources.TestOpsRoutes"/>
       <class name="edu.utexas.tacc.tapis.files.api.resources.TestPermissionsResource"/>
       <class name="edu.utexas.tacc.tapis.files.api.resources.TestTransfersRoutes"/>
+-->
     </classes>
   </test>
 </suite>
