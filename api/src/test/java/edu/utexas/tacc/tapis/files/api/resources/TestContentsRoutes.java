@@ -324,7 +324,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     else Assert.assertEquals(count, 4);
   }
 
-  @Test(dataProvider = "testSystemsProvider")
+  @Test(dataProvider = "testSystemsProvider", groups = {"slow"})
   public void testStreamLargeFile(TapisSystem system) throws Exception
   {
     when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(system);

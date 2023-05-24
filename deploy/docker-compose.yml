@@ -13,9 +13,9 @@ networks:
 services:
   postgres:
     image: postgres:11
-    container_name: tapis-postgres
+    container_name: tapis_files_postgres
     labels:
-      name: tapis-postgres
+      name: tapis_files_postgres
     restart: always
     environment:
       - POSTGRES_USER=dev

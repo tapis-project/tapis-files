@@ -29,6 +29,22 @@
                     </archive>
                 </configuration>
             </plugin>
+
+            <!-- failsafe plugin is for running integration tests -->
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-failsafe-plugin</artifactId>
+              <configuration>
+                <suiteXmlFiles>
+                  <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                </suiteXmlFiles>
+              </configuration>
+              <executions>
+                <execution>
+                </execution>
+              </executions>
+            </plugin>
+
         </plugins>
     </build>
     <profiles>

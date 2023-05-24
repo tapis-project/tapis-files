@@ -141,7 +141,7 @@ public class PostItsService {
                                                                opName, systemId, path, FileInfo.Permission.READ,
                                                                impersonationIdNull, sharedCtxGrantorNull);
         // make sure the file exists
-        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, null, null);
+        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, true, null, null);
         if(fileInfo == null) {
             String msg = LibUtils.getMsgAuthR("POSTIT_SERVICE_ERROR", rUser,
                     systemId, path, "Unable to get file info");
@@ -325,7 +325,7 @@ public class PostItsService {
         }
 
         // fileOpsService.getFileInfo() will check path permissions, so no need to check in this method.
-        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, null, null);
+        FileInfo fileInfo = fileOpsService.getFileInfo(rUser, systemId, path, true, null, null);
         if (fileInfo == null)
         {
             throw new NotFoundException(LibUtils.getMsgAuthR("FILES_CONT_NO_FILEINFO", rUser, systemId, path));

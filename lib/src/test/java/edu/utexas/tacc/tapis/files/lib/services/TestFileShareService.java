@@ -51,6 +51,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -203,6 +204,7 @@ public class TestFileShareService
 
     // Create file at path
     InputStream in = Utils.makeFakeFile(10*1024);
+    permsService.grantPermission(devTenant, testUser1, sysId, filePathStr, Permission.MODIFY);
     fileOpsService.upload(rTestUser1, sysId, filePathStr, in);
 
     // Grant testUser1 full perms, testUser2 READ
@@ -323,7 +325,7 @@ public class TestFileShareService
     // Check that testUser can see the file and testUser2 cannot
     fileOpsService.ls(rTestUser1, sysId, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
     fileOpsService.ls(rTestUser1, sysId, fileToCheck, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
-    fileOpsService.getFileInfo(rTestUser1, sysId, fileToCheck, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.getFileInfo(rTestUser1, sysId, fileToCheck, true, nullImpersonationId, sharedCtxGrantorNull);
     boolean pass = false;
     try
     {
@@ -334,7 +336,7 @@ public class TestFileShareService
     pass = false;
     try
     {
-      fileOpsService.getFileInfo(rTestUser2, sysId, fileToCheck, nullImpersonationId, sharedCtxGrantorNull);
+      fileOpsService.getFileInfo(rTestUser2, sysId, fileToCheck, true, nullImpersonationId, sharedCtxGrantorNull);
     }
     catch (ForbiddenException e) { pass = true; }
     Assert.assertTrue(pass, "User testUser2 should not be able to getFileInfo");
@@ -376,8 +378,8 @@ public class TestFileShareService
     // Check that testUser and testUser2 can now see the path
     fileOpsService.ls(rTestUser1, sysId, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
     fileOpsService.ls(rTestUser2, sysId, pathToShare, 1, 0, nullImpersonationId, sharedCtxGrantorNull);
-    fileOpsService.getFileInfo(rTestUser2, sysId, pathToShare, nullImpersonationId, sharedCtxGrantorNull);
-    fileOpsService.getFileInfo(rTestUser2, sysId, fileToCheck, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.getFileInfo(rTestUser2, sysId, pathToShare, true, nullImpersonationId, sharedCtxGrantorNull);
+    fileOpsService.getFileInfo(rTestUser2, sysId, fileToCheck, true, nullImpersonationId, sharedCtxGrantorNull);
 
     // Remove share.
     fileShareService.unSharePath(rTestUser1, sysId, pathToShare, userSet);

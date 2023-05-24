@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
+import javax.ws.rs.NotSupportedException;
 
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
@@ -183,14 +184,7 @@ public class SSHDataClient implements ISSHDataClient
       //Try to determine the Mimetype
       Path tmpPath = Paths.get(entry.getFilename());
       fileInfo.setMimeType(Files.probeContentType(tmpPath));
-      if (attrs.isDirectory())
-      {
-        fileInfo.setType(FileInfo.FILETYPE_DIR);
-      }
-      else
-      {
-        fileInfo.setType(FileInfo.FILETYPE_FILE);
-      }
+      fileInfo.setType(getFileInfoType(attrs));
       fileInfo.setOwner(String.valueOf(attrs.getUserId()));
       fileInfo.setGroup(String.valueOf(attrs.getGroupId()));
       fileInfo.setNativePermissions(FileStatInfo.getPermsFromInt(attrs.getPermissions()));
@@ -402,7 +396,7 @@ public class SSHDataClient implements ISSHDataClient
    * @throws IOException Generally a network error
    */
   @Override
-  public void delete(@NotNull String path) throws IOException, NotFoundException
+  public void delete(@NotNull String path) throws IOException, NotFoundException, NotSupportedException
   {
     // Get path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(path).toString();
@@ -430,10 +424,10 @@ public class SSHDataClient implements ISSHDataClient
    * @throws IOException Generally a network error
    */
   @Override
-  public FileInfo getFileInfo(@NotNull String path) throws IOException, NotFoundException
+  public FileInfo getFileInfo(@NotNull String path, boolean followLinks) throws IOException, NotFoundException
   {
     SSHSftpClient sftpClient = connectionHolder.getSftpClient();
-    try  { return getFileInfo(sftpClient, path); }
+    try  { return getFileInfo(sftpClient, path, followLinks); }
     finally
     {
       sftpClient.close();
@@ -678,34 +672,49 @@ public class SSHDataClient implements ISSHDataClient
    * @param relPathStr path
    * @throws IOException On error
    */
-  private void recursiveDelete(SSHSftpClient sftpClient, String relPathStr) throws IOException
+  private void recursiveDelete(SSHSftpClient sftpClient, String relPathStr) throws IOException, NotSupportedException
   {
+    String opName = "recursiveDelete";
     String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relPathStr).toString();
+
     //Get list of all files at the path
     List<FileInfo> files = ls(relPathStr);
-    FileStatInfo attributes = getStatInfo(relPathStr, false);
+    FileInfo fileInfo = getFileInfo(relPathStr, false);
 
-    // For each file/directory do a delete
-    for (FileInfo entry : files)
-    {
-      // If it is a directory (other than . or ..) then recursively delete
-      if ((!entry.getName().equals(".")) && (!entry.getName().equals("..")) && (entry.isDir()))
-      {
-        // Get a normalized path for the directory
-        Path tmpPath = Paths.get(relPathStr, entry.getName()).normalize();
-        recursiveDelete(sftpClient, tmpPath.toString());
-      }
-      else
-      {
-        //It is a file, use sftpClient to delete
-        Path tmpPath = PathUtils.getAbsolutePath(rootDir, entry.getPath());
-        sftpClient.remove(tmpPath.toString());
+    if(fileInfo.isDir()) {
+      // For each file/directory do a delete
+      for (FileInfo entry : files) {
+        // If it is a directory (other than . or ..) then recursively delete
+        if ((!entry.getName().equals(".")) && (!entry.getName().equals("..")) && (entry.isDir())) {
+          // Get a normalized path for the directory
+          Path tmpPath = Paths.get(relPathStr, entry.getName()).normalize();
+          recursiveDelete(sftpClient, tmpPath.toString());
+        } else {
+          // It is a file or link, use sftpClient to delete (this will not delete the file if the
+          // type is "other" - but that's what we want
+          Path tmpPath = PathUtils.getAbsolutePath(rootDir, entry.getPath());
+          if (entry.isFile() || entry.isSymLink()) {
+            sftpClient.remove(tmpPath.toString());
+          } else {
+            String msg = LibUtils.getMsg("FILES_CLIENT_SPECIAL_FILE",
+                    oboTenant, oboUser, systemId, effectiveUserId, host, absolutePathStr, entry.getType(), opName);
+            log.error(msg);
+            throw new NotSupportedException(msg);
+          }
+        }
       }
     }
     // If we were working on a directory and it was not rootDir then remove the directory entry
-    if (!absolutePathStr.equals(rootDir) && attributes.isDir())
+    if (!absolutePathStr.equals(rootDir))
     {
-      sftpClient.rmdir(absolutePathStr);
+      if(fileInfo.isDir()) {
+        sftpClient.rmdir(absolutePathStr);
+      } else if (fileInfo.isFile() || fileInfo.isSymLink()) {
+        sftpClient.remove(absolutePathStr);
+      } else {
+        throw new NotSupportedException(LibUtils.getMsg("FILES_CLIENT_SPECIAL_FILE",
+                oboTenant, oboUser, systemId, effectiveUserId, host, absolutePathStr, fileInfo.getType(), opName));
+      }
     }
   }
 
@@ -765,7 +774,7 @@ public class SSHDataClient implements ISSHDataClient
    * @return FileInfo for the path or null if path not found
    * @throws IOException on IO error
    */
-  private FileInfo getFileInfo(SSHSftpClient sftpClient, String path) throws IOException, NotFoundException
+  private FileInfo getFileInfo(SSHSftpClient sftpClient, String path, boolean followLinks) throws IOException, NotFoundException
   {
     FileInfo fileInfo = new FileInfo();
     // Process the relative path string and make sure it is not empty.
@@ -775,8 +784,9 @@ public class SSHDataClient implements ISSHDataClient
     try
     {
       // Get stat attributes and fill in FileInfo.
-      Attributes attributes = sftpClient.stat(absolutePath.toString());
-      if (attributes.isDirectory()) fileInfo.setType(FileInfo.FILETYPE_DIR); else fileInfo.setType(FileInfo.FILETYPE_FILE);
+      Attributes attributes = followLinks ? sftpClient.stat(absolutePath.toString())
+              : sftpClient.lstat(absolutePath.toString());
+      fileInfo.setType(getFileInfoType(attributes));
       DirEntry entry = new DirEntry(relativePathStr, relativePathStr, attributes);
       Path entryPath = Paths.get(entry.getFilename());
       fileInfo.setName(entryPath.getFileName().toString());
@@ -928,5 +938,19 @@ public class SSHDataClient implements ISSHDataClient
     sb.append(unquotedString.replace("'", "'\\''"));
     sb.append("'");
     return sb.toString();
+  }
+
+  private FileInfo.FileType getFileInfoType(Attributes attributes) {
+    if(attributes.isDirectory()) {
+      return FileInfo.FileType.DIR;
+    } else if (attributes.isRegularFile()) {
+      return FileInfo.FileType.FILE;
+    } else if (attributes.isSymbolicLink()) {
+      return FileInfo.FileType.SYMBOLIC_LINK;
+    } else if (attributes.isOther()) {
+      return FileInfo.FileType.OTHER;
+    } else {
+      return FileInfo.FileType.UNKNOWN;
+    }
   }
 }
