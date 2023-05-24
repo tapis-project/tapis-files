@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxFaclRequest;
@@ -21,20 +20,16 @@ import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService.NativeLinuxOperation;
 import edu.utexas.tacc.tapis.security.client.SKClient;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
-import edu.utexas.tacc.tapis.systems.client.SystemsClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.StringUtils;
-import org.glassfish.hk2.api.ServiceLocator;
-import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
@@ -111,9 +106,10 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   // mocking out the services
   private ServiceClients serviceClients;
-  private SystemsClient systemsClient;
   private SKClient skClient;
   private FilePermsService permsService;
+  private SystemsCacheNoAuth systemsCacheNoAuth;
+  private SystemsCache systemsCache;
 
   /*
    * Private constructor to create and setup systems used in tests
@@ -145,61 +141,41 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
     forceSet(TestProperties.CONTAINER_PORT, "0");
     skClient = Mockito.mock(SKClient.class);
     serviceClients = Mockito.mock(ServiceClients.class);
-    systemsClient = Mockito.mock(SystemsClient.class);
     permsService = Mockito.mock(FilePermsService.class);
+    systemsCache = Mockito.mock(SystemsCache.class);
+    systemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
     JWTValidateRequestFilter.setSiteId("tacc");
     JWTValidateRequestFilter.setService("files");
     ServiceContext serviceContext = Mockito.mock(ServiceContext.class);
     IRuntimeConfig runtimeConfig = RuntimeSettings.get();
     TenantManager tenantManager = TenantManager.getInstance(runtimeConfig.getTenantsServiceURL());
     tenantManager.getTenants();
-/*
-    try {
-      Field f = FileOpsService.class.getDeclaredField("siteAdminTenantId");
-      f.setAccessible(true);
-      f.set(FileOpsService.class, "tacc");
-    } catch (NoSuchFieldException | IllegalAccessException e) {
-      throw new RuntimeException(e);
-    }
-*/
-
-    AbstractBinder binder = new AbstractBinder()
-    {
-      @Override
-      protected void configure()
-      {
-        bind(new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
-        bind(serviceClients).to(ServiceClients.class);
-        bind(tenantManager).to(TenantManager.class);
-        bind(permsService).to(FilePermsService.class);
-        bindAsContract(SystemsCache.class).in(Singleton.class);
-        bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
-        bindAsContract(FileOpsService.class).in(Singleton.class);
-        bindAsContract(FileUtilsService.class).in(Singleton.class);
-        bindAsContract(FileShareService.class).in(Singleton.class);
-        bindAsContract(RemoteDataClientFactory.class);
-        bind(serviceContext).to(ServiceContext.class);
-      }
-    };
 
     ResourceConfig app = new BaseResourceConfig()
             .register(JWTValidateRequestFilter.class)
             .register(FilePermissionsAuthz.class)
-            .register(binder);
+            .register(new AbstractBinder()
+            {
+              @Override
+              protected void configure()
+              {
+                bind(new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+                bind(serviceClients).to(ServiceClients.class);
+                bind(tenantManager).to(TenantManager.class);
+                bind(permsService).to(FilePermsService.class);
+                bind(systemsCache).to(SystemsCache.class);
+                bind(systemsCacheNoAuth).to(SystemsCacheNoAuth.class);
+                bindAsContract(FileOpsService.class).in(Singleton.class);
+                bindAsContract(FileUtilsService.class).in(Singleton.class);
+                bindAsContract(FileShareService.class).in(Singleton.class);
+                bindAsContract(RemoteDataClientFactory.class);
+                bind(serviceContext).to(ServiceContext.class);
+              }
+            });
     app.register(OperationsApiResource.class);
     app.register(UtilsLinuxApiResource.class);
     FilePermsService.setSiteAdminTenantId("admin");
     FileShareService.setSiteAdminTenantId("admin");
-
-    ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
-    ServiceLocatorUtilities.bind(locator, binder);
-    FileOpsService fopsService = locator.getService(FileOpsService.class);
-
-    try {
-      fopsService.initService("tacc", "tacc", "");
-    } catch (TapisException | TapisClientException e ) {
-      throw new RuntimeException(e);
-    }
 
     return app;
   }
@@ -233,9 +209,8 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   {
     Mockito.reset(skClient);
     Mockito.reset(serviceClients);
-    Mockito.reset(systemsClient);
+    Mockito.reset(systemsCache, systemsCacheNoAuth);
     when(serviceClients.getClient(any(String.class), any(String.class), eq(SKClient.class))).thenReturn(skClient);
-    when(serviceClients.getClient(any(String.class), any(String.class), eq(SystemsClient.class))).thenReturn(systemsClient);
     when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
   }
 
@@ -248,8 +223,6 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
       try
       {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
-        when(systemsClient.getSystemWithCredentials(any())).thenReturn(sys);
-        when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(sys);
         target(String.format("%s/%s/", OPS_ROUTE, SYSTEM_ID))
                 .request()
                 .accept(MediaType.APPLICATION_JSON)
@@ -266,7 +239,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testGetStatInfo(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE1, TEST_FILE_SIZE);
@@ -291,7 +266,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testLinuxChmod(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE2, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -344,7 +321,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testLinuxChown(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE3, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -402,7 +381,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "testSystemsProvider")
   public void testLinuxChgrp(TapisSystem testSystem) throws Exception
   {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
     // Create file
     addTestFilesToSystem(testSystem, TEST_FILE4, TEST_FILE_SIZE);
     // Get stat info and check file properties
@@ -452,7 +433,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testFileAclAddAndDelete(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -488,7 +471,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testFileAclAddAndDeleteWeirdFiles(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -531,7 +516,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testDirAclAddAndDelete(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -587,7 +574,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testFileAclDeleteAll(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -613,7 +602,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testDirAclDeleteAll(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -643,7 +634,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testDirAclDeleteDefault(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
@@ -681,7 +674,9 @@ public class TestLibUtilsRoutes extends BaseDatabaseIntegrationTest
 
   @Test(dataProvider = "testSystemsProvider")
   public void testDirAclAddAndDeleteRecursive(TapisSystem testSystem) throws Exception {
-    when(systemsClient.getSystem(any(), any(), anyBoolean(), any(), anyBoolean(), any(), any(), any())).thenReturn(testSystem);
+    when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any())).thenReturn(testSystem);
+    when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
 
     // list acls to add for test
     List<AclEntry> addAcls = Arrays.asList(
