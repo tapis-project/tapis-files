@@ -82,15 +82,8 @@ public class IrodsDataClient implements IRemoteDataClient
         log.error(msg);
         throw new IOException(msg);
     }
-    String user = (system.getAuthnCredential() == null) ? null
-            : system.getAuthnCredential().getAccessKey();
-    if(StringUtils.isBlank(user)) {
-        String msg = LibUtils.getMsg("FILES_IRODS_CREDENTIAL_ERROR", oboTenant, "", oboTenant, oboUser, system.getId());
-        log.error(msg);
-        throw new IOException(msg);
-    }
     irodsZone = tmpPath.subpath(0, 1).toString();
-    homeDir = Paths.get("/", irodsZone, "home", user).toString();
+    homeDir = Paths.get("/", irodsZone, "home", system.getEffectiveUserId()).toString();
   }
 
   @Override
