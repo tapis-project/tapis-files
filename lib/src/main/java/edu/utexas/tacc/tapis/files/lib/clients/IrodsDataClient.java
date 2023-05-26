@@ -14,6 +14,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
+
+import edu.utexas.tacc.tapis.systems.client.gen.StringUtil;
+import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.irods.jargon.core.connection.AuthScheme;
@@ -63,7 +66,7 @@ public class IrodsDataClient implements IRemoteDataClient
   private static final String DEFAULT_RESC = "";
   private static final int MAX_BYTES_PER_CHUNK = 1000000;
 
-  public IrodsDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1)
+  public IrodsDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1) throws IOException
   {
     oboTenant = oboTenant1;
     oboUser = oboUser1;
@@ -74,8 +77,20 @@ public class IrodsDataClient implements IRemoteDataClient
     host = system1.getHost();
     port = system.getPort() == null ? -1 : system.getPort();
     Path tmpPath = Paths.get(rootDir);
+    if(tmpPath.getNameCount() < 1) {
+        String msg = LibUtils.getMsg("FILES_IRODS_ZONE_ERROR", oboTenant, "", oboTenant, oboUser, system.getId(), system.getRootDir());
+        log.error(msg);
+        throw new IOException(msg);
+    }
+    String user = (system.getAuthnCredential() == null) ? null
+            : system.getAuthnCredential().getAccessKey();
+    if(StringUtils.isBlank(user)) {
+        String msg = LibUtils.getMsg("FILES_IRODS_CREDENTIAL_ERROR", oboTenant, "", oboTenant, oboUser, system.getId());
+        log.error(msg);
+        throw new IOException(msg);
+    }
     irodsZone = tmpPath.subpath(0, 1).toString();
-    homeDir = Paths.get("/", irodsZone, "home", oboUser1).toString();
+    homeDir = Paths.get("/", irodsZone, "home", user).toString();
   }
 
   @Override
