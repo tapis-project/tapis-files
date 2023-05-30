@@ -27,13 +27,15 @@ public class TestIrodsClient
   public void init()
   {
     system = new TapisSystem();
+    system.setId("testSystem");
     system.setHost("localhost");
     system.setPort(1247);
     system.setRootDir("/tempZone/home/dev/");
     system.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+    system.setEffectiveUserId("dev");
     Credential creds = new Credential();
-    creds.setAccessKey("dev");
-    creds.setAccessSecret("dev");
+    creds.setLoginUser("dev");
+    creds.setPassword("dev");
     system.setAuthnCredential(creds);
   }
 

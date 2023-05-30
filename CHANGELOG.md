@@ -18,7 +18,7 @@ Incremental improvements and new features.
 - Improve support of symbolic links on linux systems.
 
 ### Bug fixes:
-- None
+- Corrected an issue where irods username/passords were not retrieved properly.
 
 ---------------------------------------------------------------------------
 ## 1.3.5 - 2023-04-18
