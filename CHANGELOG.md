@@ -20,6 +20,13 @@ Incremental improvements and new features.
 ### Bug fixes:
 - Corrected an issue where irods username/passords were not retrieved properly.
 
+### Breaking Changes
+- IRODS previously used accessKey and accessSecret from system credentials, and did not
+  pay any attention to a system's default authn method.  Now IRODS systems must have
+  the default authn method set to "PASSWORD", and credentials for that system must use
+  the password field to set the irods password, and loginUser if the irods user is 
+  different than the tapis user.
+
 ---------------------------------------------------------------------------
 ## 1.3.5 - 2023-04-18
 
