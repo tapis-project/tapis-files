@@ -135,8 +135,8 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     testSystemS3.setAuthnCredential(creds);
     // IRODS system
     creds = new Credential();
-    creds.setAccessKey("dev");
-    creds.setAccessSecret("dev");
+    creds.setLoginUser("dev");
+    creds.setPassword("dev");
     TapisSystem testSystemIrods = new TapisSystem();
     testSystemIrods.setId("testSystem");
     testSystemIrods.setSystemType(SystemTypeEnum.IRODS);
@@ -146,6 +146,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     testSystemIrods.setRootDir("/tempZone/home/dev/");
     testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     testSystemIrods.setAuthnCredential(creds);
+    testSystemIrods.setEffectiveUserId(creds.getLoginUser());
 
     // Collect all systems, for cleanup
     testSystems.add(testSystemSSH);

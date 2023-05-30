@@ -208,8 +208,8 @@ public class BaseDatabaseIntegrationTest
 
     // IRODs systems
     Credential irodsCred = new Credential();
-    irodsCred.setAccessKey("dev");
-    irodsCred.setAccessSecret("dev");
+    irodsCred.setLoginUser("dev");
+    irodsCred.setPassword("dev");
     testSystemIrods = new TapisSystem();
     testSystemIrods.setTenant(devTenant);
     testSystemIrods.setId("testSystemIrods");
@@ -217,8 +217,9 @@ public class BaseDatabaseIntegrationTest
     testSystemIrods.setHost("localhost");
     testSystemIrods.setPort(1247);
     testSystemIrods.setRootDir("/tempZone/home/dev/");
-    testSystemIrods.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     testSystemIrods.setAuthnCredential(irodsCred);
+    testSystemIrods.setEffectiveUserId(irodsCred.getLoginUser());
     // =================
     testSystemIRODSa = new TapisSystem();
     testSystemIRODSa.setTenant(devTenant);
@@ -227,8 +228,9 @@ public class BaseDatabaseIntegrationTest
     testSystemIRODSa.setHost("localhost");
     testSystemIRODSa.setPort(1247);
     testSystemIRODSa.setRootDir("/tempZone/home/dev/");
-    testSystemIRODSa.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    testSystemIRODSa.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     testSystemIRODSa.setAuthnCredential(irodsCred);
+    testSystemIRODSa.setEffectiveUserId(irodsCred.getLoginUser());
     // =================
     testSystemIRODSb = new TapisSystem();
     testSystemIRODSb.setTenant(devTenant);
@@ -237,8 +239,9 @@ public class BaseDatabaseIntegrationTest
     testSystemIRODSb.setHost("localhost");
     testSystemIRODSb.setPort(1247);
     testSystemIRODSb.setRootDir("/tempZone/home/dev/");
-    testSystemIRODSb.setDefaultAuthnMethod(AuthnEnum.ACCESS_KEY);
+    testSystemIRODSb.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
     testSystemIRODSb.setAuthnCredential(irodsCred);
+    testSystemIRODSb.setEffectiveUserId(irodsCred.getLoginUser());
 
     testSystems = Arrays.asList(testSystemSSH, testSystemS3, testSystemPKI, testSystemIrods);
     testSystemsPairs = new ArrayList<>();
