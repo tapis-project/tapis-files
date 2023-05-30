@@ -14,6 +14,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
+
+import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.irods.jargon.core.connection.AuthScheme;
@@ -63,7 +66,7 @@ public class IrodsDataClient implements IRemoteDataClient
   private static final String DEFAULT_RESC = "";
   private static final int MAX_BYTES_PER_CHUNK = 1000000;
 
-  public IrodsDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1)
+  public IrodsDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1) throws IOException
   {
     oboTenant = oboTenant1;
     oboUser = oboUser1;
@@ -74,8 +77,13 @@ public class IrodsDataClient implements IRemoteDataClient
     host = system1.getHost();
     port = system.getPort() == null ? -1 : system.getPort();
     Path tmpPath = Paths.get(rootDir);
+    if(tmpPath.getNameCount() < 1) {
+        String msg = LibUtils.getMsg("FILES_IRODS_ZONE_ERROR", oboTenant, oboUser, system.getId(), system.getRootDir());
+        log.error(msg);
+        throw new IOException(msg);
+    }
     irodsZone = tmpPath.subpath(0, 1).toString();
-    homeDir = Paths.get("/", irodsZone, "home", oboUser1).toString();
+    homeDir = Paths.get("/", irodsZone, "home", system.getEffectiveUserId()).toString();
   }
 
   @Override
@@ -454,9 +462,7 @@ public class IrodsDataClient implements IRemoteDataClient
     try
     {
       irodsFileSystem = IRODsFileSystemSingleton.getInstance();
-      account = IRODSAccount.instance(host, port, system.getAuthnCredential().getAccessKey(),
-                                      system.getAuthnCredential().getAccessSecret(),
-                                      homeDir, irodsZone, DEFAULT_RESC, AuthScheme.STANDARD);
+      account = getIrodsAccount();
       accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
       fileFactory = accessObjectFactory.getIRODSFileFactory(account);
       return fileFactory;
@@ -476,9 +482,7 @@ public class IrodsDataClient implements IRemoteDataClient
     try
     {
       irodsFileSystem = IRODsFileSystemSingleton.getInstance();
-      account = IRODSAccount.instance(host, port, system.getAuthnCredential().getAccessKey(),
-                                      system.getAuthnCredential().getAccessSecret(), homeDir, irodsZone,
-                                      DEFAULT_RESC, AuthScheme.STANDARD);
+      account = getIrodsAccount();
       accessObjectFactory = irodsFileSystem.getIRODSAccessObjectFactory();
       DataTransferOperations ops = accessObjectFactory.getDataTransferOperations(account);
       return ops;
@@ -498,5 +502,27 @@ public class IrodsDataClient implements IRemoteDataClient
       } else {
           return FileInfo.FileType.UNKNOWN;
       }
+  }
+
+  private IRODSAccount getIrodsAccount() throws JargonException {
+      String user = null;
+      String password = null;
+
+      if(AuthnEnum.PASSWORD.equals(system.getDefaultAuthnMethod())) {
+          Credential cred = system.getAuthnCredential();
+          if(cred != null) {
+              password = cred.getPassword();
+              user = system.getEffectiveUserId();
+          }
+      }
+
+      // Make sure we have a user and password.  Blank passwords are not allowed.
+      if(StringUtils.isBlank(user) || StringUtils.isBlank(password)) {
+          String msg = LibUtils.getMsg("FILES_IRODS_CREDENTIAL_ERROR", oboTenant, oboUser, system.getId(), system.getDefaultAuthnMethod());
+          throw new IllegalArgumentException(msg);
+      }
+
+      return IRODSAccount.instance(host, port, user, password,
+              homeDir, irodsZone, DEFAULT_RESC, AuthScheme.STANDARD);
   }
 }

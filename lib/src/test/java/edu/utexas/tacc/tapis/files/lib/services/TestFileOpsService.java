@@ -149,8 +149,8 @@ public class TestFileOpsService
 
     //Irods system
     creds = new Credential();
-    creds.setAccessKey("dev");
-    creds.setAccessSecret("dev");
+    creds.setLoginUser("dev");
+    creds.setPassword("dev");
     testSystemIrods = new TapisSystem();
     testSystemIrods.setTenant(devTenant);
     testSystemIrods.setId("testSystem");
@@ -160,6 +160,7 @@ public class TestFileOpsService
     testSystemIrods.setAuthnCredential(creds);
     testSystemIrods.setRootDir("/tempZone/home/dev/");
     testSystemIrods.setDefaultAuthnMethod(AuthnEnum.PASSWORD);
+    testSystemIrods.setEffectiveUserId(creds.getLoginUser());
 
     //SSH system that is not enabled
     testSystemNotEnabled = new TapisSystem();
