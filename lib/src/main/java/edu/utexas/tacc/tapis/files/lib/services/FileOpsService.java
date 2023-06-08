@@ -163,6 +163,10 @@ public class FileOpsService
     {
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
+      // if our connection fails, invalidate the systems cache in the hopes that if we try again, we will
+      // get fresh credentials.
+      systemsCache.invalidateEntry(oboTenant, sysId, oboUser, impersonationId, sharedCtxGrantor);
+      systemsCacheNoAuth.invalidateEntry(oboTenant, sysId, oboUser);
       throw new WebApplicationException(msg, ex);
     }
     finally
