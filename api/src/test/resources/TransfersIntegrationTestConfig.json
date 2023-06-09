@@ -1,0 +1,53 @@
+{
+  "baseFilesUrl":"http://localhost:8080/v3/files",
+  "tokenUrl": "https://dev.develop.tapis.io/v3/oauth2",
+  "username": "testuser2",
+  "password": "testuser2",
+  "tmpDir":"/tmp/testInput",
+  "testConfigs": {
+    "TestFileTransfers": {
+//      "createLocalFilesConfig": [
+//        {
+//          "count": 2,
+//          "size": 10
+//        },
+//        {
+//          "count": 2,
+//          "size": 1024
+//        }
+//      ],
+      "uploadFilesConfig": [
+        {
+          "uploadSystem": "tapisv3-storage1-dvernon",
+          "uploadPath": "/integrationTest/uploaded",
+          "count": 2,
+          "size": 10
+        }
+      ],
+      "transfersConfig": [
+        {
+          "sourceProtocol": "tapis",
+          "sourceSystem": "tapisv3-storage1-dvernon",
+          "sourcePath": "/integrationTest/uploaded",
+          "destinationProtocol": "tapis",
+          "destinationSystem": "tapisv3-storage2-dvernon",
+          "destinationPath": "/integrationTest/recieved"
+        },
+        {
+          "sourceProtocol": "tapis",
+          "sourceSystem": "tapisv3-storage2-dvernon",
+          "sourcePath": "/integrationTest/recieved",
+          "destinationProtocol": "tapis",
+          "destinationSystem": "tapisv3-storage1-dvernon",
+          "destinationPath": "/integrationTest/recieved"
+        }
+      ],
+      "cleanup": [
+        {
+          "system":"",
+          "path":""
+        }
+      ]
+    }
+  }
+}
