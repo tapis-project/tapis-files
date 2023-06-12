@@ -1,17 +1,20 @@
 package edu.utexas.tacc.tapis.files.integration.transfers.configs;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
+import java.nio.file.Path;
+
 public class UploadFilesConfig {
     private String uploadSystem;
-    private String uploadPath;
+    private Path uploadPath;
     private int count;
     private long size;
-
 
     public String getUploadSystem() {
         return uploadSystem;
     }
 
-    public String getUploadPath() {
+    public Path getUploadPath() {
         return uploadPath;
     }
 

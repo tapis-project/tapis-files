@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.integration.transfers;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -23,13 +24,11 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -46,8 +45,6 @@ public class TestUtils {
     private Logger log = LoggerFactory.getLogger(TestUtils.class);
     private static final int CHUNK_MAX = 1000;
     private static final String TAPIS_TOKEN_HEADER = "X-Tapis-Token";
-    private static final String TEMP_FILE_PREFIX = "Digest:";
-    private static final String TEMP_FILE_SUFFIX = ".tmp:";
     public static final TestUtils instance = new TestUtils();
     private final Set<TransferTaskStatus> terminalStates;
 
@@ -127,7 +124,7 @@ public class TestUtils {
     public void uploadFile(String baseUrl, String token, String systemId, File sourceFile, Path destinationPath) {
         Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
         WebTarget target = client.target(baseUrl);
-        Invocation.Builder invocationBuilder = target.path("ops/" + systemId + "/" + destinationPath).request(MediaType.APPLICATION_JSON);
+        Invocation.Builder invocationBuilder = target.path(getUrlPath("ops", systemId, destinationPath)).request(MediaType.APPLICATION_JSON);
 
         FileDataBodyPart filePart = new FileDataBodyPart("file", sourceFile);
         FormDataMultiPart formDataMultiPart = (FormDataMultiPart) new FormDataMultiPart().bodyPart(filePart);
@@ -141,7 +138,7 @@ public class TestUtils {
                            long size, boolean alphaNumericOnly) {
         Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
         WebTarget target = client.target(baseUrl);
-        Invocation.Builder invocationBuilder = target.path("ops/" + systemId + "/" + destinationPath).request(MediaType.APPLICATION_JSON);
+        Invocation.Builder invocationBuilder = target.path(getUrlPath("ops", systemId, destinationPath)).request(MediaType.APPLICATION_JSON);
 
         RandomStreamWriter writer = new RandomStreamWriter(size, alphaNumericOnly);
         try {
@@ -188,9 +185,8 @@ public class TestUtils {
 
     public void downloadAndVerify(String baseUrl, String token, String systemId, Path filePath, String expectedDigest)
             throws IOException, NoSuchAlgorithmException {
-        Path path = Path.of("content", systemId, filePath.toString());
         Response response = ClientBuilder.newClient().target(baseUrl)
-                .path(path.toString()).request(MediaType.APPLICATION_OCTET_STREAM)
+                .path(getUrlPath("content", systemId, filePath)).request(MediaType.APPLICATION_OCTET_STREAM)
                 .header(TAPIS_TOKEN_HEADER, token)
                 .get();
         Assert.assertEquals(response.getStatus(), 200);
@@ -205,19 +201,6 @@ public class TestUtils {
         }
         String hexDigest = hashAsHex(digest.digest());
         Assert.assertEquals(hexDigest, expectedDigest);
-    }
-
-    public List<Path> createDigestedLocalFiles(Path directoryPath, int count, long size, boolean textOnly) throws IOException, NoSuchAlgorithmException {
-        List<Path> createdFiles = new ArrayList<>();
-        for(int i=0;i<count;i++) {
-            Path filePath = Files.createTempFile(directoryPath, TEMP_FILE_PREFIX, TEMP_FILE_SUFFIX);
-            OutputStream outStream = new FileOutputStream(filePath.toFile());
-            Path digestFileName = Path.of(directoryPath.toString(), writeRandomBytes(outStream, size, textOnly));
-            filePath.toFile().renameTo(digestFileName.toFile());
-            createdFiles.add(filePath);
-        }
-
-        return createdFiles;
     }
 
     private String writeRandomBytes(OutputStream outStream, long size, boolean textOnly) throws IOException, NoSuchAlgorithmException {
@@ -254,57 +237,31 @@ public class TestUtils {
         return "sha256:" + hexString.toString();
     }
 
-    // TODO: cleanup - don't want to keep worring about deletes during refactors.
-    public void cleanupDirs(String prefix, Path deleteDir, int max_depth) throws IOException {
-        /*
-        Files.walkFileTree(deleteDir, Collections.emptySet(), max_depth, new SimpleFileVisitor<>() {
-
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                if((dir.getFileName().toString().startsWith(prefix)) || (deleteDir.equals(dir))) {
-                    return FileVisitResult.CONTINUE;
-                }
-                return FileVisitResult.SKIP_SUBTREE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                if(dir.getFileName().toString().startsWith(prefix)) {
-                    Files.delete(dir);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if(Files.isRegularFile(file)) {
-                    Files.delete(file);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
-         */
-    }
-
     public Collection<JsonObject> waitForTransfers(String baseUrl, String token, List<String> transferTaskIds, long maxWaitMillis) {
         Map<String, JsonObject> completedTransfers = new HashMap<>();
         List<String> uncompletedTransfers = new ArrayList<>();
         uncompletedTransfers.addAll(transferTaskIds);
         long startTime = System.currentTimeMillis();
         while(!uncompletedTransfers.isEmpty()) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                // ignore
+            }
             for (String transferTaskId : uncompletedTransfers) {
-                log.info("Waiting for transfer: " + transferTaskId);
                 JsonObject result = checkTransfer(baseUrl, token, transferTaskId);
                 TransferTaskStatus tts = TransferTaskStatus.valueOf(result.get("result").getAsJsonObject().get("status").getAsString());
                 if (terminalStates.contains(tts)) {
                     log.info("Transfer Done: " + transferTaskId + " Status: " + tts);
                     completedTransfers.put(transferTaskId, result);
+                } else {
+                    log.info("Waiting for transfer: " + transferTaskId);
                 }
             }
             uncompletedTransfers.removeAll(completedTransfers.keySet());
             long elapsedTime = System.currentTimeMillis() - startTime;
             if(elapsedTime > maxWaitMillis) {
-                Assert.fail("Timout waiting for transfers to complete");
+                Assert.fail("Timeout waiting for transfers to complete");
             }
         }
         return completedTransfers.values();
@@ -321,6 +278,36 @@ public class TestUtils {
         return TapisGsonUtils.getGson().fromJson(jsonResponse, JsonObject.class);
     }
 
+    public List<FileInfo> getListing(String baseUrl, String token, String systemId, Path path) {
+        Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
+        Response response = client.target(baseUrl)
+                .path(getUrlPath("ops", systemId, path)).request(MediaType.APPLICATION_JSON)
+                .header(TAPIS_TOKEN_HEADER, token)
+                .get();
+        Assert.assertEquals(response.getStatus(), 200);
+        String json = response.readEntity(String.class);
+        JsonObject jsonResponse = TapisGsonUtils.getGson().fromJson(json, JsonObject.class);
+        JsonArray resultArray = jsonResponse.getAsJsonArray("result");
+        List<FileInfo> fileInfos = new ArrayList<>();
+        for(int i=0 ; i < resultArray.size() ; i++) {
+            fileInfos.add(TapisGsonUtils.getGson().fromJson(resultArray.get(i), FileInfo.class));
+        }
+        return fileInfos;
+    }
+
+    public void deletePath(String baseUrl, String token, String systemId, Path path) {
+        Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
+        Response response = client.target(baseUrl)
+                .path(getUrlPath("ops", systemId, path)).request(MediaType.APPLICATION_JSON)
+                .header(TAPIS_TOKEN_HEADER, token)
+                .delete();
+        if(response.getStatus() != 404) {
+            Assert.assertEquals(response.getStatus(), 200);
+        } else {
+            log.info("Path not found on system.  System:" + systemId + " Path: " + path);
+        }
+    }
+
     public String getToken(String tokenUrl, String username, String password) {
         JsonObject tokenRequest = new JsonObject();
         tokenRequest.addProperty("username", username);
@@ -333,6 +320,10 @@ public class TestUtils {
         String jsonString = response.readEntity(String.class);
         JsonObject responseObject = TapisGsonUtils.getGson().fromJson(jsonString, JsonObject.class);
         return responseObject.get("result").getAsJsonObject().get("access_token").getAsJsonObject().get("access_token").getAsString();
+    }
+
+    private String getUrlPath(String httpOperation, String systemId, Path path) {
+        return Path.of(httpOperation, systemId, path.toString()).toString();
     }
 
 }

@@ -11,7 +11,6 @@ public class TransfersIntegrationTestConfig {
     private String username;
     private String password;
     private JsonObject testConfigs;
-    private String tmpDir;
 
     public String getBaseFilesUrl() {
         return baseFilesUrl;
@@ -31,10 +30,6 @@ public class TransfersIntegrationTestConfig {
 
     public JsonObject getTestConfigs() {
         return testConfigs;
-    }
-
-    public String getTmpDir() {
-        return tmpDir;
     }
 
 }

@@ -3,14 +3,14 @@ package edu.utexas.tacc.tapis.files.integration.transfers.configs;
 import java.util.List;
 
 public class BaseTransfersIntegrationConfig {
-//    List<CreateLocalFilesConfig> createLocalFilesConfig;
-    List<UploadFilesConfig> uploadFilesConfig;
+    List<UploadFilesConfig> uploadFiles;
+    List<CleanupConfig> cleanup;
 
-//    public List<CreateLocalFilesConfig> getCreateLocalFilesConfig() {
-//        return createLocalFilesConfig;
-//    }
+    public List<UploadFilesConfig> getUploadFiles() {
+        return uploadFiles;
+    }
 
-    public List<UploadFilesConfig> getUploadFilesConfig() {
-        return uploadFilesConfig;
+    public List<CleanupConfig> getCleanup() {
+        return cleanup;
     }
 }

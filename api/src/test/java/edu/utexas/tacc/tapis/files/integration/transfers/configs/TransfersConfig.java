@@ -1,20 +1,26 @@
 package edu.utexas.tacc.tapis.files.integration.transfers.configs;
 
+import org.junit.Assert;
+
 import java.nio.file.Path;
 
 public class TransfersConfig {
     private String sourceProtocol;
     private String sourceSystem;
-    private String sourcePath;
+    private Path sourcePath;
     private String destinationProtocol;
     private String destinationSystem;
-    private String destinationPath;
+    private Path destinationPath;
+    private boolean batch = false;
+
+    // default to waiting 10 seconds
+    private long timeout = 10000;
 
     public String getSourceSystem() {
         return sourceSystem;
     }
 
-    public String getSourcePath() {
+    public Path getSourcePath() {
         return sourcePath;
     }
 
@@ -22,7 +28,7 @@ public class TransfersConfig {
         return destinationSystem;
     }
 
-    public String getDestinationPath() {
+    public Path getDestinationPath() {
         return destinationPath;
     }
 
@@ -34,14 +40,23 @@ public class TransfersConfig {
         return destinationProtocol;
     }
 
-    public String getTapisSourcePath(String relativeFilePath) {
-        Path sourcePath = Path.of(getSourceSystem(), getSourcePath(), relativeFilePath);
-        return getSourceProtocol() + "://" + sourcePath.toString();
+    public String getTapisSourcePath(Path relativeFilePath) {
+        Assert.assertFalse(relativeFilePath.isAbsolute());
+        Path fullPath = getSourcePath().resolve(relativeFilePath);
+        return getSourceProtocol() + "://" + getSourceSystem() + "/" + fullPath.toString();
     }
 
-    public String getTapisDestinationPath(String relativeFilePath) {
-        Path destinationPath = Path.of(getDestinationSystem(), getDestinationPath(), relativeFilePath);
-        return getDestinationProtocol() + "://" + destinationPath.toString();
+    public String getTapisDestinationPath(Path relativeFilePath) {
+        Assert.assertFalse(relativeFilePath.isAbsolute());
+        Path fullPath = getDestinationPath().resolve(relativeFilePath);
+        return getDestinationProtocol() + "://" + getDestinationSystem() + "/" + fullPath.toString();
     }
 
+    public long getTimeout() {
+        return timeout;
+    }
+
+    public boolean isBatch() {
+        return batch;
+    }
 }

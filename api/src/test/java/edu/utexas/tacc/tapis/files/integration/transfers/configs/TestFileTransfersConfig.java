@@ -4,13 +4,9 @@ import java.util.List;
 
 public class TestFileTransfersConfig extends BaseTransfersIntegrationConfig {
 
-    List<TransfersConfig> transfersConfig;
+    List<TransfersConfig> transfers;
 
-    public List<TransfersConfig> getTransfersConfig() {
-        return transfersConfig;
-    }
-
-    public void setTransfersConfig(List<TransfersConfig> transfersConfig) {
-        this.transfersConfig = transfersConfig;
+    public List<TransfersConfig> getTransfers() {
+        return transfers;
     }
 }
