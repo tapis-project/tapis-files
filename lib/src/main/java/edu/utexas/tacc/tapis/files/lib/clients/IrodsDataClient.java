@@ -25,6 +25,7 @@ import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.FileNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.exception.JargonFileOrCollAlreadyExistsException;
+import org.irods.jargon.core.exception.JargonRuntimeException;
 import org.irods.jargon.core.packinstr.TransferOptions;
 import org.irods.jargon.core.pub.DataTransferOperations;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
@@ -338,6 +339,14 @@ public class IrodsDataClient implements IRemoteDataClient
                 if (!rootDirPath.equals(cleanedAbsolutePath)) {
                     collection.delete();
                 }
+            }
+        } catch (JargonRuntimeException ex) {
+            // the real exception is wrapped in a JargonRuntimeException
+            Throwable cause = ex.getCause();
+            if(cause != null && FileNotFoundException.class.isAssignableFrom(cause.getClass())) {
+                String msg = LibUtils.getMsg("FILES_CLIENT_IRODS_NOT_FOUND", oboTenant,
+                        oboUser, systemId, system.getEffectiveUserId(), host, rootDir, remotePath);
+                throw new NotFoundException(msg);
             }
         } catch (JargonException ex) {
             String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenant, "", oboTenant, oboUser);
