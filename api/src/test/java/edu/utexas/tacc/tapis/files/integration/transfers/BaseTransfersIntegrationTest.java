@@ -13,6 +13,7 @@ import edu.utexas.tacc.tapis.files.integration.transfers.configs.UploadFilesConf
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeTest;
+import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class BaseTransfersIntegrationTest <T extends BaseTransfersIntegrationConfig> {
+abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersIntegrationConfig> {
     Logger log = LoggerFactory.getLogger(BaseTransfersIntegrationTest.class);
     private static final String TRANSFERS_INTEGRATION_TEST_CONFIG = "TransfersIntegrationTestConfig.json";
     private static final String SHA_PREFIX = "sha256:";

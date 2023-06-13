@@ -17,7 +17,7 @@
           "uploadSystem": "tapisv3-storage1-dvernon",
           "uploadPath": "/integrationTest/uploaded/individual",
           "count": 3,
-          "size": 1000
+          "size": 10000000
         },
         {
           "uploadSystem": "tapisv3-storage1-dvernon",
@@ -29,7 +29,7 @@
           "uploadSystem": "tapisv3-storage1-dvernon",
           "uploadPath": "/integrationTest/uploaded/batch",
           "count": 3,
-          "size": 1000
+          "size": 10000000
         }
       ],
       "transfers": [
@@ -40,16 +40,25 @@
           "destinationProtocol": "tapis",
           "destinationSystem": "tapisv3-storage2-dvernon",
           "destinationPath": "/integrationTest/received/individual",
-          "timeout": 60000
+          "timeout": 200000
         },
         {
           "sourceProtocol": "tapis",
           "sourceSystem": "tapisv3-storage2-dvernon",
           "sourcePath": "/integrationTest/received/individual",
           "destinationProtocol": "tapis",
+          "destinationSystem": "tapisv3-storage4-dvernon",
+          "destinationPath": "/integrationTest/received/individual",
+          "timeout": 200000
+        },
+        {
+          "sourceProtocol": "tapis",
+          "sourceSystem": "tapisv3-storage4-dvernon",
+          "sourcePath": "/integrationTest/received/individual",
+          "destinationProtocol": "tapis",
           "destinationSystem": "tapisv3-storage1-dvernon",
           "destinationPath": "/integrationTest/received/individual",
-          "timeout": 60000
+          "timeout": 200000
         },
         {
           "sourceProtocol": "tapis",
@@ -58,7 +67,7 @@
           "destinationProtocol": "tapis",
           "destinationSystem": "tapisv3-storage2-dvernon",
           "destinationPath": "/integrationTest/received/batch",
-          "timeout": 60000,
+          "timeout": 200000,
           "batch": true
         },
         {
@@ -66,9 +75,19 @@
           "sourceSystem": "tapisv3-storage2-dvernon",
           "sourcePath": "/integrationTest/received/batch",
           "destinationProtocol": "tapis",
+          "destinationSystem": "tapisv3-storage4-dvernon",
+          "destinationPath": "/integrationTest/received/batch",
+          "timeout": 200000,
+          "batch": true
+        },
+        {
+          "sourceProtocol": "tapis",
+          "sourceSystem": "tapisv3-storage4-dvernon",
+          "sourcePath": "/integrationTest/received/batch",
+          "destinationProtocol": "tapis",
           "destinationSystem": "tapisv3-storage1-dvernon",
           "destinationPath": "/integrationTest/received/batch",
-          "timeout": 60000,
+          "timeout": 200000,
           "batch": true
         }
       ],
@@ -83,6 +102,10 @@
         },
         {
           "system":"tapisv3-storage2-dvernon",
+          "path":"/integrationTest/received"
+        },
+        {
+          "system":"tapisv3-storage4-dvernon",
           "path":"/integrationTest/received"
         }
       ]

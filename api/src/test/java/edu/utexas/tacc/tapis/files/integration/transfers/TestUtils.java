@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
@@ -190,16 +191,29 @@ public class TestUtils {
                 .header(TAPIS_TOKEN_HEADER, token)
                 .get();
         Assert.assertEquals(response.getStatus(), 200);
-        int bytesLeft = Integer.parseInt(response.getHeaderString("content-length"));
         InputStream is = (InputStream) response.getEntity();
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        while(bytesLeft > 0) {
-            int chunkSize = bytesLeft > CHUNK_MAX ? CHUNK_MAX : bytesLeft;
-            byte [] chunk = new byte[chunkSize];
-            bytesLeft -= is.read(chunk);
-            digest.update(chunk);
-        }
+        long totalBytesRead = 0;
+        int bytesRead = 0;
+        byte[] chunk = new byte[CHUNK_MAX];
+        do {
+            bytesRead = is.read(chunk);
+            if(bytesRead > 0) {
+                totalBytesRead += bytesRead;
+                digest.update(chunk, 0, bytesRead);
+            }
+        } while (bytesRead > 0);
+
         String hexDigest = hashAsHex(digest.digest());
+        String contentLengthHeader = response.getHeaderString("content-length");
+        if(StringUtils.isBlank(contentLengthHeader)) {
+            log.warn("WARNING:  No content length for file.  System: " + systemId + "  BytesRead: " + totalBytesRead + "  Path: " + filePath + "  ExpectedDigest: " + expectedDigest + "  ActualDigest: " + hexDigest);
+        } else {
+            Assert.assertEquals(totalBytesRead, Long.parseLong(contentLengthHeader));
+        }
+
+        log.info("Checking file.  System: " + systemId + "  BytesRead: " + totalBytesRead + "  Path: " + filePath + "  ExpectedDigest: " + expectedDigest + "  ActualDigest: " + hexDigest);
+
         Assert.assertEquals(hexDigest, expectedDigest);
     }
 

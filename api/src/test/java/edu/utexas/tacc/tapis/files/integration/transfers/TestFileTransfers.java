@@ -13,6 +13,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Test(groups = {"integration"})
 public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTransfersConfig> {
     private static final String TEMP_DIR_PREFIX = "TestFileTransfers_";
 
