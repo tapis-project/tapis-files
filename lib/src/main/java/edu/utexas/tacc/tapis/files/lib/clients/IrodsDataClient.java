@@ -326,7 +326,7 @@ public class IrodsDataClient implements IRemoteDataClient
     }
 
     @Override
-    public void delete(@NotNull String remotePath) throws IOException {
+    public void delete(@NotNull String remotePath) throws NotFoundException, IOException {
         if (StringUtils.isEmpty(remotePath)) remotePath="/";
         Path cleanedRelativePath = cleanAndRelativize(remotePath);
         Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());
