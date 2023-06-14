@@ -13,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.NotSupportedException;
 
@@ -214,7 +215,7 @@ public class SSHDataClient implements ISSHDataClient
    * @throws IOException Generally a network error
    */
   @Override
-  public void mkdir(@NotNull String path) throws IOException
+  public void mkdir(@NotNull String path) throws IOException, BadRequestException
   {
     path = FilenameUtils.normalize(path);
     Path remote = Paths.get(rootDir, path);
@@ -239,7 +240,7 @@ public class SSHDataClient implements ISSHDataClient
         {
           String msg = LibUtils.getMsg("FILES_CLIENT_SSH_MKDIR_FILE", oboTenant, oboUser, systemId,
                                        effectiveUserId, host, tmpPathStr, remotePathStr);
-          throw new IOException(msg);
+          throw new BadRequestException(msg);
         }
       }
       catch (NotFoundException e) { /* Not found is good, it means mkdir should not throw an exception */ }

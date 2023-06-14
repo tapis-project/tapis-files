@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
@@ -25,6 +26,7 @@ import org.irods.jargon.core.exception.DataNotFoundException;
 import org.irods.jargon.core.exception.FileNotFoundException;
 import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.exception.JargonFileOrCollAlreadyExistsException;
+import org.irods.jargon.core.exception.JargonRuntimeException;
 import org.irods.jargon.core.packinstr.TransferOptions;
 import org.irods.jargon.core.pub.DataTransferOperations;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
@@ -220,7 +222,7 @@ public class IrodsDataClient implements IRemoteDataClient
 
 
     @Override
-    public void mkdir(@NotNull String path) throws IOException {
+    public void mkdir(@NotNull String path) throws BadRequestException, IOException {
         if (StringUtils.isEmpty(path)) return;
         Path cleanedRelativePath = cleanAndRelativize(path);
         IRODSFileFactory fileFactory = getFileFactory();
@@ -235,6 +237,11 @@ public class IrodsDataClient implements IRemoteDataClient
             for (Path part: partialPaths) {
                 Path tmp = Paths.get(rootDir, part.toString());
                 IRODSFile newCollection = fileFactory.instanceIRODSFile(tmp.toString());
+                if(newCollection.isFile()) {
+                    String msg = LibUtils.getMsg("FILES_CLIENT_IRODS_MKDIR_FILE", oboTenant, oboUser, systemId,
+                            system.getEffectiveUserId(), host, tmpPath.toString(), tmp.toString());
+                    throw new BadRequestException(msg);
+                }
                 if (!newCollection.exists()) {
                     newCollection.mkdir();
                 }
@@ -319,7 +326,7 @@ public class IrodsDataClient implements IRemoteDataClient
     }
 
     @Override
-    public void delete(@NotNull String remotePath) throws IOException {
+    public void delete(@NotNull String remotePath) throws NotFoundException, IOException {
         if (StringUtils.isEmpty(remotePath)) remotePath="/";
         Path cleanedRelativePath = cleanAndRelativize(remotePath);
         Path cleanedAbsolutePath = Paths.get(rootDir, cleanedRelativePath.toString());
@@ -338,6 +345,14 @@ public class IrodsDataClient implements IRemoteDataClient
                 if (!rootDirPath.equals(cleanedAbsolutePath)) {
                     collection.delete();
                 }
+            }
+        } catch (JargonRuntimeException ex) {
+            // the real exception is wrapped in a JargonRuntimeException
+            Throwable cause = ex.getCause();
+            if(cause != null && FileNotFoundException.class.isAssignableFrom(cause.getClass())) {
+                String msg = LibUtils.getMsg("FILES_CLIENT_IRODS_NOT_FOUND", oboTenant,
+                        oboUser, systemId, system.getEffectiveUserId(), host, rootDir, remotePath);
+                throw new NotFoundException(msg);
             }
         } catch (JargonException ex) {
             String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenant, "", oboTenant, oboUser);
@@ -423,7 +438,7 @@ public class IrodsDataClient implements IRemoteDataClient
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
         if (count > MAX_BYTES_PER_CHUNK) {
             String msg = LibUtils.getMsg("FILES_IRODS_MAX_BYTES_ERROR", MAX_BYTES_PER_CHUNK);
-            throw new IllegalArgumentException(msg);
+            throw new NotFoundException(msg);
         }
         startByte = Math.max(startByte, 0);
         count = Math.max(count, 0);

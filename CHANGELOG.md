@@ -18,6 +18,7 @@ Incremental improvements and new features.
 
 ### Bug fixes:
 - Improvements in caching of system credentials to minimize lag when updating credentials.
+- Improved HTTP return statuses in files API.
 
 ### Breaking Changes
 - None
