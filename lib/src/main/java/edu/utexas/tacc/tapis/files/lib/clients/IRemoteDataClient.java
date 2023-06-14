@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.NotSupportedException;
 
@@ -61,7 +62,7 @@ public interface IRemoteDataClient
    * @param path - path on system relative to system rootDir
    * @throws IOException on error
    */
-  void mkdir(@NotNull  String path) throws IOException;
+  void mkdir(@NotNull  String path) throws BadRequestException, IOException;
 
   /**
    * Move a file or object from one path to another.
