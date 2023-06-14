@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
@@ -221,7 +222,7 @@ public class IrodsDataClient implements IRemoteDataClient
 
 
     @Override
-    public void mkdir(@NotNull String path) throws IOException {
+    public void mkdir(@NotNull String path) throws BadRequestException, IOException {
         if (StringUtils.isEmpty(path)) return;
         Path cleanedRelativePath = cleanAndRelativize(path);
         IRODSFileFactory fileFactory = getFileFactory();
@@ -236,6 +237,11 @@ public class IrodsDataClient implements IRemoteDataClient
             for (Path part: partialPaths) {
                 Path tmp = Paths.get(rootDir, part.toString());
                 IRODSFile newCollection = fileFactory.instanceIRODSFile(tmp.toString());
+                if(newCollection.isFile()) {
+                    String msg = LibUtils.getMsg("FILES_CLIENT_IRODS_MKDIR_FILE", oboTenant, oboUser, systemId,
+                            system.getEffectiveUserId(), host, tmpPath.toString(), tmp.toString());
+                    throw new BadRequestException(msg);
+                }
                 if (!newCollection.exists()) {
                     newCollection.mkdir();
                 }
@@ -432,7 +438,7 @@ public class IrodsDataClient implements IRemoteDataClient
     public InputStream getBytesByRange(@NotNull String path, long startByte, long count) throws IOException {
         if (count > MAX_BYTES_PER_CHUNK) {
             String msg = LibUtils.getMsg("FILES_IRODS_MAX_BYTES_ERROR", MAX_BYTES_PER_CHUNK);
-            throw new IllegalArgumentException(msg);
+            throw new NotFoundException(msg);
         }
         startByte = Math.max(startByte, 0);
         count = Math.max(count, 0);

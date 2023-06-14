@@ -383,7 +383,7 @@ public class FileOpsService
    * @throws ForbiddenException - user not authorized
    */
     public void upload(@NotNull IRemoteDataClient client, @NotNull String relPathStr, @NotNull InputStream inputStream)
-            throws ServiceException
+            throws ServiceException, BadRequestException
     {
       LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                               relPathStr, Permission.MODIFY);
@@ -412,7 +412,7 @@ public class FileOpsService
         {
           String msg = LibUtils.getMsg("FILES_ERR_UPLOAD_DIR", client.getOboTenant(), client.getOboUser(),
                                        client.getSystemId(), relPathStr);
-          throw new ServiceException(msg);
+          throw new BadRequestException(msg);
         }
         client.upload(relPathStr, inputStream);
       }
