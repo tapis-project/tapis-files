@@ -9,6 +9,21 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.3.7 - 2023-??-??
+
+Incremental improvements and new features.
+
+### New features:
+- None
+
+### Bug fixes:
+- Improvements in caching of system credentials to minimize lag when updating credentials.
+- Improved HTTP return statuses in files API.
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.3.6 - 2023-05-30
 
 Incremental improvements and new features.

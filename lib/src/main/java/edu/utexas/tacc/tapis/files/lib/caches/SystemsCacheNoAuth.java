@@ -88,6 +88,11 @@ public class SystemsCacheNoAuth
     }
   }
 
+  public void invalidateEntry(String tenantId, String systemId, String tapisUser) {
+    SystemCacheKey key = new SystemCacheKey(tenantId, systemId, tapisUser);
+    cache.invalidate(key);
+  }
+
   // ====================================================================================
   // =======  Private Classes ===========================================================
   // ====================================================================================

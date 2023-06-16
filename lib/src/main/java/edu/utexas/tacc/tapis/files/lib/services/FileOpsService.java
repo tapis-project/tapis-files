@@ -163,6 +163,10 @@ public class FileOpsService
     {
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
+      // if our connection fails, invalidate the systems cache in the hopes that if we try again, we will
+      // get fresh credentials.
+      systemsCache.invalidateEntry(oboTenant, sysId, oboUser, impersonationId, sharedCtxGrantor);
+      systemsCacheNoAuth.invalidateEntry(oboTenant, sysId, oboUser);
       throw new WebApplicationException(msg, ex);
     }
     finally
@@ -379,7 +383,7 @@ public class FileOpsService
    * @throws ForbiddenException - user not authorized
    */
     public void upload(@NotNull IRemoteDataClient client, @NotNull String relPathStr, @NotNull InputStream inputStream)
-            throws ServiceException
+            throws ServiceException, BadRequestException
     {
       LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                               relPathStr, Permission.MODIFY);
@@ -408,7 +412,7 @@ public class FileOpsService
         {
           String msg = LibUtils.getMsg("FILES_ERR_UPLOAD_DIR", client.getOboTenant(), client.getOboUser(),
                                        client.getSystemId(), relPathStr);
-          throw new ServiceException(msg);
+          throw new BadRequestException(msg);
         }
         client.upload(relPathStr, inputStream);
       }
