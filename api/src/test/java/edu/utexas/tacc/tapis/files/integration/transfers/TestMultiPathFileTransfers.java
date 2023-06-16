@@ -9,7 +9,6 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,7 +20,7 @@ public class TestMultiPathFileTransfers extends BaseTransfersIntegrationTest<Tes
         super(TestFileTransfersConfig.class);
     }
     @AfterTest
-    public void afterClass() throws IOException {
+    public void afterClass() {
         cleanup();
     }
 
@@ -44,7 +43,7 @@ public class TestMultiPathFileTransfers extends BaseTransfersIntegrationTest<Tes
         }
     }
 
-    private List<String> doBatchTransfer(TransfersConfig transfersConfig, List<FileInfo> filesToTransfer) throws IOException, NoSuchAlgorithmException {
+    private List<String> doBatchTransfer(TransfersConfig transfersConfig, List<FileInfo> filesToTransfer) {
         List<String> transferTasks = new ArrayList<>();
         List<TestUtils.TransferDefinition> transferDefinitions = new ArrayList<>();
         // for each transfer, iterate through all test files

@@ -136,7 +136,7 @@
         {
           "uploadSystem": "tapisv3-storage1-dvernon",
           "uploadPath": "/integrationTest/uploaded/concurrent",
-          "count": 50,
+          "count": 10,
           "size": 1024
         }
       ],

@@ -7,7 +7,6 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +55,7 @@ public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFi
         super(TestFileTransfersConfig.class);
     }
     @AfterTest
-    public void afterClass() throws IOException {
+    public void afterClass() {
         cleanup();
     }
 

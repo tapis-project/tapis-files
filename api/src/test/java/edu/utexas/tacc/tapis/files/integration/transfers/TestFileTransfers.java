@@ -9,7 +9,6 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,7 +43,7 @@ public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTran
         }
     }
 
-    private List<String> doIndividualTransfer(TransfersConfig transfersConfig, List<FileInfo> filesToTransfer) throws IOException, NoSuchAlgorithmException {
+    private List<String> doIndividualTransfer(TransfersConfig transfersConfig, List<FileInfo> filesToTransfer) {
         List<String> transferTasks = new ArrayList<>();
         // for each transfer, iterate through all test files
         for(FileInfo fileInfo : filesToTransfer) {
