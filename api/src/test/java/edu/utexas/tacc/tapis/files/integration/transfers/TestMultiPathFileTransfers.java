@@ -13,14 +13,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Test(groups = {"integration"})
-public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTransfersConfig> {
-    private static final String TEMP_DIR_PREFIX = "TestFileTransfers_";
+public class TestMultiPathFileTransfers extends BaseTransfersIntegrationTest<TestFileTransfersConfig> {
+    private static final String TEMP_DIR_PREFIX = "TestMultiPathFileTransfers_";
 
-    public TestFileTransfers() {
+    public TestMultiPathFileTransfers() {
         super(TestFileTransfersConfig.class);
     }
     @AfterTest
-    public void afterClass() throws IOException {
+    public void afterClass() {
         cleanup();
     }
 
@@ -30,7 +30,7 @@ public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTran
         for(TransfersConfig transfersConfig : transfersConfigs) {
             List<FileInfo> filesToTransfer = TestUtils.instance.getListing(getBaseFilesUrl(), getToken(), transfersConfig.getSourceSystem(), transfersConfig.getSourcePath());
             List<String> transferTasks = null;
-            transferTasks = doIndividualTransfer(transfersConfig, filesToTransfer);
+            transferTasks = doBatchTransfer(transfersConfig, filesToTransfer);
             TestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, transfersConfig.getTimeout());
             transferTasks.clear();
             for(FileInfo fileInfo : filesToTransfer) {
@@ -43,8 +43,9 @@ public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTran
         }
     }
 
-    private List<String> doIndividualTransfer(TransfersConfig transfersConfig, List<FileInfo> filesToTransfer) {
+    private List<String> doBatchTransfer(TransfersConfig transfersConfig, List<FileInfo> filesToTransfer) {
         List<String> transferTasks = new ArrayList<>();
+        List<TestUtils.TransferDefinition> transferDefinitions = new ArrayList<>();
         // for each transfer, iterate through all test files
         for(FileInfo fileInfo : filesToTransfer) {
             // transfer each file from source to destination
@@ -52,9 +53,11 @@ public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTran
             Path fileName = Path.of(fileInfo.getPath()).getFileName();
             transferDefinition.setSourcePath(transfersConfig.getTapisSourcePath(fileName));
             transferDefinition.setDestinationPath(transfersConfig.getTapisDestinationPath(fileName));
-            JsonObject tapisResult = TestUtils.instance.transferFiles(getBaseFilesUrl(), getToken(), "integrationTestTransfer", transferDefinition);
-            transferTasks.add(getIdFromTransferResult(tapisResult));
+            transferDefinitions.add(transferDefinition);
         }
+        JsonObject tapisResult = TestUtils.instance.transferFiles(getBaseFilesUrl(), getToken(), "integrationTestTransfer", transferDefinitions.toArray(new TestUtils.TransferDefinition[transferDefinitions.size()]));
+        transferTasks.add(getIdFromTransferResult(tapisResult));
+
         return transferTasks;
     }
 
