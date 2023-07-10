@@ -11,8 +11,6 @@ public class TransfersConfig {
     private String destinationProtocol;
     private String destinationSystem;
     private Path destinationPath;
-    private boolean batch = false;
-
     // default to waiting 10 seconds
     private long timeout = 10000;
 
@@ -54,9 +52,5 @@ public class TransfersConfig {
 
     public long getTimeout() {
         return timeout;
-    }
-
-    public boolean isBatch() {
-        return batch;
     }
 }

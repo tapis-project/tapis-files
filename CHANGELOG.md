@@ -9,7 +9,7 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.3.7 - 2023-??-??
+## 1.4.0 - 2023-07-10
 
 Incremental improvements and new features.
 

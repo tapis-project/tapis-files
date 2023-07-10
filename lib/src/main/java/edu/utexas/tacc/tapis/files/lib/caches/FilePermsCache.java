@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.caches;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import edu.utexas.tacc.tapis.security.client.SKClient;
 import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -128,7 +129,10 @@ public class FilePermsCache extends BasePermsCache
       log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOADING", key.getTenantId(), key.getSystemId(), key.getUsername(),
                                 key.getPerm().name(), key.getPath()));
       String permSpec = String.format(PERMSPEC, key.getTenantId(), key.getPerm(), key.getSystemId(), key.getPath());
-      boolean isPermitted = getSKClient().isPermitted(key.getTenantId(), key.getUsername(), permSpec);
+      SKClient skClient = getSKClient();
+      skClient.setReadTimeout(30000);
+      skClient.setConnectTimeout(30000);
+      boolean isPermitted = skClient.isPermitted(key.getTenantId(), key.getUsername(), permSpec);
       log.debug(LibUtils.getMsg("FILES_CACHE_PERM_LOADED", key.getTenantId(), key.getSystemId(), key.getUsername(),
                                 key.getPerm().name(), key.getPath()));
       return isPermitted;
