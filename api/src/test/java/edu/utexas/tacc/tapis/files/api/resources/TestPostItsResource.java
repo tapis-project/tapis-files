@@ -5,7 +5,6 @@ import edu.utexas.tacc.tapis.files.api.models.PostItCreateRequest;
 import edu.utexas.tacc.tapis.files.api.models.PostItUpdateRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.api.responses.PostItDTO;
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.caches.TenantAdminCache;
@@ -65,7 +64,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -137,7 +135,6 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
                         bindAsContract(FileOpsService.class).in(Singleton.class);
                         bindAsContract(FileShareService.class).in(Singleton.class);
                         bindAsContract(TenantAdminCache.class).in(Singleton.class);
-                        bind(new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                         bind(serviceClients).to(ServiceClients.class);
                         bind(tenantManager).to(TenantManager.class);
                         bind(permsService).to(FilePermsService.class);

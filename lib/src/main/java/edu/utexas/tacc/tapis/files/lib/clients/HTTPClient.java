@@ -21,10 +21,10 @@ public class HTTPClient implements IRemoteDataClient
 {
   private static final Logger log = LoggerFactory.getLogger(HTTPClient.class);
 
-  @Override
-  public void reserve() {}
-  @Override
-  public void release() {}
+//  @Override
+//  public void reserve() {}
+//  @Override
+//  public void release() {}
 
   @Override
   public String getOboTenant() { return oboTenant; }

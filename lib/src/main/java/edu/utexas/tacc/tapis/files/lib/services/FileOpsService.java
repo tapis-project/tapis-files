@@ -156,7 +156,6 @@ public class FileOpsService
     {
       // Get the connection and increment the reservation count
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, impersonationId, sharedCtxGrantor);
-      client.reserve();
       return ls(client, relPathStr, limit, offset);
     }
     catch (IOException | ServiceException ex)
@@ -168,11 +167,6 @@ public class FileOpsService
       systemsCache.invalidateEntry(oboTenant, sysId, oboUser, impersonationId, sharedCtxGrantor);
       systemsCacheNoAuth.invalidateEntry(oboTenant, sysId, oboUser);
       throw new WebApplicationException(msg, ex);
-    }
-    finally
-    {
-      // Release the connection
-      if (client != null) client.release();
     }
   }
 
@@ -246,7 +240,6 @@ public class FileOpsService
       {
         // Get the connection and increment the reservation count
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-        client.reserve();
         return lsRecursive(client, relPathStr, false, depth);
       }
       catch (IOException | ServiceException ex)
@@ -254,10 +247,6 @@ public class FileOpsService
         String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, sysId, relPathStr, ex.getMessage());
         log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
-      }
-      finally
-      {
-        if (client != null) client.release();
       }
     }
 
@@ -317,7 +306,6 @@ public class FileOpsService
     {
       // Get the connection and increment the reservation count
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-      client.reserve();
       return client.getFileInfo(pathStr, followLinks);
     }
     catch (IOException ex)
@@ -325,11 +313,6 @@ public class FileOpsService
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
-    }
-    finally
-    {
-      // Release the connection
-      if (client != null) client.release();
     }
   }
 
@@ -359,7 +342,6 @@ public class FileOpsService
     try
     {
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-      client.reserve();
       upload(client, relPathStr, inStrm);
     }
     catch (IOException | ServiceException ex)
@@ -367,10 +349,6 @@ public class FileOpsService
       String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
-    }
-    finally
-    {
-      if (client != null) client.release();
     }
   }
 
@@ -457,7 +435,6 @@ public class FileOpsService
     {
       // Get the connection and increment the reservation count
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, null, sharedCtxGrantor);
-      client.reserve();
       mkdir(client, relPathStr);
     }
     catch (IOException | ServiceException ex)
@@ -465,10 +442,6 @@ public class FileOpsService
       String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, sysId, pathStr, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
-    }
-    finally
-    {
-      if (client != null) client.release();
     }
   }
 
@@ -545,7 +518,6 @@ public class FileOpsService
       try
       {
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-        client.reserve();
         moveOrCopy(client, op, srcRelPathStr, dstRelPathStr);
       }
       catch (IOException | ServiceException ex)
@@ -553,10 +525,6 @@ public class FileOpsService
         String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, systemId, srcRelPathStr, ex.getMessage());
         log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
-      }
-      finally
-      {
-        if (client != null) client.release();
       }
     }
 
@@ -646,7 +614,6 @@ public class FileOpsService
       try
       {
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-        client.reserve();
         // Delete files and permissions
         delete(client, relativePathStr);
         // Remove shares with recurse=true
@@ -657,10 +624,6 @@ public class FileOpsService
         String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "delete", systemId, relativePathStr, ex.getMessage());
         log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
-      }
-      finally
-      {
-        if (client != null) client.release();
       }
     }
 
@@ -950,7 +913,6 @@ public class FileOpsService
     {
       // Get a remoteDataClient to stream contents
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-      client.reserve();
       return client.getStream(relPathStr);
     }
     catch (IOException ex)
@@ -958,10 +920,6 @@ public class FileOpsService
       String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getAllBytes", sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
-    }
-    finally
-    {
-      if (client != null) client.release();
     }
   }
 
@@ -986,7 +944,6 @@ public class FileOpsService
     {
       // Get a remoteDataClient to stream contents
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-      client.reserve();
       return client.getBytesByRange(relPathStr, startByte, count);
     }
     catch (IOException ex)
@@ -994,10 +951,6 @@ public class FileOpsService
       String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getByteRange", sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
-    }
-    finally
-    {
-      if (client != null) client.release();
     }
   }
 
@@ -1022,7 +975,6 @@ public class FileOpsService
     {
       // Get a remoteDataClient to stream contents
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-      client.reserve();
       return client.getBytesByRange(relPathStr, startByte, startByte + 1023);
     }
     catch (IOException ex)
@@ -1030,10 +982,6 @@ public class FileOpsService
       String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getPaginatedBytes", sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
-    }
-    finally
-    {
-      if (client != null) client.release();
     }
   }
 
@@ -1063,7 +1011,6 @@ public class FileOpsService
     {
       // Get a remoteDataClient to do the listing and stream contents
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-      client.reserve();
       // Step through a recursive listing up to some max depth
       List<FileInfo> listing = lsRecursive(client, relPathStr, true, MAX_RECURSION);
       for (FileInfo fileInfo : listing)
@@ -1107,10 +1054,6 @@ public class FileOpsService
       String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "getZip", sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
-    }
-    finally
-    {
-      if (client != null) client.release();
     }
   }
 

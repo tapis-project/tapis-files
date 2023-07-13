@@ -22,19 +22,6 @@ public interface IRemoteDataClient
   TapisSystem getSystem();
 
   /**
-   * Record a reservation for a client. Only used for SSH clients.
-   * A reservation indicates a service call using the client is in progress.
-   * A client should not be fully closed until all reservations are released even if the client has
-   *   already been removed from the cache
-   */
-  void reserve();
-
-  /**
-   * Release a reservation for a client. Only used for SSH clients.
-   */
-  void release();
-
-  /**
    * List files or objects at a path
    *
    * @param path - path on system relative to system rootDir

@@ -86,12 +86,6 @@ public class GlobusDataClient implements IRemoteDataClient
 
   private final ServiceClients serviceClients;
 
-  // reserve and release are no-ops for this type of client.
-  @Override
-  public void reserve() {}
-  @Override
-  public void release() {}
-
   @Override
   public String getOboTenant() { return oboTenant; }
   @Override

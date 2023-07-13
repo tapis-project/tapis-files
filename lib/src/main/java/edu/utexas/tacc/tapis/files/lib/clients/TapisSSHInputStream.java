@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
+import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,6 @@ import java.io.InputStream;
  */
 public class TapisSSHInputStream extends FilterInputStream {
     private SSHSftpClient sftpClient;
-    private SSHConnectionHolder holder;
     private static final Logger log = LoggerFactory.getLogger(TapisSSHInputStream.class);
 
     protected TapisSSHInputStream(InputStream in) {
@@ -28,17 +27,15 @@ public class TapisSSHInputStream extends FilterInputStream {
         return super.read();
     }
 
-    public TapisSSHInputStream(InputStream in, SSHConnectionHolder holder, SSHSftpClient client) {
+    public TapisSSHInputStream(InputStream in, /* SSHConnectionHolder holder, */SSHSftpClient client) {
         super(in);
         this.sftpClient = client;
-        this.holder = holder;
     }
 
     @Override
     public void close() throws IOException {
         super.close();
-        this.holder.returnSftpClient(sftpClient);
-        sftpClient.close();
+        SshSessionPool.INSTANCE.returnSftpClient(sftpClient);
     }
 
     @Override

@@ -1,13 +1,10 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import java.io.IOException;
-import java.util.Objects;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.validation.constraints.NotNull;
 import org.jvnet.hk2.annotations.Service;
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionHolder;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
@@ -18,17 +15,10 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 @Named
 public class RemoteDataClientFactory implements IRemoteDataClientFactory
 {
-  private final SSHConnectionCache sshConnectionCache;
-
   @Inject
   private ServiceClients serviceClients;
   @Inject
   SystemsCache systemsCache;
-  @Inject
-  public RemoteDataClientFactory(SSHConnectionCache cache1)
-  {
-    sshConnectionCache = cache1;
-  }
 
   /*
    * Convenience wrapper for backward compatibility.
@@ -64,20 +54,7 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
   {
     if (SystemTypeEnum.LINUX.equals(system.getSystemType()))
     {
-      // Attempt to get the connection. On error invalidate system and connection cache entries. Problem may get resolved soon.
-      // For example, error could be invalid credentials or no route to host.
-      // Probably no need to invalidate connection cache entry but do need to invalidate system cache entry because
-      // that is where the credentials are coming from.
-      SSHConnectionHolder holder;
-      try { holder = sshConnectionCache.getConnection(system, system.getEffectiveUserId()); }
-      catch (IOException e)
-      {
-        sshConnectionCache.invalidateConnection(system);
-        systemsCache.invalidateEntry(oboTenant, Objects.requireNonNull(system.getId()), oboUser, impersonationId,
-                                     sharedCtxGrantor);
-        throw e;
-      }
-      return new SSHDataClient(oboTenant, oboUser, system, holder);
+      return new SSHDataClient(oboTenant, oboUser, system, systemsCache, impersonationId, sharedCtxGrantor);
     }
     else if (SystemTypeEnum.S3.equals(system.getSystemType()))
     {

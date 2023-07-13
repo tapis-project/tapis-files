@@ -4,7 +4,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
+//import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -21,6 +21,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -117,7 +118,7 @@ public class TestFileShareService
     ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
       @Override
       protected void configure() {
-        bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
+//        bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
         bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
         bindAsContract(FileOpsService.class).in(Singleton.class);
         bindAsContract(FileShareService.class).in(Singleton.class);
@@ -150,6 +151,7 @@ public class TestFileShareService
     @BeforeTest()
     public void setUp() throws Exception
     {
+      SshSessionPool.init();
       permsService.grantPermission(devTenant, testUser1, testSystemSSH.getId(), "/", Permission.MODIFY);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser1, testSystemSSH);
       fileOpsService.delete(client,"/");
