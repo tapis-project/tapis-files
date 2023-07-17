@@ -27,8 +27,6 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -246,8 +244,9 @@ public class LibUtils
   {
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
-    boolean pathIsShared = false;
     String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+    boolean isRead = Permission.READ.equals(perm);
+    boolean isModify = Permission.MODIFY.equals(perm);
 
     // If sharedCtxGrantor set, confirm that it is allowed (can throw ForbiddenException)
     if (!StringUtils.isBlank(sharedCtxGrantor)) checkSharedCtxAllowed(rUser, opName, sysId, relPathStr, sharedCtxGrantor);
@@ -255,25 +254,64 @@ public class LibUtils
     if (!StringUtils.isBlank(impersonationId)) checkImpersonationAllowed(rUser, opName, sysId, relPathStr, impersonationId);
 
     // Get fully resolved system including credentials for oboOrImpersonationId
+    // We will use a number of system attributes to determine if access is allowed.
     TapisSystem sys = getSystemIfEnabledNoAuth(rUser, sysCacheNoAuth, sysId, oboOrImpersonatedUser);
 
-    // Determine if requester is system owner, so we can bypass some auth checking.
-    boolean requesterIsOwner = oboOrImpersonatedUser.equals(sys.getOwner());
+    // Check for ownership
+    // ------------------------
+    // If requester is owner of system or in shared context and share grantor is owner then allow.
+    String sysOwner = sys.getOwner() == null ? "" : sys.getOwner();
+    if (oboOrImpersonatedUser.equals(sysOwner) || sysOwner.equals(sharedCtxGrantor)) return sys;
 
-    // TODO: When used by mkdir or during transfers this means path sharing allows mkdir/create/chmod+x.
+    // Check for system sharing
+    // ------------------------
+    // Figure out if system is shared with requester publicly or directly (through the Systems service)
+    boolean isSharedPublic = sys.getIsPublic() == null ? false : sys.getIsPublic();
+    List<String> sharedWithUsers = sys.getSharedWithUsers();
+    boolean isSharedDirect = (sharedWithUsers != null && sharedWithUsers.contains(oboOrImpersonatedUser));
+    boolean isShared = (isSharedPublic || isSharedDirect);
+
+    // If system is shared and perm request is READ then allow.
+    if (isShared && isRead) return sys;
+
+    // If system is shared and perm request is MODIFY and effectiveUserId is dynamic then allow.
+    boolean systemIsDynamic = sys.getIsDynamicEffectiveUser() == null ? false : sys.getIsDynamicEffectiveUser();
+    if (isShared && systemIsDynamic && isModify) return sys;
+
+    // Check for file path sharing
+    // ------------------------
+    // NOTE: If path is shared then user has implicit access to system.
+    // TODO/TBD: When used by mkdir or during transfers this means path sharing allows mkdir/create/chmod+x.
     //       Once share with MODIFY is implemented this will need to be updated to include the perm
-    // If not system owner check if path is shared.
-    if (!requesterIsOwner) pathIsShared = isPathShared(rUser, shareService, sys, relPathStr, impersonationId, sharedCtxGrantor);
+    boolean pathIsShared = isPathShared(rUser, shareService, sys, relPathStr, impersonationId, sharedCtxGrantor);
+    // If file path shared and READ is requested then allow
+    if (pathIsShared && isRead) return sys;
 
-    // If owner then auth checks not needed.
-    // If path is shared then user has implicit access to system.
-    // If owner or shared path we are done with auth checks, return the system.
-    if (requesterIsOwner || pathIsShared) return sys;
+    // If file path shared, MODIFY requested and in shared context then allow
+    if (pathIsShared && isModify && !StringUtils.isBlank(sharedCtxGrantor)) return sys;
 
-    // If path is shared then use sharedCtxGrantor = system owner in order to bypass auth check on Systems service side.
-
+    // ???
+    // NOTE/TODO: File path sharing behaves differently as compared to system sharing.
+    //        We might want to consider following same approach as system sharing.
+    //          - If READ requested allow.
+    //          - If MODIFY requested allow if effectiveUserId is dynamic
+//// TODO/TBD How to update handling of file path sharing? Re-visit after system sharing changes incorporated.
+//    // Determine if path is shared (through the Files service)
+//    boolean pathIsShared = isPathShared(rUser, shareService, sys, relPathStr, impersonationId, sharedCtxGrantor);
+//
+//    // If path is shared and perm request is READ then allow.
+//    if (pathIsShared && isRead) return sys;
+//
+//    // If path is shared and perm request is MODIFY and effectiveUserId is dynamic then allow.
+//    if (pathIsShared && systemIsDynamic && isModify) return sys;
+//
+//    // Check for fine-grained permission on path
+// ???
     // If not owner and path not shared, user may still have fine-grained permission on path
-    // Throws ForbiddenException if user not authorized
+    // NOTE/TODO: We might want to consider following same approach as system sharing in terms of access to system.
+    //          - i.e. skip check for READ access to system.
+
+    // Throws ForbiddenException if user does not have the requested perm for the path
     try
     {
       checkAuthForPath(rUser, permsService , sys, relPathStr, perm, impersonationId, sharedCtxGrantor);
@@ -285,6 +323,7 @@ public class LibUtils
       throw new WebApplicationException(msg, ex);
     }
 
+    // TODO/TBD Keep this? Re-visit after system sharing changes incorporated.
     // So user has fine-grained perm for the path, but they still need at least READ for the system.
     // Check this by making an alternate call to a different cache that includes the check when fetching the system
     sys = getSystemIfEnabled(rUser, sysCache, sysId, impersonationId, sharedCtxGrantor);
