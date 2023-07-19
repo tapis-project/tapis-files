@@ -281,36 +281,16 @@ public class LibUtils
     // Check for file path sharing
     // ------------------------
     // NOTE: If path is shared then user has implicit access to system.
-    // TODO/TBD: When used by mkdir or during transfers this means path sharing allows mkdir/create/chmod+x.
-    //       Once share with MODIFY is implemented this will need to be updated to include the perm
     boolean pathIsShared = isPathShared(rUser, shareService, sys, relPathStr, impersonationId, sharedCtxGrantor);
     // If file path shared and READ is requested then allow
     if (pathIsShared && isRead) return sys;
 
     // If file path shared, MODIFY requested and in shared context then allow
+    // This allows a shared path to be used when running a job in a shared context.
     if (pathIsShared && isModify && !StringUtils.isBlank(sharedCtxGrantor)) return sys;
 
-    // ???
-    // NOTE/TODO: File path sharing behaves differently as compared to system sharing.
-    //        We might want to consider following same approach as system sharing.
-    //          - If READ requested allow.
-    //          - If MODIFY requested allow if effectiveUserId is dynamic
-//// TODO/TBD How to update handling of file path sharing? Re-visit after system sharing changes incorporated.
-//    // Determine if path is shared (through the Files service)
-//    boolean pathIsShared = isPathShared(rUser, shareService, sys, relPathStr, impersonationId, sharedCtxGrantor);
-//
-//    // If path is shared and perm request is READ then allow.
-//    if (pathIsShared && isRead) return sys;
-//
-//    // If path is shared and perm request is MODIFY and effectiveUserId is dynamic then allow.
-//    if (pathIsShared && systemIsDynamic && isModify) return sys;
-//
-//    // Check for fine-grained permission on path
-// ???
+    // Check for fine-grained permission on path
     // If not owner and path not shared, user may still have fine-grained permission on path
-    // NOTE/TODO: We might want to consider following same approach as system sharing in terms of access to system.
-    //          - i.e. skip check for READ access to system.
-
     // Throws ForbiddenException if user does not have the requested perm for the path
     try
     {
@@ -323,7 +303,6 @@ public class LibUtils
       throw new WebApplicationException(msg, ex);
     }
 
-    // TODO/TBD Keep this? Re-visit after system sharing changes incorporated.
     // So user has fine-grained perm for the path, but they still need at least READ for the system.
     // Check this by making an alternate call to a different cache that includes the check when fetching the system
     sys = getSystemIfEnabled(rUser, sysCache, sysId, impersonationId, sharedCtxGrantor);
