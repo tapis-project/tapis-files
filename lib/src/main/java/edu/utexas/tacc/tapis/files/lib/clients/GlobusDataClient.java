@@ -48,7 +48,7 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
  *
  * If credentials are not available then an exception is thrown during instantiation.
  *
- * Note that not all operations are supported.
+ * Note that not all operations supported.
  * Supported operations:
  *   - ls
  *   - mkdir
@@ -72,7 +72,7 @@ public class GlobusDataClient implements IRemoteDataClient
 
   private final Logger log = LoggerFactory.getLogger(GlobusDataClient.class);
 
-  private static final String DEFAULT_GLOBUS_ROOT_DIR = "/~/";
+  private static final String DEFAULT_GLOBUS_ROOT_DIR = "/";
 
   private final String globusClientId;
   private final String oboTenant;
@@ -415,7 +415,7 @@ public class GlobusDataClient implements IRemoteDataClient
     String relativePathStr = PathUtils.getRelativePath(path).toString();
     Path absolutePath = PathUtils.getAbsolutePath(rootDir, relativePathStr);
     String absolutePathStr = absolutePath.toString();
-    // If our path is a variation of /~/ then construct a FileInfo and return
+    // If our path is empty or "/" or a variation of "/~/" then construct a FileInfo and return
     if (isGlobusRootDir(absolutePathStr))
     {
       return buildGlobusRootFileInfo(path);
@@ -696,7 +696,10 @@ public class GlobusDataClient implements IRemoteDataClient
     FileInfo fileInfo = new FileInfo();
     fileInfo.setName(path);
     fileInfo.setType(FileInfo.FileType.DIR);
-    fileInfo.setPath("/~/");
+    if (StringUtils.isBlank(path) || path.equals("/"))
+      fileInfo.setPath("/");
+    else
+      fileInfo.setPath("/~/");
     return fileInfo;
   }
 
