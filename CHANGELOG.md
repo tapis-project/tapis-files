@@ -17,7 +17,7 @@ Incremental improvements and new features.
 - Update file path authorization checks to include system sharing. Facilitates sharing an application.
 
 ### Bug fixes:
-- None
+- Fix issue with handling path /~/ for GLOBUS type systems
 
 ### Breaking Changes
 - None
