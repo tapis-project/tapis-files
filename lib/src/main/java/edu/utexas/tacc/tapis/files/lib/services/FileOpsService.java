@@ -1164,8 +1164,7 @@ public class FileOpsService
       }
       if (fileInfo.isDir() && depth < maxDepth)
       {
-        depth++;
-        listDirectoryRecurse(client, fileInfo.getPath(), listing, followLinks, depth, maxDepth);
+        listDirectoryRecurse(client, fileInfo.getPath(), listing, followLinks, depth + 1, maxDepth);
       }
     }
   }
