@@ -52,6 +52,7 @@ import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ApplicationHandler;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Singleton;
@@ -86,6 +87,7 @@ import java.util.concurrent.TimeUnit;
 @ApplicationPath("/")
 public class FilesApplication extends ResourceConfig
 {
+  private static Logger log = LoggerFactory.getLogger(FilesApplication.class);
   // SSHConnection cache settings
   public static final long SSHCACHE_TIMEOUT_MINUTES = 5;
 
@@ -290,7 +292,7 @@ public class FilesApplication extends ResourceConfig
       loggerContext.reset();
       configurator.doConfigure(url);
     } catch (JoranException ex) {
-      // ignore this - nothing we could do anyway.
+      log.error("Unable to re-read logback.xml file");
     }
   }
 

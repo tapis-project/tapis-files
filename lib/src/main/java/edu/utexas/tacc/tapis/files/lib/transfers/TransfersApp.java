@@ -138,7 +138,7 @@ public class TransfersApp
       loggerContext.reset();
       configurator.doConfigure(url);
     } catch (JoranException ex) {
-      // ignore this - nothing we could do anyway.
+      log.error("Unable to re-read logback.xml file");
     }
   }
 

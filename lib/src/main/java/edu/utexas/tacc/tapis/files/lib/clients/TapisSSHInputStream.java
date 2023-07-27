@@ -27,7 +27,7 @@ public class TapisSSHInputStream extends FilterInputStream {
         return super.read();
     }
 
-    public TapisSSHInputStream(InputStream in, /* SSHConnectionHolder holder, */SSHSftpClient client) {
+    public TapisSSHInputStream(InputStream in, SSHSftpClient client) {
         super(in);
         this.sftpClient = client;
     }
