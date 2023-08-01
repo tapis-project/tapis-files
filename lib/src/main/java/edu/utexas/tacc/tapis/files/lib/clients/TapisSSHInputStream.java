@@ -35,7 +35,7 @@ public class TapisSSHInputStream extends FilterInputStream {
     @Override
     public void close() throws IOException {
         super.close();
-        SshSessionPool.INSTANCE.returnSftpClient(sftpClient);
+        SshSessionPool.getInstance().returnSftpClient(sftpClient);
     }
 
     @Override

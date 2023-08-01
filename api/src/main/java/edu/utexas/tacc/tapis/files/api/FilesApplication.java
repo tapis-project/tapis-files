@@ -208,6 +208,7 @@ public class FilesApplication extends ResourceConfig
 
       SshSessionPoolPolicy poolPolicy = SshSessionPoolPolicy.defaultPolicy()
               .setMaxConnectionDuration(Duration.ofHours(6))
+              .setMaxConnectionIdleTime(Duration.ofMinutes(5))
               .setMaxConnectionsPerKey(1)
               .setMaxSessionsPerConnection(8)
               .setCleanupInterval(Duration.ofSeconds(15))

@@ -427,7 +427,7 @@ public class SSHDataClient implements ISSHDataClient
     }
     catch (TapisException | IOException e)
     {
-      SshSessionPool.INSTANCE.returnSftpClient(sftpClient);
+      SshSessionPool.getInstance().returnSftpClient(sftpClient);
       if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
       {
         String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, path);
@@ -909,7 +909,7 @@ public class SSHDataClient implements ISSHDataClient
   //               issues around credential changes.
   private SshSessionPool.AutoCloseSession<SSHExecChannel> borrowAutoCloseableExecChannel(Duration wait, boolean retryOnFail) throws IOException {
     try {
-      return SshSessionPool.INSTANCE.borrowAutoCloseableExecChannel(system.getTenant(), system.getHost(), system.getPort(),
+      return SshSessionPool.getInstance().borrowAutoCloseableExecChannel(system.getTenant(), system.getHost(), system.getPort(),
               system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
     } catch (TapisRecoverableException ex) {
       systemsCache.invalidateEntry(system.getTenant(), system.getId(), system.getEffectiveUserId(), impersonationId, sharedCtxGrantor);
@@ -932,7 +932,7 @@ public class SSHDataClient implements ISSHDataClient
   //               issues around credential changes.
   private SshSessionPool.AutoCloseSession<SSHSftpClient> borrowAutoCloseableSftpClient(Duration wait, boolean retryOnFail) throws IOException {
     try {
-      return SshSessionPool.INSTANCE.borrowAutoCloseableSftpClient(system.getTenant(), system.getHost(), system.getPort(),
+      return SshSessionPool.getInstance().borrowAutoCloseableSftpClient(system.getTenant(), system.getHost(), system.getPort(),
               system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
     } catch (TapisRecoverableException ex) {
       systemsCache.invalidateEntry(system.getTenant(), system.getId(), system.getEffectiveUserId(), impersonationId, sharedCtxGrantor);
@@ -954,12 +954,12 @@ public class SSHDataClient implements ISSHDataClient
   //               issues around credential changes.
   private SSHSftpClient borrowManualCloseSftpClient(Duration wait, boolean retryOnFail) throws TapisException {
     try {
-      return SshSessionPool.INSTANCE.borrowSftpClient(system.getTenant(), system.getHost(), system.getPort(),
+      return SshSessionPool.getInstance().borrowSftpClient(system.getTenant(), system.getHost(), system.getPort(),
               system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
     } catch (TapisRecoverableException ex) {
       systemsCache.invalidateEntry(system.getTenant(), system.getId(), system.getEffectiveUserId(), impersonationId, sharedCtxGrantor);
       if (retryOnFail) {
-        return SshSessionPool.INSTANCE.borrowSftpClient(system.getTenant(), system.getHost(), system.getPort(),
+        return SshSessionPool.getInstance().borrowSftpClient(system.getTenant(), system.getHost(), system.getPort(),
                 system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
       } else {
         throw ex;
