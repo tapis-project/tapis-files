@@ -13,6 +13,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -73,6 +74,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   @BeforeMethod
   public void setUpQueues()
   {
+    SshSessionPool.init();
     childQ = UUID.randomUUID().toString();
     transfersService.setChildQueue(childQ).block(Duration.ofSeconds(1));
     parentQ = UUID.randomUUID().toString();

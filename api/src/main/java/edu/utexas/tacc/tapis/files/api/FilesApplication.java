@@ -1,5 +1,9 @@
 package edu.utexas.tacc.tapis.files.api;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.classic.util.ContextInitializer;
+import ch.qos.logback.core.joran.spi.JoranException;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -17,12 +21,13 @@ import edu.utexas.tacc.tapis.files.lib.services.PostItsService;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
+import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
+import edu.utexas.tacc.tapis.shared.ssh.SshSessionPoolPolicy;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.ClearThreadLocalRequestFilter;
@@ -47,11 +52,17 @@ import org.glassfish.jersey.jackson.JacksonFeature;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ApplicationHandler;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Singleton;
 import javax.ws.rs.ApplicationPath;
 import java.net.URI;
+import java.net.URL;
+import java.time.Duration;
 import java.util.Collection;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /*
@@ -76,14 +87,20 @@ import java.util.concurrent.TimeUnit;
 @ApplicationPath("/")
 public class FilesApplication extends ResourceConfig
 {
+  private static Logger log = LoggerFactory.getLogger(FilesApplication.class);
   // SSHConnection cache settings
   public static final long SSHCACHE_TIMEOUT_MINUTES = 5;
+
+  // reread the logging config file every 5 minutes
+  private static final int REREAD_LOGFILE_INTERVAL_SECS = 300;
 
   // We must be running on a specific site and this will never change
   private static String siteId;
   public static String getSiteId() {return siteId;}
   private static String siteAdminTenantId;
   public static String getSiteAdminTenantId() {return siteAdminTenantId;}
+
+  private static ScheduledExecutorService loggerExecutorService;
 
   public FilesApplication()
   {
@@ -170,7 +187,6 @@ public class FilesApplication extends ResourceConfig
       {
         @Override
         protected void configure() {
-          bind(new SSHConnectionCache(SSHCACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
           bind(tenantManager).to(TenantManager.class);
           bindAsContract(FileOpsService.class).in(Singleton.class);
           bindAsContract(FileUtilsService.class).in(Singleton.class);
@@ -189,6 +205,17 @@ public class FilesApplication extends ResourceConfig
           bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
         }
       });
+
+      SshSessionPoolPolicy poolPolicy = SshSessionPoolPolicy.defaultPolicy()
+              .setMaxConnectionDuration(Duration.ofHours(6))
+              .setMaxConnectionIdleTime(Duration.ofMinutes(15))
+              .setMaxConnectionsPerKey(1)
+              .setMaxSessionsPerConnection(8)
+              .setCleanupInterval(Duration.ofSeconds(15))
+              .setTraceDuringCleanupFrequency(RuntimeSettings.get().getSshPoolTraceOnCleanupInterval())
+              .setSessionCreationStrategy(SshSessionPoolPolicy.SessionCreationStrategy.MINIMIZE_CONNECTIONS);
+      SshSessionPool.init(poolPolicy);
+
     }
     catch (Exception e)
     {
@@ -250,6 +277,24 @@ public class FilesApplication extends ResourceConfig
     Thread filesShutdownThread = new FilesShutdownThread(postItsService);
     Runtime.getRuntime().addShutdownHook(filesShutdownThread);
     postItsService.startPostItsReaper(RuntimeSettings.get().getPostItsReaperIntervalMinutes());
+    loggerExecutorService = Executors.newSingleThreadScheduledExecutor();
+    loggerExecutorService.scheduleAtFixedRate(() -> { rereadLoggerConfiguration(); },
+            RuntimeSettings.get().getRereadLogConfigIntevalSeconds(),
+            RuntimeSettings.get().getRereadLogConfigIntevalSeconds(), TimeUnit.SECONDS);
+  }
+
+  private static void rereadLoggerConfiguration() {
+    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+    ContextInitializer contextInitializer = new ContextInitializer(loggerContext);
+    URL url = contextInitializer.findURLOfDefaultConfigurationFile(true);
+    try {
+      JoranConfigurator configurator = new JoranConfigurator();
+      configurator.setContext(loggerContext);
+      loggerContext.reset();
+      configurator.doConfigure(url);
+    } catch (JoranException ex) {
+      log.error("Unable to re-read logback.xml file");
+    }
   }
 
   private static class FilesShutdownThread extends Thread {

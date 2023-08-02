@@ -73,6 +73,7 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
 
         token = TestUtils.instance.getToken(integrationConfig.getTokenUrl(), integrationConfig.getUsername(), integrationConfig.getPassword());
         cleanup();
+        int i=0;
         for(UploadFilesConfig uploadFilesConfig : testConfig.getUploadFiles()) {
             log.info("Uploading files.  System: " + uploadFilesConfig.getUploadSystem() + " Path: " + uploadFilesConfig.getUploadPath());
             uploadFiles(uploadFilesConfig);
@@ -102,6 +103,9 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
                     uploadFilesConfig.getUploadSystem(), Paths.get(uploadFilesConfig.getUploadPath().toString(),
                             destinationPath.toString()), uploadFilesConfig.getSize(), true);
             testFiles.put(destinationPath, digest);
+            if(i % 10 == 0) {
+                log.info("Uploaded file " + i + " of " + uploadFilesConfig.getCount());
+            }
         }
     }
 

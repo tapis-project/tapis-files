@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib;
 
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
@@ -52,7 +51,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 
 @Test(groups={"integration"})
@@ -304,7 +302,6 @@ public class BaseDatabaseIntegrationTest
         bind(serviceClients).to(ServiceClients.class);
         bind(serviceContext).to(ServiceContext.class);
         bindAsContract(RemoteDataClientFactory.class);
-        bind(new SSHConnectionCache(5, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
         bindAsContract(FileOpsService.class).in(Singleton.class);
         bindAsContract(FileShareService.class).in(Singleton.class);
         bindAsContract(FileUtilsService.class);

@@ -20,4 +20,6 @@ public interface IRuntimeConfig {
     int getPostItsReaperIntervalMinutes();
     int getDbConnectionPoolCoreSize();
     int getDbConnectionPoolSize();
+    int getSshPoolTraceOnCleanupInterval();
+    int getRereadLogConfigIntevalSeconds();
 }

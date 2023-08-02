@@ -28,6 +28,8 @@ public class RuntimeSettings {
         protected final int postItsReaperIntervalMinutes = getIntSetting("POSTITS_REAPER_INTERVAL_MINUTES", 1440);
         protected final int dbConnectionPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 15);
         protected final int dbConnectionPoolSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 20);
+        protected final int sshPoolTraceOnCleanupInterval = getIntSetting("TAPIS_SSH_POOL_TRACE_ON_CLEANUP_INTERVAL", 4);
+        protected final int rereadLogConfigIntevalSeconds = getIntSetting("TAPIS_REREAD_LOG_CONFIG_INTERVAL_SECONDS", 300);
 
         public String getHostName() {
             return hostName;
@@ -91,6 +93,14 @@ public class RuntimeSettings {
 
         public int getDbConnectionPoolSize() {
             return dbConnectionPoolSize;
+        }
+
+        public int getSshPoolTraceOnCleanupInterval() {
+            return sshPoolTraceOnCleanupInterval;
+        }
+
+        public int getRereadLogConfigIntevalSeconds() {
+            return rereadLogConfigIntevalSeconds;
         }
 
         public static int getIntSetting(String settingName, int defaultValue) {
