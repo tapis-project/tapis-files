@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
-import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -15,6 +14,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
+import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.shared.ssh.apache.SSHConnection;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -25,6 +25,8 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.server.spi.Container;
+import org.glassfish.jersey.server.spi.ContainerLifecycleListener;
 import org.glassfish.jersey.test.TestProperties;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
@@ -46,7 +48,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -95,8 +96,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   private SKClient skClient;
   private SystemsCache systemsCache;
   private SystemsCacheNoAuth systemsCacheNoAuth;
-  private final SSHConnectionCache sshConnectionCache = new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES);
-  private final RemoteDataClientFactory remoteDataClientFactory = new RemoteDataClientFactory(sshConnectionCache);
+  private RemoteDataClientFactory remoteDataClientFactory = null;
   private final FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
   /**
@@ -201,7 +201,6 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
             .register(new AbstractBinder() {
               @Override
               protected void configure() {
-                bind(new SSHConnectionCache(CACHE_TIMEOUT_MINUTES, TimeUnit.MINUTES)).to(SSHConnectionCache.class);
                 bind(serviceClients).to(ServiceClients.class);
                 bind(tenantManager).to(TenantManager.class);
                 bind(permsService).to(FilePermsService.class);
@@ -211,12 +210,27 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
                 bindAsContract(FileShareService.class).in(Singleton.class);
                 bindAsContract(FilePermsService.class);
                 bind(serviceContext).to(ServiceContext.class);
-                bind(remoteDataClientFactory).to(RemoteDataClientFactory.class);
-                bind(sshConnectionCache).to(SSHConnectionCache.class);
+                bindAsContract(RemoteDataClientFactory.class).in(Singleton.class);
               }
             });
 
     app.register(ContentApiResource.class);
+    app.register(new ContainerLifecycleListener() {
+      @Override
+      public void onStartup(Container container) {
+        remoteDataClientFactory =  container.getApplicationHandler().getInjectionManager().getInstance(RemoteDataClientFactory.class);
+      }
+
+      @Override
+      public void onReload(Container container) {
+
+      }
+
+      @Override
+      public void onShutdown(Container container) {
+
+      }
+    });
     FilePermsService.setSiteAdminTenantId("admin");
     FileShareService.setSiteAdminTenantId("admin");
     return app;
@@ -227,6 +241,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   public void setUp() throws Exception
   {
     super.setUp();
+    SshSessionPool.init();
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
   }
 

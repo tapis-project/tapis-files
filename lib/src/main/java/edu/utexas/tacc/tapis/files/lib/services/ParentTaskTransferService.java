@@ -11,7 +11,6 @@ import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +98,7 @@ public class ParentTaskTransferService
       .groupBy(m -> { try { return groupByTenant(m); } catch (ServiceException ex) { return Mono.empty(); } } )
       .flatMap(group ->
         {
-          Scheduler scheduler = Schedulers.newBoundedElastic(5, 10, "ParentPool:" + group.key());
+          Scheduler scheduler = Schedulers.newBoundedElastic(5, 1000, "ParentPool:" + group.key());
           return group.flatMap(m ->
             deserializeParentMessage(m)
               .flatMap(t1 -> Mono.fromCallable(() -> doParentStepOne(t1))

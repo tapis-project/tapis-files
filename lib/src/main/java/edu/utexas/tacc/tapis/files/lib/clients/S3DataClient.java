@@ -73,11 +73,6 @@ public class S3DataClient implements IRemoteDataClient
   private final String rootDir;
 
   @Override
-  public void reserve() {}
-  @Override
-  public void release() {} // NOTE: Do not close on release. getContent calls have streaming output. Must remain open.
-
-  @Override
   public String getOboTenant() { return oboTenant; }
   @Override
   public String getOboUser() { return oboUser; }

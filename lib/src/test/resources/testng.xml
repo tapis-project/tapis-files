@@ -10,7 +10,6 @@
   <test name="fileslib">
     <classes>
       <class name="edu.utexas.tacc.tapis.files.lib.services.TestFileShareService"/>
-      <class name="edu.utexas.tacc.tapis.files.lib.cache.TestSSHConnectionCache"/>
       <class name="edu.utexas.tacc.tapis.files.lib.utils.PathUtilsTest"/>
       <class name="edu.utexas.tacc.tapis.files.lib.utils.S3URLParserTest"/>
       <class name="edu.utexas.tacc.tapis.files.lib.transfers.TestTransfers"/>

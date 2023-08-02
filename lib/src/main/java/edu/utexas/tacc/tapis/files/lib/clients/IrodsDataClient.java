@@ -89,11 +89,6 @@ public class IrodsDataClient implements IRemoteDataClient
   }
 
   @Override
-  public void reserve() {}
-  @Override
-  public void release() {}
-
-  @Override
   public String getOboTenant() {
     return oboTenant;
   }

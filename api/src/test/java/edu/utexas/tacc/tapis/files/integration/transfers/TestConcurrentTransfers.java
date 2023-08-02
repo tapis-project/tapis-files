@@ -4,6 +4,8 @@ import com.google.gson.JsonObject;
 import edu.utexas.tacc.tapis.files.integration.transfers.configs.TestFileTransfersConfig;
 import edu.utexas.tacc.tapis.files.integration.transfers.configs.TransfersConfig;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import org.apache.commons.lang3.StringUtils;
+import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.Test;
 
@@ -81,7 +83,9 @@ public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFi
 
         for(TransferThread transferThread : transferThreads) {
             TransfersConfig transfersConfig = transferThread.getTransfersConfig();
-            transferTasks.add(transferThread.getTransferId());
+            String transferId = transferThread.getTransferId();
+            Assert.assertTrue(StringUtils.isNotBlank(transferId));
+            transferTasks.add(transferId);
             TestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, transfersConfig.getTimeout());
             transferTasks.clear();
 
