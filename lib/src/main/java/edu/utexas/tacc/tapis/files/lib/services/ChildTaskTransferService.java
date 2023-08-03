@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -378,7 +379,18 @@ public class ChildTaskTransferService
     // Note: sourceSystem will be null and srcIsLinux will be false if source is http/s.
     if (sourceSystem != null && srcIsLinux && dstIsLinux)
     {
-      updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, parentTask.getDestSharedCtxGrantor());
+      // Figure out if dest system is shared. We need to know if we should turn of perm checking.
+      // First check to see if we are in a sharedCtx
+      boolean isDestShared = !StringUtils.isBlank(parentTask.getDestSharedCtxGrantor());
+      // Even if not in a sharedCtx the dest system may be shared publicly or directly with the user.
+      if (!isDestShared)
+      {
+        boolean isSharedPublic = destSystem.getIsPublic() == null ? false : destSystem.getIsPublic();
+        List<String> sharedWithUsers = destSystem.getSharedWithUsers();
+        boolean isSharedDirect = (sharedWithUsers != null && sharedWithUsers.contains(oboUser));
+        isDestShared = (isSharedPublic || isSharedDirect);
+      }
+      updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, isDestShared);
     }
 
     // The ChildTransferTask may have been updated by calling thread, e.g. cancelled, so we look it up again
@@ -750,7 +762,7 @@ public class ChildTaskTransferService
   private void updateLinuxExeFile(TransferTaskChild taskChild,
                                   IRemoteDataClient srcClient, TransferURI srcUri,
                                   IRemoteDataClient dstClient, TransferURI dstUri,
-                                  String destSharedCtxGrantor)
+                                  boolean isDestShared)
           throws IOException, ServiceException
   {
 
@@ -769,7 +781,6 @@ public class ChildTaskTransferService
       {
         // If in a sharedAppCtx, tell linuxOp to skip the perms check.
         // so the linuxOp will skip the perm check
-        boolean isDestShared = !StringUtils.isBlank(destSharedCtxGrantor);
         boolean recurseFalse = false;
         fileUtilsService.linuxOp(dstClient, dstPath, FileUtilsService.NativeLinuxOperation.CHMOD, "700",
                                  recurseFalse, isDestShared);
