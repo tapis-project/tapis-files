@@ -291,7 +291,7 @@ public class ChildTaskTransferService
     String jwtUser = TapisConstants.SERVICE_NAME_FILES;
     String jwtTenant = TransfersApp.getSiteAdminTenantId();
     ResourceRequestUser rUser =
-            new ResourceRequestUser(new AuthenticatedUser(jwtUser, jwtTenant, TapisThreadContext.AccountType.user.name(),
+            new ResourceRequestUser(new AuthenticatedUser(jwtUser, jwtTenant, TapisThreadContext.AccountType.service.name(),
                     null, oboUser, oboTenant, null, null, null));
 
     // Initialize source path and client
