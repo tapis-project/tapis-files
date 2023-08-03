@@ -10,7 +10,10 @@ import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
+
+import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
 import org.jetbrains.annotations.NotNull;
+import org.jooq.tools.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,8 +111,11 @@ public class SystemsCacheNoAuth
     {
       log.debug(LibUtils.getMsg("FILES_CACHE_NOAUTH_SYS_LOADING", key.getTenantId(), key.getSystemId(), key.getTapisUser()));
       // Create a client to call systems as files@<admin-tenant>
-      SystemsClient client = serviceClients.getClient(TapisConstants.SERVICE_NAME_FILES,
-                                                      FileOpsService.getServiceTenantId(),  SystemsClient.class);
+      // Service admin tenant might be FileOpsService or TransfersApp, depending on whether we are running as part of
+      //   the FilesApplication or the TransfersApp.
+      String svcTenant = FileOpsService.getServiceTenantId();
+      if (StringUtils.isBlank(svcTenant)) svcTenant = TransfersApp.getSiteAdminTenantId();
+      SystemsClient client = serviceClients.getClient(TapisConstants.SERVICE_NAME_FILES, svcTenant, SystemsClient.class);
       // Use impersonationId and resourceTenant to pass in the user and tenant for the requested system.
       // Because this is Files calling as itself we must tell Systems which user and tenant to use.
       // Systems normally gets these from the jwt.
