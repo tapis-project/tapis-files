@@ -13,11 +13,6 @@ import java.util.concurrent.Future;
 import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
-import edu.utexas.tacc.tapis.shared.TapisConstants;
-import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -30,6 +25,10 @@ import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.util.retry.Retry;
 
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
@@ -49,6 +48,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
+import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -284,7 +284,7 @@ public class ChildTaskTransferService
     String sourcePath;
     String destPath = destURL.getPath();
 
-    // TODO Simulate a ResourceRequestUser since we will need to make some calls that require it
+    // Simulate a ResourceRequestUser since we will need to make some calls that require it
     // Obo tenant and user come from task, jwt tenant and user are files@<site admin tenant>
     String oboUser = taskChild.getUsername();
     String oboTenant = taskChild.getTenantId();
@@ -294,12 +294,6 @@ public class ChildTaskTransferService
             new ResourceRequestUser(new AuthenticatedUser(jwtUser, jwtTenant, TapisThreadContext.AccountType.user.name(),
                     null, oboUser, oboTenant, null, null, null));
 
-    // TODO/TBD: Should we check here to see if src and dest are identical and skip everything else if it
-    //           is effectively a no-op?
-    //           Might make sense to have TransferURI class to handle the comparison.
-    //           Probably would be worth doing this even if we don't make the extra effort to check if the paths
-    //             resolve to the same file.
-    //      Maybe just check to see if host and path match?
     // Initialize source path and client
     if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://"))
     {
@@ -311,30 +305,10 @@ public class ChildTaskTransferService
     {
       // Source is not HTTP/S. At this point both source and destination should be Tapis URLs
       sourcePath = sourceURL.getPath();
-
-      // TODO/TBD: Should we check here to see if src and dest are identical and skip everything else if it
-      //           is effectively a no-op?
-      //           Might make sense to have TransferURI class handle the comparison.
-      //           Probably would be worth doing this even if we don't make the extra effort to check if the paths
-      //             resolve to the same file.
-      //      Maybe just check to see if system and path match?
-      if (sourceURL.getSystemId().equals(destURL.getSystemId()) && sourcePath.equals(destPath))
-      {
-        // TODO Log message
-        // TODO Update task status and return taskChild
-        //      But how to handle "bytes sent" tracking? Set to 0?
-      }
-
-      // TODO: Use a LibUtils method to properly take into account ownership, sharing and fine grained permissions.
+      // Use a LibUtils method to properly take into account ownership, sharing and fine-grained permissions.
       sourceSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
               permsService, opName, sourceURL.getSystemId(), sourcePath, FileInfo.Permission.READ, impersonationIdNull,
               parentTask.getSrcSharedCtxGrantor());
-// TODO REMOVE
-// TODO: This does not take into account sharing in the same way as LibUtils.getResolvedSysWithAuthCheck
-//       Need to properly allow for sharing as is done in LibUtils method.
-// TODO     sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername(),
-//                                            impersonationIdNull, parentTask.getSrcSharedCtxGrantor());
-// TODO REMOVE
       // If src system is not enabled throw an exception
       if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
       {
@@ -352,14 +326,10 @@ public class ChildTaskTransferService
     // Initialize destination client
     try
     {
-      // TODO: Use a LibUtils method to properly take into account ownership, sharing and fine grained permissions.
+      // Use a LibUtils method to properly take into account ownership, sharing and fine-grained permissions.
       destSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
-              permsService, opName, destURL.getSystemId(), destPath, FileInfo.Permission.READ, impersonationIdNull,
+              permsService, opName, destURL.getSystemId(), destPath, FileInfo.Permission.MODIFY, impersonationIdNull,
               parentTask.getSrcSharedCtxGrantor());
-// TODO REMOVE
-// TODO      destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername(),
-//                                          impersonationIdNull, parentTask.getDestSharedCtxGrantor());
-// TODO REMOVE
       // If dst system is not enabled throw an exception
       if (destSystem.getEnabled() == null || !destSystem.getEnabled())
       {
