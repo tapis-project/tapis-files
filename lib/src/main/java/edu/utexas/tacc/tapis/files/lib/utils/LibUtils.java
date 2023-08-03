@@ -244,7 +244,7 @@ public class LibUtils
   {
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
-    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+    String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? oboUser : impersonationId;
     boolean isRead = Permission.READ.equals(perm);
     boolean isModify = Permission.MODIFY.equals(perm);
 

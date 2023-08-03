@@ -25,6 +25,10 @@ import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.util.retry.Retry;
 
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
@@ -44,6 +48,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.transfers.ObservableInputStream;
+import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -64,6 +69,8 @@ public class ChildTaskTransferService
     private final FileTransfersDAO dao;
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
     private final RemoteDataClientFactory remoteDataClientFactory;
+    private final FileShareService shareService;
+    private final FilePermsService permsService;
     private final SystemsCache systemsCache;
     private final SystemsCacheNoAuth systemsCacheNoAuth;
     private final FileUtilsService fileUtilsService;
@@ -81,10 +88,13 @@ public class ChildTaskTransferService
   public ChildTaskTransferService(TransfersService transfersService1, FileTransfersDAO dao1,
                                   FileUtilsService fileUtilsService1,
                                   RemoteDataClientFactory remoteDataClientFactory1,
+                                  FileShareService shareService1, FilePermsService permsService1,
                                   SystemsCache cache1, SystemsCacheNoAuth cache2)
   {
     transfersService = transfersService1;
     dao = dao1;
+    shareService = shareService1;
+    permsService = permsService1;
     systemsCache = cache1;
     systemsCacheNoAuth = cache2;
     remoteDataClientFactory = remoteDataClientFactory1;
@@ -231,6 +241,7 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException
   {
+    String opName = "childTaskTxfr";
     boolean srcIsLinux = false, dstIsLinux = false; // Used for properly handling update of exec perm
 
     TapisSystem sourceSystem = null;
@@ -267,25 +278,37 @@ public class ChildTaskTransferService
       throw new ServiceException(msg, ex);
     }
 
-    String sourcePath;
     TransferURI destURL = taskChild.getDestinationURI();
     TransferURI sourceURL = taskChild.getSourceURI();
-    String impersonationIdNull = null;
+    String impersonationIdNull = null; // to help with debugging
+    String sourcePath;
+    String destPath = destURL.getPath();
+
+    // Simulate a ResourceRequestUser since we will need to make some calls that require it
+    // Obo tenant and user come from task, jwt tenant and user are files@<site admin tenant>
+    String oboUser = taskChild.getUsername();
+    String oboTenant = taskChild.getTenantId();
+    String jwtUser = TapisConstants.SERVICE_NAME_FILES;
+    String jwtTenant = TransfersApp.getSiteAdminTenantId();
+    ResourceRequestUser rUser =
+            new ResourceRequestUser(new AuthenticatedUser(jwtUser, jwtTenant, TapisThreadContext.AccountType.user.name(),
+                    null, oboUser, oboTenant, null, null, null));
 
     // Initialize source path and client
     if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://"))
     {
-      // Source path is HTTP/S
-      //This should be the full string URL such as http://google.com
-      sourcePath = sourceURL.toString();
+      // Source is HTTP/S
+      // Pass in the full URLs as strings
       sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
     }
     else
     {
-      // Source path is not HTTP/S
+      // Source is not HTTP/S. At this point both source and destination should be Tapis URLs
       sourcePath = sourceURL.getPath();
-      sourceSystem = systemsCache.getSystem(taskChild.getTenantId(), sourceURL.getSystemId(), taskChild.getUsername(),
-                                            impersonationIdNull, parentTask.getSrcSharedCtxGrantor());
+      // Use a LibUtils method to properly take into account ownership, sharing and fine-grained permissions.
+      sourceSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
+              permsService, opName, sourceURL.getSystemId(), sourcePath, FileInfo.Permission.READ, impersonationIdNull,
+              parentTask.getSrcSharedCtxGrantor());
       // If src system is not enabled throw an exception
       if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled())
       {
@@ -303,8 +326,10 @@ public class ChildTaskTransferService
     // Initialize destination client
     try
     {
-      destSystem = systemsCache.getSystem(taskChild.getTenantId(), destURL.getSystemId(), taskChild.getUsername(),
-                                          impersonationIdNull, parentTask.getDestSharedCtxGrantor());
+      // Use a LibUtils method to properly take into account ownership, sharing and fine-grained permissions.
+      destSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
+              permsService, opName, destURL.getSystemId(), destPath, FileInfo.Permission.MODIFY, impersonationIdNull,
+              parentTask.getSrcSharedCtxGrantor());
       // If dst system is not enabled throw an exception
       if (destSystem.getEnabled() == null || !destSystem.getEnabled())
       {
