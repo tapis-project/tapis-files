@@ -7,6 +7,7 @@ import ch.qos.logback.core.joran.spi.JoranException;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
@@ -57,6 +58,12 @@ public class TransfersApp
 
   private static final Logger log = LoggerFactory.getLogger(TransfersApp.class);
 
+  // We must be running on a specific site and this will never change
+  private static String siteId;
+  public static String getSiteId() {return siteId;}
+  private static String siteAdminTenantId;
+  public static String getSiteAdminTenantId() {return siteAdminTenantId;}
+
   public static void main(String[] args)
   {
     log.info("Starting transfers worker application.");
@@ -77,6 +84,7 @@ public class TransfersApp
         bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
         bindAsContract(TransfersService.class).in(Singleton.class);
         bindAsContract(FilePermsService.class).in(Singleton.class);
+        bindAsContract(FileShareService.class).in(Singleton.class);
         bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
         bindAsContract(ParentTaskTransferService.class).in(Singleton.class);
         bindAsContract(FilePermsCache.class).in(Singleton.class);
@@ -97,9 +105,19 @@ public class TransfersApp
               .setSessionCreationStrategy(SshSessionPoolPolicy.SessionCreationStrategy.MINIMIZE_CONNECTIONS);
       SshSessionPool.init(poolPolicy);
 
-      // Need to init the tenant manager for some reason.
-      TenantManager tenantManager = locator.getService(TenantManager.class);
+      // Get runtime parameters
+      IRuntimeConfig runtimeConfig = RuntimeSettings.get();
+
+      // Set site on which we are running. This is a required runtime parameter.
+      siteId = runtimeConfig.getSiteId();
+
+      // Init tenant manager, site admin tenant
+      String url = runtimeConfig.getTenantsServiceURL();
+      TenantManager tenantManager = TenantManager.getInstance(url);
       tenantManager.getTenants();
+      // Set admin tenant also, needed when building a client for calling other services (such as SK) as ourselves.
+      siteAdminTenantId = tenantManager.getSiteAdminTenantId(siteId);
+
       log.info("Getting serviceContext.");
       ServiceContext serviceContext = locator.getService(ServiceContext.class);
       log.info("Got serviceContext.");
