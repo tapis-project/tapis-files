@@ -1,0 +1,6 @@
+{
+  "baseFilesUrl":"http://localhost:8080/v3/files",
+  "tokenUrl": "https://dev.develop.tapis.io/v3/oauth2",
+  "username": "testuser2",
+  "password": "testuser2"
+}

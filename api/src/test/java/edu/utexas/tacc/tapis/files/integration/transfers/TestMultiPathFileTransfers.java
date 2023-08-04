@@ -7,17 +7,17 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.Test;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 @Test(groups = {"integration"})
 public class TestMultiPathFileTransfers extends BaseTransfersIntegrationTest<TestFileTransfersConfig> {
+    private static final String TEST_CONFIG = "TestMultiPathFileTransfersConfig.json";
     private static final String TEMP_DIR_PREFIX = "TestMultiPathFileTransfers_";
 
     public TestMultiPathFileTransfers() {
-        super(TestFileTransfersConfig.class);
+        super(TestFileTransfersConfig.class, TEST_CONFIG);
     }
     @AfterTest
     public void afterClass() {

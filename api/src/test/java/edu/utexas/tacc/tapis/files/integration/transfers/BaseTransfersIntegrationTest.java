@@ -13,7 +13,6 @@ import edu.utexas.tacc.tapis.files.integration.transfers.configs.UploadFilesConf
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,9 +27,10 @@ import java.util.UUID;
 
 abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersIntegrationConfig> {
     Logger log = LoggerFactory.getLogger(BaseTransfersIntegrationTest.class);
-    private static final String TRANSFERS_INTEGRATION_TEST_CONFIG = "TransfersIntegrationTestConfig.json";
+    private static final String TRANSFERS_INTEGRATION_TEST_CONFIG = "IntegrationTestCommonConfig.json";
     private static final String SHA_PREFIX = "sha256:";
     private TransfersIntegrationTestConfig integrationConfig;
+    private final String testConfigFileName;
 
     private Class<T> testConfigClass;
 
@@ -43,10 +43,11 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
 
     Map<Path, String> testFiles;
 
-    protected BaseTransfersIntegrationTest(Class<T> testConfigClass) {
+    protected BaseTransfersIntegrationTest(Class<T> testConfigClass, String testConfigFileName) {
         runId = UUID.randomUUID().toString();
         this.testConfigClass = testConfigClass;
         testFiles = new HashMap<>();
+        this.testConfigFileName = testConfigFileName;
     }
 
     public T getTestConfig() {
@@ -68,23 +69,26 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
     @BeforeTest
     public void beforeClass() throws Exception {
         integrationConfig = readTestConfig(TRANSFERS_INTEGRATION_TEST_CONFIG, TransfersIntegrationTestConfig.class);
-        JsonObject testConfigs =  integrationConfig.getTestConfigs();
-        testConfig = (T)getGson().fromJson(testConfigs.get(this.getClass().getSimpleName()), testConfigClass);
+        JsonObject testConfigs = readTestConfig(testConfigFileName, JsonObject.class);
+        testConfig = (T)getGson().fromJson(testConfigs, testConfigClass);
 
         token = TestUtils.instance.getToken(integrationConfig.getTokenUrl(), integrationConfig.getUsername(), integrationConfig.getPassword());
         cleanup();
-        int i=0;
-        for(UploadFilesConfig uploadFilesConfig : testConfig.getUploadFiles()) {
-            log.info("Uploading files.  System: " + uploadFilesConfig.getUploadSystem() + " Path: " + uploadFilesConfig.getUploadPath());
-            uploadFiles(uploadFilesConfig);
+        List<UploadFilesConfig> uploadFilesConfigs = testConfig.getUploadFiles();
+        if(uploadFilesConfigs != null) {
+            for (UploadFilesConfig uploadFilesConfig : uploadFilesConfigs) {
+                log.info("Uploading files.  System: " + uploadFilesConfig.getUploadSystem() + " Path: " + uploadFilesConfig.getUploadPath());
+                uploadFiles(uploadFilesConfig);
+            }
         }
-
     }
 
     public void cleanup() {
         List<CleanupConfig> cleanupConfigs = testConfig.getCleanup();
-        for(CleanupConfig cleanupConfig : cleanupConfigs) {
-            TestUtils.instance.deletePath(integrationConfig.getBaseFilesUrl(), token, cleanupConfig.getSystem(), cleanupConfig.getPath());
+        if(cleanupConfigs != null) {
+            for (CleanupConfig cleanupConfig : cleanupConfigs) {
+                TestUtils.instance.deletePath(integrationConfig.getBaseFilesUrl(), token, cleanupConfig.getSystem(), cleanupConfig.getPath());
+            }
         }
     }
 

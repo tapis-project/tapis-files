@@ -19,7 +19,8 @@ Incremental improvements and new features.
 ### Bug fixes:
 - Fix issue with handling path /~/ for GLOBUS type systems
 - Fix issue where no ssh sessions are available
-- Fix issue where directories with lots of sub directories were not returning all sub directories when a listing was requested
+- Fix issue where listing contents of directories containing many subdirectories could result in incomplete results
+- Fix issue where transfers containing source and destination paths that are identical could corrupt the file.
 
 ### Breaking Changes
 - None

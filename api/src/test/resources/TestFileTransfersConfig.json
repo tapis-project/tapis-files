@@ -1,0 +1,73 @@
+{
+  "uploadFiles": [
+    {
+      "uploadSystem": "tapisv3-storage1-dvernon",
+      "uploadPath": "/integrationTest/uploaded/individual",
+      "count": 5,
+      "size": 1024
+    },
+    {
+      "uploadSystem": "tapisv3-storage1-dvernon",
+      "uploadPath": "/integrationTest/uploaded/individual",
+      "count": 3,
+      "size": 10000000
+    }
+  ],
+  "transfers": [
+    {
+      "sourceProtocol": "tapis",
+      "sourceSystem": "tapisv3-storage1-dvernon",
+      "sourcePath": "/integrationTest/uploaded/individual",
+      "destinationProtocol": "tapis",
+      "destinationSystem": "tapisv3-storage2-dvernon",
+      "destinationPath": "/integrationTest/received/individual",
+      "timeout": 200000
+    },
+    {
+      "sourceProtocol": "tapis",
+      "sourceSystem": "tapisv3-storage2-dvernon",
+      "sourcePath": "/integrationTest/received/individual",
+      "timeout": 200000,
+      "destinationProtocol": "tapis",
+      "destinationSystem": "tapisv3-storage2-dvernon",
+      "destinationPath": "/integrationTest/received/individual",
+      "timeout": 200000
+    },
+    {
+      "sourceProtocol": "tapis",
+      "sourceSystem": "tapisv3-storage2-dvernon",
+      "sourcePath": "/integrationTest/received/individual",
+      "destinationProtocol": "tapis",
+      "destinationSystem": "tapisv3-storage4-dvernon",
+      "destinationPath": "/integrationTest/received/individual",
+      "timeout": 200000
+    },
+    {
+      "sourceProtocol": "tapis",
+      "sourceSystem": "tapisv3-storage4-dvernon",
+      "sourcePath": "/integrationTest/received/individual",
+      "destinationProtocol": "tapis",
+      "destinationSystem": "tapisv3-storage1-dvernon",
+      "destinationPath": "/integrationTest/received/individual",
+      "timeout": 200000
+    }
+  ],
+  "cleanup": [
+    {
+      "system": "tapisv3-storage1-dvernon",
+      "path": "/integrationTest/uploaded/individual"
+    },
+    {
+      "system": "tapisv3-storage1-dvernon",
+      "path": "/integrationTest/received/individual"
+    },
+    {
+      "system": "tapisv3-storage2-dvernon",
+      "path": "/integrationTest/received/individual"
+    },
+    {
+      "system": "tapisv3-storage4-dvernon",
+      "path": "/integrationTest/received/individual"
+    }
+  ]
+}

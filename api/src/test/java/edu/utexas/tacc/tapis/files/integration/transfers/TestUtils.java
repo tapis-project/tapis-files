@@ -122,6 +122,17 @@ public class TestUtils {
         terminalStates.add(TransferTaskStatus.PAUSED);
     }
 
+    public void mkdir(String baseUrl, String token, String systemId, Path destinationPath) {
+        Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
+        WebTarget target = client.target(baseUrl);
+        Invocation.Builder invocationBuilder = target.path(getUrlPath("ops", systemId, Path.of(""))).request(MediaType.APPLICATION_JSON);
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("path", destinationPath.toString());
+        Response response = invocationBuilder.header(TAPIS_TOKEN_HEADER, token)
+                .post(Entity.json(jsonObject.toString()));
+        Assert.assertEquals(response.getStatus(), 200);
+    }
+
     public void uploadFile(String baseUrl, String token, String systemId, File sourceFile, Path destinationPath) {
         Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
         WebTarget target = client.target(baseUrl);
@@ -310,6 +321,12 @@ public class TestUtils {
     }
 
     public void deletePath(String baseUrl, String token, String systemId, Path path) {
+        if((path == null) || (path.equals(Path.of("/"))
+                || StringUtils.isBlank(path.toString())
+                || StringUtils.equals(path.toString(), "/"))) {
+            throw new RuntimeException("DONT DELETE THE ROOT PATH");
+        }
+
         Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
         Response response = client.target(baseUrl)
                 .path(getUrlPath("ops", systemId, path)).request(MediaType.APPLICATION_JSON)

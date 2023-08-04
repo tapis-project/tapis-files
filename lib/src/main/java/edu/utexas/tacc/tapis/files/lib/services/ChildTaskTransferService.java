@@ -250,6 +250,20 @@ public class ChildTaskTransferService
     IRemoteDataClient sourceClient;
     IRemoteDataClient destClient;
     log.info("***** Starting ChildStepTwo **** {}", taskChild);
+    if(taskChild.getSourceURI().equals(taskChild.getDestinationURI())) {
+      log.warn("***** Source and Destination URI's are identical - skipping transfer, and marking complete **** {}", taskChild);
+      try {
+        taskChild.setEndTime(Instant.now());
+        taskChild.setStatus(TransferTaskStatus.COMPLETED);
+        taskChild.setBytesTransferred(taskChild.getTotalBytes());
+        return dao.updateTransferTaskChild(taskChild);
+      } catch (DAOException ex) {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                "ChildStepTwoA", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+        log.error(msg, ex);
+        throw new ServiceException(msg, ex);
+      }
+    }
     TransferTaskParent parentTask;
     try
     {
