@@ -10,8 +10,6 @@ public class TransfersIntegrationTestConfig {
     private String tokenUrl;
     private String username;
     private String password;
-    private JsonObject testConfigs;
-
     public String getBaseFilesUrl() {
         return baseFilesUrl;
     }
@@ -27,9 +25,4 @@ public class TransfersIntegrationTestConfig {
     public String getPassword() {
         return password;
     }
-
-    public JsonObject getTestConfigs() {
-        return testConfigs;
-    }
-
 }

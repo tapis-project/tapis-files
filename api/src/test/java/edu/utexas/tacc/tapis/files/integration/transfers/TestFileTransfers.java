@@ -14,10 +14,10 @@ import java.util.List;
 
 @Test(groups = {"integration"})
 public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTransfersConfig> {
-    private static final String TEMP_DIR_PREFIX = "TestFileTransfers_";
+    private static final String TEST_CONFIG = "TestFileTransfersConfig.json";
 
     public TestFileTransfers() {
-        super(TestFileTransfersConfig.class);
+        super(TestFileTransfersConfig.class, TEST_CONFIG);
     }
     @AfterTest
     public void afterClass() throws IOException {

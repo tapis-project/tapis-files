@@ -1,0 +1,31 @@
+{
+  "uploadFiles": [
+    {
+      "uploadSystem": "tapisv3-storage1-dvernon",
+      "uploadPath": "/integrationTest/uploaded/concurrent",
+      "count": 100,
+      "size": 1024
+    }
+  ],
+  "transfers": [
+    {
+      "sourceProtocol": "tapis",
+      "sourceSystem": "tapisv3-storage1-dvernon",
+      "sourcePath": "/integrationTest/uploaded/concurrent",
+      "destinationProtocol": "tapis",
+      "destinationSystem": "tapisv3-storage2-dvernon",
+      "destinationPath": "/integrationTest/received/concurrent",
+      "timeout": 2000000
+    }
+  ],
+  "cleanup": [
+    {
+      "system": "tapisv3-storage1-dvernon",
+      "path": "/integrationTest/uploaded/concurrent"
+    },
+    {
+      "system": "tapisv3-storage2-dvernon",
+      "path": "/integrationTest/received/concurrent"
+    }
+  ]
+}

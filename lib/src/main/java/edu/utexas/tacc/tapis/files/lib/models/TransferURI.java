@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -63,5 +64,18 @@ public class TransferURI
   {
     String tmpPath = StringUtils.removeStart(path, "/");
     return String.format("%s%s/%s", protocol, systemId, tmpPath);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TransferURI that = (TransferURI) o;
+    return Objects.equals(systemId, that.systemId) && Objects.equals(path, that.path) && Objects.equals(protocol, that.protocol);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(systemId, path, protocol);
   }
 }
