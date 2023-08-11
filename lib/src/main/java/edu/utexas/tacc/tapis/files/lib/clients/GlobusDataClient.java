@@ -489,21 +489,30 @@ public class GlobusDataClient implements IRemoteDataClient
    * @return Globus transfer task
    * @throws ServiceException on error
    */
-  public GlobusTransferTask createFileTransferTaskFromEndpoint(String srcPath, String dstEndpointId, String dstPath)
+  public GlobusTransferTask createFileTransferTaskFromEndpoint(String srcPath, String dstSystemId, String dstRootDir,
+                                                               String dstEndpointId, String dstPath)
           throws ServiceException
   {
     String opName = "createGlobusTransferTaskFromEndpoint";
 
+    // Determine absolute paths. These are what we send to the globus proxy
+    String srcAbsPath = PathUtils.getAbsolutePath(rootDir, srcPath).toString();
+    String dstAbsPath = PathUtils.getAbsolutePath(dstRootDir, dstPath).toString();
+
     // Build a single item list of Globus transfer items
     GlobusTransferItem transferItem = new GlobusTransferItem();
-    transferItem.setSourcePath(srcPath);
-    transferItem.setDestinationPath(dstPath);
+    transferItem.setSourcePath(srcAbsPath);
+    transferItem.setDestinationPath(dstAbsPath);
     // Set recursive to false since this is a file transfer.
     // If the srcPath is a directory then the directory should have been created by a different child task.
     // If we ever use Globus dir to dir transfers we will need to re-visit this.
     transferItem.setRecursive(false);
     List<GlobusTransferItem> transferItems = Collections.singletonList(transferItem);
 
+    // Log info about the transferItem
+    log.debug(LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_ITEM", oboTenant, oboUser, opName, system.getId(),
+                              endpointId, srcAbsPath, dstSystemId, dstEndpointId, dstAbsPath));
+    
     GlobusTransferTask globusTransferTask;
     try
     {
