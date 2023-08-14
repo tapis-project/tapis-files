@@ -97,7 +97,7 @@ public class TransfersApp
     try {
       SshSessionPoolPolicy poolPolicy = SshSessionPoolPolicy.defaultPolicy()
               .setMaxConnectionDuration(Duration.ofHours(6))
-              .setMaxConnectionIdleTime(Duration.ofMinutes(15))
+              .setMaxConnectionIdleTime(Duration.ofMinutes(8))
               .setMaxConnectionsPerKey(5)
               .setMaxSessionsPerConnection(8)
               .setCleanupInterval(Duration.ofSeconds(15))
