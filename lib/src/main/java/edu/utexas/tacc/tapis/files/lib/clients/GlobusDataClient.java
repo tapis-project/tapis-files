@@ -186,6 +186,8 @@ public class GlobusDataClient implements IRemoteDataClient
     // Process the relative path string and make sure it is not empty.
     String relPathStr = PathUtils.getRelativePath(path).toString();
     String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relPathStr).toString();
+    log.trace(LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP", oboTenant, oboUser, opName, system.getId(),
+                               endpointId, relPathStr, absolutePathStr));
     String filterStr = null;
     try
     {
@@ -245,6 +247,8 @@ public class GlobusDataClient implements IRemoteDataClient
     // Process the relative path string and make sure it is not empty.
     Path relativePath = PathUtils.getRelativePath(path);
     String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relativePath.toString()).toString();
+    log.trace(LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP", oboTenant, oboUser, opName, system.getId(),
+                              endpointId, relativePath, absolutePathStr));
 
     // Walk the path parts creating directories as we go
     Path tmpPath = Paths.get(rootDir);
@@ -307,6 +311,8 @@ public class GlobusDataClient implements IRemoteDataClient
     // Process the relative path string and make sure it is not empty.
     String oldRelativePathStr = PathUtils.getRelativePath(oldPath).toString();
     String newRelativePathStr = PathUtils.getRelativePath(newPath).toString();
+    log.trace(LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP_MV", oboTenant, oboUser, opName, system.getId(),
+                              endpointId, oldRelativePathStr, oldAbsolutePath, newRelativePathStr, newAbsolutePathStr));
 
     // If this is an attempt to move the Globus root dir then reject with error
     if (isGlobusRootDir(oldAbsolutePathStr))
@@ -374,6 +380,8 @@ public class GlobusDataClient implements IRemoteDataClient
       Path relativePath = PathUtils.getRelativePath(path);
       Path absolutePath = PathUtils.getAbsolutePath(rootDir, path);
       String absolutePathStr = absolutePath.toString();
+      log.trace(LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP", oboTenant, oboUser, opName, system.getId(),
+                                endpointId, relativePath, absolutePathStr));
 
       // Make sure the path exists
       // If it does not exist this should throw NotFound
@@ -415,6 +423,8 @@ public class GlobusDataClient implements IRemoteDataClient
     String relativePathStr = PathUtils.getRelativePath(path).toString();
     Path absolutePath = PathUtils.getAbsolutePath(rootDir, relativePathStr);
     String absolutePathStr = absolutePath.toString();
+    log.trace(LibUtils.getMsg("FILES_CLIENT_GLOBUS_OP", oboTenant, oboUser, opName, system.getId(),
+                              endpointId, relativePathStr, absolutePathStr));
     // If our path is empty or "/" or a variation of "/~/" then construct a FileInfo and return
     if (isGlobusRootDir(absolutePathStr))
     {
@@ -510,7 +520,7 @@ public class GlobusDataClient implements IRemoteDataClient
     List<GlobusTransferItem> transferItems = Collections.singletonList(transferItem);
 
     // Log info about the transferItem
-    log.debug(LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_ITEM", oboTenant, oboUser, opName, system.getId(),
+    log.trace(LibUtils.getMsg("FILES_CLIENT_GLOBUS_TXFR_ITEM", oboTenant, oboUser, opName, system.getId(),
                               endpointId, srcAbsPath, dstSystemId, dstEndpointId, dstAbsPath));
     
     GlobusTransferTask globusTransferTask;

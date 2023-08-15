@@ -202,7 +202,6 @@ public class ChildTaskTransferService
       TransferTask topTask = dao.getTransferTaskByID(taskChild.getTaskId());
       TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
       // UUIDs for topTask, parentTask, childTask
-      // TODO/TBD: Here and some places below in other steps.
       String topTaskUUID = topTask.getUuid().toString();
       String parentTaskUUID = parentTask.getUuid().toString();
       String childTaskUUID = taskChild.getUuid().toString();
