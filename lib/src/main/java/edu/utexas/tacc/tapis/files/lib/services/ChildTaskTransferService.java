@@ -193,14 +193,20 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepOne(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
-    log.info("***** Starting ChildStepOne **** {}", taskChild);
+    String stepLabel = "One";
+    log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
     // Update parent task and then child task
     try
     {
       taskChild = dao.getTransferTaskChild(taskChild.getUuid());
-      log.debug("***** ChildStepOne childTask **** {}", taskChild);
+      TransferTask topTask = dao.getTransferTaskByID(taskChild.getTaskId());
       TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-      log.debug("***** ChildStepOne parentTask **** {}", parentTask);
+      // UUIDs for topTask, parentTask, childTask
+      String topTaskUUID = topTask.getUuid().toString();
+      String parentTaskUUID = parentTask.getUuid().toString();
+      String childTaskUUID = taskChild.getUuid().toString();
+      log.debug(LibUtils.getMsg("FILES_TXFR_CHILD_STEP", stepLabel, topTaskUUID, parentTaskUUID, childTaskUUID, taskChild.getTag()));
+      log.debug(LibUtils.getMsg("FILES_TXFR_PARENT_TASK", stepLabel, parentTask));
       // If the parent task not in final state and not yet set to IN_PROGRESS do it here.
       if (!parentTask.isTerminal() && !parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS))
       {
@@ -243,13 +249,14 @@ public class ChildTaskTransferService
   private TransferTaskChild stepTwo(TransferTaskChild taskChild) throws ServiceException, NotFoundException, IOException
   {
     String opName = "childTaskTxfr";
+    String stepLabel = "Two";
+    log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
     boolean srcIsLinux = false, dstIsLinux = false; // Used for properly handling update of exec perm
 
     TapisSystem sourceSystem = null;
     TapisSystem destSystem = null;
     IRemoteDataClient sourceClient;
     IRemoteDataClient destClient;
-    log.info("***** Starting ChildStepTwo **** {}", taskChild);
     if(taskChild.getSourceURI().equals(taskChild.getDestinationURI())) {
       log.warn("***** Source and Destination URI's are identical - skipping transfer, and marking complete **** {}", taskChild);
       try {
@@ -422,8 +429,9 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepThree(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
+    String stepLabel = "Three";
+    log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
     // If it cancelled/failed somehow, just push it through unchanged.
-    log.info("***** Starting ChildStepThree **** {}", taskChild);
     try
     {
       // If we are cancelled/failed, update end time, and we are done
@@ -461,6 +469,8 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepFour(@NotNull TransferTaskChild taskChild) throws ServiceException
   {
+    String stepLabel = "Four";
+    log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
     try
     {
       checkForComplete(taskChild.getTaskId(), taskChild.getParentTaskId());
@@ -482,7 +492,8 @@ public class ChildTaskTransferService
    */
   private TransferTaskChild stepFive(@NotNull TransferTaskChild taskChild)
   {
-    log.info("***** DOING ChildStepFive NO-OP **** {}", taskChild);
+    String stepLabel = "Five NO-OP";
+    log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
     return taskChild;
   }
 
@@ -873,14 +884,20 @@ public class ChildTaskTransferService
     {
       throw new ServiceException(LibUtils.getMsg("FILES_TXFR_ASYNCH_NULL", taskChild, srcClient, srcUri, dstClient, dstUri));
     }
-
+    // Use some local variables for convenience and readability
     String tag = taskChild.getTag();
     TapisSystem srcSys = srcClient.getSystem();
     TapisSystem dstSys = dstClient.getSystem();
-    String srcPath = srcUri.getPath();
-    String dstPath = dstUri.getPath();
+    String srcRelPath = srcUri.getPath();
+    String dstRelPath = dstUri.getPath();
     String dstHost = dstSys.getHost();
+    String dstRootDir = dstSys.getRootDir();
+    String dstSysId = dstSys.getId();
 
+    String msg = LibUtils.getMsg("FILES_TXFR_CHILD_ASYNCH_BEGIN", taskChild.getTenantId(), taskChild.getUsername(),
+            taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
+            srcUri.getSystemId(), srcRelPath, dstUri.getSystemId(), dstRelPath);
+    log.trace(msg);
     // Check that both src and dst are Globus. If not throw a ServiceException
     // If srcSys is GLOBUS and dstSys is not then we do not support it OR
     //    dstSys is GLOBUS and srcSys is not then we do not support it
@@ -902,10 +919,6 @@ public class ChildTaskTransferService
       throw new ServiceException(LibUtils.getMsg("FILES_TXFR_GLOBUS_WRONG_CLIENT", "Destination", dstUri, tag));
     }
 
-    String msg = LibUtils.getMsg("FILES_TXFR_CHILD_ASYNCH_BEGIN", taskChild.getTenantId(), taskChild.getUsername(),
-                                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
-                                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
-    log.trace(msg);
     // TODO: Use a backoff policy?
     long pollIntervalSeconds = RuntimeSettings.get().getAsyncTransferPollSeconds();
     String externalTaskId = null;
@@ -913,7 +926,8 @@ public class ChildTaskTransferService
     {
       // Use srcClient to call GlobusProxy to kick off a transfer originating from the source Globus system
       var gSrcClient = ((GlobusDataClient) srcClient);
-      GlobusTransferTask externalTask = gSrcClient.createFileTransferTaskFromEndpoint(srcPath, dstHost, dstPath);
+      GlobusTransferTask externalTask = gSrcClient.createFileTransferTaskFromEndpoint(srcRelPath, dstSysId, dstRootDir,
+                                                                                      dstHost, dstRelPath);
       if (externalTask == null || StringUtils.isBlank(externalTask.getTaskId()))
       {
         throw new ServiceException(LibUtils.getMsg("FILES_TXFR_ASYNCH_NULL_TASK", externalTask));
@@ -998,7 +1012,7 @@ public class ChildTaskTransferService
     }
     msg = LibUtils.getMsg("FILES_TXFR_CHILD_ASYNCH_END", taskChild.getTenantId(), taskChild.getUsername(),
                           taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), externalTaskId,
-                          srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
+                          srcUri.getSystemId(), srcRelPath, dstUri.getSystemId(), dstRelPath);
     log.trace(msg);
   }
 }
