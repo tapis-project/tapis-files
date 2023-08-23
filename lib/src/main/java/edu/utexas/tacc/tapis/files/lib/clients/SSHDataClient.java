@@ -347,10 +347,16 @@ public class SSHDataClient implements ISSHDataClient
         throw new IOException(msg);
       }
     }
-    catch (TapisException e)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "copy", systemId, effectiveUserId, host, relOldPathStr, relNewPathStr, e.getMessage());
-      throw new IOException(msg, e);
+    catch (TapisException e) {
+      {
+        if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
+          String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, relOldPathStr);
+          throw new NotFoundException(msg);
+        } else {
+          String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "copy", systemId, effectiveUserId, host, relOldPathStr, relNewPathStr, e.getMessage());
+          throw new IOException(msg, e);
+        }
+      }
     }
   }
 
