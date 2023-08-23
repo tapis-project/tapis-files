@@ -256,6 +256,7 @@ public class TestFileOpsService
     @BeforeTest()
     public void setUp() throws Exception
     {
+      Utils.clearSshSessionPoolInstance();
       SshSessionPool.init();
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH);

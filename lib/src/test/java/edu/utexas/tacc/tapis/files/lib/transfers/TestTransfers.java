@@ -74,6 +74,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
   @BeforeMethod
   public void setUpQueues()
   {
+    Utils.clearSshSessionPoolInstance();
     SshSessionPool.init();
     childQ = UUID.randomUUID().toString();
     transfersService.setChildQueue(childQ).block(Duration.ofSeconds(1));

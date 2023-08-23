@@ -1,10 +1,10 @@
 package edu.utexas.tacc.tapis.files.lib;
 
-import org.apache.commons.lang3.RandomStringUtils;
+import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.Base64;
+import java.lang.reflect.Field;
 import java.util.Random;
 
 public class Utils {
@@ -13,6 +13,16 @@ public class Utils {
         new Random().nextBytes(b);
         InputStream is = new ByteArrayInputStream(b);
         return is;
+    }
+
+    public static void clearSshSessionPoolInstance() {
+        try {
+            Field f = SshSessionPool.class.getDeclaredField("instance");
+            f.setAccessible(true);
+            f.set(null, null);
+        } catch (NoSuchFieldException | IllegalAccessException ex) {
+            System.out.println("Unable to clear ssh session pool instance.  Exception: " + ex);
+        }
     }
 
 }
