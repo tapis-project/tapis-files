@@ -9,7 +9,20 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.4.1 - 2023-8-11
+## 1.4.2 - 2023-??-??
+
+Incremental improvements and new features.
+
+### New features:
+
+### Bug fixes:
+- Fix issue where 500 was returned instead of 401/403 for credential/permission problems
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
+## 1.4.1 - 2023-8-4
 
 Incremental improvements and new features.
 
