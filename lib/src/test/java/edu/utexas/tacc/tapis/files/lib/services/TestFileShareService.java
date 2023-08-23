@@ -4,7 +4,6 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import edu.utexas.tacc.tapis.client.shared.exceptions.TapisClientException;
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
-//import edu.utexas.tacc.tapis.files.lib.caches.SSHConnectionCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -49,10 +48,8 @@ import javax.ws.rs.ForbiddenException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -151,6 +148,7 @@ public class TestFileShareService
     @BeforeTest()
     public void setUp() throws Exception
     {
+      Utils.clearSshSessionPoolInstance();
       SshSessionPool.init();
       permsService.grantPermission(devTenant, testUser1, testSystemSSH.getId(), "/", Permission.MODIFY);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser1, testSystemSSH);
