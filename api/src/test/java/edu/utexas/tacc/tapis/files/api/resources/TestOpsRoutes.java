@@ -4,6 +4,7 @@ import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.models.MkdirRequest;
 import edu.utexas.tacc.tapis.files.api.models.MoveCopyRequest;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
+import edu.utexas.tacc.tapis.files.integration.transfers.TestUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -225,6 +226,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   @BeforeMethod
   public void initMocks() throws Exception
   {
+    TestUtils.clearSshSessionPoolInstance();
     SshSessionPool.init();
     Mockito.reset(skClient);
     Mockito.reset(serviceClients);

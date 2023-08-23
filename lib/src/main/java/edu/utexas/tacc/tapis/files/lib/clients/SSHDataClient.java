@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
+import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.NotSupportedException;
 
@@ -22,6 +24,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisRecoverableException;
+import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisSSHAuthException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import org.apache.commons.io.FilenameUtils;
@@ -29,6 +32,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sshd.sftp.client.SftpClient.Attributes;
 import org.apache.sshd.sftp.client.SftpClient.DirEntry;
+import org.apache.sshd.sftp.common.SftpConstants;
 import org.apache.sshd.sftp.common.SftpException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -143,16 +147,9 @@ public class SSHDataClient implements ISSHDataClient
     }
     catch (IOException e)
     {
-      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
-      {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, relPathStr);
-        throw new NotFoundException(msg);
-      }
-      else
-      {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "ls", systemId, effectiveUserId, host, relPathStr, e.getMessage());
-        throw new IOException(msg, e);
-      }
+      handleSftpException(e, "ls", relPathStr);
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "ls", systemId, effectiveUserId, host, relPathStr, e.getMessage());
+      throw new IOException(msg, e);
     }
 
     // For each entry in the fileList received, get the fileInfo object
@@ -239,9 +236,7 @@ public class SSHDataClient implements ISSHDataClient
         sessionHolder.getSession().mkdir(tmpPathStr); }
       catch (SftpException e)
       {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_MKDIR_ERR", oboTenant, oboUser, systemId, effectiveUserId,
-                                     host, tmpPathStr, remotePathStr, e.getMessage());
-        throw new IOException(msg);
+        handleSftpException(e, "mkdir", tmpPathStr);
       }
     }
   }
@@ -352,17 +347,15 @@ public class SSHDataClient implements ISSHDataClient
         throw new IOException(msg);
       }
     }
-    catch (TapisException e)
-    {
-      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
+    catch (TapisException e) {
       {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, relOldPathStr);
-        throw new NotFoundException(msg);
-      }
-      else
-      {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "copy", systemId, effectiveUserId, host, relOldPathStr, relNewPathStr, e.getMessage());
-        throw new IOException(msg, e);
+        if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
+          String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, relOldPathStr);
+          throw new NotFoundException(msg);
+        } else {
+          String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "copy", systemId, effectiveUserId, host, relOldPathStr, relNewPathStr, e.getMessage());
+          throw new IOException(msg, e);
+        }
       }
     }
   }
@@ -377,17 +370,14 @@ public class SSHDataClient implements ISSHDataClient
   public void delete(@NotNull String path) throws IOException, NotFoundException, NotSupportedException
   {
     // Get path relative to system rootDir and protect against ../..
+    String opname = "delete";
     String relativePathStr = PathUtils.getRelativePath(path).toString();
     try(var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
       recursiveDelete(sessionHolder.getSession(), relativePathStr);
     } catch (IOException e) {
-      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE)) {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, relativePathStr);
-        throw new NotFoundException(msg);
-      } else {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "delete", systemId, effectiveUserId, host, relativePathStr, e.getMessage());
-        throw new IOException(msg, e);
-      }
+      handleSftpException(e, opname, path);
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "delete", systemId, effectiveUserId, host, relativePathStr, e.getMessage());
+      throw new IOException(msg, e);
     }
   }
 
@@ -416,6 +406,7 @@ public class SSHDataClient implements ISSHDataClient
   @Override
   public InputStream getStream(@NotNull String path) throws IOException
   {
+    String opname = "getStream";
     Path absPath = PathUtils.getAbsolutePath(rootDir, path);
     SSHSftpClient sftpClient = null;
     try
@@ -424,22 +415,19 @@ public class SSHDataClient implements ISSHDataClient
       InputStream inputStream = sftpClient.read(absPath.toString());
       // TapisSSHInputStream closes the sftp connection after reading completes
       return new TapisSSHInputStream(inputStream, /*connectionHolder, */sftpClient);
-    }
-    catch (TapisException | IOException e)
-    {
+    } catch (IOException e) {
       SshSessionPool.getInstance().returnSftpClient(sftpClient);
-      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
-      {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, path);
-        throw new NotFoundException(msg);
-      }
-      else
-      {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "getStream", systemId, effectiveUserId, host,
-                                  path, e.getMessage());
-        log.error(msg, e);
-        throw new IOException(msg, e);
-      }
+      handleSftpException((SftpException) e, opname, path);
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opname, systemId, effectiveUserId, host,
+              path, e.getMessage());
+      log.error(msg, e);
+      throw new IOException(msg, e);
+    } catch (TapisException e) {
+      SshSessionPool.getInstance().returnSftpClient(sftpClient);
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opname, systemId, effectiveUserId, host,
+                                path, e.getMessage());
+      log.error(msg, e);
+      throw new IOException(msg, e);
     }
   }
 
@@ -499,20 +487,11 @@ public class SSHDataClient implements ISSHDataClient
     try(var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
       // If path is a symbolic link then stat gives info for the link target, lstat gives info for the link
       sftpAttrs = followLinks ? sessionHolder.getSession().stat(absolutePathStr) : sessionHolder.getSession().lstat(absolutePathStr);
-    }
-    catch (IOException e)
-    {
-      if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
-      {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, path);
-        throw new NotFoundException(msg);
-      }
-      else
-      {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opName, systemId, effectiveUserId, host,
-                path, e.getMessage());
-        throw new IOException(msg, e);
-      }
+    } catch (IOException e) {
+      handleSftpException(e, opName, path);
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opName, systemId, effectiveUserId, host,
+              path, e.getMessage());
+      throw new IOException(msg, e);
     }
 
     // Populate the FileStatInfo object
@@ -603,6 +582,7 @@ public class SSHDataClient implements ISSHDataClient
    */
   private void createFile(@NotNull String path, @NotNull InputStream fileStream) throws IOException
   {
+    String opname = "createFile";
     path = FilenameUtils.normalize(path);
     Path absolutePath = Paths.get(rootDir, path).normalize();
     Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
@@ -612,10 +592,9 @@ public class SSHDataClient implements ISSHDataClient
       OutputStream outputStream = sessionHolder.getSession().write(absolutePath.toString());
       fileStream.transferTo(outputStream);
       outputStream.close();
-    }
-    catch (IOException ex)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "insertOrAppend", systemId, effectiveUserId, host, path, ex.getMessage());
+    } catch (IOException ex) {
+      handleSftpException(ex, opname, path);
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, opname, systemId, effectiveUserId, host, path, ex.getMessage());
       throw new IOException(msg, ex);
     }
   }
@@ -916,11 +895,19 @@ public class SSHDataClient implements ISSHDataClient
       if(retryOnFail) {
         return borrowAutoCloseableExecChannel(wait, false);
       } else {
-        String msg = MsgUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
-                system.getHost(), system.getPort(), system.getEffectiveUserId(), system.getDefaultAuthnMethod(), wait);
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
+                system.getHost(), system.getPort(), system.getEffectiveUserId(), system.getDefaultAuthnMethod(), wait, ex.getMessage());
+        if(ex instanceof TapisSSHAuthException) {
+          throw new NotAuthorizedException(msg, ex);
+        }
         throw new IOException(msg);
       }
     } catch (TapisException ex) {
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
+              system.getHost(), system.getPort(), system.getEffectiveUserId(), system.getDefaultAuthnMethod(), wait, ex.getMessage());
+      if(ex instanceof TapisSSHAuthException) {
+        throw new NotAuthorizedException(msg, ex);
+      }
       throw new IOException(ex.getMessage(), ex);
     }
   }
@@ -939,11 +926,19 @@ public class SSHDataClient implements ISSHDataClient
       if(retryOnFail) {
         return borrowAutoCloseableSftpClient(wait, false);
       } else {
-        String msg = MsgUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
-                system.getHost(), system.getPort(), system.getEffectiveUserId(), system.getDefaultAuthnMethod(), wait);
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
+                system.getHost(), system.getPort(), system.getEffectiveUserId(), system.getDefaultAuthnMethod(), wait, ex.getMessage());
+        if(ex instanceof TapisSSHAuthException) {
+          throw new NotAuthorizedException(msg, ex);
+        }
         throw new IOException(msg);
       }
     } catch (TapisException ex) {
+      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
+              system.getHost(), system.getPort(), system.getEffectiveUserId(), system.getDefaultAuthnMethod(), wait, ex.getMessage());
+      if(ex instanceof TapisSSHAuthException) {
+        throw new NotAuthorizedException(msg, ex);
+      }
       throw new IOException(ex.getMessage(), ex);
     }
   }
@@ -963,6 +958,23 @@ public class SSHDataClient implements ISSHDataClient
                 system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
       } else {
         throw ex;
+      }
+    }
+  }
+
+
+  private void handleSftpException(IOException ex, String operation, String path) throws IOException {
+    if (ex instanceof SftpException) {
+      SftpException sftpException = (SftpException) ex;
+      if (sftpException.getStatus() == SftpConstants.SSH_FX_PERMISSION_DENIED) {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, ex.getMessage());
+        throw new ForbiddenException(msg, ex);
+      } else if (sftpException.getStatus() == SftpConstants.SSH_FX_NO_SUCH_FILE) {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, path);
+        throw new NotFoundException(msg, ex);
+      } else {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, ex.getMessage());
+        throw new IOException(msg, ex);
       }
     }
   }
