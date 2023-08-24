@@ -183,8 +183,6 @@ public class SSHDataClient implements ISSHDataClient
       fileInfo.setNativePermissions(FileStatInfo.getPermsFromInt(attrs.getPermissions()));
 
 
-      fileInfo.setPath(Paths.get(relPathStr, entryPath.toString()).toString());
-
       // Path should be relative to rootDir.  If the path we are listing is a directory,
       // all we need to do is pre-pend the relative path string because all of the
       // entries will be relative to the directory we were listing.  But, if the
