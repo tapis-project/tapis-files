@@ -16,7 +16,7 @@ Incremental improvements and new features.
 ### New features:
 
 ### Bug fixes:
-- Fix issue where 500 was returned instead of 401/403 for credential/permission problems
+- Fixed an issue in file listings / file transfers that could result in duplication of results.
 
 ### Breaking Changes
 - None
