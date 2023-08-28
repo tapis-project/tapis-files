@@ -24,10 +24,12 @@ import edu.utexas.tacc.tapis.security.client.model.SKShareGetSharesParms;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
+import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
@@ -65,6 +67,9 @@ public class FileShareService
   private static final String RESOURCE_TYPE = "file";
   private static final Set<String> publicUserSet = Collections.singleton(SKClient.PUBLIC_GRANTEE); // "~public"
   private static final String SK_WILDCARD = "%";
+
+  private static final String svcUserName = TapisConstants.SERVICE_NAME_FILES;
+  private String svcTenantName = null;
 
   // ************************************************************************
   // *********************** Fields *****************************************
@@ -782,7 +787,22 @@ public class FileShareService
    */
   private SKClient getSKClient() throws TapisClientException
   {
-    return getSKClient(SERVICE_NAME, siteAdminTenantId);
+    // Init if necessary
+    if (StringUtils.isBlank(svcTenantName))
+    {
+      // Site admin tenant may have been initialized statically, use it if available
+      if (!StringUtils.isBlank(siteAdminTenantId))
+      {
+        svcTenantName = siteAdminTenantId;
+      }
+      else
+      {
+        // Not initialized statically, look it up
+        String siteId = RuntimeSettings.get().getSiteId();
+        svcTenantName = TenantManager.getInstance().getSiteAdminTenantId(siteId);
+      }
+    }
+    return getSKClient(SERVICE_NAME, svcTenantName);
   }
 
   /**
