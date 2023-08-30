@@ -9,20 +9,7 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.4.3 - 2023-??-??
-
-Incremental improvements and new features.
-
-### New features:
-
-### Bug fixes:
-- Fixed an issue in sharing support - Site admin tenant not set in worker service.
-
-### Breaking Changes
-- None
-
----------------------------------------------------------------------------
-## 1.4.2 - 2023-08-25
+## 1.4.2 - 2023-08-30
 
 Incremental improvements and new features.
 
@@ -30,6 +17,8 @@ Incremental improvements and new features.
 
 ### Bug fixes:
 - Fixed an issue in file listings / file transfers that could result in duplication of results.
+- Fixed an issue in sharing support - Site admin tenant not set in worker service.
+- Fixed an issue where transfers continue to retry when effectiveUserId does not have permission to write to a directory.
 
 ### Breaking Changes
 - None
