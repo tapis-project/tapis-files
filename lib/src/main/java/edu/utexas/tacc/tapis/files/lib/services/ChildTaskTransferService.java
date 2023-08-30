@@ -144,7 +144,19 @@ public class ChildTaskTransferService
                                         .maxBackoff(Duration.ofSeconds(120))
                                         .scheduler(scheduler)
                                         .doBeforeRetry(signal-> log.error("RETRY", signal.failure()))
-                                        .filter(e -> e.getClass().equals(IOException.class))
+                                        .filter(e ->
+                                        {
+                                          if(e.getClass().equals(IOException.class)) {
+                                            String message = e.getMessage();
+                                            if((message == null) || (!message.toLowerCase().contains("permission denied"))) {
+                                              return true;
+                                            }
+                                          }
+                                          return false;
+                                        })
+
+
+
                                 )
                                 .onErrorResume(e -> doErrorStepOne(m, e, t2))
                             )
@@ -274,6 +286,14 @@ public class ChildTaskTransferService
     TransferTaskParent parentTask;
     try
     {
+      // Get the parent task. We will need it for shared ctx grantors.
+      parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
+      if(TransferTaskStatus.CANCELLED.equals(parentTask.getStatus()) || TransferTaskStatus.FAILED.equals(parentTask.getStatus())) {
+        if(!taskChild.isTerminal()) {
+          taskChild.setStatus(parentTask.getStatus());
+        }
+      }
+
       // If cancelled or failed set the end time, and we are done
       if (taskChild.isTerminal())
       {
@@ -287,8 +307,6 @@ public class ChildTaskTransferService
       taskChild.setRetries(taskChild.getRetries() + 1);
       taskChild = dao.updateTransferTaskChild(taskChild);
 
-      // Get the parent task. We will need it for shared ctx grantors.
-      parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
       // For some reason taskChild does not have the tag set at this point.
       taskChild.setTag(parentTask.getTag());
     }
