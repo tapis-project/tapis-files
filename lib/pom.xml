@@ -22,6 +22,9 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>${maven-jar-plugin.version}</version>
                 <configuration>
+                    <excludes>
+                        <exclude>logback.xml</exclude>
+                    </excludes>
                     <archive>
                         <manifest>
                             <mainClass>edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp</mainClass>
