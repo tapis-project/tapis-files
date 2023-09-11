@@ -22,7 +22,7 @@ ENV JAVA_MODULE_OPTS --add-opens java.base/java.lang=ALL-UNNAMED --add-opens jav
 # Server port, debug port and jmx port
 EXPOSE 8080 8000 9090
 
-CMD java -Xms4g -Xmx4g ${JAVA_MODULE_OPTS} -cp "target/tapis-files.jar:target/dependencies/*" edu.utexas.tacc.tapis.files.api.FilesApplication
+CMD java -Xms4g -Xmx4g ${JAVA_MODULE_OPTS} -Dlogback.configurationFile=target/classes/logback.xml -cp "target/tapis-files.jar:target/dependencies/*" edu.utexas.tacc.tapis.files.api.FilesApplication
 
 
 
