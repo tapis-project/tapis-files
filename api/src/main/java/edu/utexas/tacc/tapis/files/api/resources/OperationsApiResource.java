@@ -186,7 +186,8 @@ public class OperationsApiResource extends BaseFileOpsResource
   {
     String opName = "mkdir";
     // Create a user that collects together tenant, user and request information needed by service calls
-    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    ResourceRequestUser rUser = new ResourceRequestUser(user);
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
@@ -199,11 +200,14 @@ public class OperationsApiResource extends BaseFileOpsResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
                           "sharedCtx="+sharedCtx, "path="+mkdirRequest.getPath());
 
+    Instant start = Instant.now();
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
     fileOpsService.mkdir(rUser, systemId, mkdirRequest.getPath(), sharedCtx);
+    String durationMsg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+    log.trace(durationMsg);
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, mkdirRequest.getPath());
     log.trace(msg);
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
