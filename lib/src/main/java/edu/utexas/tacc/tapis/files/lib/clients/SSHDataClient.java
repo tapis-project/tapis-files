@@ -422,17 +422,17 @@ public class SSHDataClient implements ISSHDataClient
   public InputStream getStream(@NotNull String path) throws IOException
   {
     Path absPath = PathUtils.getAbsolutePath(rootDir, path);
-    SSHSftpClient sftpClient = null;
+    SshSessionPool.AutoCloseSession<SSHSftpClient> sftpClient = null;
     try
     {
-      sftpClient = borrowManualCloseSftpClient(DEFAULT_SESSION_WAIT, true);
-      InputStream inputStream = sftpClient.read(absPath.toString());
+      sftpClient = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true);
+      InputStream inputStream = sftpClient.getSession().read(absPath.toString());
       // TapisSSHInputStream closes the sftp connection after reading completes
       return new TapisSSHInputStream(inputStream, /*connectionHolder, */sftpClient);
     }
-    catch (TapisException | IOException e)
+    catch (IOException e)
     {
-      SshSessionPool.getInstance().returnSftpClient(sftpClient);
+      sftpClient.close();
       if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
       {
         String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, path);
@@ -914,7 +914,7 @@ public class SSHDataClient implements ISSHDataClient
   //               issues around credential changes.
   private SshSessionPool.AutoCloseSession<SSHExecChannel> borrowAutoCloseableExecChannel(Duration wait, boolean retryOnFail) throws IOException {
     try {
-      return SshSessionPool.getInstance().borrowAutoCloseableExecChannel(system.getTenant(), system.getHost(), system.getPort(),
+      return SshSessionPool.getInstance().borrowExecChannel(system.getTenant(), system.getHost(), system.getPort(),
               system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
     } catch (TapisRecoverableException ex) {
       systemsCache.invalidateEntry(system.getTenant(), system.getId(), system.getEffectiveUserId(), impersonationId, sharedCtxGrantor);
@@ -937,7 +937,7 @@ public class SSHDataClient implements ISSHDataClient
   //               issues around credential changes.
   private SshSessionPool.AutoCloseSession<SSHSftpClient> borrowAutoCloseableSftpClient(Duration wait, boolean retryOnFail) throws IOException {
     try {
-      return SshSessionPool.getInstance().borrowAutoCloseableSftpClient(system.getTenant(), system.getHost(), system.getPort(),
+      return SshSessionPool.getInstance().borrowSftpClient(system.getTenant(), system.getHost(), system.getPort(),
               system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
     } catch (TapisRecoverableException ex) {
       systemsCache.invalidateEntry(system.getTenant(), system.getId(), system.getEffectiveUserId(), impersonationId, sharedCtxGrantor);
@@ -953,22 +953,4 @@ public class SSHDataClient implements ISSHDataClient
     }
   }
 
-  // retryOnFail - if this is set to true and the call to borrow a session fails with a tapis recoverable exception, the
-  //               code will invalidate the system cache for that system, and try again (re-obtaining the system credentials).
-  //               If the second try fails, the method will throw an IOException.  This behavior should help with caching
-  //               issues around credential changes.
-  private SSHSftpClient borrowManualCloseSftpClient(Duration wait, boolean retryOnFail) throws TapisException {
-    try {
-      return SshSessionPool.getInstance().borrowSftpClient(system.getTenant(), system.getHost(), system.getPort(),
-              system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
-    } catch (TapisRecoverableException ex) {
-      systemsCache.invalidateEntry(system.getTenant(), system.getId(), system.getEffectiveUserId(), impersonationId, sharedCtxGrantor);
-      if (retryOnFail) {
-        return SshSessionPool.getInstance().borrowSftpClient(system.getTenant(), system.getHost(), system.getPort(),
-                system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
-      } else {
-        throw ex;
-      }
-    }
-  }
 }
