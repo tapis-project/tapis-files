@@ -30,6 +30,8 @@ public class RuntimeSettings {
         protected final int dbConnectionPoolSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 20);
         protected final int sshPoolTraceOnCleanupInterval = getIntSetting("TAPIS_SSH_POOL_TRACE_ON_CLEANUP_INTERVAL", 4);
         protected final int rereadLogConfigIntevalSeconds = getIntSetting("TAPIS_REREAD_LOG_CONFIG_INTERVAL_SECONDS", 300);
+        protected final int grizzlyPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 40);
+        protected final int grizzlyPoolMaxSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 50);
 
         public String getHostName() {
             return hostName;
@@ -93,6 +95,14 @@ public class RuntimeSettings {
 
         public int getDbConnectionPoolSize() {
             return dbConnectionPoolSize;
+        }
+
+        public int getGrizzlyPoolCoreSize() {
+            return grizzlyPoolCoreSize;
+        }
+
+        public int getGrizzlyPoolMaxSize() {
+            return grizzlyPoolMaxSize;
         }
 
         public int getSshPoolTraceOnCleanupInterval() {
