@@ -15,7 +15,7 @@ import java.io.InputStream;
  *  also need to return the channel to the session and close that channel.
  */
 public class TapisSSHInputStream extends FilterInputStream {
-    private SshSessionPool.AutoCloseSession<SSHSftpClient> sftpClient;
+    private SshSessionPool.PooledSshSession<SSHSftpClient> sftpClient;
     private static final Logger log = LoggerFactory.getLogger(TapisSSHInputStream.class);
 
     protected TapisSSHInputStream(InputStream in) {
@@ -27,7 +27,7 @@ public class TapisSSHInputStream extends FilterInputStream {
         return super.read();
     }
 
-    public TapisSSHInputStream(InputStream in, SshSessionPool.AutoCloseSession<SSHSftpClient> client) {
+    public TapisSSHInputStream(InputStream in, SshSessionPool.PooledSshSession<SSHSftpClient> client) {
         super(in);
         this.sftpClient = client;
     }

@@ -422,7 +422,7 @@ public class SSHDataClient implements ISSHDataClient
   public InputStream getStream(@NotNull String path) throws IOException
   {
     Path absPath = PathUtils.getAbsolutePath(rootDir, path);
-    SshSessionPool.AutoCloseSession<SSHSftpClient> sftpClient = null;
+    SshSessionPool.PooledSshSession<SSHSftpClient> sftpClient = null;
     try
     {
       sftpClient = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true);
@@ -912,7 +912,7 @@ public class SSHDataClient implements ISSHDataClient
   //               code will invalidate the system cache for that system, and try again (re-obtaining the system credentials).
   //               If the second try fails, the method will throw an IOException.  This behavior should help with caching
   //               issues around credential changes.
-  private SshSessionPool.AutoCloseSession<SSHExecChannel> borrowAutoCloseableExecChannel(Duration wait, boolean retryOnFail) throws IOException {
+  private SshSessionPool.PooledSshSession<SSHExecChannel> borrowAutoCloseableExecChannel(Duration wait, boolean retryOnFail) throws IOException {
     try {
       return SshSessionPool.getInstance().borrowExecChannel(system.getTenant(), system.getHost(), system.getPort(),
               system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
@@ -935,7 +935,7 @@ public class SSHDataClient implements ISSHDataClient
   //               code will invalidate the system cache for that system, and try again (re-obtaining the system credentials).
   //               If the second try fails, the method will throw an IOException.  This behavior should help with caching
   //               issues around credential changes.
-  private SshSessionPool.AutoCloseSession<SSHSftpClient> borrowAutoCloseableSftpClient(Duration wait, boolean retryOnFail) throws IOException {
+  private SshSessionPool.PooledSshSession<SSHSftpClient> borrowAutoCloseableSftpClient(Duration wait, boolean retryOnFail) throws IOException {
     try {
       return SshSessionPool.getInstance().borrowSftpClient(system.getTenant(), system.getHost(), system.getPort(),
               system.getEffectiveUserId(), system.getDefaultAuthnMethod(), system.getAuthnCredential(), wait);
