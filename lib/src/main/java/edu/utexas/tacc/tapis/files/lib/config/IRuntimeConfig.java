@@ -22,4 +22,6 @@ public interface IRuntimeConfig {
     int getDbConnectionPoolSize();
     int getSshPoolTraceOnCleanupInterval();
     int getRereadLogConfigIntevalSeconds();
+    public int getGrizzlyPoolCoreSize();
+    public int getGrizzlyPoolMaxSize();
 }
