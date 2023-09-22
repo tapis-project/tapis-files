@@ -5,7 +5,12 @@ import java.util.Collections;
 import java.util.List;
 import javax.inject.Inject;
 
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -39,51 +44,64 @@ public class FileUtilsService
   public enum NativeLinuxFaclOperation {ADD, REMOVE, REMOVE_ALL, REMOVE_DEFAULT}
   public enum NativeLinuxFaclRecursion {LOGICAL, PHYSICAL, NONE}
 
+  @Inject
+  FileShareService shareService;
+
+  @Inject
+  RemoteDataClientFactory remoteDataClientFactory;
+
   // Initial value for a NativeLinuxOpResult.
   public static final NativeLinuxOpResult NATIVE_LINUX_OP_RESULT_NOOP = new NativeLinuxOpResult("NO_OP", -1, "", "");
 
   @Inject
   public FileUtilsService(FilePermsService permsService) {
-        this.permsService = permsService;
-    }
+    this.permsService = permsService;
+  }
+
+  public void initService(String siteAdminTenantId) {
+    FileShareService.setSiteAdminTenantId(siteAdminTenantId);
+  }
 
   /**
    * Run the linux stat command on the path and return stat information
    *
-   * @param client - remote data client
    * @param pathStr - target path for operation
    * @param followLinks - When path is a symbolic link whether to get information about the link (false)
    *                      or the link target (true)
    * @return FileStatInfo
    * @throws ServiceException - General problem
    */
-  public FileStatInfo getStatInfo(@NotNull IRemoteDataClient client, @NotNull String pathStr, boolean followLinks)
+  public FileStatInfo getStatInfo(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
+                                  @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String systemId,
+                                  @NotNull String pathStr, boolean followLinks)
           throws ServiceException
   {
-    if (!(client instanceof ISSHDataClient)) {
-      String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
-      log.error(msg);
-      throw new IllegalArgumentException(msg);
-    }
-    ISSHDataClient sshClient = (ISSHDataClient) client;
-    boolean isOwner = false;
-    if (client.getSystem().getOwner() != null) isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+    String opName="getStatInfo";
+
+
 
     // Get normalized path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
-    try
-    {
-      // If not system owner explicitly check permissions
-      if (!isOwner) LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                                            relativePathStr, Permission.READ);
+    try {
+      // Make the service call
+      TapisSystem system = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
+              permsService, opName, systemId, relativePathStr, Permission.READ, null, null);
+      IRemoteDataClient client =
+              (ISSHDataClient) remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(), system);
+      if (!(client instanceof ISSHDataClient)) {
+        String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
+                ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
+        log.error(msg);
+        throw new IllegalArgumentException(msg);
+      }
+
+      ISSHDataClient sshClient = (ISSHDataClient) client;
+
       // Make the remoteDataClient call
       return sshClient.getStatInfo(relativePathStr, followLinks);
-    }
-    catch (IOException ex)
-    {
-      String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getStatInfo",
-                                client.getSystemId(), relativePathStr, ex.getMessage());
+    } catch (IOException ex) {
+      String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", rUser.getOboTenantId(), rUser.getOboUserId(), "getStatInfo",
+                                systemId, relativePathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
@@ -96,6 +114,7 @@ public class FileUtilsService
   {
     return linuxOp(client, pathStr, op, arg, recursive, false);
   }
+
   /**
    * Run a native linux operation: chown, chmod, chgrp
    *  parameter isShared for internal use only
@@ -141,7 +160,6 @@ public class FileUtilsService
         case CHOWN -> nativeLinuxOpResult = sshClient.linuxChown(relativePathStr, arg, recursive);
         case CHGRP -> nativeLinuxOpResult = sshClient.linuxChgrp(relativePathStr, arg, recursive);
       }
-
     } catch (IOException ex) {
       String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), op.name(),
                                 client.getSystemId(), relativePathStr, ex.getMessage());
@@ -190,6 +208,7 @@ public class FileUtilsService
                                      NativeLinuxFaclRecursion recursion, String aclEntries)
           throws TapisException, ServiceException {
     NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
+
     if (!(client instanceof ISSHDataClient)) {
       String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
               ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
