@@ -9,14 +9,16 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.4.3 - 2023-08-??
+## 1.4.3 - 2023-09-25
 
 Incremental improvements and new features.
 
 ### New features:
 - Use logback.xml outside the tapis files jar, and added additional logging for ssh session pool.
+- Added additional logging for linux methods (/v3/files/utils/linux/*).
 
 ### Bug fixes:
+- Fixed an issue where upload and getStatInfo were not working properly for publicly shared systems.
 
 ### Breaking Changes
 - None
