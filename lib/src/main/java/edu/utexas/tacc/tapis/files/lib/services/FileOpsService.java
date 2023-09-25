@@ -364,8 +364,6 @@ public class FileOpsService
     public void upload(@NotNull IRemoteDataClient client, @NotNull String relPathStr, @NotNull InputStream inputStream)
             throws ServiceException, BadRequestException
     {
-      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                              relPathStr, Permission.MODIFY);
 
       // Make sure this is not an attempt to upload to "/". Check "/" first because "/" resolves to empty string
       //   for relative path

@@ -22,6 +22,7 @@ import javax.ws.rs.core.SecurityContext;
 
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxFaclRequest;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
+import org.glassfish.grizzly.http.server.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
@@ -49,6 +50,10 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 public class UtilsLinuxApiResource extends BaseFileOpsResource
 {
   private static final Logger log = LoggerFactory.getLogger(UtilsLinuxApiResource.class);
+  private final String className = getClass().getSimpleName();
+
+  @Context
+  private Request _request;
 
   @Inject
   FileUtilsService fileUtilsService;
@@ -64,22 +69,15 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     String opName = "getStatInfo";
     // Create a user that collects together tenant, user and request information needed by the service call
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
-    String oboTenant = rUser.getOboTenantId();
-    String oboUser = rUser.getOboUserId();
     Instant start = Instant.now();
-    FileStatInfo fileStatInfo;
-    try
-    {
-      // NOTE: Allow for linux operations on systems that are disabled. So do not use getSystemIfEnabled.
-      TapisSystem system = systemsCache.getSystem(oboTenant, systemId, oboUser);
-      LibUtils.checkEnabled(rUser, system);
-      IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
 
-      // Make the service call
-      fileStatInfo = fileUtilsService.getStatInfo(client, path, followLinks);
-    }
-    catch (ServiceException | IOException e)
-    {
+    ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
+            "op="+opName, "path="+path);
+
+    FileStatInfo fileStatInfo;
+    try {
+      fileStatInfo = fileUtilsService.getStatInfo(rUser, systemsCache, systemsCacheNoAuth, systemId, path, followLinks);
+    } catch (ServiceException e) {
       String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, opName, systemId, path, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
@@ -105,6 +103,10 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     String opName = "runLinuxNativeOp";
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
+            "op="+request.getOperation(), "argument="+request.getArgument(), "path="+path, "recursive="+recursive);
+
     String oboUser = rUser.getOboUserId();
     // Make sure the Tapis System exists and is enabled
     TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
@@ -113,7 +115,6 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
     try
     {
       IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
-
       // Make the service call
       nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(), recursive);
     }
@@ -136,9 +137,13 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
                                    @PathParam("path") String path,
                                    @Context SecurityContext securityContext)
   {
+    String opName = "getFacl";
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
     String oboUser = rUser.getOboUserId();
+
+    ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
+            "systemId="+systemId, "path="+path);
 
     // Make sure the Tapis System exists and is enabled
     TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
@@ -172,9 +177,14 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
                                   @Valid NativeLinuxFaclRequest request,
                                   @Context SecurityContext securityContext)
   {
+    String opName = "setFacl";
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
     String oboUser = rUser.getOboUserId();
+
+    ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
+            "systemId="+systemId, "path="+path, "op="+request.getOperation(),
+            "aclString="+request.getAclString(), "method="+request.getRecursionMethod());
 
     // Make sure the Tapis System exists and is enabled
     TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);

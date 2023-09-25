@@ -252,11 +252,14 @@ public class FilesApplication extends ResourceConfig
     InjectionManager im = handler.getInjectionManager();
     ServiceLocator locator = im.getInstance(ServiceLocator.class);
     FileOpsService svcImpl = locator.getService(FileOpsService.class);
+    FileUtilsService utilSvcImpl = locator.getService(FileUtilsService.class);
 
     // Call the main service init method
-    System.out.println("Initializing service");
+    System.out.println("Initializing files ops service");
     svcImpl.initService(siteId, siteAdminTenantId, RuntimeSettings.get().getServicePassword());
 
+    System.out.println("Initializing files util service");
+    utilSvcImpl.initService(siteAdminTenantId);
     // Create and start the server
     System.out.println("Starting http server");
     final HttpServer server = GrizzlyHttpServerFactory.createHttpServer(baseUri, config, false);
