@@ -468,6 +468,8 @@ public class FileOpsService
       try {
         FileInfo fileInfo = client.getFileInfo(relPathStr, true);
         if(fileInfo.isDir()) {
+          String msg = LibUtils.getMsg("FILES_OPSC_MKDIR_IGNORE_ERROR");
+          log.trace(msg);
           return;
         }
       } catch (IOException e) {
