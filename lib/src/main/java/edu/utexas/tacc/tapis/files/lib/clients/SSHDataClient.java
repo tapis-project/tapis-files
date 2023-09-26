@@ -228,7 +228,7 @@ public class SSHDataClient implements ISSHDataClient
       // If it does not exist or exists and is a directory then all is good, if it exists and is a file it is an error
       try
       {
-        FileStatInfo statInfo = getStatInfo(partRelativePathSB.toString(), false);
+        FileStatInfo statInfo = getStatInfo(partRelativePathSB.toString(), true);
         if (statInfo.isDir()) continue;
         else
         {
