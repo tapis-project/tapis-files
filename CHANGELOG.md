@@ -20,6 +20,7 @@ Incremental improvements and new features.
 ### Bug fixes:
 - Fixed an issue where upload and getStatInfo were not working properly for publicly shared systems.
 - Fixed an issue where upload was incorrectly interpreting symlinked directories as files.
+- Fixed a race condition in mkdir
 
 ### Breaking Changes
 - None

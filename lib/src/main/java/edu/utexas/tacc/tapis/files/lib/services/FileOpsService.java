@@ -461,6 +461,19 @@ public class FileOpsService
     }
     catch (IOException ex)
     {
+      // it's possible that we tried to make the directory, and another mkdir came in at the same moment.  In this
+      // case we can "fail", but it might not actually be a failure.  If this is the case, the directory will exist
+      // though, so we can just try to getFileInfo on that path, and see if it's there and it's a directory. If it is,
+      // we will consider it a success.
+      try {
+        FileInfo fileInfo = client.getFileInfo(relPathStr, true);
+        if(fileInfo.isDir()) {
+          return;
+        }
+      } catch (IOException e) {
+        // if we have an error, we can just fall though here, since we are about to throw an exception anyway.
+      }
+
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdirWithClient",
                                    client.getSystemId(), relPathStr, ex.getMessage());
       log.error(msg, ex);
