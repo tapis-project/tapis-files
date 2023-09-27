@@ -616,6 +616,7 @@ public class SSHDataClient implements ISSHDataClient
       if (parentPath != null) mkdir(parentPath.toString());
       OutputStream outputStream = sessionHolder.getSession().write(absolutePath.toString());
       fileStream.transferTo(outputStream);
+      outputStream.flush();
       outputStream.close();
     }
     catch (IOException ex)
