@@ -9,6 +9,19 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.4.4 - 2023-??-??
+
+Incremental improvements and new features.
+
+### New features:
+
+### Bug fixes:
+- Fixed an issue where ssh commands issued by the files service could fail due to a race condition causing the connection to be closed
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.4.3 - 2023-09-25
 
 Incremental improvements and new features.

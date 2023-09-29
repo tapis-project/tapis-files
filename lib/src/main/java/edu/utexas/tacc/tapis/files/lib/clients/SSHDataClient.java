@@ -294,7 +294,7 @@ public class SSHDataClient implements ISSHDataClient
       sb.append(safelySingleQuoteString(absoluteNewPath.toString()));
       ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
       ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
-      retCode = sessionHolder.getSession().execute(sb.toString(), stdOut, stdErr);
+      retCode = sessionHolder.getSession().execute(sb.toString(), stdOut, stdErr, false);
       if(retCode != 0) {
         String partialStdOut = new String(ArrayUtils.subarray(stdOut.toByteArray(), 0, MAX_STDOUT_SIZE));
         String partialStdErr = new String(ArrayUtils.subarray(stdErr.toByteArray(), 0, MAX_STDERR_SIZE));
@@ -347,7 +347,7 @@ public class SSHDataClient implements ISSHDataClient
       sb.append(safelySingleQuoteString(absoluteNewPath.toString()));
       ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
       ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
-      retCode = sessionHolder.getSession().execute(sb.toString(), stdOut, stdErr);
+      retCode = sessionHolder.getSession().execute(sb.toString(), stdOut, stdErr, false);
       if(retCode != 0) {
         String partialStdOut = new String(ArrayUtils.subarray(stdOut.toByteArray(), 0, MAX_STDOUT_SIZE));
         String partialStdErr = new String(ArrayUtils.subarray(stdErr.toByteArray(), 0, MAX_STDERR_SIZE));
@@ -457,7 +457,7 @@ public class SSHDataClient implements ISSHDataClient
       String command = String.format("dd if=%s ibs=1 skip=%s count=%s", absPath, startByte, count);
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       ByteArrayOutputStream outErr = new ByteArrayOutputStream();
-      sessionHolder.getSession().execute(command, out, outErr);
+      sessionHolder.getSession().execute(command, out, outErr, false);
       return new ByteArrayInputStream(out.toByteArray());
     }
     catch (TapisException e)
@@ -715,7 +715,7 @@ public class SSHDataClient implements ISSHDataClient
       // Execute the command
       ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
       ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
-      int exitCode = sessionHolder.getSession().execute(cmdStr, stdOut, stdErr);
+      int exitCode = sessionHolder.getSession().execute(cmdStr, stdOut, stdErr, false);
       if (exitCode != 0) {
         String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
                 path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
@@ -799,7 +799,7 @@ public class SSHDataClient implements ISSHDataClient
       // Execute the command
       ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
       ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
-      int exitCode = sessionHolder.getSession().execute(cmdStr, stdOut, stdErr);
+      int exitCode = sessionHolder.getSession().execute(cmdStr, stdOut, stdErr, false);
       if (exitCode != 0) {
         String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
                 path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
@@ -867,7 +867,7 @@ public class SSHDataClient implements ISSHDataClient
     ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
     int exitCode = 0;
     try (var sessionHolder = borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
-      exitCode = sessionHolder.getSession().execute(cmdStr, stdOut, stdErr);
+      exitCode = sessionHolder.getSession().execute(cmdStr, stdOut, stdErr, false);
       if (exitCode != 0) {
         String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
                 path, opName, exitCode, stdOut.toString(), stdErr.toString(), cmdStr);
@@ -922,7 +922,7 @@ public class SSHDataClient implements ISSHDataClient
       if(retryOnFail) {
         return borrowAutoCloseableExecChannel(wait, false);
       } else {
-        String msg = MsgUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
                 system.getHost(), system.getPort(), system.getEffectiveUserId(), system.getDefaultAuthnMethod(), wait);
         throw new IOException(msg);
       }
@@ -945,7 +945,7 @@ public class SSHDataClient implements ISSHDataClient
       if(retryOnFail) {
         return borrowAutoCloseableSftpClient(wait, false);
       } else {
-        String msg = MsgUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_SESSION_POOL_ERROR", system.getTenant(),
                 system.getHost(), system.getPort(), system.getEffectiveUserId(), system.getDefaultAuthnMethod(), wait);
         throw new IOException(msg);
       }
