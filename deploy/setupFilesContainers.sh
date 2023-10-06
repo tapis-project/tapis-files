@@ -21,7 +21,7 @@ RABBIT_VHOST="rabbit"
 RABBIT_USER="tapis"
 RABBIT_PASSWORD="password"
 
-IRODS_CONTAINER="irods"
+IRODS_CONTAINER="irods-1"
 IRODS_ADMIN_USER="rods"
 IRODS_ADMIN_PASSWORD="rods"
 IRODS_USER="dev"
@@ -148,5 +148,46 @@ docker exec -i ${PG_CONTAINER} psql -U ${PG_ADMIN_USER} <<EOD
 ALTER USER ${PG_TEST_USER} WITH SUPERUSER;
 EOD
 
+announce "running docker compose up"
+docker compose -f ${SCRIPT_DIR}/testContainers/docker-compose-testContainers.yml up --wait
 
+sleep 5
 
+announce "setting up irods container"
+docker exec -i ${IRODS_CONTAINER} iinit <<EOD
+localhost
+${IRODS_ADMIN_USER}
+${IRODS_ADMIN_PASSWORD}
+EOD
+
+announce "creating irods user"
+docker exec -i ${IRODS_CONTAINER} iadmin mkuser ${IRODS_USER} rodsuser
+docker exec -i ${IRODS_CONTAINER} iadmin moduser ${IRODS_USER} password ${IRODS_PASSWORD}
+
+announce "creating ssh-1 users and groups"
+docker exec -i ssh-1 /bin/bash << EOF
+mkdir -p /data/home/testuser/
+chown -R testuser:testuser /data/home/testuser/
+apt update
+apt-get install acl
+groupadd faclgrp1
+groupadd faclgrp2
+groupadd faclgrp3
+useradd -g faclgrp1 facluser1
+useradd -g faclgrp1 facluser2
+useradd -g faclgrp1 facluser3
+EOF
+
+announce "creating ssh-2 users and groups"
+docker exec -i ssh-2 /bin/bash << EOF
+mkdir -p /data/home/testuser/
+chown -R testuser:testuser /data/home/testuser/
+apt update
+apt-get install acl
+groupadd faclgrp1
+groupadd faclgrp2
+groupadd faclgrp3
+useradd -g faclgrp1 facluser1
+useradd -g faclgrp1 facluser2
+useradd -g faclgrp1 facluser3
+EOF
