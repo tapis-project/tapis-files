@@ -1,6 +1,8 @@
 #!/bin/bash
 #set -xv
 
+SCRIPT_DIR=$(dirname $0)
+
 SERVICE_CODE="files"
 
 PG_PORT="5432"
@@ -92,7 +94,7 @@ announce "database container on port ${PG_PORT}"
 export PG_PORT
 
 announce "running docker compose up"
-docker compose up --wait
+docker compose -f ${SCRIPT_DIR}/docker-compose.yml up --wait
 
 announce "pausing for startup"
 sleep 5
@@ -146,14 +148,5 @@ docker exec -i ${PG_CONTAINER} psql -U ${PG_ADMIN_USER} <<EOD
 ALTER USER ${PG_TEST_USER} WITH SUPERUSER;
 EOD
 
-announce "setting up irods container"
-docker exec -i ${IRODS_CONTAINER} iinit <<EOD
-localhost
-${IRODS_ADMIN_USER}
-${IRODS_ADMIN_PASSWORD}
-EOD
 
-announce "creating irods user"
-docker exec -i ${IRODS_CONTAINER} iadmin mkuser ${IRODS_USER} rodsuser
-docker exec -i ${IRODS_CONTAINER} iadmin moduser ${IRODS_USER} password ${IRODS_PASSWORD}
 
