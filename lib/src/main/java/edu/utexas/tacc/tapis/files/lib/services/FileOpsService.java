@@ -17,6 +17,8 @@ import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
+
+import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -457,25 +459,18 @@ public class FileOpsService
   {
     try
     {
-      client.mkdir(relPathStr);
+      // this mkdir can fail in the case that we are making the same directory from multiple threads.  One thread
+      // will succeed, but the others will fail.  I tried just checking to see if the directory exists in the case
+      // that the mkdir fails, but that doesnt work if you ahve to make multiple directories (the rough equivalent
+      // of mkdir -p).  So for now, I think the best I can do is synchronize the mkdirs.  This could slow things down
+      // slightly, but it should be a relatively fast operations, and it's probably better to succeed eventually
+      // than to fail.
+      synchronized (SSHDataClient.class) {
+        client.mkdir(relPathStr);
+      }
     }
     catch (IOException ex)
     {
-      // it's possible that we tried to make the directory, and another mkdir came in at the same moment.  In this
-      // case we can "fail", but it might not actually be a failure.  If this is the case, the directory will exist
-      // though, so we can just try to getFileInfo on that path, and see if it's there and it's a directory. If it is,
-      // we will consider it a success.
-      try {
-        FileInfo fileInfo = client.getFileInfo(relPathStr, true);
-        if((fileInfo != null) && fileInfo.isDir()) {
-          String msg = LibUtils.getMsg("FILES_OPSC_MKDIR_IGNORE_ERROR");
-          log.trace(msg);
-          return;
-        }
-      } catch (IOException e) {
-        // if we have an error, we can just fall though here, since we are about to throw an exception anyway.
-      }
-
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", client.getOboTenant(), client.getOboUser(), "mkdirWithClient",
                                    client.getSystemId(), relPathStr, ex.getMessage());
       log.error(msg, ex);
