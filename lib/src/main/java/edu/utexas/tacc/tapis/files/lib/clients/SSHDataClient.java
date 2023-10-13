@@ -983,11 +983,16 @@ public class SSHDataClient implements ISSHDataClient
   }
 
   private TapisSystem getSystemForConnection() {
+    // this method is important.  We need the ability to refresh our copy of the tapis system.  The method that borrows
+    // the ssh sessions will invalidate the cache in the event of a failure, in case the creds have changed, so we need to
+    // ask for it again so we get the refreshed creds
     try {
       TapisSystem cachedSystem = systemsCache.getSystem(oboTenant, systemId, effectiveUserId, impersonationId, sharedCtxGrantor);
       return cachedSystem;
     } catch (ServiceException ex) {
-
+      // ignore the failure here.  There's really nothing we can do.  We have a copy of the system already and it may
+      // or may not be the latest, but it's the best we can do.  I think this is better than an exception since there
+      // is at least some chance it will succeed.  Besides, if it does fail we will there the exception there anyway.
     }
     return system;
   }
