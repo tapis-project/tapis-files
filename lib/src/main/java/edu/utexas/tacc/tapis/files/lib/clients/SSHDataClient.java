@@ -987,7 +987,7 @@ public class SSHDataClient implements ISSHDataClient
     // the ssh sessions will invalidate the cache in the event of a failure, in case the creds have changed, so we need to
     // ask for it again so we get the refreshed creds
     try {
-      TapisSystem cachedSystem = systemsCache.getSystem(oboTenant, systemId, effectiveUserId, impersonationId, sharedCtxGrantor);
+      TapisSystem cachedSystem = systemsCache.getSystem(oboTenant, systemId, oboUser, impersonationId, sharedCtxGrantor);
       return cachedSystem;
     } catch (ServiceException ex) {
       // ignore the failure here.  There's really nothing we can do.  We have a copy of the system already and it may
