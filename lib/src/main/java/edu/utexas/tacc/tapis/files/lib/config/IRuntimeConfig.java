@@ -24,4 +24,5 @@ public interface IRuntimeConfig {
     int getRereadLogConfigIntevalSeconds();
     public int getGrizzlyPoolCoreSize();
     public int getGrizzlyPoolMaxSize();
+    public String getTapisDebugSystemServicePath();
 }

@@ -11,6 +11,7 @@ import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
 import org.jetbrains.annotations.NotNull;
 import org.jooq.tools.StringUtils;
@@ -120,6 +121,10 @@ public class SystemsCacheNoAuth
       // Because this is Files calling as itself we must tell Systems which user and tenant to use.
       // Systems normally gets these from the jwt.
       SystemsClient.AuthnMethod authnMethod = null;
+      String systemsServiceBasePath = RuntimeSettings.get().getTapisDebugSystemServicePath();
+      if(!StringUtils.isBlank(systemsServiceBasePath)) {
+        client.setBasePath(systemsServiceBasePath);
+      }
       var requireExec = false;
       var selectStr = "allAttributes";
       var returnCreds = true;

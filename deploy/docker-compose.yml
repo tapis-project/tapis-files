@@ -4,7 +4,6 @@ version: "3"
 volumes:
   files-postgres-data:
   files-rabbitmq-data:
-  files-minio-data:
 
 networks:
   rabbitmq_netwrk:
@@ -43,36 +42,3 @@ services:
       - files-rabbitmq-data:/var/lib/rabbitmq
     networks:
       - rabbitmq_netwrk
-
-  minio:
-    image: minio/minio
-    environment:
-      - MINIO_ACCESS_KEY=user
-      - MINIO_SECRET_KEY=password
-    ports:
-      - 9000:9000
-    volumes:
-      - files-minio-data:/data
-    command: server /data
-
-  irods:
-    container_name: irods
-    image: mjstealey/irods-provider-postgres:4.2.4
-    ports:
-      - 1247:1247
-
-  ssh-machine:
-    container_name: ssh-machine
-    build:
-      context: ..
-      dockerfile: ./deploy/Dockerfile.ssh-machine
-    ports:
-      - "2222:22"
-
-  ssh-machine2:
-    container_name: ssh2
-    build:
-      context: ..
-      dockerfile: ./deploy/Dockerfile.ssh-machine
-    ports:
-      - "2223:22"

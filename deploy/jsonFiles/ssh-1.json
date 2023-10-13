@@ -1,0 +1,12 @@
+{
+  "id": "tapisv3-ssh-1",
+  "description": "ssh-1 system for testing",
+  "host": "localhost",
+  "port": 2222,
+  "systemType":"LINUX",
+  "defaultAuthnMethod": "PKI_KEYS",
+  "effectiveUserId": "${apiUserId}",
+  "rootDir": "/",
+  "canExec": false
+}
+
