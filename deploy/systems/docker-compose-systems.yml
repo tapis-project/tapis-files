@@ -1,0 +1,25 @@
+---
+version: "3"
+
+volumes:
+  tapis-systems:
+
+services:
+  tapis-sys:
+    image: tapis/systems
+    container_name: tapis_systems
+    labels:
+      name: tapis_systems
+    restart: always
+    environment:
+      - TAPIS_DB_JDBC_URL=jdbc:postgresql://host.docker.internal:5433/tapissysdb
+      - TAPIS_DB_PASSWORD=password
+      - TAPIS_DB_USER=tapis_sys
+      - TAPIS_REQUEST_LOGGING_FILTER_PREFIXES=/v3/systems
+      - TAPIS_SERVICE_PASSWORD=zEaDwYdEtAFVP2TTEph27A
+      - TAPIS_SITE_ID=tacc
+      - TAPIS_TENANT_SVC_BASEURL=https://admin.develop.tapis.io
+
+    ports:
+      - ${TAPIS_SYSTEMS_PORT}:8080
+

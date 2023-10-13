@@ -10,6 +10,9 @@ import javax.ws.rs.NotAuthorizedException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
+
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -122,6 +125,10 @@ public class SystemsCache
                                  key.getImpersonationId(), key.getSharedCtxGrantor()));
       // Create a client to call systems as <tapis-user>@<tenant>
       SystemsClient client = serviceClients.getClient(key.getTapisUser(), key.getTenantId(), SystemsClient.class);
+      String systemsServiceBasePath = RuntimeSettings.get().getTapisDebugSystemServicePath();
+      if(!StringUtils.isBlank(systemsServiceBasePath)) {
+        client.setBasePath(systemsServiceBasePath);
+      }
 
       SystemsClient.AuthnMethod authnMethod = null;
       var requireExec = false;
