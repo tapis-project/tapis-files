@@ -1,0 +1,41 @@
+---
+version: "3"
+
+volumes:
+  files-minio-data:
+
+services:
+  minio:
+    container_name: minio-1
+    image: minio/minio
+    environment:
+      - MINIO_ACCESS_KEY=user
+      - MINIO_SECRET_KEY=password
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - files-minio-data:/data
+    command: server /data --console-address :9001
+
+  irods-1:
+    container_name: irods-1
+    image: mjstealey/irods-provider-postgres:4.2.4
+    ports:
+      - 1247:1247
+
+  ssh-1:
+    container_name: ssh-1
+    build:
+      context: ..
+      dockerfile: ssh/Dockerfile.ssh
+    ports:
+      - "2222:22"
+
+  ssh-2:
+    container_name: ssh-2
+    build:
+      context: ..
+      dockerfile: ssh/Dockerfile.ssh
+    ports:
+      - "2223:22"
