@@ -6,7 +6,6 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -20,7 +19,6 @@ import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.services.TransfersService;
 import edu.utexas.tacc.tapis.files.lib.providers.TenantCacheFactory;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
@@ -31,7 +29,6 @@ import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
 
 import javax.inject.Singleton;
 import java.time.Duration;
@@ -118,13 +115,11 @@ public class TransfersApp
       ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
       log.info("Got parentTxfrSvc.");
       log.info("Starting parent pipeline.");
-      Flux<TransferTaskParent> parentTaskFlux = parentTaskTransferService.runPipeline();
-      parentTaskFlux.subscribe();
+      parentTaskTransferService.startListeners();
       log.info("Started parent pipeline.");
 
       log.info("Starting child pipeline.");
-      Flux<TransferTaskChild> childTaskFlux = childTaskTransferService.runPipeline();
-      childTaskFlux.subscribe();
+      childTaskTransferService.startListeners();
       log.info("Started child pipeline.");
     } catch(Exception ex) {
       String msg = LibUtils.getMsg("FILES_WORKER_APPLICATION_FAILED_TO_START", ex.getMessage());
