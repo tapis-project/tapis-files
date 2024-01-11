@@ -1,9 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
-import ch.qos.logback.classic.util.ContextInitializer;
-import ch.qos.logback.core.joran.spi.JoranException;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
@@ -38,20 +34,13 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 import javax.inject.Singleton;
-import java.net.URL;
 import java.time.Duration;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /*
  * Class with main used to start a Files worker. See deploy/Dockerfile.workers
  */
 public class TransfersApp
 {
-  private static ScheduledExecutorService loggerExecutorService;
-  // reread the logging config file every 5 minutes
-  private static final int REREAD_LOGFILE_INTERVAL_SECS = 300;
   // SSHConnection cache settings
   public static final long CACHE_MAX_SIZE = 1000;
   public static final long CACHE_TIMEOUT_MINUTES = 5;
@@ -140,24 +129,6 @@ public class TransfersApp
     } catch(Exception ex) {
       String msg = LibUtils.getMsg("FILES_WORKER_APPLICATION_FAILED_TO_START", ex.getMessage());
       log.error(msg, ex);
-    }
-    loggerExecutorService = Executors.newSingleThreadScheduledExecutor();
-    loggerExecutorService.scheduleAtFixedRate(() -> { rereadLoggerConfiguration(); },
-            RuntimeSettings.get().getRereadLogConfigIntevalSeconds(),
-            RuntimeSettings.get().getRereadLogConfigIntevalSeconds(), TimeUnit.SECONDS);
-  }
-
-  private static void rereadLoggerConfiguration() {
-    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-    ContextInitializer contextInitializer = new ContextInitializer(loggerContext);
-    URL url = contextInitializer.findURLOfDefaultConfigurationFile(true);
-    try {
-      JoranConfigurator configurator = new JoranConfigurator();
-      configurator.setContext(loggerContext);
-      loggerContext.reset();
-      configurator.doConfigure(url);
-    } catch (JoranException ex) {
-      log.error("Unable to re-read logback.xml file");
     }
   }
 

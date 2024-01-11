@@ -1,9 +1,5 @@
 package edu.utexas.tacc.tapis.files.api;
 
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.joran.JoranConfigurator;
-import ch.qos.logback.classic.util.ContextInitializer;
-import ch.qos.logback.core.joran.spi.JoranException;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -58,10 +54,8 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Singleton;
 import javax.ws.rs.ApplicationPath;
 import java.net.URI;
-import java.net.URL;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -90,9 +84,6 @@ public class FilesApplication extends ResourceConfig
   private static Logger log = LoggerFactory.getLogger(FilesApplication.class);
   // SSHConnection cache settings
   public static final long SSHCACHE_TIMEOUT_MINUTES = 5;
-
-  // reread the logging config file every 5 minutes
-  private static final int REREAD_LOGFILE_INTERVAL_SECS = 300;
 
   // We must be running on a specific site and this will never change
   private static String siteId;
@@ -281,24 +272,6 @@ public class FilesApplication extends ResourceConfig
     Thread filesShutdownThread = new FilesShutdownThread(postItsService);
     Runtime.getRuntime().addShutdownHook(filesShutdownThread);
     postItsService.startPostItsReaper(RuntimeSettings.get().getPostItsReaperIntervalMinutes());
-    loggerExecutorService = Executors.newSingleThreadScheduledExecutor();
-    loggerExecutorService.scheduleAtFixedRate(() -> { rereadLoggerConfiguration(); },
-            RuntimeSettings.get().getRereadLogConfigIntevalSeconds(),
-            RuntimeSettings.get().getRereadLogConfigIntevalSeconds(), TimeUnit.SECONDS);
-  }
-
-  private static void rereadLoggerConfiguration() {
-    LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-    ContextInitializer contextInitializer = new ContextInitializer(loggerContext);
-    URL url = contextInitializer.findURLOfDefaultConfigurationFile(true);
-    try {
-      JoranConfigurator configurator = new JoranConfigurator();
-      configurator.setContext(loggerContext);
-      loggerContext.reset();
-      configurator.doConfigure(url);
-    } catch (JoranException ex) {
-      log.error("Unable to re-read logback.xml file");
-    }
   }
 
   private static class FilesShutdownThread extends Thread {

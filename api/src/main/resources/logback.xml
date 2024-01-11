@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration debug="false">
+<configuration debug="false" scan="true">
     <!-- Set the above debug attribute to true to see logback status information. -->
 
     <!-- The encoder uses a default class.  This can be changed using the class attribute -->
