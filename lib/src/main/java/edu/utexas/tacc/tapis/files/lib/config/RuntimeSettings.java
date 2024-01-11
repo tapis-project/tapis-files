@@ -29,7 +29,6 @@ public class RuntimeSettings {
         protected final int dbConnectionPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 15);
         protected final int dbConnectionPoolSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 20);
         protected final int sshPoolTraceOnCleanupInterval = getIntSetting("TAPIS_SSH_POOL_TRACE_ON_CLEANUP_INTERVAL", 4);
-        protected final int rereadLogConfigIntevalSeconds = getIntSetting("TAPIS_REREAD_LOG_CONFIG_INTERVAL_SECONDS", 300);
         protected final int grizzlyPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 40);
         protected final int grizzlyPoolMaxSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 50);
         protected final String tapisDebugSystemServicePath = settings.get("TAPIS_DEBUG_SYSTEM_SERVICE_PATH", null);
@@ -112,10 +111,6 @@ public class RuntimeSettings {
 
         public int getSshPoolTraceOnCleanupInterval() {
             return sshPoolTraceOnCleanupInterval;
-        }
-
-        public int getRereadLogConfigIntevalSeconds() {
-            return rereadLogConfigIntevalSeconds;
         }
 
         public static int getIntSetting(String settingName, int defaultValue) {
