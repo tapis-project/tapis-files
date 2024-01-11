@@ -339,6 +339,7 @@ public class ChildTaskTransferService
     {
       // Source is HTTP/S
       // Pass in the full URLs as strings
+      sourcePath = sourceURL.toString();
       sourceClient = new HTTPClient(taskChild.getTenantId(), taskChild.getUsername(), sourceURL.toString(), destURL.toString());
     }
     else
@@ -411,7 +412,7 @@ public class ChildTaskTransferService
     }
     else
     {
-      performSynchFileTransfer(taskChild, sourceClient, sourceURL, destClient, destURL);
+      performSynchFileTransfer(taskChild, sourceClient, sourceURL, destClient, destURL, sourcePath);
     }
 
     // If it is an executable file on a posix system going to a posix system, chmod it to be +x.
@@ -845,13 +846,14 @@ public class ChildTaskTransferService
    * @param srcUri source path as URI
    * @param dstClient Remote data client for destination system
    * @param dstUri Destination path as URI
+   * @param srcPath Source path as string. For HTTP/S this is full URL
    */
   private void performSynchFileTransfer(TransferTaskChild taskChild,
                                         IRemoteDataClient srcClient, TransferURI srcUri,
-                                        IRemoteDataClient dstClient, TransferURI dstUri)
+                                        IRemoteDataClient dstClient, TransferURI dstUri,
+                                        String srcPath)
               throws IOException
   {
-    String srcPath = srcUri.getPath();
     String dstPath = dstUri.getPath();
     String msg = LibUtils.getMsg("FILES_TXFR_CHILD_SYNCH_BEGIN", taskChild.getTenantId(), taskChild.getUsername(),
                                  taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
