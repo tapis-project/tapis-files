@@ -9,6 +9,20 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.6.0 - 2024-1-23
+
+Incremental improvements and new features.
+
+### New features:
+
+### Bug fixes:
+- Update and rebuild with latest shared code to incorporate library updates
+- Fix broken http/s transfer support.
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.5.10 - 2023-11-20
 
 Incremental improvements and new features.
