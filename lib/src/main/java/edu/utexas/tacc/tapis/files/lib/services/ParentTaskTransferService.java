@@ -53,8 +53,8 @@ public class ParentTaskTransferService {
   // this ends up being the maximum number of un-acked items.  This include all items in progress as well as items
   // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
   // 5 items in the queue
-  private static final int QOS = 1;
-  private static final int MAX_CONSUMERS = 3;
+  private static final int QOS = 2;
+  private static final int MAX_CONSUMERS = 10;
   private static final int maxRetries = 3;
   private final TransfersService transfersService;
   private final FileTransfersDAO dao;
