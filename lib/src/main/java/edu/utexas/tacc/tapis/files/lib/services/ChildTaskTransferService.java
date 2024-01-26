@@ -72,7 +72,7 @@ public class ChildTaskTransferService {
     // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
     // 5 items in the queue
     private static final int QOS = 2;
-    private static final int MAX_CONSUMERS = 40;
+    private static final int MAX_CONSUMERS = 20;
     private static String CHILD_QUEUE = "tapis.files.transfers.child";
     private static final int maxRetries = 3;
     private final TransfersService transfersService;
@@ -460,7 +460,9 @@ public class ChildTaskTransferService {
             try {
                 taskChild = dao.getTransferTaskChild(taskChild.getUuid());
             } catch (DAOException ex) {
-                taskChild = null;
+                String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                        "processTransfer", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+                throw new ServiceException(msg);
             }
             return taskChild;
         }
@@ -494,7 +496,9 @@ public class ChildTaskTransferService {
         try {
             taskChild = dao.getTransferTaskChild(taskChild.getUuid());
         } catch (DAOException ex) {
-            taskChild = null;
+            String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                    "processTransfer", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+            throw new ServiceException(msg);
         }
         return taskChild;
     }
@@ -632,7 +636,7 @@ public class ChildTaskTransferService {
     /*
      * Perform the transfer specified in the child task
      */
-    private TransferTaskChild doTransfer(TransferTaskChild taskChild) throws ServiceException, IOException {
+    private TransferTaskChild doTransfer(TransferTaskChild taskChild) throws Exception {
         //We are going to run the meat of the transfer, step2 in a separate Future which we can cancel.
         //This just sets up the future, we first subscribe to the control messages and then start the future
         //which is a blocking call.
@@ -687,9 +691,6 @@ public class ChildTaskTransferService {
             }
         } catch (CancellationException ex) {
             return cancelTransferChild(taskChild);
-        } catch (Exception ex) {
-            // Returning a null here tells the Flux to stop consuming downstream of step2
-            return null;
         } finally {
             try {
                 channel.close();

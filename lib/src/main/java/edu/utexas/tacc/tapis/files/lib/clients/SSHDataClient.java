@@ -603,7 +603,9 @@ public class SSHDataClient implements ISSHDataClient
     Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
     Path parentPath = relativeRemotePath.getParent();
     try (fileStream; var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
-      if (parentPath != null) mkdir(parentPath.toString());
+      if (parentPath != null) {
+        mkdir(parentPath.toString());
+      }
       OutputStream outputStream = sessionHolder.getSession().write(absolutePath.toString());
       fileStream.transferTo(outputStream);
       outputStream.flush();
