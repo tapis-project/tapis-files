@@ -248,7 +248,7 @@ public class ParentTaskTransferService
         List<FileInfo> fileListing;
         // NOTE Treat all source system types the same. For S3 it will be all objects matching the srcPath as a prefix.
         log.trace(LibUtils.getMsg("FILES_TXFR_LSR1", taskTenant, taskUser, "doParentStepOneA07", parentId, parentUuid, srcId, srcPath, tag));
-        fileListing = fileOpsService.lsRecursive(srcClient, srcPath, false, FileOpsService.MAX_RECURSION);
+        fileListing = fileOpsService.lsRecursive(srcClient, srcPath, false, FileOpsService.MAX_RECURSION, IRemoteDataClient.NO_REGEX);
         if (fileListing == null) fileListing = Collections.emptyList();
         log.trace(LibUtils.getMsg("FILES_TXFR_LSR2", taskTenant, taskUser, "doParentStepOneA08", parentId, parentUuid, srcId, srcPath, fileListing.size(), tag));
 

@@ -14,6 +14,8 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 public interface IRemoteDataClient
 {
+  public static final String NO_REGEX = null;
+
   // A remote data client always has at a minimum an associated oboUser, oboTenant and systemId
   String getOboTenant();
   String getOboUser();
@@ -31,6 +33,10 @@ public interface IRemoteDataClient
    * @throws IOException on error
    */
   List<FileInfo> ls(@NotNull String path, long limit, long offset) throws NotFoundException, IOException;
+  default List<FileInfo> ls(@NotNull String path, long limit, long offset, String regex) throws NotFoundException, IOException {
+    return ls(path, limit, offset);
+  }
+
   List<FileInfo> ls(@NotNull String path) throws NotFoundException, IOException;
 
   /**

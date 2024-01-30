@@ -115,6 +115,10 @@ public class SSHDataClient implements ISSHDataClient
     return ls(path, MAX_LISTING_SIZE, 0);
   }
 
+  public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException {
+    return ls(path, limit, offset, null);
+  }
+
   /**
    * Return file listing on path using sftpClient
    *
@@ -124,7 +128,7 @@ public class SSHDataClient implements ISSHDataClient
    * @throws NotFoundException No file at target
    */
   @Override
-  public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException
+  public List<FileInfo> ls(@NotNull String path, long limit, long offset, String patternRegEx) throws IOException, NotFoundException
   {
     String opName = "ls";
     long count = Math.min(limit, MAX_LISTING_SIZE);
@@ -135,6 +139,7 @@ public class SSHDataClient implements ISSHDataClient
     String relPathStr = PathUtils.getRelativePath(path).toString();
     Path absolutePath = PathUtils.getAbsolutePath(rootDir, relPathStr);
     boolean isDirectory = false;
+
     try(var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true))
     {
       Attributes attributes = sessionHolder.getSession().stat(absolutePath.toString());
@@ -205,7 +210,17 @@ public class SSHDataClient implements ISSHDataClient
       filesList.add(fileInfo);
     }
     filesList.sort(Comparator.comparing(FileInfo::getName));
-    return filesList.stream().skip(startIdx).limit(count).collect(Collectors.toList());
+
+
+    if(StringUtils.isBlank(patternRegEx))  {
+      return filesList.stream().skip(startIdx).limit(count).collect(Collectors.toList());
+    }
+
+    Pattern pattern = Pattern.compile(patternRegEx);
+
+    return filesList.stream().skip(startIdx).filter((fileInfo) -> {
+      return pattern.matcher(fileInfo.getName()).find();
+    }).limit(count).collect(Collectors.toList());
   }
 
   /**
