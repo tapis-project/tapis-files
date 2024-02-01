@@ -9,6 +9,7 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -43,10 +44,18 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 
 /*
- * Transfers service methods providing functionality for TransfersApp (a worker) and TestTransfers.
- * Contains only one public method that is used to kick off a parent transfer pipeline.
+ * Transfers service methods providing functionality for TransfersApp (a worker).
+ *
+ * When this class is constructed, a connection is made to RabbitMQ.  When the startListeners
+ * method is called, a number of channels are created, and consumers are setup.  The end result
+ * is a pool of listeners that can call handleMessage (each on it's own thread).  Threads are
+ * handled by rabbitMQ via an Executor service passed in when the connection is created.
+ *
+ * The only thing the parent processor must do is create the child tasks and send a message for
+ * each via RabbitMQ / child queue.  (for more, see the info in TransfersApp).
  */
 @Service
 public class ParentTaskTransferService {
@@ -54,7 +63,7 @@ public class ParentTaskTransferService {
   // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
   // 5 items in the queue
   private static final int QOS = 2;
-  private static final int MAX_CONSUMERS = 8;
+  private static final int MAX_CONSUMERS = RuntimeSettings.get().getParentThreadPoolSize();
   private static final int maxRetries = 3;
   private final TransfersService transfersService;
   private final FileTransfersDAO dao;
@@ -96,14 +105,15 @@ public class ParentTaskTransferService {
     connection = RabbitMQConnection.getInstance().newConnection(connectionThreadPool);
   }
 
-  public void startListeners() throws IOException {
+  public void startListeners() throws IOException, TimeoutException {
     ParentTaskTransferService service = this;
 
     for (int i = 0; i < MAX_CONSUMERS; i++) {
       Channel channel = connection.createChannel();
       channel.basicQos(QOS);
 
-      channel.queueDeclare(PARENT_QUEUE, true, false, false, null);
+      TransfersService.declareRabbitMQObjects(connection);
+
       channel.basicConsume(PARENT_QUEUE, false, new DefaultConsumer(channel) {
         @Override
         public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {

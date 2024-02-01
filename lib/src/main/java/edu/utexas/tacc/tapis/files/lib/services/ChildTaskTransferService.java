@@ -62,9 +62,19 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 
 /*
- * Transfers service methods providing functionality for TransfersApp (a worker) and TestTransfers.
- * Contains only one public method that is used to kick off a child transfer pipeline.
- * This is the main processing workflow for individual file transfers.
+ * Transfers service methods providing functionality for TransfersApp (a worker).
+ *
+ * When this class is constructed, a connection is made to RabbitMQ.  When the startListeners
+ * method is called, a number of channels are created, and consumers are setup.  The end result
+ * is a pool of listeners that can call handleMessage (each on it's own thread).  Threads are
+ * handled by rabbitMQ via an Executor service passed in when the connection is created.
+ *
+ * For each message that comes in, the child task service will look at the child task, and
+ * copy the file described.  During the copy, a java Future is created for the transfer.  Once this
+ * is setup, a new temporary cancel queue is created and a handler is setup such that if a message
+ * comes in on that queue, the future can be canceled (cancelling the child transfer).  Then the
+ * main thread waits for the future to complete.  Once complete, if it was successful, the
+ * child task is updated.  If it was canceled, the cancel logic is applied.
  */
 @Service
 public class ChildTaskTransferService {
@@ -72,7 +82,7 @@ public class ChildTaskTransferService {
     // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
     // 5 items in the queue
     private static final int QOS = 2;
-    private static final int MAX_CONSUMERS = 20;
+    private static final int MAX_CONSUMERS = RuntimeSettings.get().getChildThreadPoolSize();
     private static String CHILD_QUEUE = "tapis.files.transfers.child";
     private static final int maxRetries = 3;
     private final TransfersService transfersService;
@@ -120,14 +130,15 @@ public class ChildTaskTransferService {
     /*                      Public Methods                                     */
     /* *********************************************************************** */
 
-    public void startListeners() throws IOException {
+    public void startListeners() throws IOException, TimeoutException {
         ChildTaskTransferService service = this;
 
         for (int i = 0; i < MAX_CONSUMERS; i++) {
             Channel channel = connection.createChannel();
             channel.basicQos(QOS);
 
-            channel.queueDeclare(CHILD_QUEUE, true, false, false, null);
+            TransfersService.declareRabbitMQObjects(connection);
+
             channel.basicConsume(CHILD_QUEUE, false, new DefaultConsumer(channel) {
                 @Override
                 public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {

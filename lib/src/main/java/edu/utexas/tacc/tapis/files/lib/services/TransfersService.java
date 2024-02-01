@@ -15,6 +15,7 @@ import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.MessageProperties;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -56,7 +57,11 @@ public class TransfersService
   private static final String TRANSFERS_EXCHANGE = "tapis.files";
   private static String PARENT_QUEUE = "tapis.files.transfers.parent";
   private static String CHILD_QUEUE = "tapis.files.transfers.child";
+  private static String PARENT_EXCHANGE = "tapis.files.transfers.parent.exchange";
+  private static String CHILD_EXCHANGE = "tapis.files.transfers.child.exchange";
   public static String CONTROL_EXCHANGE = "tapis.files.transfers.control";
+  private static String CHILD_ROUTING_KEY = "child";
+  public static String PARENT_ROUTING_KEY = "parent";
   private final FileTransfersDAO dao;
   private final FileOpsService fileOpsService;
 
@@ -396,8 +401,7 @@ public class TransfersService
       {
         channel = connection.createChannel();
         String m = mapper.writeValueAsString(childTask);
-        AMQP.BasicProperties properties = null;
-        channel.basicPublish("", CHILD_QUEUE, properties, m.getBytes());
+        channel.basicPublish(CHILD_EXCHANGE, CHILD_ROUTING_KEY, MessageProperties.PERSISTENT_TEXT_PLAIN, m.getBytes());
       } catch (IOException e) {
         throw new RuntimeException(e.getMessage(), e);
       } finally {
@@ -418,10 +422,22 @@ public class TransfersService
 
     try {
       connection = RabbitMQConnection.getInstance().newConnection();
+      TransfersService.declareRabbitMQObjects(connection);
     } catch (Exception ex) {
       // TODO: fix this correctly
       throw new RuntimeException(ex.getMessage());
     }
+  }
+
+  public static void declareRabbitMQObjects(Connection connection) throws IOException, TimeoutException {
+    Channel channel = connection.createChannel();
+    channel.queueDeclare(PARENT_QUEUE, true, false, false, null);
+    channel.queueDeclare(CHILD_QUEUE, true, false, false, null);
+    channel.exchangeDeclare(PARENT_EXCHANGE, BuiltinExchangeType.DIRECT, true, false, null);
+    channel.exchangeDeclare(CHILD_EXCHANGE, BuiltinExchangeType.DIRECT, true, false, null);
+    channel.queueBind(CHILD_QUEUE, CHILD_EXCHANGE, CHILD_ROUTING_KEY);
+    channel.queueBind(PARENT_QUEUE, PARENT_EXCHANGE, PARENT_ROUTING_KEY);
+    channel.close();
   }
 
   public boolean isConnectionOk() {
@@ -442,8 +458,7 @@ public class TransfersService
     {
       channel = connection.createChannel();
       String m = mapper.writeValueAsString(task);
-      AMQP.BasicProperties properties = null;
-      channel.basicPublish("", PARENT_QUEUE, properties, m.getBytes());
+      channel.basicPublish(PARENT_EXCHANGE, PARENT_ROUTING_KEY, MessageProperties.PERSISTENT_TEXT_PLAIN, m.getBytes());
     } catch (IOException e) {
       throw new RuntimeException(e.getMessage(), e);
     } finally {

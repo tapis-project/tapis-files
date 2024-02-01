@@ -35,6 +35,29 @@ import java.time.Duration;
 
 /*
  * Class with main used to start a Files worker. See deploy/Dockerfile.workers
+ *
+ * When the TransferApp starts up, it calls startListenters() for the parent and child task
+ * services.  This starts up listeners for the relavent queue (see the approprieat task
+ * service class for more).  These listeners will handle each message that comes into the rabbitMQ queue
+ * for the service (parent or child).
+ *
+ * Transfers processing:
+ *
+ * A request comes into the api for a transfer.  The request can contain multiple transfers.  When that
+ * request is handled, the api creates a "top task" in the database.  The top task tracks the transfer
+ * request.  For each actual transfer in the request, the api will create a "parent task" whcih gets
+ * stored the the parent task table.  Finally the api will write a message into the rabbitMQ parent queue
+ * for each parent created.
+ *
+ * When the parent task service reads a parent task message, it will process it by determining which
+ * files are to be transferred for this request.  In the case of a file, there's just one, but in the
+ * case of a directory it will walk the directory tree and note each file that must be transferred.
+ * For each file that must be transferred a child task is created and written to the child task table
+ * in the database.  For each of the child tasks a message pointing to the child task is written to the
+ * child task queue.
+ *
+ * When the child task service reads a child task message from rabbitmq, it will process it by transferring
+ * the file described by the child task message, and marking the task compoleted (or failed or whatever).
  */
 public class TransfersApp
 {
