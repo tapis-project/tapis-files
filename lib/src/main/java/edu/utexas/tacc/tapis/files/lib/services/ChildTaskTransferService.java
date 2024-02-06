@@ -172,7 +172,7 @@ public class ChildTaskTransferService {
                 // like a db error or a rabbitmq error.
                 String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                         "handleDelivery", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
-                log.error(msg);
+                log.error(msg, e);
                 throw new RuntimeException(msg, e);
             }
 
@@ -181,7 +181,7 @@ public class ChildTaskTransferService {
             // like a db error or a rabbitmq error.
             String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                     "handleDelivery", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
-            log.error(msg);
+            log.error(msg, ex);
             throw new RuntimeException(msg, ex);
         }
     }
@@ -252,7 +252,7 @@ public class ChildTaskTransferService {
             } catch (Exception e) {
                 String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", tenantId, user,
                         "handleMessage", id, tag, uuid, e.getMessage());
-                log.error(msg);
+                log.error(msg, e);
                 lastException = e;
             }
             retry++;

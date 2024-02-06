@@ -139,7 +139,7 @@ public class ParentTaskTransferService {
     } catch (Exception ex) {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
               "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
-      log.error(msg);
+      log.error(msg, ex);
       throw new RuntimeException(msg, ex);
     }
 
