@@ -1,55 +1,70 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
 import javax.inject.Inject;
-import javax.ws.rs.ForbiddenException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.jvnet.hk2.annotations.Service;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
-import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.util.retry.Retry;
-
-import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
+import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.jvnet.hk2.annotations.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 
 /*
- * Transfers service methods providing functionality for TransfersApp (a worker) and TestTransfers.
- * Contains only one public method that is used to kick off a parent transfer pipeline.
+ * Transfers service methods providing functionality for TransfersApp (a worker).
+ *
+ * When this class is constructed, a connection is made to RabbitMQ.  When the startListeners
+ * method is called, a number of channels are created, and consumers are setup.  The end result
+ * is a pool of listeners that can call handleMessage (each on it's own thread).  Threads are
+ * handled by rabbitMQ via an Executor service passed in when the connection is created.
+ *
+ * The only thing the parent processor must do is create the child tasks and send a message for
+ * each via RabbitMQ / child queue.  (for more, see the info in TransfersApp).
  */
 @Service
-public class ParentTaskTransferService
-{
-  private static final int MAX_RETRIES = 5;
+public class ParentTaskTransferService {
+  // this ends up being the maximum number of un-acked items.  This include all items in progress as well as items
+  // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
+  // 5 items in the queue
+  private static final int QOS = 2;
+  private static final int MAX_CONSUMERS = RuntimeSettings.get().getParentThreadPoolSize();
+  private static final int maxRetries = 3;
   private final TransfersService transfersService;
   private final FileTransfersDAO dao;
   private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
@@ -58,6 +73,11 @@ public class ParentTaskTransferService
   private final SystemsCache systemsCache;
   private final FileOpsService fileOpsService;
   private static final Logger log = LoggerFactory.getLogger(ParentTaskTransferService.class);
+  private static String PARENT_QUEUE = "tapis.files.transfers.parent";
+  private final Connection connection;
+  private ExecutorService connectionThreadPool;
+  private List<Channel> channels = new ArrayList<Channel>();
+
 
   /* *********************************************************************** */
   /*            Constructors                                                 */
@@ -68,88 +88,138 @@ public class ParentTaskTransferService
    * Note that this is never invoked explicitly. Arguments of constructor are initialized via Dependency Injection.
    */
   @Inject
-  public ParentTaskTransferService(TransfersService transfersService1,
-                                   FileTransfersDAO dao1,
-                                   FileOpsService fileOpsService1,
-                                   FilePermsService permsService1,
-                                   RemoteDataClientFactory remoteDataClientFactory1,
-                                   SystemsCache systemsCache1)
-  {
-    transfersService = transfersService1;
-    dao = dao1;
-    fileOpsService = fileOpsService1;
-    systemsCache = systemsCache1;
-    remoteDataClientFactory = remoteDataClientFactory1;
-    permsService = permsService1;
+  public ParentTaskTransferService(TransfersService transfersService,
+                                   FileTransfersDAO dao,
+                                   FileOpsService fileOpsService,
+                                   FilePermsService permsService,
+                                   RemoteDataClientFactory remoteDataClientFactory,
+                                   SystemsCache systemsCache) throws Exception {
+    this.transfersService = transfersService;
+    this.dao = dao;
+    this.fileOpsService = fileOpsService;
+    this.systemsCache = systemsCache;
+    this.remoteDataClientFactory = remoteDataClientFactory;
+    this.permsService = permsService;
+
+    connectionThreadPool = Executors.newFixedThreadPool(MAX_CONSUMERS);
+    connection = RabbitMQConnection.getInstance().newConnection(connectionThreadPool);
   }
 
-  /* *********************************************************************** */
-  /*                      Public Methods                                     */
-  /* *********************************************************************** */
+  public void startListeners() throws IOException, TimeoutException {
+    ParentTaskTransferService service = this;
 
-  /**
-   * Run a full transfer pipeline for a parent task
-   *
-   * @return a flux for a parent transfer task
-   */
-  public Flux<TransferTaskParent> runPipeline()
-  {
-    return transfersService.streamParentMessages()
-      .groupBy(m -> { try { return groupByTenant(m); } catch (ServiceException ex) { return Mono.empty(); } } )
-      .flatMap(group ->
-        {
-          Scheduler scheduler = Schedulers.newBoundedElastic(5, 1000, "ParentPool:" + group.key());
-          return group.flatMap(m ->
-            deserializeParentMessage(m)
-              .flatMap(t1 -> Mono.fromCallable(() -> doParentStepOne(t1))
-                                 .publishOn(scheduler)
-                                 .retryWhen(Retry.backoff(MAX_RETRIES, Duration.ofSeconds(1))
-                                                 .maxBackoff(Duration.ofMinutes(60))
-                                                 .filter(e -> e.getClass() == IOException.class) )
-                                 .onErrorResume(e -> doErrorParentStepOne(m, e, t1) ) )
-              .flatMap(t2 -> { m.ack(); return Mono.just(t2); }) );
-          } );
+    for (int i = 0; i < MAX_CONSUMERS; i++) {
+      Channel channel = connection.createChannel();
+      channel.basicQos(QOS);
+
+      TransfersService.declareRabbitMQObjects(connection);
+
+      channel.basicConsume(PARENT_QUEUE, false, new DefaultConsumer(channel) {
+        @Override
+        public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+          service.handleDelivery(channel, consumerTag, envelope, properties, body);
+        }
+      });
+      channels.add(channel);
+    }
+  }
+
+  public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
+    TransferTaskParent taskParent = null;
+    try {
+      String jsonMessage = new String(body, StandardCharsets.UTF_8);
+      taskParent = TapisObjectMapper.getMapper().readValue(jsonMessage, TransferTaskParent.class);
+      if (taskParent == null) {
+        // log the error, and continue - this really shouldn't happen since we wrote the message ourselves, but being defensive.
+        String msg = LibUtils.getMsg("FILES_TXFR_UNABLE_TO_PARSE_MESSAGE");
+        log.error(msg);
+        throw new RuntimeException(msg);
+      }
+      handleMessage(channel, envelope, taskParent);
+    } catch (Exception ex) {
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
+              "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      throw new RuntimeException(msg, ex);
+    }
+
+  }
+
+  public void handleMessage(Channel channel, Envelope envelope, TransferTaskParent taskParent) throws IOException {
+    int retry = 0;
+    while (retry < maxRetries) {
+      try {
+        if (createChildTasks(taskParent)) {
+          channel.basicAck(envelope.getDeliveryTag(), false);
+          return;
+        }
+      } catch (ServiceException e) {
+        // if we catch an error nack message.
+        channel.basicNack(envelope.getDeliveryTag(), false, false);
+        if(retry >= maxRetries) {
+          doErrorParentStepOne(e, taskParent);
+          return;
+        }
+      }
+
+      retry++;
+    }
+
+    // out of retries, so give up on this one.
+    channel.basicNack(envelope.getDeliveryTag(), false, false);
   }
 
   /* *********************************************************************** */
   /*            Private Methods                                              */
   /* *********************************************************************** */
 
-  /**
-   * The one and only step for a ParentTask.
-   * This is the first call in the pipeline kicked off in the reactor flow.
-   *
-   * We prepare a "bill of materials" for the total transfer task.
-   * This includes doing a recursive listing and inserting the records into the DB, then publishing all the messages to
-   * rabbitmq. After that, the child task workers (see ChildTaskTransferService) will pick them up
-   * and begin the transfer of data.
-   *
-   * @param parentTask TransferTaskParent
-   * @return Updated task
-   * @throws ForbiddenException when permission denied
-   * @throws ServiceException When a listing or DAO error occurs
-   */
-  private TransferTaskParent doParentStepOne(TransferTaskParent parentTask) throws ServiceException, ForbiddenException
-  {
-    log.debug("***** Starting ParentStepOne ****");
+  boolean createChildTasks(TransferTaskParent parentTask) throws ServiceException {
+    log.debug("***** Starting Parent Task ****");
     log.debug(parentTask.toString());
 
-    // Extract some values for convenience and clarity
+    // used to return a parent task.
+    if (!updateTopTask(parentTask)) {
+      return false;
+    }
+
+    try {
+      if (parentTask.getSourceURI().isTapisProtocol()) {
+        handleTapisTransfer(parentTask);
+      } else {
+        handleNonTapisTransfer(parentTask);
+      }
+    } catch (DAOException | TapisException | IOException e) {
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTaskId(), parentTask.getUsername(), "doParentStepOneB",
+              parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), e.getMessage());
+      log.error(msg, e);
+      throw new ServiceException(msg, e);
+    }
+
+    return true;
+  }
+
+  /**
+   * Return true if we should continue with created tasks, or false if not.  Throw exception on error.
+   *
+   * @param parentTask
+   * @return
+   */
+  private boolean updateTopTask(TransferTaskParent parentTask) throws ServiceException {
+    log.debug("*****  Update Top Task  ****");
+    log.debug(parentTask.toString());
+
     String taskTenant = parentTask.getTenantId();
     String taskUser = parentTask.getUsername();
-    // Keep these Integer and not int. When type int the logger puts in commas which makes it harder to search the log.
+    String tag = parentTask.getTag();
     Integer parentId = parentTask.getId();
     Integer topTaskId = parentTask.getTaskId();
     UUID parentUuid = parentTask.getUuid();
-    String tag = parentTask.getTag();
 
     // Update the top level task and then the parent task
-    try
-    {
+    try {
       // Update top level task.
       TransferTask topTask = dao.getTransferTaskByID(topTaskId);
-      if (topTask.getStartTime() == null)
-      {
+      if (topTask.getStartTime() == null) {
         log.trace(LibUtils.getMsg("FILES_TXFR_TASK_START", taskTenant, taskUser, "doParentStepOneA04", topTask.getId(), parentId, parentUuid, tag));
         topTask.setStartTime(Instant.now());
         // Update status unless already in a terminal state (such as cancelled)
@@ -158,12 +228,11 @@ public class ParentTaskTransferService
       }
 
       // If top task in terminal state then return
-      if (topTask.isTerminal())
-      {
+      if (topTask.isTerminal()) {
         log.trace(LibUtils.getMsg("FILES_TXFR_TOP_TASK_TERM", taskTenant, taskUser, "doParentStepOneA03", topTaskId, topTask.getStatus(), parentId, parentTask.getStatus(), parentUuid, tag));
         topTask.setEndTime(Instant.now());
         dao.updateTransferTask(topTask);
-        return parentTask;
+        return false;
       }
 
       // Update parent task
@@ -174,32 +243,24 @@ public class ParentTaskTransferService
       parentTask = dao.updateTransferTaskParent(parentTask);
 
       // If already in a terminal state then set end time and return
-      if (parentTask.isTerminal())
-      {
+      if (parentTask.isTerminal()) {
         log.warn(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA01", topTaskId, parentId, parentTask.getStatus(), parentUuid, tag));
         parentTask.setEndTime(Instant.now());
         parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_END_TERM", tag, parentTask.getStatus()));
-        parentTask = dao.updateTransferTaskParent(parentTask);
-        return parentTask;
+        dao.updateTransferTaskParent(parentTask);
+        return false;
       }
-    }
-    catch (DAOException ex)
-    {
+    } catch (DAOException ex) {
       String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskTenant, taskUser, "doParentStepOneA06",
-                                   parentId, tag, parentUuid, ex.getMessage());
+              parentId, tag, parentUuid, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
 
-    // =======================================================================
-    // Now for the main work of creating the child tasks and publishing them
-    // =======================================================================
-    // Create a ResourceRequestUser. Some library calls use this, mainly as convenient wrapper for logging identity info
-    AuthenticatedUser aUser = new AuthenticatedUser(taskUser, taskTenant, TapisThreadContext.AccountType.user.name(),
-                                                    null, taskUser, taskTenant, null, null, null);
-    ResourceRequestUser rUser = new ResourceRequestUser(aUser);
+    return true;
+  }
 
-    // Process the source URI
+  private void handleTapisTransfer(TransferTaskParent parentTask) throws ServiceException, TapisException, DAOException, IOException {
     TransferURI srcUri = parentTask.getSourceURI();
     TransferURI dstUri = parentTask.getDestinationURI();
     TapisSystem srcSystem, dstSystem;
@@ -210,203 +271,158 @@ public class ParentTaskTransferService
     String srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
     String dstSharedCtxGrantor = parentTask.getDestSharedCtxGrantor();
     String impersonationIdNull = null;
+    String taskTenant = parentTask.getTenantId();
+    String taskUser = parentTask.getUsername();
+    String tag = parentTask.getTag();
+    Integer parentId = parentTask.getId();
+    UUID parentUuid = parentTask.getUuid();
 
-    try
-    {
-      // Handle tapis: and http/s: protocols separately
-      if (srcUri.isTapisProtocol())
-      {
-        // Handle protocol tapis://
-        // Destination must also be tapis protocol. Checked early on, but check again in case it slipped through.
-        if (!dstUri.isTapisProtocol())
-        {
-          String msg = LibUtils.getMsg("FILES_TXFR_DST_NOTSUPPORTED", srcUri, dstUri, tag);
-          log.error(msg);
-          throw new ServiceException(msg);
-        }
-        // Fetch systems, they are needed during child task creation. Also, this ensures they exist and are available
-        srcSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId, impersonationIdNull, srcSharedCtxGrantor);
-        dstSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, dstId, impersonationIdNull, dstSharedCtxGrantor);
-        boolean srcIsS3 = SystemTypeEnum.S3.equals(srcSystem.getSystemType());
-        boolean srcIsGlobus = SystemTypeEnum.GLOBUS.equals(srcSystem.getSystemType());
-        boolean dstIsS3 = SystemTypeEnum.S3.equals(dstSystem.getSystemType());
+    AuthenticatedUser aUser = new AuthenticatedUser(taskUser, taskTenant, TapisThreadContext.AccountType.user.name(),
+            null, taskUser, taskTenant, null, null, null);
+    ResourceRequestUser rUser = new ResourceRequestUser(aUser);
 
-        // Establish client
-        srcClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, srcSystem);
-
-        // Check that src path exists. If not found it is an error.
-        FileInfo fileInfo = srcClient.getFileInfo(srcPath, true);
-        if (fileInfo == null)
-        {
-          String msg = LibUtils.getMsg("FILES_TXFR_SVC_SRCPATH_NOTFOUND", taskTenant, taskUser, parentId, parentUuid, srcPath, tag);
-          log.error(msg);
-          throw new ServiceException(msg);
-        }
-
-        // Get a listing of all files to be transferred
-        //TODO: Retries will break this, should delete anything in the DB if it is a retry?
-        List<FileInfo> fileListing;
-        // NOTE Treat all source system types the same. For S3 it will be all objects matching the srcPath as a prefix.
-        log.trace(LibUtils.getMsg("FILES_TXFR_LSR1", taskTenant, taskUser, "doParentStepOneA07", parentId, parentUuid, srcId, srcPath, tag));
-        fileListing = fileOpsService.lsRecursive(srcClient, srcPath, false, FileOpsService.MAX_RECURSION);
-        if (fileListing == null) fileListing = Collections.emptyList();
-        log.trace(LibUtils.getMsg("FILES_TXFR_LSR2", taskTenant, taskUser, "doParentStepOneA08", parentId, parentUuid, srcId, srcPath, fileListing.size(), tag));
-
-        // If no items to transfer then no child tasks, so we are done.
-        // In theory this should be very unlikely since we just checked that source path exists.
-        // In practice, it could happen if source path is deleted around the same time.
-        // Also, in practice it has happened due to listing improperly returning an empty list.
-        // If we do not handle it here we can end up with tasks stuck in the IN_PROGRESS state.
-        if (fileListing.isEmpty())
-        {
-          parentTask.setEndTime(Instant.now());
-          parentTask.setStatus(TransferTaskStatus.COMPLETED);
-          parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_COMPLETE_NO_ITEMS", srcId, srcPath, tag));
-          parentTask = dao.updateTransferTaskParent(parentTask);
-          return parentTask;
-        }
-
-        // Create child tasks for each file or object to be transferred.
-        List<TransferTaskChild> children = new ArrayList<>();
-        long totalBytes = 0;
-        for (FileInfo f : fileListing)
-        {
-          log.trace(LibUtils.getMsg("FILES_TXFR_ADD_CHILD1", taskTenant, taskUser, "doParentStepOneA09", parentId, parentUuid, f, tag));
-          // If destination is of type S3 we skip directories
-          if (dstIsS3 && f.isDir())
-          {
-            log.trace(LibUtils.getMsg("FILES_TXFR_SKIP_DIR", taskTenant, taskUser, "doParentStepOneA10", parentId, parentUuid, srcId, srcPath, dstId, f.getPath(), tag));
-            continue;
-          }
-          // Only include the bytes from entries that are not directories. Posix folders are --usually-- 4bytes but not always, so
-          // it can make some weird totals that don't really make sense.
-          if (!f.isDir()) totalBytes += f.getSize();
-          TransferTaskChild child = new TransferTaskChild(parentTask, f, srcSystem);
-          children.add(child);
-          log.trace(LibUtils.getMsg("FILES_TXFR_ADD_CHILD2", taskTenant, taskUser, "doParentStepOneA11", parentId, parentUuid, child, tag));
-        }
-        // Update parent task status and totalBytes to be transferred
-        log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_STAGE", taskTenant, taskUser, "doParentStepOneA12", parentId, parentUuid, totalBytes, tag));
-        parentTask.setTotalBytes(totalBytes);
-        parentTask.setStatus(TransferTaskStatus.STAGED);
-        parentTask = dao.updateTransferTaskParent(parentTask);
-        dao.bulkInsertChildTasks(children);
-        children = dao.getAllChildren(parentTask);
-        transfersService.publishBulkChildMessages(children);
-      }
-      else
-      {
-        // Handle all non-tapis protocols. These are http:// and https://
-        // Create a single child task and update parent task status
-        TransferTaskChild task = new TransferTaskChild();
-        task.setTag(tag);
-        task.setSourceURI(parentTask.getSourceURI());
-        task.setParentTaskId(parentId);
-        task.setTaskId(topTaskId);
-        task.setDestinationURI(parentTask.getDestinationURI());
-        task.setStatus(TransferTaskStatus.ACCEPTED);
-        task.setTenantId(parentTask.getTenantId());
-        task.setUsername(parentTask.getUsername());
-        task = dao.insertChildTask(task);
-        transfersService.publishChildMessage(task);
-        parentTask.setStatus(TransferTaskStatus.STAGED);
-        parentTask = dao.updateTransferTaskParent(parentTask);
-      }
+    // Handle protocol tapis://
+    // Destination must also be tapis protocol. Checked early on, but check again in case it slipped through.
+    if (!dstUri.isTapisProtocol()) {
+      String msg = LibUtils.getMsg("FILES_TXFR_DST_NOTSUPPORTED", srcUri, dstUri, tag);
+      log.error(msg);
+      throw new ServiceException(msg);
     }
-    catch (DAOException | TapisException | IOException e)
-    {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskTenant, taskUser, "doParentStepOneB",
-                                   parentId, tag, parentUuid, e.getMessage());
-      log.error(msg, e);
-      throw new ServiceException(msg, e);
+    // Fetch systems, they are needed during child task creation. Also, this ensures they exist and are available
+    srcSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId, impersonationIdNull, srcSharedCtxGrantor);
+    dstSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, dstId, impersonationIdNull, dstSharedCtxGrantor);
+    boolean srcIsS3 = SystemTypeEnum.S3.equals(srcSystem.getSystemType());
+    boolean srcIsGlobus = SystemTypeEnum.GLOBUS.equals(srcSystem.getSystemType());
+    boolean dstIsS3 = SystemTypeEnum.S3.equals(dstSystem.getSystemType());
+
+    // Establish client
+    srcClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, srcSystem);
+
+    // Check that src path exists. If not found it is an error.
+    FileInfo fileInfo = srcClient.getFileInfo(srcPath, true);
+    if (fileInfo == null) {
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_SRCPATH_NOTFOUND", taskTenant, taskUser, parentId, parentUuid, srcPath, tag);
+      log.error(msg);
+      throw new ServiceException(msg);
     }
-    return parentTask;
+
+    // Get a listing of all files to be transferred
+    //TODO: Retries will break this, should delete anything in the DB if it is a retry?
+    List<FileInfo> fileListing;
+    // NOTE Treat all source system types the same. For S3 it will be all objects matching the srcPath as a prefix.
+    log.trace(LibUtils.getMsg("FILES_TXFR_LSR1", taskTenant, taskUser, "doParentStepOneA07", parentId, parentUuid, srcId, srcPath, tag));
+    fileListing = fileOpsService.lsRecursive(srcClient, srcPath, false, FileOpsService.MAX_RECURSION);
+    if (fileListing == null) fileListing = Collections.emptyList();
+    log.trace(LibUtils.getMsg("FILES_TXFR_LSR2", taskTenant, taskUser, "doParentStepOneA08", parentId, parentUuid, srcId, srcPath, fileListing.size(), tag));
+
+    // If no items to transfer then no child tasks, so we are done.
+    // In theory this should be very unlikely since we just checked that source path exists.
+    // In practice, it could happen if source path is deleted around the same time.
+    // Also, in practice it has happened due to listing improperly returning an empty list.
+    // If we do not handle it here we can end up with tasks stuck in the IN_PROGRESS state.
+    if (fileListing.isEmpty()) {
+      parentTask.setEndTime(Instant.now());
+      parentTask.setStatus(TransferTaskStatus.COMPLETED);
+      parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_COMPLETE_NO_ITEMS", srcId, srcPath, tag));
+      parentTask = dao.updateTransferTaskParent(parentTask);
+      return;
+    }
+
+    // Create child tasks for each file or object to be transferred.
+    List<TransferTaskChild> children = new ArrayList<>();
+    long totalBytes = 0;
+    for (FileInfo f : fileListing) {
+      log.trace(LibUtils.getMsg("FILES_TXFR_ADD_CHILD1", taskTenant, taskUser, "doParentStepOneA09", parentId, parentUuid, f, tag));
+      // If destination is of type S3 we skip directories
+      if (dstIsS3 && f.isDir()) {
+        log.trace(LibUtils.getMsg("FILES_TXFR_SKIP_DIR", taskTenant, taskUser, "doParentStepOneA10", parentId, parentUuid, srcId, srcPath, dstId, f.getPath(), tag));
+        continue;
+      }
+      // Only include the bytes from entries that are not directories. Posix folders are --usually-- 4bytes but not always, so
+      // it can make some weird totals that don't really make sense.
+      if (!f.isDir()) totalBytes += f.getSize();
+      TransferTaskChild child = new TransferTaskChild(parentTask, f, srcSystem);
+      children.add(child);
+      log.trace(LibUtils.getMsg("FILES_TXFR_ADD_CHILD2", taskTenant, taskUser, "doParentStepOneA11", parentId, parentUuid, child, tag));
+    }
+    // Update parent task status and totalBytes to be transferred
+    log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_STAGE", taskTenant, taskUser, "doParentStepOneA12", parentId, parentUuid, totalBytes, tag));
+    parentTask.setTotalBytes(totalBytes);
+    parentTask.setStatus(TransferTaskStatus.STAGED);
+    parentTask = dao.updateTransferTaskParent(parentTask);
+    dao.bulkInsertChildTasks(children);
+    children = dao.getAllChildren(parentTask);
+    transfersService.publishBulkChildMessages(children);
   }
+
+  private void handleNonTapisTransfer(TransferTaskParent parentTask) throws ServiceException, DAOException {
+    // Handle all non-tapis protocols. These are http:// and https://
+    // Create a single child task and update parent task status
+    TransferTaskChild task = new TransferTaskChild();
+    task.setTag(parentTask.getTag());
+    task.setSourceURI(parentTask.getSourceURI());
+    task.setParentTaskId(parentTask.getId());
+    task.setTaskId(parentTask.getTaskId());
+    task.setDestinationURI(parentTask.getDestinationURI());
+    task.setStatus(TransferTaskStatus.ACCEPTED);
+    task.setTenantId(parentTask.getTenantId());
+    task.setUsername(parentTask.getUsername());
+    task = dao.insertChildTask(task);
+    transfersService.publishChildMessage(task);
+    parentTask.setStatus(TransferTaskStatus.STAGED);
+    dao.updateTransferTaskParent(parentTask);
+  }
+
 
   /**
    * This method handles exceptions/errors if the parent task failed.
    * A parent task may have no children, so we also need to check for completion of top level task.
    *
-   * @param m      message from rabbitmq
-   * @param e      Throwable
-   * @param parent TransferTaskParent
-   * @return Mono TransferTaskParent
+   * @param caughtException Exception
+   * @param parent          TransferTaskParent
+   * @return TransferTasksParent TransferTaskParent
    */
-  private Mono<TransferTaskParent> doErrorParentStepOne(AcknowledgableDelivery m, Throwable e, TransferTaskParent parent)
-  {
-    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString(), e));
-    m.nack(false);
+  private TransferTaskParent doErrorParentStepOne(Exception caughtException, TransferTaskParent parent) {
+    try {
+      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString(), caughtException));
 
-    // First update parent task, mark FAILED_OPT or FAILED
-    if (parent.isOptional())
-      parent.setStatus(TransferTaskStatus.FAILED_OPT);
-    else
-      parent.setStatus(TransferTaskStatus.FAILED);
-    parent.setEndTime(Instant.now());
-    parent.setErrorMessage(e.getMessage());
-    parent.setFinalMessage("Failed - doErrorParentStepOne");
-    try
-    {
+      // First update parent task, mark FAILED_OPT or FAILED
+      if (parent.isOptional())
+        parent.setStatus(TransferTaskStatus.FAILED_OPT);
+      else
+        parent.setStatus(TransferTaskStatus.FAILED);
+      parent.setEndTime(Instant.now());
+      parent.setErrorMessage(caughtException.getMessage());
+      parent.setFinalMessage("Failed - doErrorParentStepOne");
       parent = dao.updateTransferTaskParent(parent);
       // This should really never happen, it means that the parent with that ID was not in the database.
-      if (parent == null) return Mono.empty();
+      if (parent == null) {
+        return null;
+      }
 
       // Now update the top level task
       TransferTask topTask = dao.getTransferTaskByID(parent.getTaskId());
       // This should also not happen, it means that the top task was not in the database.
-      if (topTask == null) return Mono.empty();
+      if (topTask == null) {
+        return null;
+      }
 
       // If parent is optional we need to check to see if top task status should be updated
       // else parent is required so update top level task to FAILED
-      if (parent.isOptional())
-      {
+      if (parent.isOptional()) {
         checkForComplete(topTask.getId());
-      }
-      else
-      {
+      } else {
         topTask.setStatus(TransferTaskStatus.FAILED);
         topTask.setEndTime(Instant.now());
-        topTask.setErrorMessage(e.getMessage());
+        topTask.setErrorMessage(caughtException.getMessage());
         log.debug(LibUtils.getMsg("FILES_TXFR_SVC_ERR7C", topTask.getId(), topTask.getTag(), topTask.getUuid(), parent.getId(), parent.getUuid()));
         dao.updateTransferTask(topTask);
       }
-    }
-    catch (DAOException ex)
-    {
+    } catch (DAOException ex) {
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parent.getTenantId(), parent.getUsername(),
               "doParentErrorStepOne", parent.getId(), parent.getTag(), parent.getUuid(), ex.getMessage()), ex);
     }
-    return Mono.just(parent);
-  }
-
-  private Mono<TransferTaskParent> deserializeParentMessage(AcknowledgableDelivery message)
-  {
-    try
-    {
-      TransferTaskParent parent = mapper.readValue(message.getBody(), TransferTaskParent.class);
-      return Mono.just(parent);
-    }
-    catch (IOException ex)
-    {
-      // DO NOT requeue the message if it fails here!
-      message.nack(false);
-      return Mono.empty();
-    }
-  }
-
-  private String groupByTenant(AcknowledgableDelivery message) throws ServiceException
-  {
-    try
-    {
-      return mapper.readValue(message.getBody(), TransferTaskParent.class).getTenantId();
-    }
-    catch (IOException ex)
-    {
-      message.nack(false);
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR11", ex.getMessage());
-      log.error(msg, ex);
-      throw new ServiceException(msg, ex);
-    }
+    return parent;
   }
 
   /**
@@ -415,16 +431,13 @@ public class ParentTaskTransferService
    *
    * @param topTaskId ID of top level TransferTask
    */
-  private void checkForComplete(int topTaskId) throws DAOException
-  {
+  private void checkForComplete(int topTaskId) throws DAOException {
     TransferTask topTask = dao.getTransferTaskByID(topTaskId);
     // Check to see if all the children of a top task are complete. If so, update the top task.
-    if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED))
-    {
+    if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
       long incompleteParentCount = dao.getIncompleteParentCount(topTaskId);
       long incompleteChildCount = dao.getIncompleteChildrenCount(topTaskId);
-      if (incompleteChildCount == 0 && incompleteParentCount == 0)
-      {
+      if (incompleteChildCount == 0 && incompleteParentCount == 0) {
         topTask.setStatus(TransferTaskStatus.COMPLETED);
         topTask.setEndTime(Instant.now());
         log.trace(LibUtils.getMsg("FILES_TXFR_TASK_COMPLETE1", topTaskId, topTask.getUuid(), topTask.getTag()));
