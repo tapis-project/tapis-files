@@ -123,6 +123,9 @@ public class SSHDataClient implements ISSHDataClient
    * Return file listing on path using sftpClient
    *
    * @param path - Path to file or directory relative to the system rootDir
+   * @param limit - Max number of items to return
+   * @param offset - offset
+   * @param patternRegEx - regex used to filter results.  Only results with file names that match the regex will be returned
    * @return list of FileInfo objects
    * @throws IOException       Generally a network error
    * @throws NotFoundException No file at target

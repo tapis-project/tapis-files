@@ -90,6 +90,7 @@ public class OperationsApiResource extends BaseFileOpsResource
    * @param limit - pagination limit
    * @param offset - pagination offset
    * @param recurse - flag indicating a recursive listing should be provided (up to depth of 10)
+   * @param regex - regex used to filter results.  Only results with file names that match the regex will be returned
    * @param impersonationId - use provided Tapis username instead of oboUser when checking auth, getSystem (effUserId)
    * @param sharedCtx - Grantor for the case of a shared context.
    * @param securityContext - user identity

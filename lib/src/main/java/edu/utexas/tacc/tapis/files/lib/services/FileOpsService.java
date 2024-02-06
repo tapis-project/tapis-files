@@ -133,6 +133,7 @@ public class FileOpsService
    * @param pathStr - path on system relative to system rootDir
    * @param limit - pagination limit
    * @param offset - pagination offset
+   * @param regex - regex used to filter results.  Only results with file names that match the regex will be returned
    * @param impersonationId - use provided Tapis username instead of oboUser
    * @param sharedCtxGrantor - Share grantor for the case of a shared context.
    * @return Collection of FileInfo objects
@@ -180,6 +181,7 @@ public class FileOpsService
    * @param pathStr - path on system relative to system rootDir
    * @param limit - pagination limit
    * @param offset - pagination offset
+   * @param regex - regex used to filter results.  Only results with file names that match the regex will be returned
    * @return Collection of FileInfo objects
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
@@ -216,6 +218,7 @@ public class FileOpsService
    * @param sysId - System
    * @param pathStr - path on system relative to system rootDir
    * @param depth - maximum depth for recursion
+   * @param regex - regex used to filter results.  Only results with file names that match the regex will be returned
    * @param impersonationId - use provided Tapis username instead of oboUser
    * @param sharedCtxGrantor - Share grantor for the case of a shared context.
    * @return Collection of FileInfo objects
@@ -262,6 +265,8 @@ public class FileOpsService
    * @param followLinks - if true, symlinks will be followed.  This really means that we will go look at the
    *                    file pointed to by the link to get it's attributes.  The path will not be updated to
    *                    the path of the file pointed to by the link - it just affects the attributes.
+   * @param depth - maximum depth for recursion
+   * @param regex - regex used to filter results.  Only results with file names that match the regex will be returned
    * @return Collection of FileInfo objects
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
@@ -1087,6 +1092,7 @@ public class FileOpsService
    * @param listing - collection of FileInfo objects being used to build up list
    * @param depth - depth currently being listed
    * @param maxDepth - maximum depth for recursion
+   * @param regex - regex used to filter results.  Only results with file names that match the regex will be returned
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    */

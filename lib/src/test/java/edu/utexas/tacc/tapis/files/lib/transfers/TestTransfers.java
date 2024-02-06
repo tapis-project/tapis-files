@@ -165,7 +165,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     //   /dir2/file2_1.txt
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemSSHb, "sshb/dir_from_ssh_a_slash_b", 7, clientSSHb);
     printListing(clientSSHb, testSystemSSHb, "/sshb");
-    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 8); // 8 = 7 txfrd plus top level dir since we are listing /sshb
     // Reset destination system.
     fileOpsService.delete(clientSSHb, "sshb");
@@ -242,7 +242,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // Now txfr /a/b/file1.txt from S3a to SSHb. Only one new file should be created. It should be named "file_from_s3a.txt"
     runTxfr(testSystemS3a, "a/b/file1.txt", testSystemSSHb, "sshb/s3_txfr/file_from_s3a.txt", 1, clientSSHb);
     printListing(clientSSHb, testSystemSSHb, "/sshb/s3_txfr");
-    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 2);
     // Reset destination system.
     fileOpsService.delete(clientSSHb, "/sshb");
@@ -255,7 +255,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // Now txfr /a/b from S3a to SSHb.
     runTxfr(testSystemS3a, "a/b", testSystemSSHb, "sshb/s3_txfr", 2, clientSSHb);
     printListing(clientSSHb, testSystemSSHb, "/sshb/s3_txfr");
-    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     printListing(clientSSHb, testSystemSSHb, "/sshb");
     // We should have 2 files and 1 directory at destination
     Assert.assertEquals(listing.size(), 3);
@@ -300,7 +300,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     //   /dir2/file2_1.txt
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemS3b, "files_from_ssha/", 5, clientS3b);
     printListing(clientS3b, testSystemS3b, "");
-    listing = fileOpsService.lsRecursive(clientS3b, "/", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientS3b, "/", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 5);
     // Reset destination system.
     cleanupAll(clientS3b, testSystemS3b);
@@ -311,7 +311,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("********************************************************************************************");
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemS3c, "files_from_ssha/", 5, clientS3c);
     printListing(clientS3c, testSystemS3c, "");
-    listing = fileOpsService.lsRecursive(clientS3c, "/", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientS3c, "/", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 5);
     System.out.printf("************ Listing all keys in bucket: %s%n", testSystemS3BucketC.getBucketName());
     printListing(clientS3BucketC, testSystemS3BucketC, "");
@@ -367,7 +367,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     //   /dir2/file2_1.txt
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemSSHb, "sshb/dir_from_ssh_a_slash_b", 7, clientSSHb);
     printListing(clientSSHb, testSystemSSHb, "/sshb");
-    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 8);
     // Reset destination system.
     fileOpsService.delete(clientSSHb, "sshb");
@@ -380,7 +380,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("************    LINUX to IRODS                               *******************************");
     System.out.println("********************************************************************************************");
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemIRODSb, "irodsb/dir_from_ssh_a_slash_b", 7, clientIRODSb);
-    listing = fileOpsService.lsRecursive(clientIRODSb, "/irodsb", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientIRODSb, "/irodsb", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 8);
     // Reset destination system.
     fileOpsService.delete(clientIRODSb, "/irodsb");
@@ -408,7 +408,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // Now txfr /a/b/file1.txt from S3a to SSHb. Only one new file should be created. It should be named "file_from_s3a.txt"
     runTxfr(testSystemS3a, "a/b/file1.txt", testSystemSSHb, "sshb/s3_txfr/file_from_s3a.txt", 1, clientSSHb);
     printListing(clientSSHb, testSystemSSHb, "/sshb/s3_txfr");
-    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 2);
     // Reset destination system.
     fileOpsService.delete(clientSSHb, "/sshb");
@@ -421,7 +421,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // Now txfr /a/s3_afile1.txt from S3a to IRODSb. Only one new file should be created. It should be named "file_from_s3a.txt"
     runTxfr(testSystemS3a, "a/b/file1.txt", testSystemIRODSb, "irodsb/s3_txfr/file_from_s3a.txt", 1, clientIRODSb);
     printListing(clientIRODSb, testSystemIRODSb, "/irodsb/s3_txfr");
-    listing = fileOpsService.lsRecursive(clientIRODSb, "/irodsb", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientIRODSb, "/irodsb", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 2);
     // Reset destination system.
     fileOpsService.delete(clientIRODSb, "/irodsb");
@@ -441,7 +441,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // Now txfr /a/b from S3a to SSHb.
     runTxfr(testSystemS3a, "a/b", testSystemSSHb, "sshb/s3_txfr", 2, clientSSHb);
     printListing(clientSSHb, testSystemSSHb, "/sshb/s3_txfr");
-    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientSSHb, "/sshb", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     printListing(clientSSHb, testSystemSSHb, "/sshb");
     // We should have 2 files and 1 directory at destination
     Assert.assertEquals(listing.size(), 3);
@@ -468,7 +468,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     //   /dir2/file2_1.txt
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemS3b, "files_from_ssha/", 5, clientS3b);
     printListing(clientS3b, testSystemS3b, "");
-    listing = fileOpsService.lsRecursive(clientS3b, "/", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientS3b, "/", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 5);
     // Reset destination system.
     cleanupAll(clientS3b, testSystemS3b);
@@ -489,7 +489,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     //   /dir2/file2_1.txt
     runTxfr(testSystemIRODSa, "irodsa/a/b", testSystemS3b, "files_from_irodsa/", 5, clientS3b);
     printListing(clientS3b, testSystemS3b, "");
-    listing = fileOpsService.lsRecursive(clientS3b, "/", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientS3b, "/", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 5);
     // Reset destination system.
     cleanupAll(clientS3b, testSystemS3b);
@@ -506,7 +506,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // Now txfr /a/b/file3.txt from S3a to S3b.
     runTxfr(testSystemS3a, "a/b/file3.txt", testSystemS3b, "a/b/c/file_from_s3a_file3.txt", 1, clientS3b);
     printListing(clientS3b, testSystemS3b, "");
-    listing = fileOpsService.lsRecursive(clientS3b, "/", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientS3b, "/", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 1);
 
     // LINUX to S3 with S3 rootDir
@@ -517,7 +517,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
 
     runTxfr(testSystemSSHa, "ssha/a/b", testSystemS3c, "files_from_ssha/", 5, clientS3c);
     printListing(clientS3c, testSystemS3c, "");
-    listing = fileOpsService.lsRecursive(clientS3c, "/", false, MAX_RECURSION);
+    listing = fileOpsService.lsRecursive(clientS3c, "/", false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 5);
 
     // Reset destination system.
@@ -811,7 +811,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     //Take for 5 secs then finish
     stream.take(Duration.ofSeconds(5)).blockLast();
 
-    List<FileInfo> listing = fileOpsService.ls(destClient, "/dest/b/c/", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/dest/b/c/", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertTrue(listing.size() > 0);
   }
 
@@ -908,7 +908,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Assert.assertTrue(parent.getBytesTransferred() > 0);
 
 // Verify that transfers happened.
-    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 2);
   }
 
@@ -963,7 +963,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
             .thenCancel()
             .verify(Duration.ofSeconds(600));
 
-    List<FileInfo> listing = fileOpsService.ls(destClient, "program.exe", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "program.exe", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 1);
     Assert.assertTrue(listing.get(0).getNativePermissions().contains("x"));
   }
@@ -1028,7 +1028,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     // 2 files, so total should be 2x
     Assert.assertEquals(parent.getBytesTransferred(), 2 * BIGFILESIZE);
 
-    List<FileInfo> listing = fileOpsService.ls(destClient, "/b/cat/dog/", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/b/cat/dog/", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 2);
     printListing(destClient, destSystem, "");
   }
@@ -1139,9 +1139,9 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Assert.assertNotNull(parent.getStartTime());
     Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-    List<FileInfo> listing = fileOpsService.ls(destClient,"/b", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient,"/b", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 1);
-    listing = fileOpsService.ls(destClient,"/b/labrador.jpg", MAX_LISTING_SIZE, 0);
+    listing = fileOpsService.ls(destClient,"/b/labrador.jpg", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 1);
     printListing(destClient, testSystem, "");
   }
@@ -1203,7 +1203,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Assert.assertNotNull(parent.getStartTime());
     Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-    List<FileInfo> listing = fileOpsService.ls(destClient, "/transferred", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/transferred", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 1);
   }
 
@@ -1265,7 +1265,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Assert.assertNotNull(parent.getStartTime());
     Assert.assertTrue(parent.getBytesTransferred() > 0);
 
-    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 1);
   }
 
@@ -1409,7 +1409,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     Flux<TransferTaskChild> stream = childTaskTransferService.runPipeline();
     stream.take(Duration.ofSeconds(5)).blockLast();
 
-    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 10);
     t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
     Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
@@ -1471,7 +1471,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
             .verify(Duration.ofSeconds(5));
 
     printListing(destClient, destSystem, "");
-    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 2);
     t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
     Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
@@ -1544,7 +1544,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
             .thenCancel()
             .verify(Duration.ofSeconds(60));
 
-    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0);
+    List<FileInfo> listing = fileOpsService.ls(destClient, "/b", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_REGEX);
     Assert.assertEquals(listing.size(), 8);
     t1 = transfersService.getTransferTaskByUUID(t1.getUuid());
     Assert.assertEquals(t1.getStatus(), TransferTaskStatus.COMPLETED);
@@ -1703,7 +1703,7 @@ public class TestTransfers extends BaseDatabaseIntegrationTest
     System.out.println("============================================================================================");
     System.out.printf("Listing for system: %s rootDir: %s path: %s%n", system.getId(), system.getRootDir(), path);
     System.out.println("--------------------------------------------------------------------------------------------");
-    List<FileInfo> listing = fileOpsService.lsRecursive(client, path, false, MAX_RECURSION);
+    List<FileInfo> listing = fileOpsService.lsRecursive(client, path, false, MAX_RECURSION, IRemoteDataClient.NO_REGEX);
     for (FileInfo fi1 : listing)
     {
       System.out.println(fi1);

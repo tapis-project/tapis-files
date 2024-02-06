@@ -33,6 +33,17 @@ public interface IRemoteDataClient
    * @throws IOException on error
    */
   List<FileInfo> ls(@NotNull String path, long limit, long offset) throws NotFoundException, IOException;
+
+  /**
+   * List files or objects at a path
+   *
+   * @param path - path on system relative to system rootDir
+   * @param limit - Max number of items to return
+   * @param offset - offset
+   * @param regex - regex used to filter results.  Only results with file names that match the regex will be returned
+   * @throws NotFoundException if path not found
+   * @throws IOException on error
+   */
   default List<FileInfo> ls(@NotNull String path, long limit, long offset, String regex) throws NotFoundException, IOException {
     return ls(path, limit, offset);
   }
