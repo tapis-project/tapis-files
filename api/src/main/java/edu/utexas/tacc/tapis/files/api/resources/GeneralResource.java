@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.PreDestroy;
@@ -284,7 +285,8 @@ public class GeneralResource
   }
 
   @PreDestroy
-  public void cleanUp() {
+  public void cleanUp() throws IOException {
     transfersService.cleanup();
   }
+
 }

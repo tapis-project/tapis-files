@@ -110,6 +110,15 @@ rabbitmqctl set_user_tags ${RABBIT_USER} administrator
 EOD
 )
 
+#For some reason it doesnt work to put this in the above block.  It's not strictly required, but there is some crap on the disk that causes rabbit to see some extra queues and stuff.
+#if that's an issue, login to the container with:
+#   docker exec  -it --privileged tapis-rabbitmq /bin/bash
+#replace "tapis-rabbitmq" with the proper name if you changed it
+#this do this command from bash in the container:
+#   rabbitmqadmin --username ${RABBIT_USER} --password ${RABBIT_PASSWORD} --vhost ${RABBIT_VHOST} list queues name | awk '{print $2}' | xargs -I qn rabbitmqadmin --user ${RABBIT_USER} --password ${RABBIT_PASSWORD} --vhost ${RABBIT_VHOST} delete queue name=qn
+#Using default parameters it expands to:
+#   rabbitmqadmin --username tapis --password password --vhost rabbit list queues name | awk '{print $2}' | xargs -I qn rabbitmqadmin --user tapis --password password --vhost rabbit delete queue name=qn
+
 docker exec -it --privileged ${RABBIT_CONTAINER_NAME} /bin/bash -lic "$RABBITMQCTL_CMDS"
 
 announce "pause a moment to ensure database is running ok"

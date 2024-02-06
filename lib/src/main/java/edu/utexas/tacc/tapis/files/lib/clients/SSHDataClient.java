@@ -443,11 +443,13 @@ public class SSHDataClient implements ISSHDataClient
       sftpClient = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true);
       InputStream inputStream = sftpClient.getSession().read(absPath.toString());
       // TapisSSHInputStream closes the sftp connection after reading completes
-      return new TapisSSHInputStream(inputStream, /*connectionHolder, */sftpClient);
+      return new TapisSSHInputStream(inputStream, sftpClient);
     }
     catch (IOException e)
     {
-      sftpClient.close();
+      if(sftpClient != null) {
+        sftpClient.close();
+      }
       if (e.getMessage().toLowerCase().contains(NO_SUCH_FILE))
       {
         String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, path);
@@ -619,7 +621,9 @@ public class SSHDataClient implements ISSHDataClient
     Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
     Path parentPath = relativeRemotePath.getParent();
     try (fileStream; var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
-      if (parentPath != null) mkdir(parentPath.toString());
+      if (parentPath != null) {
+        mkdir(parentPath.toString());
+      }
       OutputStream outputStream = sessionHolder.getSession().write(absolutePath.toString());
       fileStream.transferTo(outputStream);
       outputStream.flush();

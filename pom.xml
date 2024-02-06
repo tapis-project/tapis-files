@@ -221,11 +221,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <!-- Logback supplies the proper version of sl4j -->
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>

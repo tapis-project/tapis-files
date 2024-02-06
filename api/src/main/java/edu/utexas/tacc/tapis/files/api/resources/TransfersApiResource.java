@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -345,9 +346,8 @@ public class  TransfersApiResource
     throw new ForbiddenException(ApiUtils.getMsg("FAPI_TASK_UNAUTH", oboTenant, oboUser, task.getTenantId(),
                                                  task.getUsername(), task.getUuid(), opName));
   }
-
   @PreDestroy
-  public void cleanup() {
+  public void cleanUp() throws IOException {
     transfersService.cleanup();
   }
 }

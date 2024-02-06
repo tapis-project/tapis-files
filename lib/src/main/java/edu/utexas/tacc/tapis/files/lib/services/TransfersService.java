@@ -1,43 +1,26 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.AMQP.Queue.DeleteOk;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.Delivery;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.MessageProperties;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
-import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.ConsumeOptions;
-import reactor.rabbitmq.ExchangeSpecification;
-import reactor.rabbitmq.OutboundMessage;
-import reactor.rabbitmq.OutboundMessageResult;
-import reactor.rabbitmq.QueueSpecification;
-import reactor.rabbitmq.RabbitFlux;
-import reactor.rabbitmq.Receiver;
-import reactor.rabbitmq.ReceiverOptions;
-import reactor.rabbitmq.Sender;
-import reactor.rabbitmq.SenderOptions;
-import reactor.util.retry.RetrySpec;
-import static reactor.rabbitmq.BindingSpecification.binding;
 
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
@@ -74,15 +57,15 @@ public class TransfersService
   private static final String TRANSFERS_EXCHANGE = "tapis.files";
   private static String PARENT_QUEUE = "tapis.files.transfers.parent";
   private static String CHILD_QUEUE = "tapis.files.transfers.child";
-  private static String CONTROL_EXCHANGE = "tapis.files.transfers.control";
-  private final int MAX_RABBIT_RETRIES=12;
-  private final int RABBIT_WAIT=5;
-  private final Receiver receiver;
-  private final Sender sender;
-
+  private static String PARENT_EXCHANGE = "tapis.files.transfers.parent.exchange";
+  private static String CHILD_EXCHANGE = "tapis.files.transfers.child.exchange";
+  public static String CONTROL_EXCHANGE = "tapis.files.transfers.control";
+  private static String CHILD_ROUTING_KEY = "child";
+  public static String PARENT_ROUTING_KEY = "parent";
   private final FileTransfersDAO dao;
   private final FileOpsService fileOpsService;
 
+  private Connection connection;
   private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]
   {
     TransferTaskStatus.FAILED, TransferTaskStatus.CANCELLED, TransferTaskStatus.COMPLETED
@@ -107,9 +90,6 @@ public class TransfersService
   @Inject
   SystemsCacheNoAuth systemsCacheNoAuth;
 
-  private  final Scheduler receiverScheduler;
-  private  final Scheduler senderScheduler;
-
   /*
    * Constructor for service.
    * Note that this is never invoked explicitly. Arguments of constructor are initialized via Dependency Injection.
@@ -117,19 +97,6 @@ public class TransfersService
   @Inject
   public TransfersService(FileTransfersDAO dao1, SystemsCache cache1, FileOpsService svc1, FilePermsService svc2)
   {
-    receiverScheduler = Schedulers.newBoundedElastic(8, 1000, "receiver", 60, true);
-    senderScheduler = Schedulers.newBoundedElastic(8, 1000, "sender", 60, true);
-    ConnectionFactory connectionFactory = RabbitMQConnection.getInstance();
-    ReceiverOptions receiverOptions = new ReceiverOptions()
-            .connectionMonoConfigurator( cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5))) )
-            .connectionFactory(connectionFactory)
-            .connectionSubscriptionScheduler(receiverScheduler);
-    SenderOptions senderOptions = new SenderOptions()
-            .connectionMonoConfigurator( cm -> cm.retryWhen(RetrySpec.backoff(3, Duration.ofSeconds(5))) )
-            .connectionFactory(connectionFactory)
-            .connectionSubscriptionScheduler(senderScheduler);
-    receiver = RabbitFlux.createReceiver(receiverOptions);
-    sender = RabbitFlux.createSender(senderOptions);
     dao = dao1;
     systemsCache = cache1;
     fileOpsService = svc1;
@@ -140,26 +107,6 @@ public class TransfersService
   // ************************************************************************
   // *********************** Public Methods *********************************
   // ************************************************************************
-
-    public Mono<AMQP.Queue.BindOk> setParentQueue(String name)
-    {
-      PARENT_QUEUE = name;
-      QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE).durable(true).autoDelete(false);
-      return sender.declare(parentSpec).then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)));
-    }
-
-    public Mono<AMQP.Queue.BindOk> setChildQueue(String name)
-    {
-      CHILD_QUEUE = name;
-      QueueSpecification parentSpec = QueueSpecification.queue(CHILD_QUEUE).durable(true).autoDelete(false);
-      return sender.declare(parentSpec).then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)));
-    }
-
-    public Mono<DeleteOk> deleteQueue(String qName)
-    {
-      return sender.unbind(binding(TRANSFERS_EXCHANGE, qName, qName)).then(sender.delete(QueueSpecification.queue(qName)));
-    }
-
     public boolean isPermitted(@NotNull String username, @NotNull String tenantId, @NotNull UUID transferTaskUuid)
             throws ServiceException
     {
@@ -413,17 +360,24 @@ public class TransfersService
 
     public void publishControlMessage(@NotNull TransferControlAction action) throws ServiceException
     {
+      Channel channel = null;
+
       try
       {
         String m = mapper.writeValueAsString(action);
-        OutboundMessage message = new OutboundMessage(CONTROL_EXCHANGE, "#", m.getBytes());
-        Flux<OutboundMessageResult> confirms = sender.sendWithPublishConfirms(Mono.just(message));
-        confirms.subscribe();
+        AMQP.BasicProperties properties = null;
+        channel = connection.createChannel();
+        channel.exchangeDeclare(TransfersService.CONTROL_EXCHANGE, BuiltinExchangeType.FANOUT, true);
+        channel.basicPublish(CONTROL_EXCHANGE, "#", properties, m.getBytes());
       }
       catch (JsonProcessingException e)
       {
         log.error(e.getMessage(), e);
         throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR_PUBLISH_MESSAGE"));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      } finally {
+        closeChannel(channel);
       }
     }
 
@@ -432,87 +386,29 @@ public class TransfersService
      *
      * @param children A list of TransferTaskChild
      */
-    public void publishBulkChildMessages(List<TransferTaskChild> children)
+    public void publishBulkChildMessages(List<TransferTaskChild> children) throws ServiceException
     {
-        Flux<OutboundMessageResult> messages = sender.sendWithPublishConfirms(
-            Flux.fromIterable(children)
-                .flatMap(task -> {
-                    try {
-                        String m = mapper.writeValueAsString(task);
-                        return Flux.just(new OutboundMessage(TRANSFERS_EXCHANGE, CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8)));
-                    } catch (JsonProcessingException e) {
-                        return Flux.empty();
-                    }
-                })
-        );
-        messages.subscribe();
+      for(TransferTaskChild child : children) {
+        publishChildMessage(child);
+      }
     }
 
     public void publishChildMessage(TransferTaskChild childTask) throws ServiceException
     {
+
+      Channel channel = null;
       try
       {
+        channel = connection.createChannel();
         String m = mapper.writeValueAsString(childTask);
-        OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, CHILD_QUEUE, m.getBytes(StandardCharsets.UTF_8));
-        sender.send(Mono.just(message)).subscribe();
+        channel.basicPublish(CHILD_EXCHANGE, CHILD_ROUTING_KEY, MessageProperties.PERSISTENT_TEXT_PLAIN, m.getBytes());
+      } catch (IOException e) {
+        throw new RuntimeException(e.getMessage(), e);
+      } finally {
+        closeChannel(channel);
       }
-      catch (JsonProcessingException ex)
-      {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", childTask.getTenantId(), childTask.getUsername(),
-                                     "publishChildMessage", childTask.getId(), childTask.getTag(), childTask.getUuid(), ex.getMessage());
-        log.error(msg, ex);
-        throw new ServiceException(msg, ex);
-      }
-    }
 
-    /**
-     * This method listens on the CHILD_QUEUE and creates a Flux<AcknowledgableDelivery> that
-     * we can push through the transfers workflow
-     *
-     * @return A flux of messages
-     */
-    public Flux<AcknowledgableDelivery> streamChildMessages() {
-        ConsumeOptions options = new ConsumeOptions();
-        options.qos(1000);
-        QueueSpecification childSpec = QueueSpecification.queue(CHILD_QUEUE)
-            .durable(true)
-            .autoDelete(false);
-        return receiver.consumeManualAck(CHILD_QUEUE, options)
-            .delaySubscription(sender.declareQueue(childSpec));
-    }
-
-    public Flux<AcknowledgableDelivery> streamParentMessages() {
-        ConsumeOptions options = new ConsumeOptions();
-        options.qos(1000);
-        QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
-            .durable(true)
-            .autoDelete(false);
-        return receiver.consumeManualAck(PARENT_QUEUE, options)
-            .delaySubscription(sender.declareQueue(parentSpec));
-
-    }
-
-    /**
-     * Stream the messages coming off of the CONTROL_QUEUE
-     *
-     * @return A flux of ControlMessage
-     */
-    public Flux<TransferControlAction> streamControlMessages() {
-        ConsumeOptions options = new ConsumeOptions();
-        options.qos(1000);
-
-        // Each new transfer needs its own queue. Autodelete them when
-        // the connection closes.
-        String queueName = "control." + UUID.randomUUID();
-        QueueSpecification qspec = QueueSpecification.queue(queueName)
-            .autoDelete(true);
-
-        Flux<Delivery> controlMessageStream = receiver.consumeAutoAck(queueName, options);
-        return controlMessageStream
-            .delaySubscription(sender.declareQueue(qspec)
-                .then(sender.bind(binding(CONTROL_EXCHANGE, "#", queueName)))
-            ).flatMap(this::deserializeControlMessage);
-    }
+}
 
   // ************************************************************************
   // *********************** Private Methods ********************************
@@ -523,66 +419,33 @@ public class TransfersService
    */
   private void init()
   {
-    // Initialize the exchanges and queues
-    ExchangeSpecification controlExSpec = ExchangeSpecification.exchange(CONTROL_EXCHANGE)
-            .type("fanout")
-            .durable(true)
-            .autoDelete(false);
 
-    ExchangeSpecification transferExSpec = ExchangeSpecification.exchange(TRANSFERS_EXCHANGE)
-            .type("direct")
-            .durable(true)
-            .autoDelete(false);
-
-    QueueSpecification childSpec = QueueSpecification.queue(CHILD_QUEUE)
-            .durable(true)
-            .autoDelete(false);
-
-    QueueSpecification parentSpec = QueueSpecification.queue(PARENT_QUEUE)
-            .durable(true)
-            .autoDelete(false);
-
-    // Setup (declare) sender to create queues and exchange, and do binding.
-    // The actual work happens in monoBlockWithRetries - the block() does a
-    // subscribe (which in mono terms is when the work begins).
-    Mono senderDeclaration = sender.declare(controlExSpec)
-            .then(sender.declare(transferExSpec))
-            .then(sender.declare(childSpec))
-            .then(sender.declare(parentSpec))
-            .then(sender.bind(binding(TRANSFERS_EXCHANGE, PARENT_QUEUE, PARENT_QUEUE)))
-            .then(sender.bind(binding(TRANSFERS_EXCHANGE, CHILD_QUEUE, CHILD_QUEUE)))
-            .retry(5);
-    if(!monoBlockWithRetries(Duration.ofSeconds(RABBIT_WAIT), MAX_RABBIT_RETRIES, senderDeclaration)) {
-      String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_FAILED_EXITING");
-      log.error(msg);
-      throw new RuntimeException(msg);
+    try {
+      connection = RabbitMQConnection.getInstance().newConnection();
+      TransfersService.declareRabbitMQObjects(connection);
+    } catch (Exception ex) {
+      // TODO: fix this correctly
+      throw new RuntimeException(ex.getMessage());
     }
+  }
+
+  public static void declareRabbitMQObjects(Connection connection) throws IOException, TimeoutException {
+    Channel channel = connection.createChannel();
+    channel.queueDeclare(PARENT_QUEUE, true, false, false, null);
+    channel.queueDeclare(CHILD_QUEUE, true, false, false, null);
+    channel.exchangeDeclare(PARENT_EXCHANGE, BuiltinExchangeType.DIRECT, true, false, null);
+    channel.exchangeDeclare(CHILD_EXCHANGE, BuiltinExchangeType.DIRECT, true, false, null);
+    channel.queueBind(CHILD_QUEUE, CHILD_EXCHANGE, CHILD_ROUTING_KEY);
+    channel.queueBind(PARENT_QUEUE, PARENT_EXCHANGE, PARENT_ROUTING_KEY);
+    channel.close();
   }
 
   public boolean isConnectionOk() {
-    // Quick check to see if Rabbit is responding.
-    return monoBlockWithRetries(Duration.ofMillis(100),1, sender.send(Mono.empty()));
-  }
-
-  private boolean monoBlockWithRetries(Duration timeout, int maxChecks, Mono mono) {
-    int i;
-    for (i=0;i<maxChecks;i++) {
-      try {
-        mono.block(timeout);
-        String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_SUCCEEDED");
-        log.warn(msg);
-        break;
-      } catch (RuntimeException ex) {
-        String msg = LibUtils.getMsg("FILES_TXFR_CONNECTION_FAILED");
-        log.warn(msg);
-      }
-    }
-
-    if(i >= maxChecks) {
+    if(connection == null) {
       return false;
     }
-
-    return true;
+    // Quick check to see if Rabbit is responding.
+    return connection.isOpen();
   }
 
   /*
@@ -590,30 +453,17 @@ public class TransfersService
    */
   private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException
   {
+    Channel channel = null;
     try
     {
+      channel = connection.createChannel();
       String m = mapper.writeValueAsString(task);
-      OutboundMessage message = new OutboundMessage(TRANSFERS_EXCHANGE, PARENT_QUEUE, m.getBytes());
-      sender.sendWithPublishConfirms(Mono.just(message)).subscribe();
-      int childCount = task.getChildren() == null ? 0 : task.getChildren().size();
-      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_PUBLISHED", task.getTaskId(), task.getTag(), childCount, m));
+      channel.basicPublish(PARENT_EXCHANGE, PARENT_ROUTING_KEY, MessageProperties.PERSISTENT_TEXT_PLAIN, m.getBytes());
+    } catch (IOException e) {
+      throw new RuntimeException(e.getMessage(), e);
+    } finally {
+      closeChannel(channel);
     }
-    catch (Exception e)
-    {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                                   "publishParentTaskMessage", task.getId(), task.getTag(), task.getUuid(), e.getMessage());
-      throw new ServiceException(msg, e);
-    }
-  }
-
-  private Mono<TransferControlAction> deserializeControlMessage(Delivery message)
-  {
-    try
-    {
-      TransferControlAction controlMessage = mapper.readValue(message.getBody(), TransferControlAction.class);
-      return Mono.just(controlMessage);
-    }
-    catch (IOException ex) { return Mono.empty(); }
   }
 
   /**
@@ -808,15 +658,24 @@ public class TransfersService
     }
   }
 
-  public void cleanup() {
-    if(sender != null) {
-      sender.close();
-      senderScheduler.dispose();
-    }
 
-    if(receiver != null) {
-      receiver.close();
-      receiverScheduler.dispose();
+
+  private void closeChannel(Channel channel) throws ServiceException {
+    try {
+      if ((channel != null) && (channel.isOpen())) {
+        channel.close();
+      } else {
+        log.info("Channel not open");
+      }
+    } catch (TimeoutException | IOException ex) {
+      // TODO:  fix error message
+      throw new ServiceException("Unable to close channel", ex);
+    }
+  }
+
+  public void cleanup() throws IOException {
+    if(isConnectionOk()) {
+      connection.close();
     }
   }
 }
