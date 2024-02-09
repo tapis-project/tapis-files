@@ -125,13 +125,14 @@ public class SSHDataClient implements ISSHDataClient
    * @param path - Path to file or directory relative to the system rootDir
    * @param limit - Max number of items to return
    * @param offset - offset
-   * @param patternRegEx - regex used to filter results.  Only results with file names that match the regex will be returned
+   * @param pattern - Wildcard (glob) pattern or regex used to filter results.  Regex must be prefixed by "regex:".
+   *                Only results with file names that match the regex will be returned.
    * @return list of FileInfo objects
    * @throws IOException       Generally a network error
    * @throws NotFoundException No file at target
    */
   @Override
-  public List<FileInfo> ls(@NotNull String path, long limit, long offset, String patternRegEx) throws IOException, NotFoundException
+  public List<FileInfo> ls(@NotNull String path, long limit, long offset, String pattern) throws IOException, NotFoundException
   {
     String opName = "ls";
     long count = Math.min(limit, MAX_LISTING_SIZE);
@@ -215,15 +216,22 @@ public class SSHDataClient implements ISSHDataClient
     filesList.sort(Comparator.comparing(FileInfo::getName));
 
 
-    if(StringUtils.isBlank(patternRegEx))  {
+    if(StringUtils.isBlank(pattern))  {
       return filesList.stream().skip(startIdx).limit(count).collect(Collectors.toList());
     }
 
-    Pattern pattern = Pattern.compile(patternRegEx);
+    final boolean isRegEx = (StringUtils.startsWithIgnoreCase(pattern, IRemoteDataClient.REGEX_PREFIX)) ? true : false;
+    final String patternOnly = isRegEx ? pattern.replaceFirst("(?i)regex:", "") : pattern;
+    final Pattern compiledPattern = isRegEx ? Pattern.compile(patternOnly) : null;
 
-    return filesList.stream().skip(startIdx).filter((fileInfo) -> {
-      return pattern.matcher(fileInfo.getName()).find();
-    }).limit(count).collect(Collectors.toList());
+    return filesList.stream().filter((fileInfo) -> {
+      if(isRegEx) {
+        return compiledPattern.matcher(fileInfo.getName()).find();
+      } else {
+        return FilenameUtils.wildcardMatch(fileInfo.getName(), patternOnly);
+      }
+
+    }).skip(startIdx).limit(count).collect(Collectors.toList());
   }
 
   /**
