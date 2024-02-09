@@ -14,7 +14,7 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 public interface IRemoteDataClient
 {
-  public static final String NO_REGEX = null;
+  public static final String NO_PATTERN = null;
   public static final String REGEX_PREFIX = "REGEX:";
 
   // A remote data client always has at a minimum an associated oboUser, oboTenant and systemId

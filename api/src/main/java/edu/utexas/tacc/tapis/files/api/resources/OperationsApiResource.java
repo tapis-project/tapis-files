@@ -90,7 +90,8 @@ public class OperationsApiResource extends BaseFileOpsResource
    * @param limit - pagination limit
    * @param offset - pagination offset
    * @param recurse - flag indicating a recursive listing should be provided (up to depth of 10)
-   * @param regex - regex used to filter results.  Only results with file names that match the regex will be returned
+   * @param pattern - wildcard (glob) pattern or regex used to filter results.  Regex must be prefixed with "regex:".
+   *                Only results with file names that match the regex will be returned
    * @param impersonationId - use provided Tapis username instead of oboUser when checking auth, getSystem (effUserId)
    * @param sharedCtx - Grantor for the case of a shared context.
    * @param securityContext - user identity
@@ -104,13 +105,13 @@ public class OperationsApiResource extends BaseFileOpsResource
                             @QueryParam("limit") @DefaultValue("1000") @Max(1000) int limit,
                             @QueryParam("offset") @DefaultValue("0") @Min(0) long offset,
                             @QueryParam("recurse") @DefaultValue("false") boolean recurse,
-                            @QueryParam("regex") @DefaultValue("") String regex,
+                            @QueryParam("pattern") @DefaultValue("") String pattern,
                             @QueryParam("impersonationId") String impersonationId,
                             @QueryParam("sharedCtx") String sharedCtx,
                             @Context SecurityContext securityContext)
   {
     String opName = "listFiles";
-    return getListing(opName, systemId, path, limit, offset, recurse, regex, impersonationId, sharedCtx, securityContext);
+    return getListing(opName, systemId, path, limit, offset, recurse, pattern, impersonationId, sharedCtx, securityContext);
   }
 
   @GET
@@ -120,13 +121,13 @@ public class OperationsApiResource extends BaseFileOpsResource
                                 @QueryParam("limit") @DefaultValue("1000") @Max(1000) int limit,
                                 @QueryParam("offset") @DefaultValue("0") @Min(0) long offset,
                                 @QueryParam("recurse") @DefaultValue("false") boolean recurse,
-                                @QueryParam("regex") @DefaultValue("") String regex,
+                                @QueryParam("pattern") @DefaultValue("") String pattern,
                                 @QueryParam("impersonationId") String impersonationId,
                                 @QueryParam("sharedCtx") String sharedCtx,
                                 @Context SecurityContext securityContext)
   {
     String opName = "listFilesRoot";
-    return getListing(opName, systemId, "", limit, offset, recurse, regex, impersonationId, sharedCtx, securityContext);
+    return getListing(opName, systemId, "", limit, offset, recurse, pattern, impersonationId, sharedCtx, securityContext);
   }
 
   /**
@@ -304,7 +305,7 @@ public class OperationsApiResource extends BaseFileOpsResource
   /*
    * Common routine to perform a listing
    */
-  private Response getListing(String opName, String systemId, String path, int limit, long offset, boolean recurse, String regex,
+  private Response getListing(String opName, String systemId, String path, int limit, long offset, boolean recurse, String pattern,
                               String impersonationId, String sharedCtx, SecurityContext securityContext)
   {
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
@@ -329,8 +330,8 @@ public class OperationsApiResource extends BaseFileOpsResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    if (recurse) listing = fileOpsService.lsRecursive(rUser, systemId, path, MAX_RECURSION, regex, impersonationId, sharedCtx);
-    else listing = fileOpsService.ls(rUser, systemId, path, limit, offset, regex, impersonationId, sharedCtx);
+    if (recurse) listing = fileOpsService.lsRecursive(rUser, systemId, path, MAX_RECURSION, pattern, impersonationId, sharedCtx);
+    else listing = fileOpsService.ls(rUser, systemId, path, limit, offset, pattern, impersonationId, sharedCtx);
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);
