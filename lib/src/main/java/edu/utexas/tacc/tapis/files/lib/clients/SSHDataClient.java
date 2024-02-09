@@ -219,11 +219,18 @@ public class SSHDataClient implements ISSHDataClient
       return filesList.stream().skip(startIdx).limit(count).collect(Collectors.toList());
     }
 
-    Pattern pattern = Pattern.compile(patternRegEx);
+    final boolean isRegEx = (StringUtils.startsWithIgnoreCase(patternRegEx, IRemoteDataClient.REGEX_PREFIX)) ? true : false;
+    final String patternOnly = isRegEx ? patternRegEx.replaceFirst("(?i)regex:", "") : patternRegEx;
+    final Pattern pattern = isRegEx ? Pattern.compile(patternOnly) : null;
 
-    return filesList.stream().skip(startIdx).filter((fileInfo) -> {
-      return pattern.matcher(fileInfo.getName()).find();
-    }).limit(count).collect(Collectors.toList());
+    return filesList.stream().filter((fileInfo) -> {
+      if(isRegEx) {
+        return pattern.matcher(fileInfo.getName()).find();
+      } else {
+        return FilenameUtils.wildcardMatch(fileInfo.getName(), patternOnly);
+      }
+
+    }).skip(startIdx).limit(count).collect(Collectors.toList());
   }
 
   /**
