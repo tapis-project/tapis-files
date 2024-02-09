@@ -9,6 +9,19 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.6.1 - 2024-?-??
+
+Incremental improvements and new features.
+
+### New features:
+Regular expression matching for file listings on linux systems.
+
+### Bug fixes:
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.6.0 - 2024-1-23
 
 Incremental improvements and new features.
