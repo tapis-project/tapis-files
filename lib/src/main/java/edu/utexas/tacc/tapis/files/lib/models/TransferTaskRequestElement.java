@@ -5,12 +5,19 @@ import javax.validation.constraints.NotBlank;
 
 public class TransferTaskRequestElement
 {
+  public enum TransferType {
+    TRANSFER,
+    SERVICE_MOVE_DIRECTORY_CONTENTS,
+    SERVICE_MOVE_FILE_OR_DIRECTORY
+  };
+
   private TransferURI sourceURI;
   private TransferURI destinationURI;
   private boolean optional;
   private String srcSharedCtx;
   private String destSharedCtx;
   private  String tag;
+  private TransferType transferType;
 
   @NotBlank
   public TransferURI getSourceURI() { return sourceURI; }
@@ -33,6 +40,13 @@ public class TransferTaskRequestElement
   public String getTag() { return tag; }
   public void setTag(String s) { tag = s; }
 
-  @Override
+  public TransferType getTransferType() {
+    return transferType;
+  }
+
+  public void setTransferType(TransferType transferType) {
+    this.transferType = transferType;
+  }
+
   public String toString() {return TapisUtils.toString(this);}
 }

@@ -18,7 +18,9 @@ import javax.ws.rs.NotFoundException;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.StreamingOutput;
 
+import edu.utexas.tacc.tapis.files.lib.clients.ISSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
+import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -63,7 +65,7 @@ public class FileOpsService
   public static final int MAX_LISTING_SIZE = 1000;
   public static final int MAX_RECURSION = 20;
 
-  public enum MoveCopyOperation {MOVE, COPY}
+  public enum MoveCopyOperation {MOVE, COPY, SERVICE_MOVE_DIRECTORY_CONTENTS, SERVICE_MOVE_FILE_OR_DIRECTORY}
 
   private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
 
@@ -581,14 +583,16 @@ public class FileOpsService
       }
 
       // Perform the operation
-      if (op.equals(MoveCopyOperation.MOVE))
-      {
+      if (op.equals(MoveCopyOperation.MOVE)) {
         client.move(srcRelPathStr, dstRelPathStr);
         // Update permissions in the SK
         permsService.replacePathPrefix(oboTenant, oboUser, sysId, srcRelPathStr, dstRelPathStr);
-      }
-      else
-      {
+      } else if (op.equals(MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS)) {
+        NativeLinuxOpResult linuxOpResult = ((ISSHDataClient)client).dtnMove(srcRelPathStr, dstRelPathStr);
+        if(linuxOpResult.getExitCode() != 0) {
+          throw new IOException(linuxOpResult.toString());
+        }
+      } else {
         client.copy(srcRelPathStr, dstRelPathStr);
       }
     }

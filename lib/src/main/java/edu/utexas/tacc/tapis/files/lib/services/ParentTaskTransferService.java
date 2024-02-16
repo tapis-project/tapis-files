@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import javax.inject.Inject;
+import javax.ws.rs.WebApplicationException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.AMQP;
@@ -21,11 +22,14 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.apache.commons.lang3.StringUtils;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,7 +128,7 @@ public class ParentTaskTransferService {
     }
   }
 
-  public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
+  public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
     TransferTaskParent taskParent = null;
     try {
       String jsonMessage = new String(body, StandardCharsets.UTF_8);
@@ -137,10 +141,16 @@ public class ParentTaskTransferService {
       }
       handleMessage(channel, envelope, taskParent);
     } catch (Exception ex) {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
-              "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
-      log.error(msg, ex);
-      throw new RuntimeException(msg, ex);
+      channel.basicNack(envelope.getDeliveryTag(), false, false);
+      if(taskParent != null) {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
+                "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
+        log.error(msg, ex);
+
+        throw new RuntimeException(msg, ex);
+      } else {
+        log.error("Unable to create parent task opject from RabbitMQ message", ex);
+      }
     }
 
   }
@@ -149,9 +159,14 @@ public class ParentTaskTransferService {
     int retry = 0;
     while (retry < maxRetries) {
       try {
-        if (createChildTasks(taskParent)) {
-          channel.basicAck(envelope.getDeliveryTag(), false);
+        if(TransferTaskParent.TransferType.SERVICE_MOVE_DIRECTORY_CONTENTS.equals(taskParent.getTransferType())) {
+          doLocalMove(taskParent);
           return;
+        } else {
+          if (createChildTasks(taskParent)) {
+            channel.basicAck(envelope.getDeliveryTag(), false);
+            return;
+          }
         }
       } catch (ServiceException e) {
         // if we catch an error nack message.
@@ -167,6 +182,49 @@ public class ParentTaskTransferService {
 
     // out of retries, so give up on this one.
     channel.basicNack(envelope.getDeliveryTag(), false, false);
+  }
+
+  public void doLocalMove(TransferTaskParent taskParent) throws IOException, ServiceException {
+    TransferURI sourceUri = taskParent.getSourceURI();
+    TransferURI destinationUri = taskParent.getDestinationURI();
+
+    String systemId = sourceUri.getSystemId();
+    String srcPathStr = sourceUri.getPath();
+    String dstPathStr = destinationUri.getPath();
+    String srcRelPathStr = PathUtils.getRelativePath(srcPathStr).toString();
+    String dstRelPathStr = PathUtils.getRelativePath(dstPathStr).toString();
+    String tenant = taskParent.getTenantId();
+    String user = taskParent.getUsername();
+
+    if(!StringUtils.equals(systemId, destinationUri.getSystemId())) {
+      String msg = MsgUtils.getMsg("FILES_OPSC_DTN_MOVE_INVALID", tenant, user, taskParent.getTaskId(), "Source and destinatation are not the same");
+      log.error(msg);
+      throw new IOException(msg);
+    }
+
+    if((!sourceUri.isTapisProtocol()) || (!destinationUri.isTapisProtocol())) {
+      String msg = MsgUtils.getMsg("FILES_OPSC_DTN_MOVE_INVALID", tenant, user, taskParent.getTaskId(), "Tapis is the only supported protocol");
+      log.error(msg);
+      throw new IOException(msg);
+    }
+
+    // Reserve a client connection, use it to perform the operation and then release it
+    IRemoteDataClient client = null;
+    try
+    {
+      TapisSystem system = systemsCache.getSystem(tenant, systemId, user);
+      client = remoteDataClientFactory.getRemoteDataClient(tenant, user, system);
+      fileOpsService.moveOrCopy(client, FileOpsService.MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS, srcRelPathStr, dstRelPathStr);
+      updateTaskSuccess(taskParent);
+    }
+    catch (IOException | ServiceException | DAOException ex)
+    {
+      // TODO:  is this the right exception?
+      String msg = LibUtils.getMsg("FILES_OPSC_ERR", tenant, user, "dtnMove", systemId, srcRelPathStr, ex.getMessage());
+      log.error(msg, ex);
+      updateTaskFailure(taskParent, ex);
+      throw new WebApplicationException(msg, ex);
+    }
   }
 
   /* *********************************************************************** */
@@ -196,6 +254,75 @@ public class ParentTaskTransferService {
     }
 
     return true;
+  }
+
+  private void updateTaskSuccess(TransferTaskParent parentTask) throws DAOException {
+    int topTaskId = parentTask.getTaskId();
+    TransferTask topTask = dao.getTransferTaskByID(topTaskId);
+    // Check to see if all children of a parent task are complete. If so, update the parent task.
+    if (!parentTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
+      parentTask.setStatus(TransferTaskStatus.COMPLETED);
+      parentTask.setEndTime(Instant.now());
+      parentTask.setFinalMessage("Completed");
+
+      //TODO:  update this log message ... it's wrong
+      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_COMPLETE", topTaskId, topTask.getUuid(), parentTask.getId(), parentTask.getUuid(), parentTask.getTag()));
+      dao.updateTransferTaskParent(parentTask);
+    }
+    // Check to see if all the children of a top task are complete. If so, update the top task.
+    if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
+      topTask.setStatus(TransferTaskStatus.COMPLETED);
+      topTask.setEndTime(Instant.now());
+
+      //TODO:  update this log message ... it may be wrong
+      log.trace(LibUtils.getMsg("FILES_TXFR_TASK_COMPLETE2", topTaskId, topTask.getUuid(), topTask.getTag()));
+      dao.updateTransferTask(topTask);
+    }
+  }
+
+  private void updateTaskFailure(TransferTaskParent parentTask, Exception cause) {
+    // TODO:  fix error message
+    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR10", parentTask.toString()));
+
+    // Update the parent task
+    try {
+      parentTask = dao.updateTransferTaskParent(parentTask);
+
+      // Mark FAILED_OPT or FAILED and set error message
+      // NOTE: We can have a child which is required but the parent is optional
+      if (parentTask.isOptional()) {
+        parentTask.setStatus(TransferTaskStatus.FAILED_OPT);
+      } else {
+        parentTask.setStatus(TransferTaskStatus.FAILED);
+      }
+      parentTask.setEndTime(Instant.now());
+      parentTask.setErrorMessage(cause.getMessage());
+      parentTask.setFinalMessage("Failed - Child doErrorStepOne");
+
+      // TODO:  fix error message
+      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR14", parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), parentTask.getStatus()));
+      dao.updateTransferTaskParent(parentTask);
+      // If parent is required update top level task to FAILED and set error message
+      TransferTask topTask = dao.getTransferTaskByID(parentTask.getTaskId());
+      if (parentTask.isOptional()) {
+        topTask.setStatus(TransferTaskStatus.FAILED);
+        topTask.setErrorMessage(cause.getMessage());
+        topTask.setEndTime(Instant.now());
+      } else {
+        topTask.setStatus(TransferTaskStatus.FAILED);
+        topTask.setErrorMessage(cause.getMessage());
+        topTask.setEndTime(Instant.now());
+      }
+
+      // TODO:  fix error message
+      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR13", topTask.getId(), topTask.getTag(), topTask.getUuid(), parentTask.getId(), parentTask.getUuid()));
+      dao.updateTransferTask(topTask);
+
+    } catch (DAOException ex) {
+      // TODO:  fix error message
+      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+              "move error", parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), ex.getMessage()), ex);
+    }
   }
 
   /**
@@ -324,7 +451,7 @@ public class ParentTaskTransferService {
       parentTask.setEndTime(Instant.now());
       parentTask.setStatus(TransferTaskStatus.COMPLETED);
       parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_COMPLETE_NO_ITEMS", srcId, srcPath, tag));
-      parentTask = dao.updateTransferTaskParent(parentTask);
+      dao.updateTransferTaskParent(parentTask);
       return;
     }
 

@@ -24,4 +24,5 @@ public interface ISSHDataClient extends IRemoteDataClient
   NativeLinuxOpResult runLinuxSetfacl(String path, FileUtilsService.NativeLinuxFaclOperation operation,
                                  FileUtilsService.NativeLinuxFaclRecursion recursion,
                                  String aclEntries) throws IOException, TapisException;
+  NativeLinuxOpResult dtnMove(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException;
 }

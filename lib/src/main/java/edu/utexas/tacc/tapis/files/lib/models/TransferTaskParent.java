@@ -14,6 +14,11 @@ import java.util.UUID;
 
 public class TransferTaskParent
 {
+  public enum TransferType {
+    TRANSFER,
+    SERVICE_MOVE_DIRECTORY_CONTENTS,
+    SERVICE_MOVE_FILE_OR_DIRECTORY,
+  }
   private static final Set<TransferTaskStatus> TERMINAL_STATES = new HashSet<>(Set.of(TransferTaskStatus.COMPLETED,
           TransferTaskStatus.FAILED, TransferTaskStatus.FAILED_OPT, TransferTaskStatus.CANCELLED, TransferTaskStatus.PAUSED));
 
@@ -38,11 +43,12 @@ public class TransferTaskParent
   protected List<TransferTaskChild> children;
   protected String errorMessage;
   protected String finalMessage;
+  protected TransferType transferType;
 
   public TransferTaskParent(){}
 
   public TransferTaskParent(String tenantId1, String username1, String srcURI1, String dstURI1, boolean optional1,
-                            String srcCtx1, String dstCtx1, String tag1)
+                            String srcCtx1, String dstCtx1, String tag1, TransferType transferType)
   {
     tenantId = tenantId1;
     username = username1;
@@ -54,6 +60,7 @@ public class TransferTaskParent
     destSharedCtxGrantor = dstCtx1;
     tag = tag1;
     uuid = UUID.randomUUID();
+    this.transferType = transferType;
   }
 
   public String getErrorMessage() {
@@ -172,6 +179,14 @@ public class TransferTaskParent
   public List<TransferTaskChild> getChildren() { return children; }
   public void setChildren(List<TransferTaskChild> tlist) { children = tlist; }
 
+  public TransferType getTransferType() {
+    return transferType;
+  }
+
+  public void setTransferType(TransferType transferType) {
+    this.transferType = transferType;
+  }
+
   /**
    * The status of the task, such as PENDING, IN_PROGRESS, COMPLETED, CANCELLED
    * @return status
@@ -225,6 +240,7 @@ public class TransferTaskParent
             .add("created=" + created)
             .add("startTime=" + startTime)
             .add("endTime=" + endTime)
+            .add("transferType=" + transferType)
             .toString();
   }
 }
