@@ -124,7 +124,8 @@ public class ParentTaskTransferService {
     }
   }
 
-  public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
+  public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body)
+          throws IOException{
     TransferTaskParent taskParent = null;
     try {
       String jsonMessage = new String(body, StandardCharsets.UTF_8);
@@ -137,10 +138,16 @@ public class ParentTaskTransferService {
       }
       handleMessage(channel, envelope, taskParent);
     } catch (Exception ex) {
-      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
-              "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
-      log.error(msg, ex);
-      throw new RuntimeException(msg, ex);
+      channel.basicNack(envelope.getDeliveryTag(), false, false);
+      if (taskParent != null) {
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
+                "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
+        log.error(msg, ex);
+
+        throw new RuntimeException(msg, ex);
+      } else {
+        log.error("Unable to create parent task opject from RabbitMQ message", ex);
+      }
     }
 
   }
