@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import org.jetbrains.annotations.NotNull;
@@ -24,5 +25,5 @@ public interface ISSHDataClient extends IRemoteDataClient
   NativeLinuxOpResult runLinuxSetfacl(String path, FileUtilsService.NativeLinuxFaclOperation operation,
                                  FileUtilsService.NativeLinuxFaclRecursion recursion,
                                  String aclEntries) throws IOException, TapisException;
-  NativeLinuxOpResult dtnMove(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException;
+  NativeLinuxOpResult dtnMove(@NotNull String srcPath, @NotNull String dstPath, FileOpsService.MoveCopyOperation op) throws IOException, NotFoundException;
 }

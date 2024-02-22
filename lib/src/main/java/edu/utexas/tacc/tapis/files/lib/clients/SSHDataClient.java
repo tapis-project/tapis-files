@@ -23,6 +23,7 @@ import javax.ws.rs.NotSupportedException;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisRecoverableException;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisSSHAuthException;
@@ -299,7 +300,7 @@ public class SSHDataClient implements ISSHDataClient
    */
   @Override
   public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException {
-    move(srcPath, dstPath, false);
+    move(srcPath, dstPath, FileOpsService.MoveCopyOperation.MOVE);
   }
 
   /**
@@ -312,11 +313,11 @@ public class SSHDataClient implements ISSHDataClient
    * @throws NotFoundException No file found
    */
   @Override
-  public NativeLinuxOpResult dtnMove(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException {
-    return move(srcPath, dstPath, true);
+  public NativeLinuxOpResult dtnMove(@NotNull String srcPath, @NotNull String dstPath, FileOpsService.MoveCopyOperation op) throws IOException, NotFoundException {
+    return move(srcPath, dstPath, op);
   }
 
-  private NativeLinuxOpResult move(@NotNull String srcPath, @NotNull String dstPath, boolean isDtnMove) throws IOException, NotFoundException
+  private NativeLinuxOpResult move(@NotNull String srcPath, @NotNull String dstPath, FileOpsService.MoveCopyOperation op) throws IOException, NotFoundException
   {
     // Get paths relative to system rootDir and protect against ../..
     String relOldPathStr = PathUtils.getRelativePath(srcPath).toString();
@@ -342,11 +343,8 @@ public class SSHDataClient implements ISSHDataClient
       sb.append(safelySingleQuoteString(targetParentPath.toString()));
       sb.append(";mv ");
       sb.append(safelySingleQuoteString(absoluteOldPath.toString()));
-      if(isDtnMove) {
-        FileInfo fileInfo = getFileInfo(srcPath, false);
-        if(fileInfo.isDir()) {
-          sb.append("/*");
-        }
+      if(FileOpsService.MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS.equals(op)) {
+        sb.append("/*");
       }
       sb.append(" ");
       sb.append(safelySingleQuoteString(absoluteNewPath.toString()));
@@ -363,12 +361,21 @@ public class SSHDataClient implements ISSHDataClient
     catch (TapisException e)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "move", systemId, effectiveUserId, host, srcPath, dstPath, e.getMessage());
-      if(!isDtnMove) {
+      if(!isDtnMove(op)) {
         throw new IOException(msg, e);
       }
     }
 
     return new NativeLinuxOpResult(sb.toString(), retCode, String.valueOf(stdOut), String.valueOf(stdErr));
+  }
+
+  private boolean isDtnMove(FileOpsService.MoveCopyOperation op) {
+    if((FileOpsService.MoveCopyOperation.SERVICE_MOVE_FILE_OR_DIRECTORY.equals(op)) ||
+            (FileOpsService.MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS.equals(op))) {
+      return true;
+    }
+
+    return false;
   }
 
   /**

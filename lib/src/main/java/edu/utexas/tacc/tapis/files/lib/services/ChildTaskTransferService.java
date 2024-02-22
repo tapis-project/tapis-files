@@ -142,7 +142,12 @@ public class ChildTaskTransferService {
             channel.basicConsume(CHILD_QUEUE, false, new DefaultConsumer(channel) {
                 @Override
                 public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
-                    service.handleDelivery(channel, consumerTag, envelope, properties, body);
+                    try {
+                        service.handleDelivery(channel, consumerTag, envelope, properties, body);
+                    } catch (Throwable th) {
+                        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR_CONSUME_MESSAGE", consumerTag);
+                        log.error(msg, th);
+                    }
                 }
             });
             channels.add(channel);

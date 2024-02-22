@@ -120,8 +120,13 @@ public class ParentTaskTransferService {
 
       channel.basicConsume(PARENT_QUEUE, false, new DefaultConsumer(channel) {
         @Override
-        public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
-          service.handleDelivery(channel, consumerTag, envelope, properties, body);
+        public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
+          try {
+            service.handleDelivery(channel, consumerTag, envelope, properties, body);
+          } catch (Throwable th) {
+            String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR_CONSUME_MESSAGE", consumerTag);
+            log.error(msg, th);;
+          }
         }
       });
       channels.add(channel);
@@ -159,7 +164,7 @@ public class ParentTaskTransferService {
     int retry = 0;
     while (retry < maxRetries) {
       try {
-        if(TransferTaskParent.TransferType.SERVICE_MOVE_DIRECTORY_CONTENTS.equals(taskParent.getTransferType())) {
+        if(isLocalMove(taskParent.getTransferType())) {
           doLocalMove(taskParent);
           return;
         } else {
@@ -182,6 +187,15 @@ public class ParentTaskTransferService {
 
     // out of retries, so give up on this one.
     channel.basicNack(envelope.getDeliveryTag(), false, false);
+  }
+
+  private boolean isLocalMove(TransferTaskParent.TransferType transferType) {
+    if(TransferTaskParent.TransferType.SERVICE_MOVE_DIRECTORY_CONTENTS.equals(transferType) ||
+            (TransferTaskParent.TransferType.SERVICE_MOVE_FILE_OR_DIRECTORY.equals(transferType))) {
+      return true;
+    }
+
+    return false;
   }
 
   public void doLocalMove(TransferTaskParent taskParent) throws IOException, ServiceException {
@@ -214,12 +228,15 @@ public class ParentTaskTransferService {
     {
       TapisSystem system = systemsCache.getSystem(tenant, systemId, user);
       client = remoteDataClientFactory.getRemoteDataClient(tenant, user, system);
-      fileOpsService.moveOrCopy(client, FileOpsService.MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS, srcRelPathStr, dstRelPathStr);
-      updateTaskSuccess(taskParent);
+      FileOpsService.MoveCopyOperation moveOp =
+              TransferTaskParent.TransferType.SERVICE_MOVE_FILE_OR_DIRECTORY.equals(taskParent.getTransferType()) ?
+              FileOpsService.MoveCopyOperation.SERVICE_MOVE_FILE_OR_DIRECTORY :
+              FileOpsService.MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS;
+      fileOpsService.moveOrCopy(client, moveOp, srcRelPathStr, dstRelPathStr);
+      updateTaskMoveSuccess(taskParent);
     }
-    catch (IOException | ServiceException | DAOException ex)
+    catch (Exception ex)
     {
-      // TODO:  is this the right exception?
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", tenant, user, "dtnMove", systemId, srcRelPathStr, ex.getMessage());
       log.error(msg, ex);
       updateTaskFailure(taskParent, ex);
@@ -256,7 +273,7 @@ public class ParentTaskTransferService {
     return true;
   }
 
-  private void updateTaskSuccess(TransferTaskParent parentTask) throws DAOException {
+  private void updateTaskMoveSuccess(TransferTaskParent parentTask) throws DAOException {
     int topTaskId = parentTask.getTaskId();
     TransferTask topTask = dao.getTransferTaskByID(topTaskId);
     // Check to see if all children of a parent task are complete. If so, update the parent task.
@@ -265,24 +282,25 @@ public class ParentTaskTransferService {
       parentTask.setEndTime(Instant.now());
       parentTask.setFinalMessage("Completed");
 
-      //TODO:  update this log message ... it's wrong
-      log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_COMPLETE", topTaskId, topTask.getUuid(), parentTask.getId(), parentTask.getUuid(), parentTask.getTag()));
+      log.trace(LibUtils.getMsg("FILES_TXFR_TASK_MOVE_COMPLETE", topTaskId, topTask.getUuid(), parentTask.getId(), parentTask.getUuid(), parentTask.getTag()));
       dao.updateTransferTaskParent(parentTask);
     }
     // Check to see if all the children of a top task are complete. If so, update the top task.
     if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
-      topTask.setStatus(TransferTaskStatus.COMPLETED);
-      topTask.setEndTime(Instant.now());
+      long incompleteParentCount = dao.getIncompleteParentCount(topTaskId);
+      long incompleteChildCount = dao.getIncompleteChildrenCount(topTaskId);
+      if (incompleteChildCount == 0 && incompleteParentCount == 0) {
+        topTask.setStatus(TransferTaskStatus.COMPLETED);
+        topTask.setEndTime(Instant.now());
 
-      //TODO:  update this log message ... it may be wrong
-      log.trace(LibUtils.getMsg("FILES_TXFR_TASK_COMPLETE2", topTaskId, topTask.getUuid(), topTask.getTag()));
-      dao.updateTransferTask(topTask);
+        log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_MOVE_COMPLETE", topTaskId, topTask.getUuid(), topTask.getTag()));
+        dao.updateTransferTask(topTask);
+      }
     }
   }
 
   private void updateTaskFailure(TransferTaskParent parentTask, Exception cause) {
-    // TODO:  fix error message
-    log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR10", parentTask.toString()));
+    log.error(LibUtils.getMsg("FILES_TXFR_SVC_MOVE_ERROR", parentTask.toString(), parentTask.getTaskId()));
 
     // Update the parent task
     try {
@@ -299,8 +317,7 @@ public class ParentTaskTransferService {
       parentTask.setErrorMessage(cause.getMessage());
       parentTask.setFinalMessage("Failed - Child doErrorStepOne");
 
-      // TODO:  fix error message
-      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR14", parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), parentTask.getStatus()));
+      log.error(LibUtils.getMsg("FILES_TXFR_SVC_PARENT_FAILED_MOVE", parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), parentTask.getStatus()));
       dao.updateTransferTaskParent(parentTask);
       // If parent is required update top level task to FAILED and set error message
       TransferTask topTask = dao.getTransferTaskByID(parentTask.getTaskId());

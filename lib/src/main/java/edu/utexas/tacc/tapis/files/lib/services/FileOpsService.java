@@ -587,8 +587,9 @@ public class FileOpsService
         client.move(srcRelPathStr, dstRelPathStr);
         // Update permissions in the SK
         permsService.replacePathPrefix(oboTenant, oboUser, sysId, srcRelPathStr, dstRelPathStr);
-      } else if (op.equals(MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS)) {
-        NativeLinuxOpResult linuxOpResult = ((ISSHDataClient)client).dtnMove(srcRelPathStr, dstRelPathStr);
+      } else if (op.equals(MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS)
+              || op.equals(MoveCopyOperation.SERVICE_MOVE_FILE_OR_DIRECTORY)) {
+        NativeLinuxOpResult linuxOpResult = ((ISSHDataClient)client).dtnMove(srcRelPathStr, dstRelPathStr, op);
         if(linuxOpResult.getExitCode() != 0) {
           throw new IOException(linuxOpResult.toString());
         }
