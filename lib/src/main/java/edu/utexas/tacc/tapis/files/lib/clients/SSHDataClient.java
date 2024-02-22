@@ -23,6 +23,7 @@ import javax.ws.rs.NotSupportedException;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
+import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisRecoverableException;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisSSHAuthException;
@@ -298,7 +299,25 @@ public class SSHDataClient implements ISSHDataClient
    * @throws NotFoundException No file found
    */
   @Override
-  public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException
+  public void move(@NotNull String srcPath, @NotNull String dstPath) throws IOException, NotFoundException {
+    move(srcPath, dstPath, FileOpsService.MoveCopyOperation.MOVE);
+  }
+
+  /**
+   * Move oldPath to newPath using sftpClient
+   * If newPath is an existing directory then oldPath will be moved into the directory newPath.
+   *
+   * @param srcPath current location
+   * @param dstPath desired location
+   * @throws IOException Network errors generally
+   * @throws NotFoundException No file found
+   */
+  @Override
+  public NativeLinuxOpResult dtnMove(@NotNull String srcPath, @NotNull String dstPath, FileOpsService.MoveCopyOperation op) throws IOException, NotFoundException {
+    return move(srcPath, dstPath, op);
+  }
+
+  private NativeLinuxOpResult move(@NotNull String srcPath, @NotNull String dstPath, FileOpsService.MoveCopyOperation op) throws IOException, NotFoundException
   {
     // Get paths relative to system rootDir and protect against ../..
     String relOldPathStr = PathUtils.getRelativePath(srcPath).toString();
@@ -310,21 +329,25 @@ public class SSHDataClient implements ISSHDataClient
     //This will throw a NotFoundException if source is not there
     ls(relOldPathStr);
 
+
     // Construct and run linux commands to create the target dir and do the copy
     int retCode = 0;
 
+    StringBuilder sb = new StringBuilder();
+    ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
+    ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
     try(var sessionHolder = borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true))
     {
       // Set command to make the destination directory and copy the file.
-      StringBuilder sb = new StringBuilder();
       sb.append("mkdir -p ");
       sb.append(safelySingleQuoteString(targetParentPath.toString()));
       sb.append(";mv ");
       sb.append(safelySingleQuoteString(absoluteOldPath.toString()));
+      if(FileOpsService.MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS.equals(op)) {
+        sb.append("/*");
+      }
       sb.append(" ");
       sb.append(safelySingleQuoteString(absoluteNewPath.toString()));
-      ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
-      ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
       retCode = sessionHolder.getSession().execute(sb.toString(), stdOut, stdErr, false);
       if(retCode != 0) {
         String partialStdOut = new String(ArrayUtils.subarray(stdOut.toByteArray(), 0, MAX_STDOUT_SIZE));
@@ -338,8 +361,21 @@ public class SSHDataClient implements ISSHDataClient
     catch (TapisException e)
     {
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR2", oboTenant, oboUser, "move", systemId, effectiveUserId, host, srcPath, dstPath, e.getMessage());
-      throw new IOException(msg, e);
+      if(!isDtnMove(op)) {
+        throw new IOException(msg, e);
+      }
     }
+
+    return new NativeLinuxOpResult(sb.toString(), retCode, String.valueOf(stdOut), String.valueOf(stdErr));
+  }
+
+  private boolean isDtnMove(FileOpsService.MoveCopyOperation op) {
+    if((FileOpsService.MoveCopyOperation.SERVICE_MOVE_FILE_OR_DIRECTORY.equals(op)) ||
+            (FileOpsService.MoveCopyOperation.SERVICE_MOVE_DIRECTORY_CONTENTS.equals(op))) {
+      return true;
+    }
+
+    return false;
   }
 
   /**

@@ -16,6 +16,7 @@ import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.MessageProperties;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -561,6 +562,34 @@ public class TransfersService
     catch (Exception e) { errMessages.add(e.getMessage()); }
   }
 
+
+  private void validateDtnMoveRequest(ResourceRequestUser rUser, String srcSystemId,
+                                      String dstSystemId, List<String> errMessages) {
+    TapisSystem srcSys;
+    try {
+      if(!StringUtils.equals(srcSystemId, dstSystemId)) {
+        String msg = LibUtils.getMsgAuthR("FILES_TXFR_DTN_MOVE_INVALID", rUser,"Source and destinatation are not the same");
+        errMessages.add(msg);
+      }
+
+      srcSys = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcSystemId);
+
+      if(!SystemTypeEnum.LINUX.equals(srcSys.getSystemType())) {
+        String msg = LibUtils.getMsgAuthR("FILES_TXFR_DTN_MOVE_INVALID", rUser, "Source and destinatation must be of type LINUX");
+        errMessages.add(msg);
+      }
+
+      if(!rUser.isServiceRequest()) {
+        String msg = MsgUtils.getMsg("FILES_TXFR_DTN_MOVE_INVALID", rUser, "DTN_MOVE transfers may only be done by service accounts");
+        errMessages.add(msg);
+      }
+
+    } catch (Exception e) {
+      errMessages.add(e.getMessage());
+    }
+  }
+
+
   /*
    * Make sure we support transfers between each pair of systems in a transfer request
    *   - If one is GLOBUS then both must be GLOBUS
@@ -654,6 +683,10 @@ public class TransfersService
       {
         validateSystemIsEnabled(rUser, "dstSystemValidate", dstSystemId, dstUri.getPath(), dstGrantor,
                                 Permission.MODIFY, errMessages);
+      }
+
+      if(TransferTaskRequestElement.TransferType.SERVICE_MOVE_DIRECTORY_CONTENTS.equals(txfrElement.getTransferType())) {
+        validateDtnMoveRequest(rUser, srcSystemId, dstSystemId, errMessages);
       }
     }
   }
