@@ -13,6 +13,7 @@ import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
@@ -106,6 +107,10 @@ public class FileTransfersDAO {
             task.setBytesTransferred(rs.getLong("bytes_transferred"));
             task.setErrorMessage(rs.getString("error_message"));
             task.setFinalMessage(rs.getString("final_message"));
+            String transferTypeString = rs.getString("transfer_type");
+            if(!StringUtils.isBlank(transferTypeString)) {
+                task.setTransferType(TransferTaskParent.TransferType.valueOf(transferTypeString));
+            }
             Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
             Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
             return task;
@@ -200,6 +205,7 @@ public class FileTransfersDAO {
             insertParentTaskStmnt.setString(8, element.getSrcSharedCtx());
             insertParentTaskStmnt.setString(9, element.getDestSharedCtx());
             insertParentTaskStmnt.setString(10, element.getTag());
+            insertParentTaskStmnt.setString(11, element.getTransferType() == null ? TransferTaskRequestElement.TransferType.TRANSFER.name() : element.getTransferType().name());
             insertParentTaskStmnt.addBatch();
           }
           insertParentTaskStmnt.executeBatch();
@@ -516,7 +522,8 @@ public class FileTransfersDAO {
                 task.isOptional(),
                 task.getSrcSharedCtxGrantor(),
                 task.getDestSharedCtxGrantor(),
-                task.getTag()
+                task.getTag(),
+                task.getTransferType() == null ? null : task.getTransferType().name()
                 );
             return insertedTask;
         } catch (SQLException ex) {
