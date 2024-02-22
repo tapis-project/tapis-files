@@ -22,5 +22,5 @@ ENV JAVA_MODULE_OPTS --add-opens java.base/java.lang=ALL-UNNAMED --add-opens jav
 # Server port, debug port and jmx port
 EXPOSE 8080 8000 9090
 
-CMD java -Xdebug -Xmx3g ${JAVA_MODULE_OPTS} -agentlib:jdwp=transport=dt_socket,server=y,address=*:8000,suspend=n -Dlogback.configurationFile=target/classes/logback.xml -cp "target/tapis-files.jar:target/dependencies/*", edu.utexas.tacc.tapis.files.api.FilesApplication
+CMD java -Xdebug -Xmx3g ${JAVA_MODULE_OPTS} -agentlib:jdwp=transport=dt_socket,server=y,address=*:8000,suspend=n -Dlogback.configurationFile=target/classes/logback.xml -cp "target/tapis-files.jar:target/dependencies/*" edu.utexas.tacc.tapis.files.api.FilesApplication
 
