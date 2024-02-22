@@ -133,7 +133,8 @@ public class ParentTaskTransferService {
     }
   }
 
-  public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+  public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body)
+          throws IOException{
     TransferTaskParent taskParent = null;
     try {
       String jsonMessage = new String(body, StandardCharsets.UTF_8);
@@ -147,7 +148,7 @@ public class ParentTaskTransferService {
       handleMessage(channel, envelope, taskParent);
     } catch (Exception ex) {
       channel.basicNack(envelope.getDeliveryTag(), false, false);
-      if(taskParent != null) {
+      if (taskParent != null) {
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
                 "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
         log.error(msg, ex);
@@ -331,13 +332,11 @@ public class ParentTaskTransferService {
         topTask.setEndTime(Instant.now());
       }
 
-      // TODO:  fix error message
-      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR13", topTask.getId(), topTask.getTag(), topTask.getUuid(), parentTask.getId(), parentTask.getUuid()));
+      log.error(LibUtils.getMsg("FILES_TXFR_SVC_MOVE_FAILURE", topTask.getId(), topTask.getTag(), topTask.getUuid(), parentTask.getId(), parentTask.getUuid()));
       dao.updateTransferTask(topTask);
 
     } catch (DAOException ex) {
-      // TODO:  fix error message
-      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTenantId(), parentTask.getUsername(),
+      log.error(LibUtils.getMsg("FILES_TXFR_SVC_UPDATE_STATUS_ERROR", parentTask.getTenantId(), parentTask.getUsername(),
               "move error", parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), ex.getMessage()), ex);
     }
   }
