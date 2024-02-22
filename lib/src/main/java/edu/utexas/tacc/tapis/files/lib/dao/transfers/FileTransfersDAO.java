@@ -205,7 +205,7 @@ public class FileTransfersDAO {
             insertParentTaskStmnt.setString(8, element.getSrcSharedCtx());
             insertParentTaskStmnt.setString(9, element.getDestSharedCtx());
             insertParentTaskStmnt.setString(10, element.getTag());
-            insertParentTaskStmnt.setString(11, element.getTransferType() == null ? null : element.getTransferType().name());
+            insertParentTaskStmnt.setString(11, element.getTransferType() == null ? TransferTaskRequestElement.TransferType.TRANSFER.name() : element.getTransferType().name());
             insertParentTaskStmnt.addBatch();
           }
           insertParentTaskStmnt.executeBatch();
