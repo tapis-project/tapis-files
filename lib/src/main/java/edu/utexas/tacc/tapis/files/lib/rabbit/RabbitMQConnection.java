@@ -18,6 +18,7 @@ public class RabbitMQConnection {
             INSTANCE.setVirtualHost(conf.getRabbitMQVHost());
             INSTANCE.setAutomaticRecoveryEnabled(true);
             INSTANCE.setTopologyRecoveryEnabled(true);
+            INSTANCE.setRequestedHeartbeat(30);
             INSTANCE.useNio();
         }
         return INSTANCE;

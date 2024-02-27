@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -13,6 +14,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
@@ -98,6 +101,7 @@ public class ChildTaskTransferService {
     private Connection connection;
     private List<Channel> channels = new ArrayList<Channel>();
     private ExecutorService connectionThreadPool = null;
+    private ScheduledExecutorService channelMonitorService = Executors.newSingleThreadScheduledExecutor();
 
     /* *********************************************************************** */
     /*            Constructors                                                 */
@@ -131,9 +135,37 @@ public class ChildTaskTransferService {
     /* *********************************************************************** */
 
     public void startListeners() throws IOException, TimeoutException {
+        createChannels();
+
+        channelMonitorService.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+                // discard any closed channels
+                Iterator<Channel> channelIterator = channels.iterator();
+                while(channelIterator.hasNext()) {
+                    Channel channel = channelIterator.next();
+                    if(!channel.isOpen()) {
+                        log.warn("RabbitMQ channel is closed");
+                        channelIterator.remove();
+                    }
+                }
+
+                // re-open channels
+                try {
+                    createChannels();
+                } catch (Exception ex) {
+                    log.error("Unable to re-open channels", ex);
+                }
+            }
+        }, 5, 5, TimeUnit.MINUTES);
+    }
+
+    private void createChannels() throws IOException, TimeoutException {
         ChildTaskTransferService service = this;
 
-        for (int i = 0; i < MAX_CONSUMERS; i++) {
+        int channelsToOpen = MAX_CONSUMERS - channels.size();
+        log.info("Opening " + channelsToOpen + " rabbitmq channels");
+        for (int i = 0; i < channelsToOpen; i++) {
             Channel channel = connection.createChannel();
             channel.basicQos(QOS);
 
