@@ -44,10 +44,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /*
@@ -81,6 +85,7 @@ public class ParentTaskTransferService {
   private final Connection connection;
   private ExecutorService connectionThreadPool;
   private List<Channel> channels = new ArrayList<Channel>();
+  private ScheduledExecutorService channelMonitorService = Executors.newSingleThreadScheduledExecutor();
 
 
   /* *********************************************************************** */
@@ -110,9 +115,37 @@ public class ParentTaskTransferService {
   }
 
   public void startListeners() throws IOException, TimeoutException {
-    ParentTaskTransferService service = this;
+    createChannels();
 
-    for (int i = 0; i < MAX_CONSUMERS; i++) {
+    channelMonitorService.scheduleWithFixedDelay(new Runnable() {
+      @Override
+      public void run() {
+        // discard any closed channels
+        Iterator<Channel> channelIterator = channels.iterator();
+        while(channelIterator.hasNext()) {
+          Channel channel = channelIterator.next();
+          if(!channel.isOpen()) {
+            log.warn("RabbitMQ channel is closed");
+            channelIterator.remove();
+          }
+        }
+
+        // re-open channels
+        try {
+          createChannels();
+        } catch (Exception ex) {
+          log.error("Unable to re-open channels", ex);
+        }
+      }
+    }, 5, 5, TimeUnit.MINUTES);
+  }
+
+  private void createChannels() throws IOException, TimeoutException {
+    ParentTaskTransferService service = this;
+    int channelsToOpen = MAX_CONSUMERS - channels.size();
+    log.info("Opening " + channelsToOpen + " rabbitmq channels");
+
+    for (int i = 0; i < channelsToOpen; i++) {
       Channel channel = connection.createChannel();
       channel.basicQos(QOS);
 
