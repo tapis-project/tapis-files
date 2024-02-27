@@ -141,10 +141,13 @@ public class ParentTaskTransferService {
   }
 
   private void createChannels() throws IOException, TimeoutException {
-    ParentTaskTransferService service = this;
     int channelsToOpen = MAX_CONSUMERS - channels.size();
-    log.info("Opening " + channelsToOpen + " rabbitmq channels");
+    if(channelsToOpen == 0) {
+      return;
+    }
 
+    log.info("Opening " + channelsToOpen + " rabbitmq channels");
+    ParentTaskTransferService service = this;
     for (int i = 0; i < channelsToOpen; i++) {
       Channel channel = connection.createChannel();
       channel.basicQos(QOS);
@@ -200,6 +203,7 @@ public class ParentTaskTransferService {
       try {
         if(isLocalMove(taskParent.getTransferType())) {
           doLocalMove(taskParent);
+          channel.basicAck(envelope.getDeliveryTag(), false);
           return;
         } else {
           if (createChildTasks(taskParent)) {
