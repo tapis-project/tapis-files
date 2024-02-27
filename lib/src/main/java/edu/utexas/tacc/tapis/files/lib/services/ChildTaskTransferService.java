@@ -161,10 +161,13 @@ public class ChildTaskTransferService {
     }
 
     private void createChannels() throws IOException, TimeoutException {
-        ChildTaskTransferService service = this;
-
         int channelsToOpen = MAX_CONSUMERS - channels.size();
+        if(channelsToOpen == 0) {
+            return;
+        }
+
         log.info("Opening " + channelsToOpen + " rabbitmq channels");
+        ChildTaskTransferService service = this;
         for (int i = 0; i < channelsToOpen; i++) {
             Channel channel = connection.createChannel();
             channel.basicQos(QOS);
