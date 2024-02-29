@@ -79,7 +79,12 @@ public class PostItsService {
     public void startPostItsReaper(long intervalMinutes) {
         log.info(LibUtils.getMsg("POSTIT_REAPER_START", intervalMinutes));
         postItsTaskFuture = reaperExecService.scheduleAtFixedRate(() -> {
+            try {
                 PostItsReaper.cleanup(postItsDAO);
+            } catch (Throwable th) {
+                String msg = LibUtils.getMsg("POSTITS_CLEANUP_FAILURE");
+                log.warn(msg, th);
+            }
         }, intervalMinutes, intervalMinutes, TimeUnit.MINUTES);
     }
 
