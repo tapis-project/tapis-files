@@ -140,21 +140,26 @@ public class ChildTaskTransferService {
         channelMonitorService.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                // discard any closed channels
-                Iterator<Channel> channelIterator = channels.iterator();
-                while(channelIterator.hasNext()) {
-                    Channel channel = channelIterator.next();
-                    if(!channel.isOpen()) {
-                        log.warn("RabbitMQ channel is closed");
-                        channelIterator.remove();
-                    }
-                }
-
-                // re-open channels
                 try {
-                    createChannels();
-                } catch (Exception ex) {
-                    log.error("Unable to re-open channels", ex);
+                    // discard any closed channels
+                    Iterator<Channel> channelIterator = channels.iterator();
+                    while (channelIterator.hasNext()) {
+                        Channel channel = channelIterator.next();
+                        if (!channel.isOpen()) {
+                            log.warn("RabbitMQ channel is closed");
+                            channelIterator.remove();
+                        }
+                    }
+
+                    // re-open channels
+                    try {
+                        createChannels();
+                    } catch (Exception ex) {
+                        log.error("Unable to re-open channels", ex);
+                    }
+                } catch (Throwable th) {
+                    String msg = LibUtils.getMsg("FILES_TXFR_CLEANUP_FAILURE");
+                    log.warn(msg, th);
                 }
             }
         }, 5, 5, TimeUnit.MINUTES);

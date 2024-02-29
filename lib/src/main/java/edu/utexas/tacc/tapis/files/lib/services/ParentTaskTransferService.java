@@ -50,7 +50,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -120,21 +119,27 @@ public class ParentTaskTransferService {
     channelMonitorService.scheduleWithFixedDelay(new Runnable() {
       @Override
       public void run() {
-        // discard any closed channels
-        Iterator<Channel> channelIterator = channels.iterator();
-        while(channelIterator.hasNext()) {
-          Channel channel = channelIterator.next();
-          if(!channel.isOpen()) {
-            log.warn("RabbitMQ channel is closed");
-            channelIterator.remove();
-          }
-        }
-
-        // re-open channels
         try {
-          createChannels();
-        } catch (Exception ex) {
-          log.error("Unable to re-open channels", ex);
+          // discard any closed channels
+          Iterator<Channel> channelIterator = channels.iterator();
+          while (channelIterator.hasNext()) {
+            Channel channel = channelIterator.next();
+            if (!channel.isOpen()) {
+              log.warn("RabbitMQ channel is closed");
+              channelIterator.remove();
+            }
+          }
+
+          // re-open channels
+          try {
+            createChannels();
+          } catch (Exception ex) {
+            log.error("Unable to re-open channels", ex);
+          }
+        } catch (Throwable th) {
+          String msg = LibUtils.getMsg("FILES_TXFR_CLEANUP_FAILURE");
+          log.warn(msg, th);
+
         }
       }
     }, 5, 5, TimeUnit.MINUTES);
@@ -185,6 +190,7 @@ public class ParentTaskTransferService {
     } catch (Exception ex) {
       channel.basicNack(envelope.getDeliveryTag(), false, false);
       if (taskParent != null) {
+        doErrorParentStepOne(ex, taskParent);
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
                 "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
         log.error(msg, ex);
@@ -199,6 +205,7 @@ public class ParentTaskTransferService {
 
   public void handleMessage(Channel channel, Envelope envelope, TransferTaskParent taskParent) throws IOException {
     int retry = 0;
+    Exception lastException = null;
     while (retry < maxRetries) {
       try {
         if(isLocalMove(taskParent.getTransferType())) {
@@ -211,19 +218,19 @@ public class ParentTaskTransferService {
             return;
           }
         }
-      } catch (ServiceException e) {
-        // if we catch an error nack message.
-        channel.basicNack(envelope.getDeliveryTag(), false, false);
-        if(retry >= maxRetries) {
-          doErrorParentStepOne(e, taskParent);
-          return;
-        }
+      } catch (ServiceException ex) {
+        lastException = ex;
+      } catch (Exception ex) {
+        lastException = ex;
+        // unexpected exception occurred - don't retry, just fail
+        break;
       }
 
       retry++;
     }
 
     // out of retries, so give up on this one.
+    doErrorParentStepOne(lastException, taskParent);
     channel.basicNack(envelope.getDeliveryTag(), false, false);
   }
 
