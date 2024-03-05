@@ -11,7 +11,11 @@ https://tapis-project.github.io/live-docs
 ---------------------------------------------------------------------------
 ## 1.6.1 - 2024-?-??
 
-Incremental improvements and new features.
+Incremental improvements and new features.  The Dockerfiles that build the
+files api and worker containers now reference an environment variable called
+ENV_JAVA_CMD_OPTS which can be overridden by the deployment if needed.  By 
+default it sets the following:
+-Xdebug -Xmx3g -agentlib:jdwp=transport=dt_socket,server=y,address=\*:8000,suspend=n 
 
 ### New features:
 Regular expression matching for file listings on linux systems.
