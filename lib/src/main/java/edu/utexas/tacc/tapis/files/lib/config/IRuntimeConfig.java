@@ -23,6 +23,7 @@ public interface IRuntimeConfig {
     int getDbConnectionPoolCoreSize();
     int getDbConnectionPoolSize();
     int getSshPoolTraceOnCleanupInterval();
+    int getMaxTransferCount();
     public int getGrizzlyPoolCoreSize();
     public int getGrizzlyPoolMaxSize();
     public String getTapisDebugSystemServicePath();
