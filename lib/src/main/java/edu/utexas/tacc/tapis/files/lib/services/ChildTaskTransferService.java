@@ -410,6 +410,7 @@ public class ChildTaskTransferService {
                 throw new ServiceException(msg, ex);
             }
         }
+
         TransferTaskParent parentTask;
         try {
             // Get the parent task. We will need it for shared ctx grantors.
@@ -508,8 +509,13 @@ public class ChildTaskTransferService {
             throw new ServiceException(msg, ex);
         }
 
-        // If destination is a directory, create the directory and return
-        if (taskChild.isDir()) {
+        // Determine if it is a Globus transfer. Consider it a Globus transfer if either source or destination
+        //   is of type GLOBUS. Note that currently only Globus to Globus is supported.
+        boolean isGlobus = ((sourceSystem != null && SystemTypeEnum.GLOBUS.equals(sourceSystem.getSystemType())) ||
+                             SystemTypeEnum.GLOBUS.equals(destSystem.getSystemType()));
+
+        // If destination is a directory and not doing a Globus transfer, then create the directory and return
+        if (taskChild.isDir() && !isGlobus) {
             destClient.mkdir(destURL.getPath());
             // The ChildTransferTask may have been updated by calling thread, e.g. cancelled, so we look it up again
             // here before passing it on
@@ -524,8 +530,7 @@ public class ChildTaskTransferService {
         }
 
         // Handle as Globus or non-Globus transfer
-        if ((sourceSystem != null && SystemTypeEnum.GLOBUS.equals(sourceSystem.getSystemType())) ||
-                SystemTypeEnum.GLOBUS.equals(destSystem.getSystemType())) {
+        if (isGlobus) {
             performASynchFileTransfer(taskChild, sourceClient, sourceURL, destClient, destURL);
         } else {
             performSynchFileTransfer(taskChild, sourceClient, sourceURL, destClient, destURL, sourcePath);
