@@ -481,6 +481,7 @@ public class ParentTaskTransferService {
     dstSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, dstId, impersonationIdNull, dstSharedCtxGrantor);
     boolean srcIsS3 = SystemTypeEnum.S3.equals(srcSystem.getSystemType());
     boolean srcIsGlobus = SystemTypeEnum.GLOBUS.equals(srcSystem.getSystemType());
+    boolean dstIsGlobus = SystemTypeEnum.GLOBUS.equals(dstSystem.getSystemType());
     boolean dstIsS3 = SystemTypeEnum.S3.equals(dstSystem.getSystemType());
 
     // Establish client
@@ -499,7 +500,14 @@ public class ParentTaskTransferService {
     List<FileInfo> fileListing;
     // NOTE Treat all source system types the same. For S3 it will be all objects matching the srcPath as a prefix.
     log.trace(LibUtils.getMsg("FILES_TXFR_LSR1", taskTenant, taskUser, "doParentStepOneA07", parentId, parentUuid, srcId, srcPath, tag));
-    fileListing = fileOpsService.lsRecursive(srcClient, srcPath, false, FileOpsService.MAX_RECURSION, IRemoteDataClient.NO_PATTERN);
+
+    // If both source and destination are GLOBUS, do a non-recursive listing. Globus will handle transfer of directories.
+    if (srcIsGlobus && dstIsGlobus) {
+      fileListing = fileOpsService.ls(srcClient, srcPath, FileOpsService.MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_PATTERN);
+    }
+    else {
+      fileListing = fileOpsService.lsRecursive(srcClient, srcPath, false, FileOpsService.MAX_RECURSION, IRemoteDataClient.NO_PATTERN);
+    }
     if (fileListing == null) fileListing = Collections.emptyList();
     log.trace(LibUtils.getMsg("FILES_TXFR_LSR2", taskTenant, taskUser, "doParentStepOneA08", parentId, parentUuid, srcId, srcPath, fileListing.size(), tag));
 
