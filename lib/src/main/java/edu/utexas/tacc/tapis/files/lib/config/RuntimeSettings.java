@@ -34,6 +34,7 @@ public class RuntimeSettings {
         protected final int grizzlyPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 40);
         protected final int grizzlyPoolMaxSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 50);
         protected final String tapisDebugSystemServicePath = settings.get("TAPIS_DEBUG_SYSTEM_SERVICE_PATH", null);
+        protected final int maxTransferCount = getIntSetting("MAX_TRANSFER_COUNT", 3000);
 
         public String getHostName() {
             return hostName;
@@ -121,6 +122,10 @@ public class RuntimeSettings {
 
         public int getSshPoolTraceOnCleanupInterval() {
             return sshPoolTraceOnCleanupInterval;
+        }
+
+        public int getMaxTransferCount() {
+            return maxTransferCount;
         }
 
         public static int getIntSetting(String settingName, int defaultValue) {

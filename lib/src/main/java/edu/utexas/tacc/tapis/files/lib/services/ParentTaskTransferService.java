@@ -85,6 +85,7 @@ public class ParentTaskTransferService {
   private ExecutorService connectionThreadPool;
   private List<Channel> channels = new ArrayList<Channel>();
   private ScheduledExecutorService channelMonitorService = Executors.newSingleThreadScheduledExecutor();
+  private static final int MAX_TRANSFER_COUNT = RuntimeSettings.get().getMaxTransferCount();
 
 
   /* *********************************************************************** */
@@ -284,7 +285,7 @@ public class ParentTaskTransferService {
     {
       String msg = LibUtils.getMsg("FILES_OPSC_ERR", tenant, user, "dtnMove", systemId, srcRelPathStr, ex.getMessage());
       log.error(msg, ex);
-      updateTaskFailure(taskParent, ex);
+      updateTaskFailure(taskParent, ex.getMessage());
       throw new WebApplicationException(msg, ex);
     }
   }
@@ -344,7 +345,7 @@ public class ParentTaskTransferService {
     }
   }
 
-  private void updateTaskFailure(TransferTaskParent parentTask, Exception cause) {
+  private void updateTaskFailure(TransferTaskParent parentTask, String cause) {
     log.error(LibUtils.getMsg("FILES_TXFR_SVC_MOVE_ERROR", parentTask.toString(), parentTask.getTaskId()));
 
     // Update the parent task
@@ -359,7 +360,7 @@ public class ParentTaskTransferService {
         parentTask.setStatus(TransferTaskStatus.FAILED);
       }
       parentTask.setEndTime(Instant.now());
-      parentTask.setErrorMessage(cause.getMessage());
+      parentTask.setErrorMessage(cause);
       parentTask.setFinalMessage("Failed - Child doErrorStepOne");
 
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_PARENT_FAILED_MOVE", parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), parentTask.getStatus()));
@@ -368,11 +369,11 @@ public class ParentTaskTransferService {
       TransferTask topTask = dao.getTransferTaskByID(parentTask.getTaskId());
       if (parentTask.isOptional()) {
         topTask.setStatus(TransferTaskStatus.FAILED);
-        topTask.setErrorMessage(cause.getMessage());
+        topTask.setErrorMessage(cause);
         topTask.setEndTime(Instant.now());
       } else {
         topTask.setStatus(TransferTaskStatus.FAILED);
-        topTask.setErrorMessage(cause.getMessage());
+        topTask.setErrorMessage(cause);
         topTask.setEndTime(Instant.now());
       }
 
@@ -510,8 +511,14 @@ public class ParentTaskTransferService {
     if (fileListing.isEmpty()) {
       parentTask.setEndTime(Instant.now());
       parentTask.setStatus(TransferTaskStatus.COMPLETED);
-      parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_COMPLETE_NO_ITEMS", srcId, srcPath, tag));
+      parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_COMPLETE_NO_ITEMS", taskTenant, taskUser, srcId, srcPath, tag));
       dao.updateTransferTaskParent(parentTask);
+      checkForComplete(parentTask.getTaskId());
+      return;
+    } else if(fileListing.size() > MAX_TRANSFER_COUNT) {
+      String errorMessage = LibUtils.getMsg("FILES_TXFR_PARENT_ERROR_TOO_MANY_FILES", taskTenant, taskUser, srcId, srcPath, tag, fileListing.size(), MAX_TRANSFER_COUNT);
+      log.error(errorMessage);
+      updateTaskFailure(parentTask, errorMessage);
       return;
     }
 
