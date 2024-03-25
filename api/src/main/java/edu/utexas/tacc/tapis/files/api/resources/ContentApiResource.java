@@ -43,7 +43,7 @@ import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
  *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
  */
 @Path("/v3/files/content")
-public class ContentApiResource extends BaseFileOpsResource
+public class ContentApiResource
 {
   private static final Logger log = LoggerFactory.getLogger(ContentApiResource.class);
   private final String className = getClass().getSimpleName();

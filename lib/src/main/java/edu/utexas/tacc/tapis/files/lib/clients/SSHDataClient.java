@@ -873,7 +873,7 @@ public class SSHDataClient implements ISSHDataClient
   @Override
   public NativeLinuxOpResult runLinuxSetfacl(String path, FileUtilsService.NativeLinuxFaclOperation operation,
                                              FileUtilsService.NativeLinuxFaclRecursion recursion,
-                                             String aclEntries) throws IOException, TapisException {
+                                             String aclString) throws IOException, TapisException {
     String opName = "setfacl";
 
     // Path should have already been normalized and checked but for safety and security do it
@@ -899,10 +899,10 @@ public class SSHDataClient implements ISSHDataClient
 
     switch (operation) {
       // add ACLs
-      case ADD -> sb.append("-m ").append(safelySingleQuoteString(aclEntries)).append(" ");
+      case ADD -> sb.append("-m ").append(safelySingleQuoteString(aclString)).append(" ");
 
       // remove ACLs
-      case REMOVE -> sb.append("-x ").append(safelySingleQuoteString(aclEntries)).append(" ");
+      case REMOVE -> sb.append("-x ").append(safelySingleQuoteString(aclString)).append(" ");
 
       // remove all ACLs
       case REMOVE_ALL -> sb.append("-b ");
