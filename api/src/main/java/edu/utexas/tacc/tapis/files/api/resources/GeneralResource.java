@@ -284,9 +284,4 @@ public class GeneralResource
     return result;
   }
 
-  @PreDestroy
-  public void cleanUp() throws IOException {
-    transfersService.cleanup();
-  }
-
 }

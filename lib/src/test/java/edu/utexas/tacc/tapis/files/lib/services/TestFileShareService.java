@@ -51,6 +51,7 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
 /*
@@ -151,8 +152,14 @@ public class TestFileShareService
       Utils.clearSshSessionPoolInstance();
       SshSessionPool.init();
       permsService.grantPermission(devTenant, testUser1, testSystemSSH.getId(), "/", Permission.MODIFY);
-      IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser1, testSystemSSH);
-      fileOpsService.delete(client,"/");
+      reset(systemsCache);
+      try {
+        when(systemsCache.getSystem(devTenant, testSystemSSH.getId(), testUser1, nullImpersonationId, sharedCtxGrantorNull)).thenReturn(testSystemSSH);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser1, testSystemSSH);
+        fileOpsService.delete(client, "/");
+      } finally {
+        reset(systemsCache);
+      }
     }
 
     @AfterTest()

@@ -47,6 +47,7 @@
                 <flyway.password>test</flyway.password>
                 <flyway.url>jdbc:postgresql://localhost/test</flyway.url>
                 <flyway.skip>false</flyway.skip>
+                <flyway.cleanDisabled>false</flyway.cleanDisabled>
                 <skipIntegrationTests>false</skipIntegrationTests>
 <!--                <flyway.baselineOnMigrate>true</flyway.baselineOnMigrate>-->
             </properties>

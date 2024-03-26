@@ -243,7 +243,7 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
     {
       try {
         when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(sys);
+        when(systemsCache.getSystem(TENANT, sys.getId(), TEST_USR1, null, null)).thenReturn(sys);
         when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(sys);
         target(String.format("%s/%s/", OPS_ROUTE, SYSTEM_ID))
                 .request()
@@ -251,7 +251,9 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
                 .header("x-tapis-token", getJwtForUser(TENANT, TEST_USR1))
                 .delete(FileStringResponse.class);
       }
-      catch (Exception ex) { log.error(ex.getMessage(), ex); }
+      catch (Exception ex) {
+          log.error(ex.getMessage(), ex);
+      }
     });
   }
 
@@ -672,8 +674,9 @@ public class TestOpsRoutes extends BaseDatabaseIntegrationTest
   @Test(dataProvider = "mkdirDataProviderNoS3")
     public void testMkdirWithSlashes(Pair<String, TapisSystem> inputs) throws Exception
   {
-        when(systemsCache.getSystem(any(), any(), any())).thenReturn(inputs.getRight());
-        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(inputs.getRight());
+        TapisSystem testSystem = inputs.getRight();
+        when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(testSystem);
+        when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(testSystem);
 
         MkdirRequest req = new MkdirRequest();
         req.setPath(inputs.getLeft());
