@@ -70,6 +70,7 @@ public abstract class BaseDatabaseIntegrationTest extends JerseyTestNg.Container
     @BeforeTest
     public void doFlywayMigrations() {
         Flyway flyway = Flyway.configure()
+            .cleanDisabled(false)
             .dataSource("jdbc:postgresql://localhost:5432/test", "test", "test")
             .load();
         flyway.clean();

@@ -335,7 +335,9 @@ public class BaseDatabaseIntegrationTest
   public void doFlywayMigrations()
   {
     Flyway flyway = Flyway.configure()
-            .dataSource("jdbc:postgresql://localhost:5432/test", "test", "test").load();
+        .cleanDisabled(false)
+        .dataSource("jdbc:postgresql://localhost:5432/test", "test", "test")
+        .load();
     flyway.clean();
     flyway.migrate();
   }
