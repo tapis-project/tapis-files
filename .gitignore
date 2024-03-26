@@ -6,6 +6,9 @@ dependency-reduced-pom.xml
 # Log file
 *.log
 
+# VIM swap file
+*.swp
+
 # BlueJ files
 *.ctxt
 

@@ -657,8 +657,6 @@ public class FileOpsService
    */
   public void delete(@NotNull IRemoteDataClient client, @NotNull String relPathStr) throws ServiceException
   {
-    LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-                            relPathStr, Permission.MODIFY);
     try
     {
       client.delete(relPathStr);
