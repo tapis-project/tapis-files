@@ -1033,14 +1033,16 @@ public class SSHDataClient implements ISSHDataClient
 
     if (ex instanceof SftpException) {
       SftpException sftpException = (SftpException) ex;
+      // Use SftpException.toString() so we have a more descriptive message for the end user.
+      String errMsg = ex.toString();
       if (sftpException.getStatus() == SftpConstants.SSH_FX_PERMISSION_DENIED) {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, ex.getMessage());
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_PERM_DENIED", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, errMsg);
         throw new ForbiddenException(msg, ex);
       } else if (sftpException.getStatus() == SftpConstants.SSH_FX_NO_SUCH_FILE) {
         String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, path);
         throw new NotFoundException(msg, ex);
       } else {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, ex.getMessage());
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, errMsg);
         throw new IOException(msg, ex);
       }
     } else if ((ex.getMessage() != null) && (ex.getMessage().contains("SSH_POOL_MISSING_CREDENTIALS"))) {

@@ -48,7 +48,7 @@ public class FileUtilsService
   // Some methods do not support impersonationId or sharedAppCtxGrantor
   private static final String impersonationIdNull = null;
   private static final String sharedCtxGrantorNull = null;
-  private static final boolean isSharedFalse = false;
+  private static final boolean isSharedTrue = true;
 
   @Inject
   FileShareService shareService;
@@ -142,7 +142,7 @@ public class FileUtilsService
     {
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-      return linuxOp(client, relPathStr, nativeOp, natvieOpArg, recursive, isSharedFalse);
+      return linuxOp(client, relPathStr, nativeOp, natvieOpArg, recursive, isSharedTrue);
     }
     catch (TapisException | ServiceException | IOException e)
     {
@@ -258,9 +258,9 @@ public class FileUtilsService
     {
       // If not skipping due to ownership or sharedAppCtx then check permissions
       // NOTE: This is needed because linuxOp(client, ...) is called from both this class and ChildTaskTransferService.
-      //    When called from this class it is not needed because the authorization check is done by
-      //    LibUtils.getResolvedSysWithAuthCheck(), which is why isShared is always set to false for
-      //    the call from this class.
+      //    When called from this class perm check is not needed because the authorization check is done by
+      //    LibUtils.getResolvedSysWithAuthCheck(), which is why for the call from this class isShared is always set
+      //    to true so the perm check is skipped.
       if (!isOwner && !isShared)
       {
         LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
