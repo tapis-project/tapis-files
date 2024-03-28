@@ -9,24 +9,7 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.6.2 - 2024-?-??
-
-Incremental improvements and bug fixes.
-
-### New features:
-TBD
-
-### Bug fixes:
-- Fix issues with multiple slashes in a relative path. Issue number 151.
-- Fix issues with Tapis permission checking when a system is shared. For delete and some Linux operations. Issue 150.
-
-NOTE that above two bug fixes were made in the tapis-shared-java repository. No source changes for tapis-files.
-
-### Breaking Changes
-- None
-
----------------------------------------------------------------------------
-## 1.6.1 - 2024-?-??
+## 1.6.1 - 2024-03-28
 
 Incremental improvements and new features.  The Dockerfiles that build the
 files api and worker containers now reference an environment variable called
@@ -38,6 +21,10 @@ default it sets the following:
 Regular expression matching for file listings on linux systems.
 
 ### Bug fixes:
+- Fix issues with multiple slashes in a relative path. Issue number 151.
+- Fix issues with Tapis permission checking when a system is shared. For delete and some Linux operations. Issue 150.
+
+NOTE that above two bug fixes were made in the tapis-shared-java repository. No source changes for tapis-files.
 
 ### Breaking Changes
 - None
