@@ -21,10 +21,8 @@ default it sets the following:
 Regular expression matching for file listings on linux systems.
 
 ### Bug fixes:
-- Fix issues with multiple slashes in a relative path. Issue number 151.
+- Fix issues with multiple slashes in a relative path. Issue number 151. (Fixed in tapis-shared-java repository)
 - Fix issues with Tapis permission checking when a system is shared. For delete and some Linux operations. Issue 150.
-
-NOTE that above two bug fixes were made in the tapis-shared-java repository. No source changes for tapis-files.
 
 ### Breaking Changes
 - None
