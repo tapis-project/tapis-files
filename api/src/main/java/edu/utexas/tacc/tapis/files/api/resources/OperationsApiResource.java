@@ -50,7 +50,7 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_RECURS
  *  NOTE: For OpenAPI spec please see repo openapi-files, file FilesAPI.yaml
  */
 @Path("/v3/files/ops")
-public class OperationsApiResource extends BaseFileOpsResource
+public class OperationsApiResource
 {
   private static final Logger log = LoggerFactory.getLogger(OperationsApiResource.class);
   private final String className = getClass().getSimpleName();
