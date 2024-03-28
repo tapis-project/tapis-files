@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import javax.inject.Inject;
+import javax.ws.rs.WebApplicationException;
 
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
@@ -44,6 +45,11 @@ public class FileUtilsService
   public enum NativeLinuxFaclOperation {ADD, REMOVE, REMOVE_ALL, REMOVE_DEFAULT}
   public enum NativeLinuxFaclRecursion {LOGICAL, PHYSICAL, NONE}
 
+  // Some methods do not support impersonationId or sharedAppCtxGrantor
+  private static final String impersonationIdNull = null;
+  private static final String sharedCtxGrantorNull = null;
+  private static final boolean isSharedTrue = true;
+
   @Inject
   FileShareService shareService;
 
@@ -62,6 +68,10 @@ public class FileUtilsService
     FileShareService.setSiteAdminTenantId(siteAdminTenantId);
   }
 
+  // ************************************************************************
+  // **** Methods taking a ResourceRequest user, called from Resource class
+  // ************************************************************************
+
   /**
    * Run the linux stat command on the path and return stat information
    *
@@ -69,51 +79,150 @@ public class FileUtilsService
    * @param followLinks - When path is a symbolic link whether to get information about the link (false)
    *                      or the link target (true)
    * @return FileStatInfo
-   * @throws ServiceException - General problem
+   * @throws WebApplicationException - General problem
    */
   public FileStatInfo getStatInfo(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
-                                  @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String systemId,
+                                  @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String sysId,
                                   @NotNull String pathStr, boolean followLinks)
-          throws ServiceException
+          throws WebApplicationException
   {
     String opName="getStatInfo";
-
-
-
+    String oboTenant = rUser.getOboTenantId();
+    String oboUser = rUser.getOboUserId();
     // Get normalized path relative to system rootDir and protect against ../..
-    String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
-    try {
-      // Make the service call
-      TapisSystem system = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
-              permsService, opName, systemId, relativePathStr, Permission.READ, null, null);
-      IRemoteDataClient client =
-              (ISSHDataClient) remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(), system);
+    String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+
+    // Fetch system with credentials including auth checks for system and path
+    TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
+                                                           permsService, opName, sysId, relPathStr, Permission.READ,
+                                                           impersonationIdNull, sharedCtxGrantorNull);
+    // Construct the remote data client
+    IRemoteDataClient client;
+    try
+    {
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
       if (!(client instanceof ISSHDataClient)) {
         String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                 ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
         log.error(msg);
         throw new IllegalArgumentException(msg);
       }
-
       ISSHDataClient sshClient = (ISSHDataClient) client;
-
-      // Make the remoteDataClient call
-      return sshClient.getStatInfo(relativePathStr, followLinks);
-    } catch (IOException ex) {
-      String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", rUser.getOboTenantId(), rUser.getOboUserId(), "getStatInfo",
-                                systemId, relativePathStr, ex.getMessage());
+      return sshClient.getStatInfo(relPathStr, followLinks);
+    }
+    catch (IOException ex)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, sysId, relPathStr, ex.getMessage());
       log.error(msg, ex);
-      throw new ServiceException(msg, ex);
+      throw new WebApplicationException(msg, ex);
     }
   }
 
-  // Simple wrapper for backward compatibility. Only ChildTaskTransferService should use isShared
-  public NativeLinuxOpResult linuxOp(@NotNull IRemoteDataClient client, @NotNull String pathStr, @NotNull NativeLinuxOperation op,
-                                     @NotNull String arg, boolean recursive)
-          throws TapisException, ServiceException
-  {
-    return linuxOp(client, pathStr, op, arg, recursive, false);
+  /*
+   * Run a native linux operation: chown, chmod, chgrp
+   */
+  public NativeLinuxOpResult runLinuxOp(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
+                                        @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String sysId,
+                                        @NotNull String pathStr, @NotNull NativeLinuxOperation nativeOp, String natvieOpArg,
+                                        boolean recursive)
+          throws WebApplicationException {
+    String opName = "runLinuxOp";
+    String oboTenant = rUser.getOboTenantId();
+    String oboUser = rUser.getOboUserId();
+    // Get normalized path relative to system rootDir and protect against ../..
+    String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+
+    // Fetch system with credentials including auth checks for system and path
+    TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
+                                                           permsService, opName, sysId, relPathStr, Permission.MODIFY,
+                                                           impersonationIdNull, sharedCtxGrantorNull);
+    // Construct the remote data client
+    IRemoteDataClient client;
+    try
+    {
+
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      return linuxOp(client, relPathStr, nativeOp, natvieOpArg, recursive, isSharedTrue);
+    }
+    catch (TapisException | ServiceException | IOException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, opName, sysId, relPathStr, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
   }
+
+  /*
+   * Run the linux getfacl command on the path and return acl entries
+   *
+   */
+  public List<AclEntry> runGetfacl(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
+                                  @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String sysId,
+                                  @NotNull String pathStr)
+          throws WebApplicationException
+  {
+    String opName="runGetfacl";
+    String oboTenant = rUser.getOboTenantId();
+    String oboUser = rUser.getOboUserId();
+    // Get normalized path relative to system rootDir and protect against ../..
+    String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+
+    // Fetch system with credentials including auth checks for system and path
+    TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
+                                                           permsService, opName, sysId, relPathStr, Permission.READ,
+                                                           impersonationIdNull, sharedCtxGrantorNull);
+    // Construct the remote data client
+    IRemoteDataClient client;
+    try
+    {
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      return getfacl(client, relPathStr);
+    }
+    catch (TapisException | ServiceException | IOException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, opName, sysId, relPathStr, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+  }
+
+  /*
+   * Run a native linux setfacl operation
+   */
+  public NativeLinuxOpResult runSetfacl(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
+                                       @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String sysId,
+                                       @NotNull String pathStr, @NotNull NativeLinuxFaclOperation nativeOp,
+                                       NativeLinuxFaclRecursion recursionMethod, String aclString)
+          throws WebApplicationException {
+    String opName = "runSetfacl";
+    String oboTenant = rUser.getOboTenantId();
+    String oboUser = rUser.getOboUserId();
+    // Get normalized path relative to system rootDir and protect against ../..
+    String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+
+    // Fetch system with credentials including auth checks for system and path
+    TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
+                                                           permsService, opName, sysId, relPathStr, Permission.MODIFY,
+                                                           impersonationIdNull, sharedCtxGrantorNull);
+    // Construct the remote data client
+    IRemoteDataClient client;
+    try
+    {
+
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      return setfacl(client, relPathStr, nativeOp, recursionMethod, aclString);
+    }
+    catch (TapisException | ServiceException | IOException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, opName, sysId, relPathStr, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+  }
+
+  // ************************************************************************
+  // **** Methods taking an IRemoteDataClient
+  // ************************************************************************
 
   /**
    * Run a native linux operation: chown, chmod, chgrp
@@ -148,6 +257,10 @@ public class FileUtilsService
     try
     {
       // If not skipping due to ownership or sharedAppCtx then check permissions
+      // NOTE: This is needed because linuxOp(client, ...) is called from both this class and ChildTaskTransferService.
+      //    When called from this class perm check is not needed because the authorization check is done by
+      //    LibUtils.getResolvedSysWithAuthCheck(), which is why for the call from this class isShared is always set
+      //    to true so the perm check is skipped.
       if (!isOwner && !isShared)
       {
         LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
@@ -169,7 +282,10 @@ public class FileUtilsService
     return nativeLinuxOpResult;
   }
 
-  public List<AclEntry> getfacl(@NotNull IRemoteDataClient client, @NotNull String pathStr)
+  /*
+   * getfacl
+   */
+  public List<AclEntry> getfacl(@NotNull IRemoteDataClient client, @NotNull String relativePathStr)
           throws TapisException, ServiceException {
     List<AclEntry> aclEntries = Collections.emptyList();
     if (!(client instanceof ISSHDataClient)) {
@@ -179,19 +295,6 @@ public class FileUtilsService
       throw new IllegalArgumentException(msg);
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
-    boolean isOwner = false;
-    if (client.getSystem().getOwner() != null) {
-      isOwner = client.getSystem().getOwner().equals(client.getOboUser());
-    }
-
-    // Get normalized path relative to system rootDir and protect against ../..
-    String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
-    if (!isOwner)
-    {
-      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-              relativePathStr, Permission.MODIFY);
-    }
-
     try {
       aclEntries = sshClient.runLinuxGetfacl(relativePathStr);
     } catch (IOException ex) {
@@ -203,9 +306,13 @@ public class FileUtilsService
 
     return aclEntries;
   }
-  public NativeLinuxOpResult setfacl(@NotNull IRemoteDataClient client, @NotNull String pathStr,
+
+  /*
+   * setfacl
+   */
+  public NativeLinuxOpResult setfacl(@NotNull IRemoteDataClient client, @NotNull String relativePathStr,
                                      NativeLinuxFaclOperation operation,
-                                     NativeLinuxFaclRecursion recursion, String aclEntries)
+                                     NativeLinuxFaclRecursion recursion, String aclString)
           throws TapisException, ServiceException {
     NativeLinuxOpResult nativeLinuxOpResult = NATIVE_LINUX_OP_RESULT_NOOP;
 
@@ -216,23 +323,10 @@ public class FileUtilsService
       throw new IllegalArgumentException(msg);
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
-    boolean isOwner = false;
-    if (client.getSystem().getOwner() != null) {
-      isOwner = client.getSystem().getOwner().equals(client.getOboUser());
-    }
-
-    // Get normalized path relative to system rootDir and protect against ../..
-    String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
-    if (!isOwner)
-    {
-      LibUtils.checkPermitted(permsService, client.getOboTenant(), client.getOboUser(), client.getSystemId(),
-              relativePathStr, Permission.MODIFY);
-    }
-
     try {
-      nativeLinuxOpResult = sshClient.runLinuxSetfacl(relativePathStr, operation, recursion, aclEntries);
+      nativeLinuxOpResult = sshClient.runLinuxSetfacl(relativePathStr, operation, recursion, aclString);
     } catch (IOException ex) {
-      String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "getfacl",
+      String msg = LibUtils.getMsg("FILES_UTILS_CLIENT_ERR", client.getOboTenant(), client.getOboUser(), "setfacl",
               client.getSystemId(), relativePathStr, ex.getMessage());
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
