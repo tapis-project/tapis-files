@@ -64,6 +64,7 @@ import java.util.zip.ZipInputStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
@@ -260,7 +261,12 @@ public class TestFileOpsService
       SshSessionPool.init();
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH);
-      cleanupAll(client, testSystemSSH);
+      try {
+        when(systemsCache.getSystem(client.getOboTenant(), testSystemSSH.getId(), client.getOboUser(), nullImpersonationId, sharedCtxGrantorNull)).thenReturn(testSystemSSH);
+        cleanupAll(client, testSystemSSH);
+      } finally {
+        reset(systemsCache);
+      }
       client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3);
       cleanupAll(client, testSystemS3);
     }
@@ -270,9 +276,15 @@ public class TestFileOpsService
     {
       when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
       IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemSSH);
-      cleanupAll(client, testSystemSSH);
+      try {
+        when(systemsCache.getSystem(devTenant, testSystemSSH.getId(), testUser, nullImpersonationId, sharedCtxGrantorNull)).thenReturn(testSystemSSH);
+        cleanupAll(client, testSystemSSH);
+      } finally {
+        reset(systemsCache);
+      }
       client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystemS3);
       cleanupAll(client, testSystemS3);
+      reset(systemsCache);
     }
 
   @Test(dataProvider = "testSystems")
@@ -574,6 +586,7 @@ public class TestFileOpsService
   {
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
+    when(systemsCache.getSystem(client.getOboTenant(), testSystemSSH.getId(), client.getOboUser(), nullImpersonationId, sharedCtxGrantorNull)).thenReturn(testSystemSSH);
     /*
         Create the following files and directories:
           /archive
@@ -610,8 +623,9 @@ public class TestFileOpsService
   @Test(dataProvider = "testSystemsNoS3", groups = {"broken"})
   public void testMoveDirToDir(TapisSystem testSystem) throws Exception
   {
-    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testUser, testSystem);
+    when(systemsCache.getSystem(client.getOboTenant(), testSystemSSH.getId(), client.getOboUser(), nullImpersonationId, sharedCtxGrantorNull)).thenReturn(testSystemSSH);
+    when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
     /*
         Create the following files and directories:
           /archive
@@ -829,14 +843,10 @@ public class TestFileOpsService
     }
 
   // Utility method to remove all files/objects given the client. Need to handle S3
-  void cleanupAll(IRemoteDataClient client, TapisSystem sys) throws ServiceException
-  {
-    if (SystemTypeEnum.S3.equals(sys.getSystemType()))
-    {
+  void cleanupAll(IRemoteDataClient client, TapisSystem sys) throws ServiceException {
+    if (SystemTypeEnum.S3.equals(sys.getSystemType())) {
       fileOpsService.delete(client, "");
-    }
-    else
-    {
+    } else {
       fileOpsService.delete(client, "/");
     }
   }
