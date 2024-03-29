@@ -12,10 +12,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 
 public class RandomByteInputStream extends InputStream {
-    /*
-    boolean completedSuccessfully = false;
-     */
-
     private final MessageDigest digest;
 
     private int bytesRead = 0;
@@ -23,9 +19,48 @@ public class RandomByteInputStream extends InputStream {
     private final int maxChunkSize;
     private final boolean alphaNumericOnly;
     private PipedOutputStream outputStream;
+    public static int DEFAULT_CHUNK_SIZE = 2048;
 
-    public RandomByteInputStream(int maxChunkSize, int bytesAvailable, boolean alphaNumericOnly) throws NoSuchAlgorithmException {
-        this.bytesAvailable = bytesAvailable;
+    public static enum SizeUnit {
+        BYTES,
+        KILOBYTES,
+        MEGABYTES;
+
+        private static int MULTIPLIER = 1024;
+
+        int inBytes(int units) {
+            int sizeInBytes = 0;
+
+            switch(this) {
+                case BYTES:
+                    sizeInBytes = units;
+                    break;
+
+                case KILOBYTES:
+                    sizeInBytes = units * MULTIPLIER;
+                    break;
+
+                case MEGABYTES:
+                    sizeInBytes = units * MULTIPLIER * MULTIPLIER;
+                    break;
+
+                default:
+                    throw new RuntimeException("Unknown size unit");
+            }
+
+            return sizeInBytes;
+        }
+    }
+
+    public RandomByteInputStream(int size, SizeUnit sizeUnit, boolean alphaNumericOnly) throws NoSuchAlgorithmException {
+        this.bytesAvailable = sizeUnit.inBytes(size);
+        this.alphaNumericOnly = alphaNumericOnly;
+        this.maxChunkSize = DEFAULT_CHUNK_SIZE;
+        this.digest = MessageDigest.getInstance("SHA-256");
+    }
+
+    public RandomByteInputStream(int maxChunkSize, int size, SizeUnit sizeUnit, boolean alphaNumericOnly) throws NoSuchAlgorithmException {
+        this.bytesAvailable = sizeUnit.inBytes(size);
         this.alphaNumericOnly = alphaNumericOnly;
         this.maxChunkSize = maxChunkSize;
         this.digest = MessageDigest.getInstance("SHA-256");

@@ -4,12 +4,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.test.RandomByteInputStream;
+import edu.utexas.tacc.tapis.files.test.RandomByteInputStream.SizeUnit;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
-import edu.utexas.tacc.tapis.shared.utils.TapisObjectMapper;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.NotImplementedException;
-import org.apache.commons.logging.LogFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -33,20 +32,20 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
     private static Logger log = LoggerFactory.getLogger(BaseDataClientTests.class);
     private Map<String, TapisSystem> testSystems;
     private final String configPath;
-
     private final String testTenant = "dev";
     private final String testUser = "testuser";
-    private final String testSystem = "testsystem";
     private final Path testRootPath = Path.of(UUID.randomUUID().toString());
+    private final String configSection;
 
     protected BaseDataClientTests(String configPath) {
         this.configPath = configPath;
+        this.configSection = this.getConfigSection();
     }
 
     @BeforeTest
     public void beforeMethod() throws Exception {
         SshSessionPool.init();
-        T dataClient = configureTestClient(testTenant, testUser, testSystem);
+        T dataClient = configureTestClient(testTenant, testUser, configSection);
         String testRootPathString = testRootPath.toString();
         try {
             dataClient.mkdir(testRootPathString);
@@ -57,7 +56,7 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
 
     @AfterTest
     public void afterMethod() throws Exception {
-        T dataClient = configureTestClient(testTenant, testUser, testSystem);
+        T dataClient = configureTestClient(testTenant, testUser, configSection);
         String testRootPathString = testRootPath.toString();
         try {
             dataClient.delete(testRootPathString);
@@ -73,7 +72,7 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
             Path dirNamePath = Path.of(UUID.randomUUID().toString());
             Path pathForMkDir = testRootPath.resolve(dirNamePath);
 
-            T dataClient = configureTestClient(testTenant, testUser, testSystem);
+            T dataClient = configureTestClient(testTenant, testUser, configSection);
             dataClient.mkdir(pathForMkDir.toString());
             List<FileInfo> fileInfos = dataClient.ls(testRootPath.toString());
             fileInfos = fileInfos.stream().filter(fileInfo -> {
@@ -99,7 +98,7 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
             Path dirNamePath = Path.of(dir1, dir2, dir3);
             Path pathForMkDir = Path.of(testRootPath.toString(), dirNamePath.toString());
 
-            T dataClient = configureTestClient(testTenant, testUser, testSystem);
+            T dataClient = configureTestClient(testTenant, testUser, configSection);
             dataClient.mkdir(pathForMkDir.toString());
             List<FileInfo> fileInfos = lsRecursive(dataClient, testRootPath.toString(), 5);
             fileInfos = fileInfos.stream().filter(fileInfo -> {
@@ -123,8 +122,8 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
         String fileName = UUID.randomUUID().toString();
         String pathString = testRootPath.resolve(fileName).toString();
 
-        T dataClient = configureTestClient(testTenant, testUser, testSystem);
-        RandomByteInputStream inputStream = new RandomByteInputStream(1500, 1500, true);
+        T dataClient = configureTestClient(testTenant, testUser, configSection);
+        RandomByteInputStream inputStream = new RandomByteInputStream(1500, SizeUnit.BYTES, true);
         dataClient.upload(testRootPath.resolve(fileName).toString(), inputStream);
         inputStream.close();
         String uploadHash = inputStream.getDigestString();
@@ -133,6 +132,8 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
         String downloadHash = TestUtils.getDigest(downloadStream);
         Assert.assertEquals(downloadHash, uploadHash);
     }
+
+    abstract protected String getConfigSection();
 
     public List<FileInfo> lsRecursive(IRemoteDataClient dataClient, String pathString, int maxRecursion)
             throws Exception {
@@ -158,9 +159,9 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
 
     protected T configureTestClient(String tenantName, String userName, String systemName,
                                  String impersonationId, String sharedCtxGrantor) throws Exception {
-        TapisSystem system = readSystem("ssh_password_auth");
+        TapisSystem system = readSystem(systemName);
         SystemsCache systemsCache = mock(SystemsCache.class);
-        when(systemsCache.getSystem(tenantName, systemName, userName, impersonationId, sharedCtxGrantor)).thenReturn(system);
+        when(systemsCache.getSystem(tenantName, system.getId(), userName, impersonationId, sharedCtxGrantor)).thenReturn(system);
         T dataClient = createDataClient(tenantName, userName, system, systemsCache, impersonationId, sharedCtxGrantor);
         return dataClient;
     }
@@ -185,9 +186,7 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
 
     protected Map<String, TapisSystem> readSystems() throws IOException {
         if (testSystems == null) {
-            testSystems = TapisObjectMapper.getMapper().readValue(this.getClass().getClassLoader().getResourceAsStream(configPath),
-                    new TypeReference<Map<String, TapisSystem>>() {
-                    });
+            testSystems = TestUtils.readSystems(configPath);
         }
         return testSystems;
     }

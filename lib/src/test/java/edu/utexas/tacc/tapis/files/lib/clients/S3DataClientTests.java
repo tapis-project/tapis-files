@@ -6,7 +6,7 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.testng.annotations.Test;
 
 public class S3DataClientTests extends BaseDataClientTests<S3DataClient> {
-    private static final String JSON_TEST_PATH="edu/utexas/tacc/tapis/files/lib/clients/S3DataClientTests.json";
+    private static final String JSON_TEST_PATH="edu/utexas/tacc/tapis/files/lib/clients/TestSystems.json";
 
     public S3DataClientTests() {
         super(S3DataClientTests.JSON_TEST_PATH);
@@ -16,6 +16,12 @@ public class S3DataClientTests extends BaseDataClientTests<S3DataClient> {
     public void testClass() throws Exception {
         System.out.println("Put some tests in this class to that are S3 specific");
     }
+
+    @Override
+    protected String getConfigSection() {
+        return "s3_system";
+    }
+
     @Override
     public S3DataClient createDataClient(String tenantName, String userName, TapisSystem system, SystemsCache systemsCache,
                                             String impersonationId, String sharedCtxGrantor) throws Exception {

@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 @Test
 public class SSHDataClientTests extends BaseDataClientTests<SSHDataClient> {
 
-    private static final String JSON_TEST_PATH="edu/utexas/tacc/tapis/files/lib/clients/SSHDataClientTests.json";
+    private static final String JSON_TEST_PATH="edu/utexas/tacc/tapis/files/lib/clients/TestSystems.json";
 
     public SSHDataClientTests() {
         super(SSHDataClientTests.JSON_TEST_PATH);
@@ -17,6 +17,11 @@ public class SSHDataClientTests extends BaseDataClientTests<SSHDataClient> {
     @Test
     public void testClass() throws Exception {
         System.out.println("Put some tests in this class to that are ssh specific");
+    }
+
+    @Override
+    protected String getConfigSection() {
+        return "ssh_system";
     }
 
     @Override

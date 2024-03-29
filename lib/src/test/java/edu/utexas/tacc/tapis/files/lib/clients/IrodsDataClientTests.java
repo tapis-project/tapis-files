@@ -8,7 +8,7 @@ import org.testng.annotations.Test;
 import java.io.FileOutputStream;
 
 public class IrodsDataClientTests extends BaseDataClientTests<IrodsDataClient> {
-    private static final String JSON_TEST_PATH="edu/utexas/tacc/tapis/files/lib/clients/IrodsDataClientTests.json";
+    private static final String JSON_TEST_PATH="edu/utexas/tacc/tapis/files/lib/clients/TestSystems.json";
 
     public IrodsDataClientTests() {
         super(IrodsDataClientTests.JSON_TEST_PATH);
@@ -18,6 +18,12 @@ public class IrodsDataClientTests extends BaseDataClientTests<IrodsDataClient> {
     public void testClass() throws Exception {
         System.out.println("Put some tests in this class to that are irods specific");
     }
+
+    @Override
+    protected String getConfigSection() {
+        return "irods_system";
+    }
+
     @Override
     public IrodsDataClient createDataClient(String tenantName, String userName, TapisSystem system, SystemsCache systemsCache,
                                             String impersonationId, String sharedCtxGrantor) throws Exception {

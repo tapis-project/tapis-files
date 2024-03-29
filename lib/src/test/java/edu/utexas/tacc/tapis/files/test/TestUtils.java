@@ -1,13 +1,30 @@
 package edu.utexas.tacc.tapis.files.test;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import edu.utexas.tacc.tapis.shared.utils.TapisObjectMapper;
+import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class TestUtils {
     private static int CHUNK_MAX = 10240;
+    public static TapisSystem readSystem(String configPath, String systemName) throws IOException {
+        Map<String, TapisSystem> systemMap = readSystems(configPath);
+        return systemMap.get(systemName);
+    }
+
+    public static Map<String, TapisSystem> readSystems(String configPath) throws IOException {
+        return TapisObjectMapper.getMapper().readValue(TestUtils.class.getClassLoader().getResourceAsStream(configPath),
+                    new TypeReference<Map<String, TapisSystem>>() {
+                    });
+    }
+
     public static String hashAsHex(byte[] hashBytes) {
         StringBuilder hexString = new StringBuilder(2 * hashBytes.length);
         for (int i = 0; i < hashBytes.length; i++) {
