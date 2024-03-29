@@ -2,7 +2,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 
 import edu.utexas.tacc.tapis.files.api.BaseResourceConfig;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
-import edu.utexas.tacc.tapis.files.integration.transfers.TestUtils;
+import edu.utexas.tacc.tapis.files.integration.transfers.IntegrationTestUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -242,7 +242,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   public void setUp() throws Exception
   {
     super.setUp();
-    TestUtils.clearSshSessionPoolInstance();
+    IntegrationTestUtils.clearSshSessionPoolInstance();
     SshSessionPool.init();
     when(permsService.isPermitted(any(), any(), any(), any(), any())).thenReturn(true);
   }

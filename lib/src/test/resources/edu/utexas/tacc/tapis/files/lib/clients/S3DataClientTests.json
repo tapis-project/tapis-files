@@ -1,0 +1,17 @@
+{
+  "ssh_password_auth": {
+    "tenant": "dev",
+    "id": "testsystem",
+    "systemType": "S3",
+    "authnCredential": {
+      "accessKey": "user",
+      "accessSecret": "password"
+    },
+    "owner": "testuser1",
+    "host": "http://localhost",
+    "port": 9000,
+    "bucketName": "test",
+    "rootDir": "",
+    "defaultAuthnMethod": "ACCESS_KEY"
+  }
+}

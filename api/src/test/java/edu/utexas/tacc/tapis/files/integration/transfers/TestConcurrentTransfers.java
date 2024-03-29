@@ -30,10 +30,10 @@ public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFi
 
         @Override
         public void run() {
-            TestUtils.TransferDefinition transferDefinition = new TestUtils.TransferDefinition();
+            IntegrationTestUtils.TransferDefinition transferDefinition = new IntegrationTestUtils.TransferDefinition();
             transferDefinition.setSourcePath(transfersConfig.getTapisSourcePath(filename));
             transferDefinition.setDestinationPath(transfersConfig.getTapisDestinationPath(filename));
-            JsonObject tapisResult = TestUtils.instance.transferFiles(getBaseFilesUrl(), getToken(), "integrationTestTransfer", transferDefinition);
+            JsonObject tapisResult = IntegrationTestUtils.instance.transferFiles(getBaseFilesUrl(), getToken(), "integrationTestTransfer", transferDefinition);
             transferId = getIdFromTransferResult(tapisResult);
             log.info("Submitted transfer request.  sourceId: " +
                     transfersConfig.getSourceSystem() + "  sourcePath: " + transfersConfig.getSourcePath() + " " +
@@ -69,7 +69,7 @@ public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFi
         List<TransferThread> transferThreads = new ArrayList<>();
 
         for(TransfersConfig transfersConfig : transfersConfigs) {
-            List<FileInfo> filesToTransfer = TestUtils.instance.getListing(getBaseFilesUrl(), getToken(), transfersConfig.getSourceSystem(), transfersConfig.getSourcePath());
+            List<FileInfo> filesToTransfer = IntegrationTestUtils.instance.getListing(getBaseFilesUrl(), getToken(), transfersConfig.getSourceSystem(), transfersConfig.getSourcePath());
             for(FileInfo fileInfo : filesToTransfer) {
                 TransferThread t = new TransferThread(transfersConfig, Path.of(fileInfo.getPath()).getFileName());
                 t.start();
@@ -87,12 +87,12 @@ public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFi
             String transferId = transferThread.getTransferId();
             Assert.assertTrue(StringUtils.isNotBlank(transferId));
             transferTasks.add(transferId);
-            TestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, transfersConfig.getTimeout());
+            IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, transfersConfig.getTimeout());
             transferTasks.clear();
 
             Path fileName = transferThread.getFilename();
             // download each file from the destination, and verify that is identical to the source.
-            TestUtils.instance.downloadAndVerify(getBaseFilesUrl(), getToken(),
+            IntegrationTestUtils.instance.downloadAndVerify(getBaseFilesUrl(), getToken(),
                     transfersConfig.getDestinationSystem(), Path.of(transfersConfig.getDestinationPath().toString(), fileName.toString()), getTestFiles().get(fileName));
 
         }

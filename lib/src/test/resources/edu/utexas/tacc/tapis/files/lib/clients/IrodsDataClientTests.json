@@ -1,0 +1,17 @@
+{
+  "ssh_password_auth": {
+    "tenant": "dev",
+    "id": "testsystem",
+    "systemType": "IRODS",
+    "authnCredential": {
+      "loginUser": "dev",
+      "password": "dev"
+    },
+    "owner": "testuser1",
+    "host": "localhost",
+    "port": 1247,
+    "rootDir": "//tempZone/home/dev/",
+    "defaultAuthnMethod": "PASSWORD",
+    "effectiveUserId": "dev"
+  }
+}

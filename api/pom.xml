@@ -23,6 +23,14 @@
         </dependency>
         <dependency>
             <groupId>edu.utexas.tacc.tapis</groupId>
+            <artifactId>tapis-files-lib</artifactId>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <version>${project.parent.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>edu.utexas.tacc.tapis</groupId>
             <artifactId>tapis-files-migrations</artifactId>
             <version>${project.parent.version}</version>
         </dependency>

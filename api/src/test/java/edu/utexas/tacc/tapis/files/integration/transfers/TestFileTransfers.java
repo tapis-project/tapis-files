@@ -28,15 +28,15 @@ public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTran
     public void testTransferFiles() throws Exception {
         List<TransfersConfig> transfersConfigs = getTransfersConfig();
         for(TransfersConfig transfersConfig : transfersConfigs) {
-            List<FileInfo> filesToTransfer = TestUtils.instance.getListing(getBaseFilesUrl(), getToken(), transfersConfig.getSourceSystem(), transfersConfig.getSourcePath());
+            List<FileInfo> filesToTransfer = IntegrationTestUtils.instance.getListing(getBaseFilesUrl(), getToken(), transfersConfig.getSourceSystem(), transfersConfig.getSourcePath());
             List<String> transferTasks = null;
             transferTasks = doIndividualTransfer(transfersConfig, filesToTransfer);
-            TestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, transfersConfig.getTimeout());
+            IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, transfersConfig.getTimeout());
             transferTasks.clear();
             for(FileInfo fileInfo : filesToTransfer) {
                 Path fileName = Path.of(fileInfo.getPath()).getFileName();
                 // download each file from the destination, and verify that is identical to the source.
-                TestUtils.instance.downloadAndVerify(getBaseFilesUrl(), getToken(),
+                IntegrationTestUtils.instance.downloadAndVerify(getBaseFilesUrl(), getToken(),
                         transfersConfig.getDestinationSystem(), Path.of(transfersConfig.getDestinationPath().toString(), fileName.toString()), getTestFiles().get(fileName));
             }
 
@@ -48,11 +48,11 @@ public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTran
         // for each transfer, iterate through all test files
         for(FileInfo fileInfo : filesToTransfer) {
             // transfer each file from source to destination
-            TestUtils.TransferDefinition transferDefinition = new TestUtils.TransferDefinition();
+            IntegrationTestUtils.TransferDefinition transferDefinition = new IntegrationTestUtils.TransferDefinition();
             Path fileName = Path.of(fileInfo.getPath()).getFileName();
             transferDefinition.setSourcePath(transfersConfig.getTapisSourcePath(fileName));
             transferDefinition.setDestinationPath(transfersConfig.getTapisDestinationPath(fileName));
-            JsonObject tapisResult = TestUtils.instance.transferFiles(getBaseFilesUrl(), getToken(), "integrationTestTransfer", transferDefinition);
+            JsonObject tapisResult = IntegrationTestUtils.instance.transferFiles(getBaseFilesUrl(), getToken(), "integrationTestTransfer", transferDefinition);
             transferTasks.add(getIdFromTransferResult(tapisResult));
         }
         return transferTasks;
