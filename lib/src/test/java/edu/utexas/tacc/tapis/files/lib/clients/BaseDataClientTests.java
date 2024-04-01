@@ -12,8 +12,8 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -42,7 +42,7 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
         this.configSection = this.getConfigSection();
     }
 
-    @BeforeTest
+    @BeforeMethod
     public void beforeMethod() throws Exception {
         SshSessionPool.init();
         T dataClient = configureTestClient(testTenant, testUser, configSection);
@@ -54,7 +54,7 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
         }
     }
 
-    @AfterTest
+    @AfterMethod
     public void afterMethod() throws Exception {
         T dataClient = configureTestClient(testTenant, testUser, configSection);
         String testRootPathString = testRootPath.toString();

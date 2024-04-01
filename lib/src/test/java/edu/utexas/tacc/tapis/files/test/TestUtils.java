@@ -6,7 +6,10 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.utils.TapisObjectMapper;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
+import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.IOUtils;
@@ -102,6 +105,15 @@ public class TestUtils {
         return hashAsHex(digest.digest());
     }
 
+    public static FilePermsService permsMock_AllowAllForSystem(String tenant, String user, String systemId) throws ServiceException {
+        FilePermsService permsService = Mockito.mock(FilePermsService.class);
+
+        // any path, modify permission
+        when(permsService.isPermitted(eq(tenant), eq(user), eq(systemId), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(true);
+        when(permsService.isPermitted(eq(tenant), eq(user), eq(systemId), any(), eq(FileInfo.Permission.READ))).thenReturn(true);
+        return permsService;
+    }
+
     public static FilePermsService permsMock_AllowReadForSystem(String tenant, String user, String systemId) throws ServiceException {
         FilePermsService permsService = Mockito.mock(FilePermsService.class);
 
@@ -142,6 +154,13 @@ public class TestUtils {
         // null impersonationId and sharedCtxGrantor
         when(sytemsCacheNoAuth.getSystem(tenant, tapisSystem.getId(), user)).thenReturn(tapisSystem);
         return sytemsCacheNoAuth;
+    }
+
+    public static ResourceRequestUser getRRUser(String tenant, String userName) {
+        ResourceRequestUser rrUser = new ResourceRequestUser(new AuthenticatedUser(userName, tenant, TapisThreadContext.AccountType.user.name(),
+                null, userName, tenant, null, null, null));
+        FilePermsService.setSiteAdminTenantId("admin");
+        return rrUser;
     }
 
 }

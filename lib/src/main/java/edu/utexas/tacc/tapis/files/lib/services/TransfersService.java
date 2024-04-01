@@ -691,8 +691,6 @@ public class TransfersService
     }
   }
 
-
-
   private void closeChannel(Channel channel) throws ServiceException {
     try {
       if ((channel != null) && (channel.isOpen())) {

@@ -22,8 +22,8 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -57,8 +57,8 @@ public class FileOpsServiceTests {
     private static String devTenant = "dev";
     private static String testuser = "testuser";
 
-    @BeforeSuite
-    public void beforeSuite() {
+    @BeforeClass
+    public void beforeClass() {
         SshSessionPool.init();
     }
 
@@ -311,7 +311,7 @@ public class FileOpsServiceTests {
 
         List<FileInfo> listing = fileOpsService.ls(client, "/test.txt", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_PATTERN);
         Assert.assertEquals(listing.get(0).getSize(), 100*1024);
-        InputStream out = fileOpsService.getAllBytes(getRRUser(testuser), testSystem,"test.txt");
+        InputStream out = fileOpsService.getAllBytes(TestUtils.getRRUser(devTenant, testuser), testSystem,"test.txt");
         byte[] output = IOUtils.toByteArray(out);
         Assert.assertEquals(output.length, 100 * 1024);
     }
@@ -674,7 +674,7 @@ public class FileOpsServiceTests {
 
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
-        InputStream result = fileOpsService.getByteRange(getRRUser(testuser), testSystem,"test.txt", 0 , 1000);
+        InputStream result = fileOpsService.getByteRange(TestUtils.getRRUser(devTenant, testuser), testSystem,"test.txt", 0 , 1000);
         Assert.assertEquals(result.readAllBytes().length, 1000);
     }
 
@@ -695,7 +695,7 @@ public class FileOpsServiceTests {
 
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
-        StreamingOutput streamingOutput = fileOpsService.getFullStream(getRRUser(testuser), testSystem.getId(),"test.txt", null, null);
+        StreamingOutput streamingOutput = fileOpsService.getFullStream(TestUtils.getRRUser(devTenant, testuser), testSystem.getId(),"test.txt", null, null);
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
         streamingOutput.write(outStream);
         Assert.assertEquals(outStream.size(), 1000*1024);
@@ -723,7 +723,7 @@ public class FileOpsServiceTests {
 
         File file = File.createTempFile("test", ".zip");
         OutputStream outputStream = new FileOutputStream(file);
-        fileOpsService.getZip(getRRUser(testuser), outputStream, testSystem, "/a");
+        fileOpsService.getZip(TestUtils.getRRUser(devTenant, testuser), outputStream, testSystem, "/a");
 
         try (FileInputStream fis = new FileInputStream(file); ZipInputStream zis = new ZipInputStream(fis))
         {
@@ -772,13 +772,13 @@ public class FileOpsServiceTests {
         client.delete("/");
         fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
         // MODIFY should imply read so ls should work
-        fileOpsService.ls(getRRUser(testuser), testSystem.getId(), "test.txt", MAX_LISTING_SIZE, 0, null, null, IRemoteDataClient.NO_PATTERN);
+        fileOpsService.ls(TestUtils.getRRUser(devTenant, testuser), testSystem.getId(), "test.txt", MAX_LISTING_SIZE, 0, null, null, IRemoteDataClient.NO_PATTERN);
 
         // Without MODIFY or READ should fail
         FilePermsService permsServiceMock = locator.getService(FilePermsService.class);
         Mockito.reset(permsServiceMock);
         when(permsServiceMock.isPermitted(any(), any(), any(), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(false);
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(getRRUser(testuser), testSystem.getId(), "test.txt", MAX_LISTING_SIZE, 0, null, null, IRemoteDataClient.NO_PATTERN); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.ls(TestUtils.getRRUser(devTenant, testuser), testSystem.getId(), "test.txt", MAX_LISTING_SIZE, 0, null, null, IRemoteDataClient.NO_PATTERN); });
     }
 
     // NoAuthz tests for mkdir, move, copy and delete
@@ -805,12 +805,12 @@ public class FileOpsServiceTests {
         // Perform the tests
         FilePermsService permsServiceMock = locator.getService(FilePermsService.class);
         when(permsServiceMock.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(getRRUser(testuser), MOVE, testSystem.getId(), "/1.txt","/1new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(getRRUser(testuser), MOVE, testSystem.getId(), "/1.txt","/a/1new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(getRRUser(testuser), MOVE, testSystem.getId(), "/a/2.txt","/b/2new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(getRRUser(testuser), MOVE, testSystem.getId(), "/1.txt","/1new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(getRRUser(testuser), MOVE, testSystem.getId(), "/1.txt","/a/1new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(getRRUser(testuser), MOVE, testSystem.getId(),"/a/2.txt","/b/2new.txt"); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/1new.txt"); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/a/1new.txt"); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/a/2.txt","/b/2new.txt"); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/1new.txt"); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/a/1new.txt"); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(),"/a/2.txt","/b/2new.txt"); });
         Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/1.txt"); });
         Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a/1.txt"); });
         Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a"); });
@@ -875,13 +875,6 @@ public class FileOpsServiceTests {
         List<FileInfo> listing = fileOpsService.ls(client,"/", MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_PATTERN);
         // S3 doesn't really do folders?
         Assert.assertEquals(listing.size(), 1);
-    }
-
-    private ResourceRequestUser getRRUser(String userName) {
-        ResourceRequestUser rrUser = new ResourceRequestUser(new AuthenticatedUser(userName, devTenant, TapisThreadContext.AccountType.user.name(),
-                null, userName, devTenant, null, null, null));
-        FilePermsService.setSiteAdminTenantId("admin");
-        return rrUser;
     }
 
     // Utility method to remove all files/objects given the client. Need to handle S3

@@ -1,0 +1,18 @@
+
+{
+  "testsystem_ssh": {
+    "tenant": "dev",
+    "id": "testsystem",
+    "systemType": "LINUX",
+    "authnCredential": {
+      "accessKey": "testuser",
+      "password": "password"
+    },
+    "host": "localhost",
+    "port": 2222,
+    "rootDir": "/data/home/testuser/",
+    "defaultAuthnMethod": "PASSWORD",
+    "owner": "testuser1",
+    "effectiveUserId": "testuser"
+  }
+}

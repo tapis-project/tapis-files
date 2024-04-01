@@ -87,9 +87,13 @@ public class LocatorBuilder {
                 bindAsContract(PostItsDAO.class).in(Singleton.class);
                 bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
                 bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
-
             }
+
         });
+
+        // for some reaons things don't get setup right if other stuff gets requested from the locator
+        // before this does
+        locator.getService(ServiceContext.class);
 
         return locator;
     }
