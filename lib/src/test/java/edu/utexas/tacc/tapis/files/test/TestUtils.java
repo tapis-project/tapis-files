@@ -7,16 +7,17 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.shared.utils.TapisObjectMapper;
+import edu.utexas.tacc.tapis.systems.client.gen.model.Credential;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.mockito.Mock;
+import org.apache.commons.io.IOUtils;
 import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -25,15 +26,46 @@ import static org.mockito.Mockito.when;
 
 public class TestUtils {
     private static int CHUNK_MAX = 10240;
+    private static final String SECRET_FILE_PREFIX = "secret-file:";
+
     public static TapisSystem readSystem(String configPath, String systemName) throws IOException {
         Map<String, TapisSystem> systemMap = readSystems(configPath);
         return systemMap.get(systemName);
     }
 
     public static Map<String, TapisSystem> readSystems(String configPath) throws IOException {
-        return TapisObjectMapper.getMapper().readValue(TestUtils.class.getClassLoader().getResourceAsStream(configPath),
+        Map<String, TapisSystem> systemMap = TapisObjectMapper.getMapper().readValue(TestUtils.class.getClassLoader().getResourceAsStream(configPath),
                     new TypeReference<Map<String, TapisSystem>>() {
                     });
+        for(String key : systemMap.keySet()) {
+            TapisSystem system = systemMap.get(key);
+            Credential credential = system.getAuthnCredential();
+            credential.setLoginUser(replaceSecret(credential, credential.getLoginUser()));
+            credential.setPassword(replaceSecret(credential, credential.getPassword()));
+
+            credential.setPublicKey(replaceSecret(credential, credential.getPublicKey()));
+            credential.setPrivateKey(replaceSecret(credential, credential.getPrivateKey()));
+
+            credential.setAccessKey(replaceSecret(credential, credential.getAccessKey()));
+            credential.setAccessSecret(replaceSecret(credential, credential.getAccessSecret()));
+
+            credential.setAccessToken(replaceSecret(credential, credential.getAccessToken()));
+            credential.setCertificate(replaceSecret(credential, credential.getCertificate()));
+            credential.setRefreshToken(replaceSecret(credential, credential.getRefreshToken()));
+        }
+
+        return systemMap;
+    }
+
+    private static String replaceSecret(Credential credential, String secret) throws IOException {
+        String expandedSecret = secret;
+
+        if((secret != null) && (secret.startsWith(SECRET_FILE_PREFIX))) {
+            String filename = secret.substring(SECRET_FILE_PREFIX.length());
+            expandedSecret = IOUtils.toString(TestUtils.class.getResourceAsStream(filename), StandardCharsets.UTF_8);
+        }
+
+        return expandedSecret;
     }
 
     public static String hashAsHex(byte[] hashBytes) {

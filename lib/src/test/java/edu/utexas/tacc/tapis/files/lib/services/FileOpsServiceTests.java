@@ -52,7 +52,7 @@ import static org.mockito.Mockito.when;
 
 @Test
 public class FileOpsServiceTests {
-    private static final Logger log  = LoggerFactory.getLogger(TestFileOpsService.class);
+    private static final Logger log  = LoggerFactory.getLogger(FileOpsServiceTests.class);
     private static final String JSON_TEST_PATH="edu/utexas/tacc/tapis/files/lib/clients/TestSystems.json";
     private static String devTenant = "dev";
     private static String testuser = "testuser";

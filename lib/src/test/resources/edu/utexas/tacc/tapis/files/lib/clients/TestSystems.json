@@ -42,5 +42,19 @@
     "rootDir": "/data/home/testuser/",
     "defaultAuthnMethod": "PASSWORD",
     "effectiveUserId": "testuser"
+  },
+  "ssh_system_pki": {
+    "tenant": "dev",
+    "id": "testsystem",
+    "systemType": "LINUX",
+    "authnCredential": {
+      "publicKey": "secret-file:/test-machine.pub",
+      "privateKey": "secret-file:/test-machine"
+    },
+    "host": "localhost",
+    "port": 2222,
+    "rootDir": "/data/home/testuser/",
+    "defaultAuthnMethod": "PKI_KEYS",
+    "effectiveUserId": "testuser"
   }
 }
