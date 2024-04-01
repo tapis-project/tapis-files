@@ -1,8 +1,15 @@
 package edu.utexas.tacc.tapis.files.test;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.shared.utils.TapisObjectMapper;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -11,6 +18,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 public class TestUtils {
     private static int CHUNK_MAX = 10240;
@@ -57,6 +68,48 @@ public class TestUtils {
         } while (bytesRead > 0);
 
         return hashAsHex(digest.digest());
+    }
+
+    public static FilePermsService permsMock_AllowReadForSystem(String tenant, String user, String systemId) throws ServiceException {
+        FilePermsService permsService = Mockito.mock(FilePermsService.class);
+
+        // any path, read permission
+        when(permsService.isPermitted(eq(tenant), eq(user), eq(systemId), any(), eq(FileInfo.Permission.READ))).thenReturn(true);
+        return permsService;
+    }
+
+    public static FilePermsService permsMock_AllowModifyForSystem(String tenant, String user, String systemId) throws ServiceException {
+        FilePermsService permsService = Mockito.mock(FilePermsService.class);
+
+        // any path, modify permission
+        when(permsService.isPermitted(eq(tenant), eq(user), eq(systemId), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(true);
+        return permsService;
+    }
+
+    public static FilePermsService permsMock_AllowModifyWithNoReadForSystem(String tenant, String user, String systemId) throws ServiceException {
+        FilePermsService permsService = Mockito.mock(FilePermsService.class);
+
+        // any path, modify permission, but no read
+        when(permsService.isPermitted(eq(tenant), eq(user), eq(systemId), any(), eq(FileInfo.Permission.MODIFY))).thenReturn(true);
+        when(permsService.isPermitted(eq(tenant), eq(user), eq(systemId), any(), eq(FileInfo.Permission.READ))).thenReturn(false);
+        return permsService;
+    }
+
+    public static SystemsCache systemCacheMock_GetSystem(String tenant, String user, TapisSystem tapisSystem) throws ServiceException {
+        SystemsCache sytemsCache = Mockito.mock(SystemsCache.class);
+
+        // null impersonationId and sharedCtxGrantor
+        when(sytemsCache.getSystem(tenant, tapisSystem.getId(), user, null, null)).thenReturn(tapisSystem);
+        when(sytemsCache.getSystem(tenant, tapisSystem.getId(), user)).thenReturn(tapisSystem);
+        return sytemsCache;
+    }
+
+    public static SystemsCacheNoAuth systemCacheNoAuthMock_GetSystem(String tenant, String user, TapisSystem tapisSystem) throws ServiceException {
+        SystemsCacheNoAuth sytemsCacheNoAuth = Mockito.mock(SystemsCacheNoAuth.class);
+
+        // null impersonationId and sharedCtxGrantor
+        when(sytemsCacheNoAuth.getSystem(tenant, tapisSystem.getId(), user)).thenReturn(tapisSystem);
+        return sytemsCacheNoAuth;
     }
 
 }
