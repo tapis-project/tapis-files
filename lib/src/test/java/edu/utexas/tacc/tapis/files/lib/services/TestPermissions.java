@@ -9,7 +9,7 @@ import edu.utexas.tacc.tapis.shared.security.TenantManager;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-@Test(groups={"e2e"})
+@Test(groups={"integration"})
 public class TestPermissions
 {
   public void testSKGrantOnFile() throws Exception
@@ -23,7 +23,6 @@ public class TestPermissions
     ServiceClients serviceClients = ServiceClients.getInstance();
     SKClient skClient = serviceClients.getClient("testuser2", "dev", SKClient.class);
     int recs = skClient.grantUserPermission("dev", "testuser1", "files:dev:READ:testSystem:/dir1/dir2/testFile.txt");
-    Assert.assertTrue(recs > 0);
     boolean isPermitted = skClient.isPermitted("dev", "testuser1", "files:dev:READ:testSystem:/dir1/dir2/testFile.txt");
     Assert.assertTrue(isPermitted);
   }

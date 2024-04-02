@@ -6,6 +6,7 @@ import org.testng.annotations.Test;
 
 import static org.testng.Assert.*;
 
+@Test(groups = "integration")
 public class S3URLParserTest {
 
     @Test
