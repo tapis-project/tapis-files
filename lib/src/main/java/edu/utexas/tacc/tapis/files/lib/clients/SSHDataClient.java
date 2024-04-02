@@ -873,7 +873,7 @@ public class SSHDataClient implements ISSHDataClient
   @Override
   public NativeLinuxOpResult runLinuxSetfacl(String path, FileUtilsService.NativeLinuxFaclOperation operation,
                                              FileUtilsService.NativeLinuxFaclRecursion recursion,
-                                             String aclEntries) throws IOException, TapisException {
+                                             String aclString) throws IOException, TapisException {
     String opName = "setfacl";
 
     // Path should have already been normalized and checked but for safety and security do it
@@ -899,10 +899,10 @@ public class SSHDataClient implements ISSHDataClient
 
     switch (operation) {
       // add ACLs
-      case ADD -> sb.append("-m ").append(safelySingleQuoteString(aclEntries)).append(" ");
+      case ADD -> sb.append("-m ").append(safelySingleQuoteString(aclString)).append(" ");
 
       // remove ACLs
-      case REMOVE -> sb.append("-x ").append(safelySingleQuoteString(aclEntries)).append(" ");
+      case REMOVE -> sb.append("-x ").append(safelySingleQuoteString(aclString)).append(" ");
 
       // remove all ACLs
       case REMOVE_ALL -> sb.append("-b ");
@@ -1033,14 +1033,16 @@ public class SSHDataClient implements ISSHDataClient
 
     if (ex instanceof SftpException) {
       SftpException sftpException = (SftpException) ex;
+      // Use SftpException.toString() so we have a more descriptive message for the end user.
+      String errMsg = ex.toString();
       if (sftpException.getStatus() == SftpConstants.SSH_FX_PERMISSION_DENIED) {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, ex.getMessage());
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_PERM_DENIED", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, errMsg);
         throw new ForbiddenException(msg, ex);
       } else if (sftpException.getStatus() == SftpConstants.SSH_FX_NO_SUCH_FILE) {
         String msg = LibUtils.getMsg("FILES_CLIENT_SSH_NOT_FOUND", oboTenant, oboUser, systemId, effectiveUserId, host, rootDir, path);
         throw new NotFoundException(msg, ex);
       } else {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, ex.getMessage());
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, operation, systemId, effectiveUserId, host, path, errMsg);
         throw new IOException(msg, ex);
       }
     } else if ((ex.getMessage() != null) && (ex.getMessage().contains("SSH_POOL_MISSING_CREDENTIALS"))) {

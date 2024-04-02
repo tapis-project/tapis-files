@@ -346,4 +346,8 @@ public class  TransfersApiResource
     throw new ForbiddenException(ApiUtils.getMsg("FAPI_TASK_UNAUTH", oboTenant, oboUser, task.getTenantId(),
                                                  task.getUsername(), task.getUuid(), opName));
   }
+  @PreDestroy
+  public void cleanUp() throws IOException {
+    transfersService.cleanup();
+  }
 }

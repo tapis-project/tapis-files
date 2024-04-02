@@ -1,8 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import javax.inject.Inject;
 import javax.validation.Valid;
@@ -14,30 +11,28 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
-
-import edu.utexas.tacc.tapis.files.api.models.NativeLinuxFaclRequest;
-import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import org.glassfish.grizzly.http.server.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
+import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.api.utils.ApiUtils;
+import edu.utexas.tacc.tapis.files.api.models.NativeLinuxFaclRequest;
 import edu.utexas.tacc.tapis.files.api.models.NativeLinuxOpRequest;
-import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.models.FileStatInfo;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
-import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
-import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 
 /*
  * JAX-RS REST resource for Tapis file native linux operations (stat, chmod, chown, chgrp)
@@ -47,16 +42,26 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
  * Another option would be to have systemType as a path parameter and rename this class to UtilsApiResource.
  */
 @Path("/v3/files/utils/linux")
-public class UtilsLinuxApiResource extends BaseFileOpsResource
+public class UtilsLinuxApiResource
 {
   private static final Logger log = LoggerFactory.getLogger(UtilsLinuxApiResource.class);
   private final String className = getClass().getSimpleName();
 
+  // Always return a nicely formatted response
+  private static final boolean PRETTY = true;
+
+  // ************************************************************************
+  // *********************** Fields *****************************************
+  // ************************************************************************
   @Context
   private Request _request;
 
   @Inject
   FileUtilsService fileUtilsService;
+  @Inject
+  SystemsCache systemsCache;
+  @Inject
+  SystemsCacheNoAuth systemsCacheNoAuth;
 
   @GET
   @Path("/{systemId}/{path:(.*+)}") // Path is optional here, have to do this regex madness.
@@ -67,25 +72,27 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
                               @Context SecurityContext securityContext)
   {
     String opName = "getStatInfo";
-    // Create a user that collects together tenant, user and request information needed by the service call
+    // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
-    Instant start = Instant.now();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 
-    ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-            "op="+opName, "path="+path);
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),
+                          "systemId="+systemId,"path="+path,"followLinks="+followLinks);
 
-    FileStatInfo fileStatInfo;
-    try {
-      fileStatInfo = fileUtilsService.getStatInfo(rUser, systemsCache, systemsCacheNoAuth, systemId, path, followLinks);
-    } catch (ServiceException e) {
-      String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, opName, systemId, path, e.getMessage());
-      log.error(msg, e);
-      throw new WebApplicationException(msg, e);
-    }
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (ApiExceptionMapper).
+    FileStatInfo fileStatInfo = fileUtilsService.getStatInfo(rUser, systemsCache, systemsCacheNoAuth, systemId, path, followLinks);
 
-    String msg = LibUtils.getMsgAuthR("FILES_DURATION", rUser, opName, systemId, Duration.between(start, Instant.now()).toMillis());
-    log.debug(msg);
-    msg = LibUtils.getMsgAuthR("FILES_DURATION", rUser, opName, systemId, Duration.between(start, Instant.now()).toMillis());
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
     TapisResponse<FileStatInfo> resp = TapisResponse.createSuccessResponse(msg, fileStatInfo);
     return Response.ok(resp).build();
   }
@@ -101,32 +108,30 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
                                    @Context SecurityContext securityContext)
   {
     String opName = "runLinuxNativeOp";
+    FileUtilsService.NativeLinuxOperation linuxOp = request.getOperation();
+    String linuxOpArg = request.getArgument();
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 
+    // Trace this request.
     ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-            "op="+request.getOperation(), "argument="+request.getArgument(), "path="+path, "recursive="+recursive);
+                        "linuxOp="+linuxOp,"argument="+linuxOpArg,"path="+path,"recursive="+recursive);
 
-    String oboUser = rUser.getOboUserId();
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (ApiExceptionMapper).
+    NativeLinuxOpResult opResult = fileUtilsService.runLinuxOp(rUser, systemsCache, systemsCacheNoAuth, systemId, path,
+                                                               linuxOp, linuxOpArg, recursive);
 
-    NativeLinuxOpResult nativeLinuxOpResult;
-    try
-    {
-      IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
-      // Make the service call
-      nativeLinuxOpResult = fileUtilsService.linuxOp(client, path, request.getOperation(), request.getArgument(), recursive);
-    }
-    catch (TapisException | ServiceException | IOException e)
-    {
-      String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, opName, systemId, path, e.getMessage());
-      log.error(msg, e);
-      throw new WebApplicationException(msg, e);
-    }
-
-    String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, request.getOperation().name(), systemId, path);
-    TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, nativeLinuxOpResult);
+    String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, linuxOp.name(), systemId, path);
+    TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, opResult);
     return Response.ok(resp).build();
   }
 
@@ -137,33 +142,28 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
                                    @PathParam("path") String path,
                                    @Context SecurityContext securityContext)
   {
-    String opName = "getFacl";
+    String opName = "runLinuxGetfacl";
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
-    String oboUser = rUser.getOboUserId();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 
-    ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
-            "systemId="+systemId, "path="+path);
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
+                          "systemId="+systemId, "path="+path);
 
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (ApiExceptionMapper).
+    List<AclEntry> aclEntries = fileUtilsService.runGetfacl(rUser, systemsCache, systemsCacheNoAuth, systemId, path);
 
-    List<AclEntry> aclEntries;
-    try
-    {
-      IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
-
-      // Make the service call
-      aclEntries = fileUtilsService.getfacl(client, path);
-    }
-    catch (TapisException | ServiceException | IOException e)
-    {
-      String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, "getfacl", systemId, path, e.getMessage());
-      log.error(msg, e);
-      throw new WebApplicationException(msg, e);
-    }
-
-    String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, "getfacl", systemId, path);
+    String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, opName, systemId, path);
     TapisResponse<List<AclEntry>> resp = TapisResponse.createSuccessResponse(msg, aclEntries);
     return Response.ok(resp).build();
   }
@@ -177,37 +177,33 @@ public class UtilsLinuxApiResource extends BaseFileOpsResource
                                   @Valid NativeLinuxFaclRequest request,
                                   @Context SecurityContext securityContext)
   {
-    String opName = "setFacl";
+    String opName = "runLinuxSetfacl";
+    FileUtilsService.NativeLinuxFaclOperation faclOp = request.getOperation();
+    FileUtilsService.NativeLinuxFaclRecursion recursionMethod = request.getRecursionMethod();
+    var aclString = request.getAclString();
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
-    String oboUser = rUser.getOboUserId();
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
 
-    ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
-            "systemId="+systemId, "path="+path, "op="+request.getOperation(),
-            "aclString="+request.getAclString(), "method="+request.getRecursionMethod());
+    // Trace this request.
+    if (log.isTraceEnabled())
+      ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,
+                          "path="+path, "faclOp="+faclOp, "aclString="+aclString, "recursionMethod="+recursionMethod);
 
-    // Make sure the Tapis System exists and is enabled
-    TapisSystem system = LibUtils.getSystemIfEnabled(rUser, systemsCache, systemId);
+    // ---------------------------- Make service call -------------------------------
+    // Note that we do not use try/catch around service calls because exceptions are already either
+    //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
+    //   to responses (ApiExceptionMapper).
+    NativeLinuxOpResult opResult = fileUtilsService.runSetfacl(rUser, systemsCache, systemsCacheNoAuth, systemId, path,
+                                                               faclOp, recursionMethod, aclString);
 
-    NativeLinuxOpResult nativeLinuxOpResult;
-    try
-    {
-      IRemoteDataClient client = getClientForUserAndSystem(rUser, system);
-
-      // Make the service call
-      nativeLinuxOpResult = fileUtilsService.setfacl(client, path, request.getOperation(),
-              request.getRecursionMethod(), request.getAclString());
-    }
-    catch (TapisException | ServiceException | IOException e)
-    {
-      String msg = LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, "setfacl", systemId, path, e.getMessage());
-      log.error(msg, e);
-      throw new WebApplicationException(msg, e);
-    }
-
-    String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, "setfacl", systemId, path);
-    TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, nativeLinuxOpResult);
+    String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, opName, systemId, path);
+    TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, opResult);
     return Response.ok(resp).build();
   }
-
 }
