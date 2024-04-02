@@ -72,7 +72,7 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
         JsonObject testConfigs = readTestConfig(testConfigFileName, JsonObject.class);
         testConfig = (T)getGson().fromJson(testConfigs, testConfigClass);
 
-        token = TestUtils.instance.getToken(integrationConfig.getTokenUrl(), integrationConfig.getUsername(), integrationConfig.getPassword());
+        token = IntegrationTestUtils.instance.getToken(integrationConfig.getTokenUrl(), integrationConfig.getUsername(), integrationConfig.getPassword());
         cleanup();
         List<UploadFilesConfig> uploadFilesConfigs = testConfig.getUploadFiles();
         if(uploadFilesConfigs != null) {
@@ -87,7 +87,7 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
         List<CleanupConfig> cleanupConfigs = testConfig.getCleanup();
         if(cleanupConfigs != null) {
             for (CleanupConfig cleanupConfig : cleanupConfigs) {
-                TestUtils.instance.deletePath(integrationConfig.getBaseFilesUrl(), token, cleanupConfig.getSystem(), cleanupConfig.getPath());
+                IntegrationTestUtils.instance.deletePath(integrationConfig.getBaseFilesUrl(), token, cleanupConfig.getSystem(), cleanupConfig.getPath());
             }
         }
     }
@@ -103,7 +103,7 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
     private void uploadFiles(UploadFilesConfig uploadFilesConfig) throws Exception {
         for(int i = 0; i < uploadFilesConfig.getCount(); i++) {
             Path destinationPath = Path.of("integration_test_file" + UUID.randomUUID());
-            String digest = TestUtils.instance.uploadRandomFile(integrationConfig.getBaseFilesUrl(), token,
+            String digest = IntegrationTestUtils.instance.uploadRandomFile(integrationConfig.getBaseFilesUrl(), token,
                     uploadFilesConfig.getUploadSystem(), Paths.get(uploadFilesConfig.getUploadPath().toString(),
                             destinationPath.toString()), uploadFilesConfig.getSize(), true);
             testFiles.put(destinationPath, digest);

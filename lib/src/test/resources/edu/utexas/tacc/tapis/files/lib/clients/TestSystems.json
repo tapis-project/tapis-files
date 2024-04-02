@@ -1,0 +1,60 @@
+{
+  "irods_system": {
+    "tenant": "dev",
+    "id": "testsystem",
+    "systemType": "IRODS",
+    "authnCredential": {
+      "loginUser": "dev",
+      "password": "dev"
+    },
+    "owner": "testuser1",
+    "host": "localhost",
+    "port": 1247,
+    "rootDir": "//tempZone/home/dev/",
+    "defaultAuthnMethod": "PASSWORD",
+    "effectiveUserId": "dev"
+  },
+  "s3_system": {
+    "tenant": "dev",
+    "id": "testsystem",
+    "systemType": "S3",
+    "authnCredential": {
+      "accessKey": "user",
+      "accessSecret": "password"
+    },
+    "owner": "testuser1",
+    "host": "http://localhost",
+    "port": 9000,
+    "bucketName": "test",
+    "rootDir": "",
+    "defaultAuthnMethod": "ACCESS_KEY"
+  },
+  "ssh_system": {
+    "tenant": "dev",
+    "id": "testsystem",
+    "systemType": "LINUX",
+    "authnCredential": {
+      "accessKey": "testuser",
+      "password": "password"
+    },
+    "host": "localhost",
+    "port": 2222,
+    "rootDir": "/data/home/testuser/",
+    "defaultAuthnMethod": "PASSWORD",
+    "effectiveUserId": "testuser"
+  },
+  "ssh_system_pki": {
+    "tenant": "dev",
+    "id": "testsystem",
+    "systemType": "LINUX",
+    "authnCredential": {
+      "publicKey": "secret-file:/test-machine.pub",
+      "privateKey": "secret-file:/test-machine"
+    },
+    "host": "localhost",
+    "port": 2222,
+    "rootDir": "/data/home/testuser/",
+    "defaultAuthnMethod": "PKI_KEYS",
+    "effectiveUserId": "testuser"
+  }
+}
