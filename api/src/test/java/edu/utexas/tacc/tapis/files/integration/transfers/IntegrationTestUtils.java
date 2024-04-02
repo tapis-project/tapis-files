@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.test.TestUtils;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -44,11 +45,11 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-public class TestUtils {
-    private Logger log = LoggerFactory.getLogger(TestUtils.class);
+public class IntegrationTestUtils {
+    private Logger log = LoggerFactory.getLogger(IntegrationTestUtils.class);
     private static final int CHUNK_MAX = 1000;
     private static final String TAPIS_TOKEN_HEADER = "X-Tapis-Token";
-    public static final TestUtils instance = new TestUtils();
+    public static final IntegrationTestUtils instance = new IntegrationTestUtils();
     private final Set<TransferTaskStatus> terminalStates;
 
     public static class TransferDefinition {
@@ -116,7 +117,7 @@ public class TestUtils {
     };
 
 
-    TestUtils() {
+    IntegrationTestUtils() {
         terminalStates = new HashSet<>();
         terminalStates.add(TransferTaskStatus.COMPLETED);
         terminalStates.add(TransferTaskStatus.FAILED);
@@ -217,7 +218,7 @@ public class TestUtils {
             }
         } while (bytesRead > 0);
 
-        String hexDigest = hashAsHex(digest.digest());
+        String hexDigest = TestUtils.hashAsHex(digest.digest());
         String contentLengthHeader = response.getHeaderString("content-length");
         if(StringUtils.isBlank(contentLengthHeader)) {
             log.warn("WARNING:  No content length for file.  System: " + systemId + "  BytesRead: " + totalBytesRead + "  Path: " + filePath + "  ExpectedDigest: " + expectedDigest + "  ActualDigest: " + hexDigest);
@@ -247,21 +248,8 @@ public class TestUtils {
             outStream.write(chunk);
             bytesWritten += chunk.length;
         }
-        String hexDigest = hashAsHex(digest.digest());
+        String hexDigest = TestUtils.hashAsHex(digest.digest());
         return hexDigest;
-    }
-
-
-    public static String hashAsHex(byte[] hashBytes) {
-        StringBuilder hexString = new StringBuilder(2 * hashBytes.length);
-        for (int i = 0; i < hashBytes.length; i++) {
-            String hex = Integer.toHexString(0xff & hashBytes[i]);
-            if(hex.length() == 1) {
-                hexString.append('0');
-            }
-            hexString.append(hex);
-        }
-        return "sha256:" + hexString.toString();
     }
 
     public Collection<JsonObject> waitForTransfers(String baseUrl, String token, List<String> transferTaskIds, long maxWaitMillis) {
