@@ -11,9 +11,6 @@ import edu.utexas.tacc.tapis.files.test.RandomByteInputStream;
 import edu.utexas.tacc.tapis.files.test.RandomByteInputStream.SizeUnit;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
-import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
-import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
-import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.io.IOUtils;
@@ -50,7 +47,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-@Test
+@Test(groups = "integration")
 public class FileOpsServiceTests {
     private static final Logger log  = LoggerFactory.getLogger(FileOpsServiceTests.class);
     private static final String JSON_TEST_PATH="edu/utexas/tacc/tapis/files/lib/clients/TestSystems.json";
@@ -59,7 +56,9 @@ public class FileOpsServiceTests {
 
     @BeforeClass
     public void beforeClass() {
-        SshSessionPool.init();
+        if(SshSessionPool.getInstance() == null) {
+            SshSessionPool.init();
+        }
     }
 
     @BeforeMethod

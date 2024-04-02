@@ -9,19 +9,16 @@
   </groups>
   <test name="fileslib">
     <classes>
+      <class name="edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAOTests"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.services.TestPermissions"/>
+      <class name="edu.utexas.tacc.tapis.files.lib.clients.HTTPClientTests"/>
       <class name="edu.utexas.tacc.tapis.files.lib.utils.PathUtilsTest"/>
       <class name="edu.utexas.tacc.tapis.files.lib.utils.S3URLParserTest"/>
-      <class name="edu.utexas.tacc.tapis.files.lib.config.TestSettings"/>
-      <class name="edu.utexas.tacc.tapis.files.lib.dao.transfers.TestFileTransfersDAO"/>
-      <class name="edu.utexas.tacc.tapis.files.lib.clients.TestHTTPClient"/>
-      <class name="edu.utexas.tacc.tapis.files.lib.clients.TestIrodsClient"/>
-      <class name="edu.utexas.tacc.tapis.files.lib.clients.TestS3Client"/>
       <class name="edu.utexas.tacc.tapis.files.lib.services.FileOpsServiceTests"/>
       <class name="edu.utexas.tacc.tapis.files.lib.services.FileShareServiceTests"/>
       <class name="edu.utexas.tacc.tapis.files.lib.clients.SSHDataClientTests"/>
       <class name="edu.utexas.tacc.tapis.files.lib.clients.IrodsDataClientTests"/>
       <class name="edu.utexas.tacc.tapis.files.lib.clients.S3DataClientTests"/>
-      <class name="edu.utexas.tacc.tapis.files.lib.services.TestPermissions"/>
     </classes>
   </test>
 </suite>

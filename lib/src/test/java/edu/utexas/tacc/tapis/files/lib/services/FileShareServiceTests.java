@@ -33,7 +33,7 @@ import java.util.Collections;
 
 import static org.mockito.Mockito.when;
 
-
+@Test(groups = "integration")
 public class FileShareServiceTests {
     private static final Logger log  = LoggerFactory.getLogger(FileShareServiceTests.class);
     private static final String JSON_TEST_PATH="edu/utexas/tacc/tapis/files/lib/clients/ShareTestsTestSystems.json";

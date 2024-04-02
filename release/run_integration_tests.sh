@@ -52,7 +52,7 @@ cd ../
 # all modules even if there is a test failure, add "-fn" argumnent.  The default is -foe
 # (fail never instead of fail on error).  For example:
 #     mvn verify -Ptest -fn -Dp6spy.config.modulelist=
-mvn verify -Ptest -Dp6spy.config.modulelist=
+mvn verify -D logback.configurationFile=./target/classes/logback.xml -Ptest -Dp6spy.config.modulelist=
 
 LIB_RET_CODE=$?
 cd $RUN_DIR

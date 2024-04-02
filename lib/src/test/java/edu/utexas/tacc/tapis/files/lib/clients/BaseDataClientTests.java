@@ -1,12 +1,10 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.test.RandomByteInputStream;
 import edu.utexas.tacc.tapis.files.test.RandomByteInputStream.SizeUnit;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
-import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
@@ -44,7 +42,6 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
 
     @BeforeMethod
     public void beforeMethod() throws Exception {
-        SshSessionPool.init();
         T dataClient = configureTestClient(testTenant, testUser, configSection);
         String testRootPathString = testRootPath.toString();
         try {

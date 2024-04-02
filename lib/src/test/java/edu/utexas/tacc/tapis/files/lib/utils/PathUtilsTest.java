@@ -7,9 +7,7 @@ import org.testng.annotations.Test;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.testng.Assert.*;
-
-@Test
+@Test(groups = "integration")
 public class PathUtilsTest {
 
   @Test
