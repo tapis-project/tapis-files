@@ -6,7 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.test.LocatorBuilder;
+import edu.utexas.tacc.tapis.files.test.AbstractBinderBuilder;
 import edu.utexas.tacc.tapis.files.test.RandomByteInputStream;
 import edu.utexas.tacc.tapis.files.test.RandomByteInputStream.SizeUnit;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
@@ -66,11 +66,11 @@ public class FileOpsServiceTests {
         Map<String, TapisSystem> tapisSystemMap = TestUtils.readSystems(JSON_TEST_PATH);
         for(String key : tapisSystemMap.keySet()) {
             TapisSystem testSystem = tapisSystemMap.get(key);
-            ServiceLocator locator = new LocatorBuilder()
+            ServiceLocator locator = new AbstractBinderBuilder()
                     .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                     .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                     .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                    .build();
+                    .buildAsServiceLocator();
 
             // get service to test
             FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -136,11 +136,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testListingPath(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -159,11 +159,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testListingPathNested(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -186,11 +186,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testUploadErrors(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -245,11 +245,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testUploadAndDelete(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -271,11 +271,11 @@ public class FileOpsServiceTests {
 
     @Test(dataProvider = "testSystemsNoS3")
     public void testUploadAndDeleteNested(TapisSystem testSystem) throws Exception {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -293,11 +293,11 @@ public class FileOpsServiceTests {
 
     @Test(dataProvider = "testSystems")
     public void testUploadAndGet(TapisSystem testSystem) throws Exception {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -317,11 +317,11 @@ public class FileOpsServiceTests {
 
     @Test(dataProvider = "testSystems")
     public void testMoveFile(TapisSystem testSystem) throws Exception {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -344,11 +344,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testCopyFiles(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -412,11 +412,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystemsNoS3")
     public void testCopyFilesNested(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -517,11 +517,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystemsSSH")
     public void testCopyDirToDir(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -564,11 +564,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystemsNoS3", groups = {"broken"})
     public void testMoveDirToDir(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -606,11 +606,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testListing(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -636,11 +636,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testUploadLargeFile(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -659,11 +659,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testGetBytesByRange(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -680,11 +680,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testGetFullStream(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -703,11 +703,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testGetZip(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -756,11 +756,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testListingNoAuthz(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyWithNoReadForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -784,11 +784,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems", groups = {"broken"})
     public void testNoAuthzMany(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -818,11 +818,11 @@ public class FileOpsServiceTests {
     @Test(dataProvider = "testSystems")
     public void testListingRecursive(TapisSystem testSystem) throws Exception
     {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
@@ -856,11 +856,11 @@ public class FileOpsServiceTests {
 
     @Test(dataProvider = "testSystems")
     public void testZeroByteInsert(TapisSystem testSystem) throws Exception {
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockPerms(TestUtils.permsMock_AllowModifyForSystem(devTenant, testuser, testSystem.getId()))
                 .mockSystemsCache(TestUtils.systemCacheMock_GetSystem(devTenant, testuser, testSystem))
                 .mockSystemsCacheNoAuth(TestUtils.systemCacheNoAuthMock_GetSystem(devTenant, testuser, testSystem))
-                .build();
+                .buildAsServiceLocator();
 
         // get service to test
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);

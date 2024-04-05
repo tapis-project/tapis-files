@@ -28,45 +28,6 @@ import java.util.Map;
 @Test(groups={"integration"})
 public abstract class BaseDatabaseIntegrationTest extends JerseyTestNg.ContainerPerClassTest
 {
-  // SSHConnection cache settings
-  public static final long CACHE_MAX_SIZE = 20;
-  public static final long CACHE_TIMEOUT_MINUTES = 1;
-
-    public String getJwtForUser(String tenantId, String username) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("tapis/tenant_id", tenantId);
-        claims.put("tapis/token_type", "access");
-        claims.put("tapis/delegation", false);
-        claims.put("tapis/delegation_sub", null);
-        claims.put("tapis/username", username);
-        claims.put("tapis/account_type", "user");
-
-        KeyPair keyPair = Keys.keyPairFor(SignatureAlgorithm.RS256);
-        String jwt = Jwts.builder()
-            .setSubject(username + "@" + tenantId)
-            .setClaims(claims)
-            .signWith(keyPair.getPrivate()).compact();
-        return jwt;
-    }
-
-    public String getServiceJwt() {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("tapis/tenant_id", "dev");
-        claims.put("tapis/token_type", "access");
-        claims.put("tapis/delegation", false);
-        claims.put("tapis/delegation_sub", null);
-        claims.put("tapis/username", "service1");
-        claims.put("tapis/account_type", "service");
-        claims.put("tapis/target_site", "tacc");
-
-        KeyPair keyPair = Keys.keyPairFor(SignatureAlgorithm.RS256);
-        String serviceJwt = Jwts.builder()
-            .setSubject("jobs@dev")
-            .setClaims(claims)
-            .signWith(keyPair.getPrivate()).compact();
-        return serviceJwt;
-    }
-
     @BeforeTest
     public void doFlywayMigrations() {
         Flyway flyway = Flyway.configure()

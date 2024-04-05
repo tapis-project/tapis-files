@@ -20,6 +20,7 @@ import edu.utexas.tacc.tapis.security.client.SKClient;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.security.TenantManager;
+import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.sharedapi.jaxrs.filters.JWTValidateRequestFilter;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.systems.client.gen.model.AuthnEnum;
@@ -37,12 +38,14 @@ import org.glassfish.jersey.test.TestProperties;
 import org.junit.Assert;
 import org.mockito.Mockito;
 
+import static edu.utexas.tacc.tapis.files.integration.transfers.IntegrationTestUtils.getJwtForUser;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
@@ -60,6 +63,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -151,13 +155,22 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         FilePermsService.setSiteAdminTenantId("admin");
         FileShareService.setSiteAdminTenantId("admin");
 
+        if(SshSessionPool.getInstance() == null) {
+            SshSessionPool.init();
+        }
         return rc;
+    }
+
+    @AfterClass
+    public void afterClass() {
+
     }
 
     @BeforeClass
     public void beforeClass() throws Exception {
         super.setUp();
     }
+
     @BeforeMethod
     public void initMocks() throws Exception
     {

@@ -42,6 +42,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.*;
 
+import static edu.utexas.tacc.tapis.files.integration.transfers.IntegrationTestUtils.getJwtForUser;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -125,7 +126,7 @@ public class TestTransfersRoutes extends BaseDatabaseIntegrationTest
                     bindAsContract(FileShareService.class).in(Singleton.class);
                     bindAsContract(FilePermsCache.class).in(Singleton.class);
                     bindAsContract(FilePermsService.class).in(Singleton.class);
-                    bindAsContract(TransfersService.class).in(Singleton.class);
+                    bindAsContract(TransfersService.class);
                     bindAsContract(FileTransfersDAO.class);
                     bindAsContract(RemoteDataClientFactory.class);
                   bind(serviceContext).to(ServiceContext.class);

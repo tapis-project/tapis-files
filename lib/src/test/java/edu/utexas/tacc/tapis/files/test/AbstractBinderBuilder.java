@@ -28,7 +28,7 @@ import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import javax.inject.Singleton;
 import java.util.Map;
 
-public class LocatorBuilder {
+public class AbstractBinderBuilder {
     private ServiceLocator locator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
 
     private FilePermsService permsMock = null;
@@ -36,28 +36,23 @@ public class LocatorBuilder {
     private SystemsCacheNoAuth systemsCacheNoAuthMock = null;
 
 
-    public LocatorBuilder mockPerms(FilePermsService permsMock) {
+    public AbstractBinderBuilder mockPerms(FilePermsService permsMock) {
         this.permsMock = permsMock;
         return this;
     }
 
-    public LocatorBuilder mockSystemsCache(SystemsCache systemsCacheMock) {
+    public AbstractBinderBuilder mockSystemsCache(SystemsCache systemsCacheMock) {
         this.systemsCacheMock = systemsCacheMock;
         return this;
     }
 
-    public LocatorBuilder mockSystemsCacheNoAuth(SystemsCacheNoAuth systemsCacheNoAuthMock) {
+    public AbstractBinderBuilder mockSystemsCacheNoAuth(SystemsCacheNoAuth systemsCacheNoAuthMock) {
         this.systemsCacheNoAuthMock = systemsCacheNoAuthMock;
         return this;
     }
 
-    public ServiceLocator build() {
-        // Initialize TenantManager
-        IRuntimeConfig settings = RuntimeSettings.get();
-        String url = settings.getTenantsServiceURL();
-        Map<String, Tenant> tenants = TenantManager.getInstance(url).getTenants();
-
-        ServiceLocatorUtilities.bind(locator, new AbstractBinder() {
+    public AbstractBinder build() {
+        return new AbstractBinder() {
             @Override
             protected void configure() {
                 bindAsContract(FileOpsService.class).in(Singleton.class);
@@ -89,7 +84,20 @@ public class LocatorBuilder {
                 bindFactory(ServiceContextFactory.class).to(ServiceContext.class).in(Singleton.class);
             }
 
-        });
+        };
+    }
+
+    private void initTenantManager() {
+        // Initialize TenantManager
+        IRuntimeConfig settings = RuntimeSettings.get();
+        String url = settings.getTenantsServiceURL();
+        Map<String, Tenant> tenants = TenantManager.getInstance(url).getTenants();
+    }
+
+    public ServiceLocator buildAsServiceLocator() {
+        initTenantManager();
+
+        ServiceLocatorUtilities.bind(locator, build());
 
         // for some reaons things don't get setup right if other stuff gets requested from the locator
         // before this does

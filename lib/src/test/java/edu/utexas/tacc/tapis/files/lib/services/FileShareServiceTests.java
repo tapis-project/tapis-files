@@ -10,7 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.ShareInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.files.test.LocatorBuilder;
+import edu.utexas.tacc.tapis.files.test.AbstractBinderBuilder;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
@@ -63,10 +63,10 @@ public class FileShareServiceTests {
 
         TapisSystem testSystem = TestUtils.readSystem(JSON_TEST_PATH, "testsystem_ssh");
 
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockSystemsCache(getSystemsCacheMock(devTenant, testSystem, testuser1, testuser2, testuser3))
                 .mockSystemsCacheNoAuth(getSystesCacheNoAuthMock(devTenant, testSystem, testuser1, testuser2, testuser3))
-                .build();
+                .buildAsServiceLocator();
 
         // for some reason this is required.  I don't really understand why.  If it's removed, the call to
         // permsService.grantPermissions will fail.
@@ -88,10 +88,10 @@ public class FileShareServiceTests {
     {
         TapisSystem testSystem = TestUtils.readSystem(JSON_TEST_PATH, "testsystem_ssh");
 
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockSystemsCache(getSystemsCacheMock(devTenant, testSystem, testuser1, testuser2, testuser3))
                 .mockSystemsCacheNoAuth(getSystesCacheNoAuthMock(devTenant, testSystem, testuser1, testuser2, testuser3))
-                .build();
+                .buildAsServiceLocator();
 
         FilePermsService permsService = locator.getService(FilePermsService.class);
         permsService.grantPermission(devTenant, testuser1, testSystem.getId(), "/", FileInfo.Permission.MODIFY);
@@ -110,10 +110,10 @@ public class FileShareServiceTests {
     {
         TapisSystem testSystem = TestUtils.readSystem(JSON_TEST_PATH, "testsystem_ssh");
 
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockSystemsCache(getSystemsCacheMock(devTenant, testSystem, testuser1, testuser2, testuser3))
                 .mockSystemsCacheNoAuth(getSystesCacheNoAuthMock(devTenant, testSystem, testuser1, testuser2, testuser3))
-                .build();
+                .buildAsServiceLocator();
 
         // Get the system
         TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rtestuser1, locator.getService(SystemsCache.class), testSystem.getId());
@@ -131,10 +131,10 @@ public class FileShareServiceTests {
     {
         TapisSystem testSystem = TestUtils.readSystem(JSON_TEST_PATH, "testsystem_ssh");
 
-        ServiceLocator locator = new LocatorBuilder()
+        ServiceLocator locator = new AbstractBinderBuilder()
                 .mockSystemsCache(getSystemsCacheMock(devTenant, testSystem, testuser1, testuser2, testuser3))
                 .mockSystemsCacheNoAuth(getSystesCacheNoAuthMock(devTenant, testSystem, testuser1, testuser2, testuser3))
-                .build();
+                .buildAsServiceLocator();
 
         // Get the system
         TapisSystem tmpSys = LibUtils.getSystemIfEnabled(rtestuser1, locator.getService(SystemsCache.class), testSystem.getId());

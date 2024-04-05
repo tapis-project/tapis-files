@@ -7,6 +7,9 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.Method;
@@ -34,6 +37,7 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -355,5 +359,40 @@ public class IntegrationTestUtils {
         } catch (NoSuchFieldException | IllegalAccessException ex) {
             System.out.println("Unable to clear ssh session pool instance.  Exception: " + ex);
         }
+    }
+
+    public static String getJwtForUser(String tenantId, String username) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tapis/tenant_id", tenantId);
+        claims.put("tapis/token_type", "access");
+        claims.put("tapis/delegation", false);
+        claims.put("tapis/delegation_sub", null);
+        claims.put("tapis/username", username);
+        claims.put("tapis/account_type", "user");
+
+        KeyPair keyPair = Keys.keyPairFor(SignatureAlgorithm.RS256);
+        String jwt = Jwts.builder()
+                .setSubject(username + "@" + tenantId)
+                .setClaims(claims)
+                .signWith(keyPair.getPrivate()).compact();
+        return jwt;
+    }
+
+    public static String getServiceJwt() {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tapis/tenant_id", "dev");
+        claims.put("tapis/token_type", "access");
+        claims.put("tapis/delegation", false);
+        claims.put("tapis/delegation_sub", null);
+        claims.put("tapis/username", "service1");
+        claims.put("tapis/account_type", "service");
+        claims.put("tapis/target_site", "tacc");
+
+        KeyPair keyPair = Keys.keyPairFor(SignatureAlgorithm.RS256);
+        String serviceJwt = Jwts.builder()
+                .setSubject("jobs@dev")
+                .setClaims(claims)
+                .signWith(keyPair.getPrivate()).compact();
+        return serviceJwt;
     }
 }
