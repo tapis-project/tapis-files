@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
@@ -69,6 +70,15 @@ public class TestUtils {
         }
 
         return expandedSecret;
+    }
+
+    public static String hashAsHex(DigestInputStream mdInputStream) {
+        return hashAsHex(mdInputStream.getMessageDigest());
+    }
+
+    public static String hashAsHex(MessageDigest digest) {
+        byte[] hashBytes = digest.digest();
+        return hashAsHex(hashBytes);
     }
 
     public static String hashAsHex(byte[] hashBytes) {
