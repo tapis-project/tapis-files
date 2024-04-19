@@ -20,10 +20,15 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersIntegrationConfig> {
     Logger log = LoggerFactory.getLogger(BaseTransfersIntegrationTest.class);
@@ -31,6 +36,7 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
     private static final String SHA_PREFIX = "sha256:";
     private TransfersIntegrationTestConfig integrationConfig;
     private final String testConfigFileName;
+    private ExecutorService defaultThreadPool = Executors.newFixedThreadPool(10);
 
     private Class<T> testConfigClass;
 
@@ -46,7 +52,7 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
     protected BaseTransfersIntegrationTest(Class<T> testConfigClass, String testConfigFileName) {
         runId = UUID.randomUUID().toString();
         this.testConfigClass = testConfigClass;
-        testFiles = new HashMap<>();
+        testFiles = new ConcurrentHashMap();
         this.testConfigFileName = testConfigFileName;
     }
 
@@ -83,6 +89,10 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
         }
     }
 
+    public ExecutorService getThreadPool() {
+        return defaultThreadPool;
+    }
+
     public void cleanup() {
         List<CleanupConfig> cleanupConfigs = testConfig.getCleanup();
         if(cleanupConfigs != null) {
@@ -101,15 +111,26 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
     }
 
     private void uploadFiles(UploadFilesConfig uploadFilesConfig) throws Exception {
+        List<Future<String>> uploadFutures = new ArrayList<>();
+        IntegrationTestUtils.instance.mkdir(integrationConfig.getBaseFilesUrl(), token, uploadFilesConfig.getUploadSystem(), uploadFilesConfig.getUploadPath());
         for(int i = 0; i < uploadFilesConfig.getCount(); i++) {
-            Path destinationPath = Path.of("integration_test_file" + UUID.randomUUID());
-            String digest = IntegrationTestUtils.instance.uploadRandomFile(integrationConfig.getBaseFilesUrl(), token,
-                    uploadFilesConfig.getUploadSystem(), Paths.get(uploadFilesConfig.getUploadPath().toString(),
-                            destinationPath.toString()), uploadFilesConfig.getSize(), true);
-            testFiles.put(destinationPath, digest);
-            if(i % 10 == 0) {
-                log.info("Uploaded file " + i + " of " + uploadFilesConfig.getCount());
-            }
+            Future<String> uploadFuture = getThreadPool().submit(new Callable<String>() {
+                @Override
+                public String call() throws Exception {
+                    Path destinationPath = Path.of("integration_test_file" + UUID.randomUUID());
+                    String digest = IntegrationTestUtils.instance.uploadRandomFile(integrationConfig.getBaseFilesUrl(), token,
+                            uploadFilesConfig.getUploadSystem(), Paths.get(uploadFilesConfig.getUploadPath().toString(),
+                                    destinationPath.toString()), uploadFilesConfig.getSize(), true);
+                    testFiles.put(destinationPath, digest);
+                    return digest;
+                }
+            });
+            uploadFutures.add(uploadFuture);
+        }
+
+        for(Future<String> uploadFuture : uploadFutures) {
+            String digest = uploadFuture.get();
+            log.info("Upload digest: " + digest);
         }
     }
 
@@ -130,5 +151,4 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
 
         return gBuilder.create();
     }
-
 }

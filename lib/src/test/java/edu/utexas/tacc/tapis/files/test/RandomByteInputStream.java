@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.files.test;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,8 +12,7 @@ import java.io.PipedOutputStream;
 import java.security.NoSuchAlgorithmException;
 
 public class RandomByteInputStream extends InputStream {
-//    private final MessageDigest digest;
-
+    private static Logger log = LoggerFactory.getLogger(RandomByteInputStream.class);
     private int bytesRead = 0;
     private final int bytesAvailable;
     private final int maxChunkSize;

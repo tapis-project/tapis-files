@@ -70,7 +70,7 @@
     <logger name="com.zaxxer.hikari" level="ERROR"/>
 
     <!-- by default, don't log ssh pool trace info to stdout or normal log files.  set to trace to enable -->
-    <logger name="edu.utexas.tacc.tapis.shared.ssh" level="INFO"/>
+    <logger name="edu.utexas.tacc.tapis.shared.ssh" level="WARN"/>
 
     <!-- ssh session pooling logging.  logs to a separate file -->
     <logger name="edu.utexas.tacc.tapis.shared.ssh" level="DEBUG" additivity="false">

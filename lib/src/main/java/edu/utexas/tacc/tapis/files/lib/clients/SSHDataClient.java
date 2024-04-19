@@ -63,7 +63,7 @@ public class SSHDataClient implements ISSHDataClient
   private static final String NO_SUCH_FILE = "no such file";
   private static final int MAX_STDOUT_SIZE = 1000;
   private static final int MAX_STDERR_SIZE = 1000;
-  private static final Duration DEFAULT_SESSION_WAIT = Duration.ofMinutes(1);
+  private static final Duration DEFAULT_SESSION_WAIT = Duration.ofMinutes(5);
 
   private final Logger log = LoggerFactory.getLogger(SSHDataClient.class);
 
@@ -446,8 +446,8 @@ public class SSHDataClient implements ISSHDataClient
   {
     // Get path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(path).toString();
-    try(var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
-      recursiveDelete(sessionHolder.getSession(), relativePathStr);
+    try {
+      recursiveDelete(relativePathStr);
     } catch (IOException e) {
       handleSftpException(e, "delete", path);
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "delete", systemId, effectiveUserId, host, relativePathStr, e.getMessage());
@@ -664,10 +664,10 @@ public class SSHDataClient implements ISSHDataClient
     Path absolutePath = Paths.get(rootDir, path).normalize();
     Path relativeRemotePath = Paths.get(StringUtils.stripStart(path, "/")).normalize();
     Path parentPath = relativeRemotePath.getParent();
+    if (parentPath != null) {
+      mkdir(parentPath.toString());
+    }
     try (fileStream; var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
-      if (parentPath != null) {
-        mkdir(parentPath.toString());
-      }
       OutputStream outputStream = sessionHolder.getSession().write(absolutePath.toString());
       fileStream.transferTo(outputStream);
       outputStream.flush();
@@ -681,11 +681,10 @@ public class SSHDataClient implements ISSHDataClient
 
   /**
    * Recursive method to delete a file or files in a directory using the provided sftpClient
-   * @param sftpClient sftp client
    * @param relPathStr path
    * @throws IOException On error
    */
-  private void recursiveDelete(SSHSftpClient sftpClient, String relPathStr) throws IOException, NotSupportedException
+  private void recursiveDelete(String relPathStr) throws IOException, NotSupportedException
   {
     String opName = "recursiveDelete";
     String absolutePathStr = PathUtils.getAbsolutePath(rootDir, relPathStr).toString();
@@ -701,13 +700,16 @@ public class SSHDataClient implements ISSHDataClient
         if ((!entry.getName().equals(".")) && (!entry.getName().equals("..")) && (entry.isDir())) {
           // Get a normalized path for the directory
           Path tmpPath = Paths.get(relPathStr, entry.getName()).normalize();
-          recursiveDelete(sftpClient, tmpPath.toString());
+          recursiveDelete(tmpPath.toString());
         } else {
           // It is a file or link, use sftpClient to delete (this will not delete the file if the
           // type is "other" - but that's what we want
           Path tmpPath = PathUtils.getAbsolutePath(rootDir, entry.getPath());
           if (entry.isFile() || entry.isSymLink()) {
-            sftpClient.remove(tmpPath.toString());
+            try(var autoCloseableSftpClient = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
+              var sftpClient = autoCloseableSftpClient.getSession();
+              sftpClient.remove(tmpPath.toString());
+            }
           } else {
             String msg = LibUtils.getMsg("FILES_CLIENT_SPECIAL_FILE",
                     oboTenant, oboUser, systemId, effectiveUserId, host, absolutePathStr, entry.getType(), opName);
@@ -721,9 +723,15 @@ public class SSHDataClient implements ISSHDataClient
     if (!absolutePathStr.equals(rootDir))
     {
       if(fileInfo.isDir()) {
-        sftpClient.rmdir(absolutePathStr);
+        try(var autoCloseableSftpClient = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
+          var sftpClient = autoCloseableSftpClient.getSession();
+          sftpClient.rmdir(absolutePathStr);
+        }
       } else if (fileInfo.isFile() || fileInfo.isSymLink()) {
-        sftpClient.remove(absolutePathStr);
+        try(var autoCloseableSftpClient = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
+          var sftpClient = autoCloseableSftpClient.getSession();
+          sftpClient.remove(absolutePathStr);
+        }
       } else {
         throw new NotSupportedException(LibUtils.getMsg("FILES_CLIENT_SPECIAL_FILE",
                 oboTenant, oboUser, systemId, effectiveUserId, host, absolutePathStr, fileInfo.getType(), opName));

@@ -200,8 +200,8 @@ public class FilesApplication extends ResourceConfig
       SshSessionPoolPolicy poolPolicy = SshSessionPoolPolicy.defaultPolicy()
               .setMaxConnectionDuration(Duration.ofHours(6))
               .setMaxConnectionIdleTime(Duration.ofMinutes(8))
-              .setMaxConnectionsPerKey(3)
-              .setMaxSessionsPerConnection(8)
+              .setMaxConnectionsPerKey(RuntimeSettings.get().getSshPoolApiMaxConnectionsPerKey())
+              .setMaxSessionsPerConnection(RuntimeSettings.get().getSshPoolApiMaxSessionsPerConnection())
               .setCleanupInterval(Duration.ofSeconds(15))
               .setTraceDuringCleanupFrequency(RuntimeSettings.get().getSshPoolTraceOnCleanupInterval())
               .setSessionCreationStrategy(SshSessionPoolPolicy.SessionCreationStrategy.MINIMIZE_CONNECTIONS);
