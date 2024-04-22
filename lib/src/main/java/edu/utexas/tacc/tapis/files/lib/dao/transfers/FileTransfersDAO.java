@@ -264,26 +264,6 @@ public class FileTransfersDAO {
         }
     }
 
-    /**
-     * Return top level task attributes - started, ended, status, errorMsg, etc.
-     * @param taskUUID task to retrieve
-     * @return TransferTask with only some info
-     * @throws DAOException on error
-     */
-    public TransferTask getTransferTaskStatus(@NotNull UUID taskUUID) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskRowProcessor();
-        RowProcessor summaryRowProcessor = new TransferTaskSummaryRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
-            String query = FileTransfersDAOStatements.GET_TASK_BY_UUID;
-            QueryRunner runner = new QueryRunner();
-            TransferTask task = runner.query(connection, query, handler, taskUUID);
-            return task;
-        } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskStatus", taskUUID), ex);
-        }
-    }
-
     public TransferTask getTransferTaskByID(@NotNull int taskId) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         RowProcessor summaryRowProcessor = new TransferTaskSummaryRowProcessor();

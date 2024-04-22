@@ -223,16 +223,6 @@ public class  TransfersApiResource
     try
     {
       task = transfersService.getTransferTaskDetails(rUser, taskUuid, impersonationId);
-// TODO
-//      // TODO: this should be before the fetch, right? does that cause issues? actually, it should be in the service call
-//      //       service call should throw not_found, forbidden
-//      // TODO: Check permission taking into account impersonationId
-//      checkPermImpersonate(rUser, impersonationId, opName, transferTaskId);
-//
-//      // Finally, check for perm using oboUser or impersonationId
-//      // Certain services are allowed to impersonate an OBO user for the purposes of authorization
-//      String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
-//      isPermitted(task, oboOrImpersonatedUser, rUser.getOboTenantId(), opName);
     }
     catch (ServiceException ex)
     {

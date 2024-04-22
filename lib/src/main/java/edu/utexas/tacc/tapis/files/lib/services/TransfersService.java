@@ -145,7 +145,9 @@ public class TransfersService
       String opName = "getTransferTaskDetails";
       // Check caller has permission to use impersonationId
       checkPermImpersonate(rUser, impersonationId, opName, uuidStr);
+      String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
       UUID taskUuid = UUID.fromString(uuidStr);
+
         try {
             TransferTask task = dao.getTransferTaskByUUID(taskUuid, includeSummaryTrue);
             if (task == null)
@@ -154,6 +156,11 @@ public class TransfersService
               log.error(msg);
               throw new NotFoundException(msg);
             }
+
+            // Do a final permission check based on calling user/tenant and task user/tenant
+            isUserPermitted(rUser, task, oboOrImpersonatedUser, rUser.getOboTenantId(), opName);
+
+            // Fetch and fill in parents and children
             List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
             task.setParentTasks(parents);
             for (TransferTaskParent parent : parents) {
