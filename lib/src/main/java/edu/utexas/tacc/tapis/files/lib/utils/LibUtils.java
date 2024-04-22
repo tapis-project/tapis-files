@@ -96,14 +96,14 @@ public class LibUtils
    * @param parms message parameters
    * @return localized message
    */
-  public static String getMsgAuthR(String key, ResourceRequestUser authUser, Object... parms)
+  public static String getMsgAuthR(String key, ResourceRequestUser rUser, Object... parms)
   {
     // Construct new array of parms. This appears to be most straightforward approach to modify and pass on varargs.
     var newParms = new Object[4 + parms.length];
-    newParms[0] = authUser.getJwtTenantId();
-    newParms[1] = authUser.getJwtUserId();
-    newParms[2] = authUser.getOboTenantId();
-    newParms[3] = authUser.getOboUserId();
+    newParms[0] = rUser.getJwtTenantId();
+    newParms[1] = rUser.getJwtUserId();
+    newParms[2] = rUser.getOboTenantId();
+    newParms[3] = rUser.getOboUserId();
     System.arraycopy(parms, 0, newParms, 4, parms.length);
     return getMsg(key, newParms);
   }

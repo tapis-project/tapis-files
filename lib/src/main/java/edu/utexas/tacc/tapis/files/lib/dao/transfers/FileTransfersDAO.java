@@ -234,7 +234,8 @@ public class FileTransfersDAO {
       return newTask;
     }
 
-    public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID) throws DAOException {
+    public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID, boolean includeSummary)
+            throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         RowProcessor summaryRowProcessor = new TransferTaskSummaryRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
@@ -246,18 +247,40 @@ public class FileTransfersDAO {
                 return null;
             }
 
-            BeanHandler<TransferTaskSummary> summaryHandler = new BeanHandler<>(TransferTaskSummary.class, summaryRowProcessor);
-            String summaryQuery = FileTransfersDAOStatements.GET_TRANSFER_TASK_SUMMARY_BY_UUID;
-            QueryRunner summaryRunner = new QueryRunner();
-            TransferTaskSummary summary = summaryRunner.query(connection, summaryQuery, summaryHandler, taskUUID);
-            task.setTotalTransfers(summary.getTotalTransfers());
-            task.setCompleteTransfers(summary.getCompleteTransfers());
-            task.setTotalBytesTransferred(summary.getTotalBytesTransferred());
-            task.setEstimatedTotalBytes(summary.getEstimatedTotalBytes());
+            if (includeSummary) {
+                BeanHandler<TransferTaskSummary> summaryHandler = new BeanHandler<>(TransferTaskSummary.class, summaryRowProcessor);
+                String summaryQuery = FileTransfersDAOStatements.GET_TRANSFER_TASK_SUMMARY_BY_UUID;
+                QueryRunner summaryRunner = new QueryRunner();
+                TransferTaskSummary summary = summaryRunner.query(connection, summaryQuery, summaryHandler, taskUUID);
+                task.setTotalTransfers(summary.getTotalTransfers());
+                task.setCompleteTransfers(summary.getCompleteTransfers());
+                task.setTotalBytesTransferred(summary.getTotalBytesTransferred());
+                task.setEstimatedTotalBytes(summary.getEstimatedTotalBytes());
+            }
 
             return task;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskByUUID", taskUUID), ex);
+        }
+    }
+
+    /**
+     * Return top level task attributes - started, ended, status, errorMsg, etc.
+     * @param taskUUID task to retrieve
+     * @return TransferTask with only some info
+     * @throws DAOException on error
+     */
+    public TransferTask getTransferTaskStatus(@NotNull UUID taskUUID) throws DAOException {
+        RowProcessor rowProcessor = new TransferTaskRowProcessor();
+        RowProcessor summaryRowProcessor = new TransferTaskSummaryRowProcessor();
+        try (Connection connection = HikariConnectionPool.getConnection()) {
+            BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
+            String query = FileTransfersDAOStatements.GET_TASK_BY_UUID;
+            QueryRunner runner = new QueryRunner();
+            TransferTask task = runner.query(connection, query, handler, taskUUID);
+            return task;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskStatus", taskUUID), ex);
         }
     }
 
@@ -709,17 +732,18 @@ public class FileTransfersDAO {
         }
     }
 
-    public TransferTask getHistory(@NotNull UUID taskUUID) throws DAOException {
-        //TODO: This could be done in one query with a couple of joins quicker
-        TransferTask task = this.getTransferTaskByUUID(taskUUID);
-        List<TransferTaskParent> parents = this.getAllParentsForTaskByID(task.getId());
-        for (TransferTaskParent parent: parents) {
-            List<TransferTaskChild> children = this.getAllChildren(parent);
-            parent.setChildren(children);
-        }
-        task.setParentTasks(parents);
-        return task;
-    }
+// TODO/TBD remove? only in test? Was this for getDetails?
+//    public TransferTask getHistory(@NotNull UUID taskUUID) throws DAOException {
+//        //TODO: This could be done in one query with a couple of joins quicker
+//        TransferTask task = this.getTransferTaskByUUID(taskUUID);
+//        List<TransferTaskParent> parents = this.getAllParentsForTaskByID(task.getId());
+//        for (TransferTaskParent parent: parents) {
+//            List<TransferTaskChild> children = this.getAllChildren(parent);
+//            parent.setChildren(children);
+//        }
+//        task.setParentTasks(parents);
+//        return task;
+//    }
 
     public void cancelTransfer(@NotNull TransferTask task) throws DAOException
     {
