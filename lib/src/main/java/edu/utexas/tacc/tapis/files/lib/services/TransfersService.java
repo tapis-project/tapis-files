@@ -57,6 +57,9 @@ public class TransfersService
 {
   private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
   private static final String impersonationIdNull = null;
+  private static final boolean includeSummaryFalse = false;
+  private static final boolean includeSummaryTrue = true;
+
   private static final String TRANSFERS_EXCHANGE = "tapis.files";
   private static String PARENT_QUEUE = "tapis.files.transfers.parent";
   private static String CHILD_QUEUE = "tapis.files.transfers.child";
@@ -75,8 +78,6 @@ public class TransfersService
   };
 
   private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
-  private static final boolean includeSummaryFalse = false;
-  private static final boolean includeSummaryTrue = true;
 
   // TODO/TBD Can we inject all services needed? Seems like when trying this before it did not work out, had to pass
   //          them in via the constructor? Something to do with test setup?
