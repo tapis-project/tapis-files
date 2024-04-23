@@ -4,13 +4,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.test.RandomByteInputStream;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.jersey.client.ClientProperties;
@@ -32,11 +32,11 @@ import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.security.DigestInputStream;
 import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -46,15 +46,19 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class IntegrationTestUtils {
     private Logger log = LoggerFactory.getLogger(IntegrationTestUtils.class);
     private static final int CHUNK_MAX = 1000;
     private static final String TAPIS_TOKEN_HEADER = "X-Tapis-Token";
     public static final IntegrationTestUtils instance = new IntegrationTestUtils();
-    private final Set<TransferTaskStatus> terminalStates;
+    public final Set<TransferTaskStatus> terminalStates;
+    private String SHA256 = "SHA-256";
 
     public static class TransferDefinition {
         private String sourcePath;
@@ -81,11 +85,11 @@ public class IntegrationTestUtils {
         boolean completedSuccessfully = false;
         String digest = null;
 
-        private final long bytesToWrite;
+        private final int bytesToWrite;
         private final boolean alhapNumericOnly;
         private PipedOutputStream outputStream;
 
-        public RandomStreamWriter(long bytesToWrite, boolean alhapNumericOnly) {
+        public RandomStreamWriter(int bytesToWrite, boolean alhapNumericOnly) {
             this.bytesToWrite = bytesToWrite;
             this.alhapNumericOnly = alhapNumericOnly;
         }
@@ -98,7 +102,11 @@ public class IntegrationTestUtils {
         @Override
         public void run() {
             try {
-                digest = writeRandomBytes(outputStream, bytesToWrite, alhapNumericOnly);
+                RandomByteInputStream randomInputStream = new RandomByteInputStream(bytesToWrite,
+                        RandomByteInputStream.SizeUnit.BYTES, alhapNumericOnly);
+                DigestInputStream digestInputStream = new DigestInputStream(randomInputStream, MessageDigest.getInstance(SHA256));
+                digestInputStream.transferTo(outputStream);
+                digest = TestUtils.hashAsHex(digestInputStream.getMessageDigest().digest());
                 completedSuccessfully = true;
             } catch (Throwable th) {
                 throw new RuntimeException(th);
@@ -154,7 +162,7 @@ public class IntegrationTestUtils {
     }
 
     public String uploadRandomFile(String baseUrl, String token, String systemId, Path destinationPath,
-                           long size, boolean alphaNumericOnly) {
+                           int size, boolean alphaNumericOnly) {
         Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
         WebTarget target = client.target(baseUrl);
         Invocation.Builder invocationBuilder = target.path(getUrlPath("ops", systemId, destinationPath)).request(MediaType.APPLICATION_JSON);
@@ -210,7 +218,7 @@ public class IntegrationTestUtils {
                 .get();
         Assert.assertEquals(response.getStatus(), 200);
         InputStream is = (InputStream) response.getEntity();
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        MessageDigest digest = MessageDigest.getInstance(SHA256);
         long totalBytesRead = 0;
         int bytesRead = 0;
         byte[] chunk = new byte[CHUNK_MAX];
@@ -234,55 +242,59 @@ public class IntegrationTestUtils {
 
         Assert.assertEquals(hexDigest, expectedDigest);
     }
-
-    private String writeRandomBytes(OutputStream outStream, long size, boolean textOnly) throws IOException, NoSuchAlgorithmException {
-        Random random = new Random(System.currentTimeMillis());
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-
-        long bytesWritten = 0;
-        while (bytesWritten < size) {
-           long bytesLeft = size - bytesWritten;
-            byte[] chunk = new byte[bytesLeft < CHUNK_MAX ? (int)bytesLeft : CHUNK_MAX];
-            if(textOnly) {
-                chunk = RandomStringUtils.randomAlphanumeric(chunk.length).getBytes();
-            } else {
-                random.nextBytes(chunk);
-            }
-            digest.update(chunk);
-            outStream.write(chunk);
-            bytesWritten += chunk.length;
-        }
-        String hexDigest = TestUtils.hashAsHex(digest.digest());
-        return hexDigest;
+    public Collection<JsonObject> waitForTransfers(String baseUrl, String token, List<String> transferTaskIds,
+                                                   long maxWaitMillis) throws Exception {
+        return waitForTransfers(baseUrl, token, transferTaskIds, maxWaitMillis, Executors.newSingleThreadExecutor());
     }
 
-    public Collection<JsonObject> waitForTransfers(String baseUrl, String token, List<String> transferTaskIds, long maxWaitMillis) {
+    public Collection<JsonObject> waitForTransfers(String baseUrl, String token, List<String> transferTaskIds,
+                                                   long maxWaitMillis, ExecutorService threadPool) throws Exception {
         Map<String, JsonObject> completedTransfers = new HashMap<>();
         List<String> uncompletedTransfers = new ArrayList<>();
         uncompletedTransfers.addAll(transferTaskIds);
         long startTime = System.currentTimeMillis();
+
         while(!uncompletedTransfers.isEmpty()) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                // ignore
-            }
+            List<Future<JsonObject>> statusFutures = new ArrayList<>();
             for (String transferTaskId : uncompletedTransfers) {
-                JsonObject result = checkTransfer(baseUrl, token, transferTaskId);
-                TransferTaskStatus tts = TransferTaskStatus.valueOf(result.get("result").getAsJsonObject().get("status").getAsString());
-                if (terminalStates.contains(tts)) {
-                    log.info("Transfer Done: " + transferTaskId + " Status: " + tts);
+                Future<JsonObject> statusFuture = threadPool.submit(new Callable<JsonObject>() {
+                    @Override
+                    public JsonObject call() throws Exception {
+                        JsonObject result = checkTransfer(baseUrl, token, transferTaskId);
+                        return result;
+                    }
+                });
+                statusFutures.add(statusFuture);
+            }
+
+            for(Future<JsonObject> statusFuture : statusFutures) {
+                JsonObject result = statusFuture.get();
+                TransferTaskStatus transferTaskStatus = TransferTaskStatus.valueOf(result.get("result").getAsJsonObject().get("status").getAsString());
+                String transferTaskId = result.get("result").getAsJsonObject().get("uuid").getAsString();
+                if (terminalStates.contains(transferTaskStatus)) {
+                    log.info("Transfer Done: " + transferTaskId + " Status: " + transferTaskStatus);
+                    Assert.assertEquals(TransferTaskStatus.COMPLETED, transferTaskStatus);
                     completedTransfers.put(transferTaskId, result);
                 } else {
                     log.info("Waiting for transfer: " + transferTaskId);
                 }
             }
+
             uncompletedTransfers.removeAll(completedTransfers.keySet());
             long elapsedTime = System.currentTimeMillis() - startTime;
-            if(elapsedTime > maxWaitMillis) {
-                Assert.fail("Timeout waiting for transfers to complete");
+            if((uncompletedTransfers.size() > 0)) {
+                if (elapsedTime > maxWaitMillis) {
+                    Assert.fail("Timeout waiting for transfers to complete");
+                } else {
+                    // there's still uncompleted transfers, and we have mre time before
+                    // the max wait time.  Sleep a second to allow some time for
+                    // transfers before checking agian.
+                    log.info(String.format(" --- Uncompleted transfers: %d ---", uncompletedTransfers.size()));
+                    Thread.sleep(1000);
+                }
             }
         }
+
         return completedTransfers.values();
     }
 
