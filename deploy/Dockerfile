@@ -26,9 +26,9 @@ USER tapis
 
 # Just copy the jars needed
 WORKDIR /home/tapis/app
-COPY  api/target/tapis-files.jar ./
-COPY  api/target/dependencies ./dependencies
-
+COPY api/target/tapis-files.jar ./
+COPY api/target/dependencies ./dependencies
+COPY api/target/classes/logback.xml ./classes/logback.xml
 
 # Java module commands that are always needed (java 17 and later).
 ENV JAVA_MODULE_OPTS --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.time=ALL-UNNAMED \
