@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.BaseDatabaseIntegrationTest;
-import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
@@ -19,13 +18,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Test(groups={"integration"})
-public class TestFileTransfersDAO extends BaseDatabaseIntegrationTest
+public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
 {
   private static final String testTenant = "testTenant";
   private static final String testUser1 = "testFileTxfrDaoUser1";
   private static final String testUser2 = "testFileTxfrDaoUser2";
 
-  public TestFileTransfersDAO() throws Exception { super(); }
+  public FileTransfersDAOTests() throws Exception { super(); }
 
   private final FileTransfersDAO dao = new FileTransfersDAO();
 

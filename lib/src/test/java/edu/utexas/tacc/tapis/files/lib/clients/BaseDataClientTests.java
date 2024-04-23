@@ -1,12 +1,10 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.test.RandomByteInputStream;
 import edu.utexas.tacc.tapis.files.test.RandomByteInputStream.SizeUnit;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
-import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
@@ -17,8 +15,9 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Path;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +43,6 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
 
     @BeforeMethod
     public void beforeMethod() throws Exception {
-        SshSessionPool.init();
         T dataClient = configureTestClient(testTenant, testUser, configSection);
         String testRootPathString = testRootPath.toString();
         try {
@@ -117,19 +115,26 @@ abstract public class BaseDataClientTests<T extends IRemoteDataClient> {
 
     @Test
     public void testUploadAndDownload() throws Exception {
-        long bytesToWrite = 1000;
+        int bytesToWrite = 1500;
         boolean alphaNumericOnly = true;
         String fileName = UUID.randomUUID().toString();
         String pathString = testRootPath.resolve(fileName).toString();
 
         T dataClient = configureTestClient(testTenant, testUser, configSection);
-        RandomByteInputStream inputStream = new RandomByteInputStream(1500, SizeUnit.BYTES, true);
-        dataClient.upload(testRootPath.resolve(fileName).toString(), inputStream);
-        inputStream.close();
-        String uploadHash = inputStream.getDigestString();
+        MessageDigest uploadStreamDigest = MessageDigest.getInstance("SHA-256");
+        DigestInputStream mdInputStream = new DigestInputStream(new RandomByteInputStream(bytesToWrite, SizeUnit.BYTES, alphaNumericOnly), uploadStreamDigest);
+        dataClient.upload(testRootPath.resolve(fileName).toString(), mdInputStream);
+        mdInputStream.close();
+        String uploadHash = TestUtils.hashAsHex(mdInputStream);
 
-        InputStream downloadStream = dataClient.getStream(pathString);
-        String downloadHash = TestUtils.getDigest(downloadStream);
+        MessageDigest downloadStreamDigest = MessageDigest.getInstance("SHA-256");
+        DigestInputStream downloadInputStream = new DigestInputStream(dataClient.getStream(pathString), downloadStreamDigest);
+        byte[] bytes = new byte[bytesToWrite];
+
+        // just read to the end of the stream discarding byte read to upodate the hash.
+        while(downloadInputStream.read(bytes) != -1);
+
+        String downloadHash = TestUtils.hashAsHex(downloadInputStream);
         Assert.assertEquals(downloadHash, uploadHash);
     }
 

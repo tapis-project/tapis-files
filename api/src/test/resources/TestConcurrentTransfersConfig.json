@@ -1,9 +1,11 @@
 {
+  "maxThreads": 100,
+  "timeout": 300000,
   "uploadFiles": [
     {
       "uploadSystem": "tapisv3-storage1-dvernon",
       "uploadPath": "/integrationTest/uploaded/concurrent",
-      "count": 100,
+      "count": 200,
       "size": 1024
     }
   ],
@@ -14,8 +16,7 @@
       "sourcePath": "/integrationTest/uploaded/concurrent",
       "destinationProtocol": "tapis",
       "destinationSystem": "tapisv3-storage2-dvernon",
-      "destinationPath": "/integrationTest/received/concurrent",
-      "timeout": 2000000
+      "destinationPath": "/integrationTest/received/concurrent"
     }
   ],
   "cleanup": [

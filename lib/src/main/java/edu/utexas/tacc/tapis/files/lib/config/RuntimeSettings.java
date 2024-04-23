@@ -31,6 +31,10 @@ public class RuntimeSettings {
         protected final int dbConnectionPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 15);
         protected final int dbConnectionPoolSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 20);
         protected final int sshPoolTraceOnCleanupInterval = getIntSetting("TAPIS_SSH_POOL_TRACE_ON_CLEANUP_INTERVAL", 4);
+        protected final int sshPoolApiMaxConnectionsPerKey = getIntSetting("TAPIS_SSH_POOL_API_MAX_CONNECTIONS_PER_KEY", 8);
+        protected final int sshPoolApiMaxSessionsPerConnection = getIntSetting("TAPIS_SSH_POOL_API_MAX_SESSIONS_PER_CONNECTION", 10);
+        protected final int sshPoolWorkerMaxConnectionsPerKey = getIntSetting("TAPIS_SSH_POOL_WORKER_MAX_CONNECTIONS_PER_KEY", 8);
+        protected final int sshPoolWorkerMaxSessionsPerConnection = getIntSetting("TAPIS_SSH_POOL_WORKER_MAX_SESSIONS_PER_CONNECTION", 10);
         protected final int grizzlyPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 40);
         protected final int grizzlyPoolMaxSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 50);
         protected final String tapisDebugSystemServicePath = settings.get("TAPIS_DEBUG_SYSTEM_SERVICE_PATH", null);
@@ -122,6 +126,22 @@ public class RuntimeSettings {
 
         public int getSshPoolTraceOnCleanupInterval() {
             return sshPoolTraceOnCleanupInterval;
+        }
+
+        public int getSshPoolApiMaxConnectionsPerKey() {
+            return sshPoolApiMaxConnectionsPerKey;
+        }
+
+        public int getSshPoolApiMaxSessionsPerConnection() {
+            return sshPoolApiMaxSessionsPerConnection;
+        }
+
+        public int getSshPoolWorkerMaxConnectionsPerKey() {
+            return sshPoolWorkerMaxConnectionsPerKey;
+        }
+
+        public int getSshPoolWorkerMaxSessionsPerConnection() {
+            return sshPoolWorkerMaxSessionsPerConnection;
         }
 
         public int getMaxTransferCount() {

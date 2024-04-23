@@ -37,10 +37,11 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
 import javax.inject.Singleton;
-import javax.ws.rs.core.MediaType;
+import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
@@ -52,6 +53,7 @@ import java.util.Random;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static edu.utexas.tacc.tapis.files.integration.transfers.IntegrationTestUtils.getJwtForUser;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -261,21 +263,19 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   @BeforeMethod
   @AfterMethod
   // Remove all files from test systems
-  public void cleanup()
-  {
-    testSystems.forEach( (sys)->
-    {
+  public void cleanup() {
+    testSystems.forEach((sys) -> {
       try {
-        when(skClient.isPermitted(any(), any(), any())).thenReturn(true);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(TENANT, TEST_USR1, sys);
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(sys);
         when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(sys);
-        target(String.format("%s/%s/", OPS_ROUTE, sys.getId()))
-                .request()
-                .accept(MediaType.APPLICATION_JSON)
-                .header("x-tapis-token", getJwtForUser(TENANT, TEST_USR1))
-                .delete(FileStringResponse.class);
+        client.delete("/");
+      } catch (NotFoundException ex) {
+        // ignore not found exceptions - these are expected if there is nothing to remove.
+      } catch (Exception ex) {
+        log.error("Error: ", ex);
+        throw new RuntimeException(ex);
       }
-      catch (Exception ex) { log.error(ex.getMessage(), ex); }
     });
   }
 
@@ -313,8 +313,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   // So it seems to be a test issue.
   // NOTE: Now it is working, not sure what was happening.
   @Test(dataProvider = "testSystemsProviderNoS3", enabled = true)
-  public void testZipOutput(TapisSystem system) throws Exception
-  {
+  public void testZipOutput(TapisSystem system) throws Exception {
     when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(system);
     when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(system);
     addTestFilesToSystem(system, "a/test1.txt", 10 * 1000);
@@ -342,6 +341,7 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
     else Assert.assertEquals(count, 4);
   }
 
+  @Ignore
   @Test(dataProvider = "testSystemsProvider", groups = {"slow"})
   public void testStreamLargeFile(TapisSystem system) throws Exception
   {

@@ -2,18 +2,17 @@ package edu.utexas.tacc.tapis.files.test;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Objects;
 
 public class RandomByteInputStream extends InputStream {
-    private final MessageDigest digest;
-
+    private static Logger log = LoggerFactory.getLogger(RandomByteInputStream.class);
     private int bytesRead = 0;
     private final int bytesAvailable;
     private final int maxChunkSize;
@@ -56,22 +55,17 @@ public class RandomByteInputStream extends InputStream {
         this.bytesAvailable = sizeUnit.inBytes(size);
         this.alphaNumericOnly = alphaNumericOnly;
         this.maxChunkSize = DEFAULT_CHUNK_SIZE;
-        this.digest = MessageDigest.getInstance("SHA-256");
     }
 
     public RandomByteInputStream(int maxChunkSize, int size, SizeUnit sizeUnit, boolean alphaNumericOnly) throws NoSuchAlgorithmException {
         this.bytesAvailable = sizeUnit.inBytes(size);
         this.alphaNumericOnly = alphaNumericOnly;
         this.maxChunkSize = maxChunkSize;
-        this.digest = MessageDigest.getInstance("SHA-256");
     }
 
     public InputStream initInputStream() throws IOException {
         outputStream = new PipedOutputStream();
         return new PipedInputStream(outputStream);
-    }
-    public String getDigestString() {
-        return TestUtils.hashAsHex(digest.digest());
     }
 
     public int available() {
@@ -84,7 +78,6 @@ public class RandomByteInputStream extends InputStream {
             return -1;
         }
         byte [] bytes = getRandomBytes(1);
-        digest.update(bytes);
         bytesRead++;
         return bytes[0];
     }
@@ -116,7 +109,6 @@ public class RandomByteInputStream extends InputStream {
         for(int i = 0;i < bytes.length;i++) {
             b[off + i] = bytes[i];
         }
-        digest.update(bytes);
         bytesRead += bytes.length;
         return bytes.length;
     }

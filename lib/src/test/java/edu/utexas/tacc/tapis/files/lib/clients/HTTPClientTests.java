@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 import java.io.InputStream;
 
 @Test(groups={"integration"})
-public class TestHTTPClient
+public class HTTPClientTests
 {
   @Test
   public void testGetFile() throws Exception

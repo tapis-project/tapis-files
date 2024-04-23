@@ -31,7 +31,7 @@ public class TestMultiPathFileTransfers extends BaseTransfersIntegrationTest<Tes
             List<FileInfo> filesToTransfer = IntegrationTestUtils.instance.getListing(getBaseFilesUrl(), getToken(), transfersConfig.getSourceSystem(), transfersConfig.getSourcePath());
             List<String> transferTasks = null;
             transferTasks = doBatchTransfer(transfersConfig, filesToTransfer);
-            IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, transfersConfig.getTimeout());
+            IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, getTestConfig().getTimeout());
             transferTasks.clear();
             for(FileInfo fileInfo : filesToTransfer) {
                 Path fileName = Path.of(fileInfo.getPath()).getFileName();
