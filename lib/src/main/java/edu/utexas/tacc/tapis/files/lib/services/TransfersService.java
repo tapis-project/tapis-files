@@ -460,7 +460,7 @@ public class TransfersService
   private static void checkPermImpersonate(ResourceRequestUser rUser, String impersonationId, String opName, String uuidStr)
   {
     // If no impersonation then OK, return now.
-    if (!StringUtils.isBlank(impersonationId)) return;
+    if (StringUtils.isBlank(impersonationId)) return;
 
     // If a service request the username will be the service name. E.g. systems, jobs, streams, etc
     String svcName = rUser.getJwtUserId();
