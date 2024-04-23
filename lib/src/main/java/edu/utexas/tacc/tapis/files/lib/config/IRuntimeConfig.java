@@ -23,6 +23,10 @@ public interface IRuntimeConfig {
     int getDbConnectionPoolCoreSize();
     int getDbConnectionPoolSize();
     int getSshPoolTraceOnCleanupInterval();
+    int getSshPoolApiMaxConnectionsPerKey();
+    int getSshPoolApiMaxSessionsPerConnection();
+    int getSshPoolWorkerMaxConnectionsPerKey();
+    int getSshPoolWorkerMaxSessionsPerConnection();
     int getMaxTransferCount();
     public int getGrizzlyPoolCoreSize();
     public int getGrizzlyPoolMaxSize();

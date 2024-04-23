@@ -12,7 +12,6 @@ public class TransfersConfig {
     private String destinationSystem;
     private Path destinationPath;
     // default to waiting 10 seconds
-    private long timeout = 10000;
 
     public String getSourceSystem() {
         return sourceSystem;
@@ -48,9 +47,5 @@ public class TransfersConfig {
         Assert.assertFalse(relativeFilePath.isAbsolute());
         Path fullPath = getDestinationPath().resolve(relativeFilePath);
         return getDestinationProtocol() + "://" + getDestinationSystem() + "/" + fullPath.toString();
-    }
-
-    public long getTimeout() {
-        return timeout;
     }
 }

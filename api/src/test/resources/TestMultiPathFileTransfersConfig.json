@@ -1,4 +1,5 @@
 {
+  "timeout": 200000,
   "uploadFiles": [
     {
       "uploadSystem": "tapisv3-storage1-dvernon",
@@ -20,8 +21,7 @@
       "sourcePath": "/integrationTest/uploaded/batch",
       "destinationProtocol": "tapis",
       "destinationSystem": "tapisv3-storage2-dvernon",
-      "destinationPath": "/integrationTest/received/batch",
-      "timeout": 200000
+      "destinationPath": "/integrationTest/received/batch"
     },
     {
       "sourceProtocol": "tapis",
@@ -29,8 +29,7 @@
       "sourcePath": "/integrationTest/received/batch",
       "destinationProtocol": "tapis",
       "destinationSystem": "tapisv3-storage4-dvernon",
-      "destinationPath": "/integrationTest/received/batch",
-      "timeout": 200000
+      "destinationPath": "/integrationTest/received/batch"
     },
     {
       "sourceProtocol": "tapis",
@@ -38,8 +37,7 @@
       "sourcePath": "/integrationTest/received/batch",
       "destinationProtocol": "tapis",
       "destinationSystem": "tapisv3-storage1-dvernon",
-      "destinationPath": "/integrationTest/received/batch",
-      "timeout": 200000
+      "destinationPath": "/integrationTest/received/batch"
     }
   ],
   "cleanup": [
