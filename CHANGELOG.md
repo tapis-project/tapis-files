@@ -9,6 +9,20 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.6.2 - 2024-??-??
+
+Incremental improvements and new features.  
+Enhancements to concurrency in the way that SSH/SFTP Sessions are used improving performance.
+
+### New features:
+
+
+### Bug fixes:
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.6.1 - 2024-03-28
 
 Incremental improvements and new features.  The Dockerfiles that build the
