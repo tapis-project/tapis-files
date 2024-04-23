@@ -25,9 +25,9 @@ RUN useradd -m tapis
 USER tapis
 
 WORKDIR /home/tapis/app
-COPY lib/target/tapis-files.jar ./
-COPY lib/target/dependencies ./dependencies
-COPY lib/target/classes/logback.xml ./logback.xml
+COPY --chown=tapis:tapis lib/target/tapis-files.jar ./
+COPY --chown=tapis:tapis lib/target/dependencies ./dependencies
+COPY --chown=tapis:tapis lib/target/classes/logback.xml ./logback.xml
 
 # Java module commands that are always needed (java 17 and later).
 ENV JAVA_MODULE_OPTS --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.time=ALL-UNNAMED \
