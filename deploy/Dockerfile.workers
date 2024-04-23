@@ -35,5 +35,5 @@ ENV JAVA_MODULE_OPTS --add-opens java.base/java.lang=ALL-UNNAMED --add-opens jav
 ENV JAVA_CMD_OPTS -Xdebug -Xmx3g -agentlib:jdwp=transport=dt_socket,server=y,address=*:8000,suspend=n 
 EXPOSE 8080
 
-CMD java ${JAVA_CMD_OPTS} ${JAVA_MODULE_OPTS} -Dlogback.configurationFile=dependencies/classes/logback.xml -cp "./tapis-files.jar:dependencies/*" edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp
+CMD java ${JAVA_CMD_OPTS} ${JAVA_MODULE_OPTS} -Dlogback.configurationFile=./logback.xml -cp "./tapis-files.jar:dependencies/*" edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp
 
