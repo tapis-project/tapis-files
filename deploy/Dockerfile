@@ -17,7 +17,7 @@ RUN apt update
 RUN apt install -y less 
 
 # Install vi.
-RUN apt install -y vim
+RUN apt install -y vim-tiny
 
 # Add user tapis
 RUN useradd -m tapis
