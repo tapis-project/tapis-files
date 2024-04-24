@@ -73,7 +73,7 @@
     <logger name="edu.utexas.tacc.tapis.shared.ssh" level="WARN"/>
 
     <!-- ssh session pooling logging.  logs to a separate file -->
-    <logger name="edu.utexas.tacc.tapis.shared.ssh" level="DEBUG" additivity="false">
+    <logger name="edu.utexas.tacc.tapis.shared.ssh" level="INFO" additivity="false">
         <appender-ref ref="SSH_POOL_FILE"/>
     </logger>
 </configuration>
