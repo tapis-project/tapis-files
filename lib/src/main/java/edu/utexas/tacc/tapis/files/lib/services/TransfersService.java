@@ -45,6 +45,8 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_IMPERSONATE;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SHAREDCTX;
 
 /*
@@ -55,6 +57,9 @@ public class TransfersService
 {
   private static final Logger log = LoggerFactory.getLogger(TransfersService.class);
   private static final String impersonationIdNull = null;
+  private static final boolean includeSummaryFalse = false;
+  private static final boolean includeSummaryTrue = true;
+
   private static final String TRANSFERS_EXCHANGE = "tapis.files";
   private static String PARENT_QUEUE = "tapis.files.transfers.parent";
   private static String CHILD_QUEUE = "tapis.files.transfers.child";
@@ -113,7 +118,7 @@ public class TransfersService
     {
       try
       {
-        TransferTask task = dao.getTransferTaskByUUID(transferTaskUuid);
+        TransferTask task = dao.getTransferTaskByUUID(transferTaskUuid, includeSummaryFalse);
         return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
       }
       catch (DAOException ex)
@@ -125,10 +130,38 @@ public class TransfersService
       }
     }
 
-    public TransferTask getTransferTaskDetails(UUID uuid) throws ServiceException
+  /**
+   * Fetch detailed information given transfer task UUID
+   * Include list of parents and children.
+   * Support impersonation.
+   *
+   * @param uuidStr uuid of transfer task.
+   * @param impersonationId - use provided Tapis username instead of oboUser when checking auth, getSystem (effUserId)
+   * @return response containing all transfer task details.
+   */
+    public TransferTask getTransferTaskDetails(@NotNull ResourceRequestUser rUser, @NotNull String uuidStr,
+                                               String impersonationId)
+            throws ServiceException, NotFoundException
     {
+      String opName = "getTransferTaskDetails";
+      // Check caller has permission to use impersonationId
+      checkPermImpersonate(rUser, impersonationId, opName, uuidStr);
+      String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
+      UUID taskUuid = UUID.fromString(uuidStr);
+
         try {
-            TransferTask task = dao.getTransferTaskByUUID(uuid);
+            TransferTask task = dao.getTransferTaskByUUID(taskUuid, includeSummaryTrue);
+            if (task == null)
+            {
+              String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_NOT_FOUND", rUser, opName, taskUuid, impersonationId);
+              log.error(msg);
+              throw new NotFoundException(msg);
+            }
+
+            // Do a final permission check based on calling user/tenant and task user/tenant
+            isUserPermitted(rUser, task, oboOrImpersonatedUser, rUser.getOboTenantId(), opName);
+
+            // Fetch and fill in parents and children
             List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
             task.setParentTasks(parents);
             for (TransferTaskParent parent : parents) {
@@ -139,42 +172,21 @@ public class TransfersService
         }
         catch (DAOException ex)
         {
-          String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskDetails", uuid, ex.getMessage());
+          String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_ERR3", rUser, opName, taskUuid, impersonationId, ex.getMessage());
           log.error(msg, ex);
           throw new ServiceException(msg, ex);
         }
     }
 
-    public TransferTaskChild getChildTaskByUUID(UUID uuid) throws ServiceException
-    {
-      try
-      {
-        return dao.getChildTaskByUUID(uuid);
-      }
-      catch (DAOException e)
-      {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", null, null, "getChildTaskByUUID", null, null, uuid, e.getMessage());
-        log.error(msg, e);
-        throw new ServiceException(msg, e);
-      }
-    }
-
-    public List<TransferTaskChild> getAllChildrenTasks(TransferTask task)
-            throws ServiceException
-    {
-      try
-      {
-        return dao.getAllChildren(task);
-      }
-      catch (DAOException e)
-      {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                                     "getAllChildrenTasks", task.getId(), task.getTag(), task.getUuid(), e.getMessage());
-        log.error(msg, e);
-        throw new ServiceException(msg, e);
-      }
-    }
-
+    /**
+     *
+     * @param tenantId
+     * @param username
+     * @param limit
+     * @param offset
+     * @return
+     * @throws ServiceException
+     */
     public List<TransferTask> getRecentTransfers(String tenantId, String username, int limit, int offset)
             throws ServiceException
     {
@@ -192,73 +204,64 @@ public class TransfersService
       }
     }
 
-    public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID) throws ServiceException, NotFoundException
-    {
-      try
-      {
-        TransferTask task = dao.getTransferTaskByUUID(taskUUID);
-        if (task == null)
-        {
-          String msg = LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskByUUID", taskUUID);
-          log.error(msg);
-          throw new NotFoundException(msg);
-        }
-        List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
-        task.setParentTasks(parents);
-        return task;
-      }
-      catch (DAOException ex)
-      {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskByUUID", taskUUID, ex.getMessage());
-        log.error(msg, ex);
-        throw new ServiceException(msg, ex);
-      }
-    }
-
-    public TransferTask getTransferTaskById(@NotNull int id) throws ServiceException, NotFoundException
-    {
-      try
-      {
-        TransferTask task = dao.getTransferTaskByID(id);
-        if (task == null)
-        {
-          String msg = LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskById", id);
-          log.error(msg);
-          throw new NotFoundException(msg);
-        }
-        List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
-        task.setParentTasks(parents);
-        return task;
-      }
-      catch (DAOException ex)
-      {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR4", "getTransferTaskById", id, ex.getMessage());
-        log.error(msg, ex);
-        throw new ServiceException(msg, ex);
-      }
-    }
-
-    public TransferTaskParent getTransferTaskParentByUUID(@NotNull UUID taskUUID)
+  /**
+   * Fetch a transfer task by UUID. Optionally include summary attributes. Support impersonation.
+   * Summary info included if requested.
+   * Parent and child details never included.
+   *
+   * @param rUser - ResourceRequestUser containing tenant, user and request info
+   * @param uuidStr uuid of transfer task.
+   * @param includeSummary - indicates if summary information such as *estimatedTotalBytes* should be included.
+   * @param impersonationId - use provided Tapis username instead of oboUser when checking auth, getSystem (effUserId)
+   * @return transfer task
+   * @throws ServiceException - on error
+   * @throws NotFoundException - UUID not found
+   */
+    public TransferTask getTransferTaskByUuid(@NotNull ResourceRequestUser rUser, String uuidStr,
+                                              boolean includeSummary, String impersonationId)
             throws ServiceException, NotFoundException
     {
+      String opName = "getTransferTaskByUuid";
+      // Check caller has permission to use impersonationId
+      checkPermImpersonate(rUser, impersonationId, opName, uuidStr);
+      UUID taskUuid = UUID.fromString(uuidStr);
+      // Certain services are allowed to impersonate an OBO user for the purposes of authorization
+      String oboOrImpersonatedUser = StringUtils.isBlank(impersonationId) ? rUser.getOboUserId() : impersonationId;
       try
       {
-        TransferTaskParent task = dao.getTransferTaskParentByUUID(taskUUID);
+        // Get the task, including summary info if requested.
+        TransferTask task = dao.getTransferTaskByUUID(taskUuid, includeSummary);
         if (task == null)
         {
-          String msg = LibUtils.getMsg("FILES_TXFR_SVC_NOT_FOUND", "getTransferTaskParentByUUID", taskUUID);
+          String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_NOT_FOUND", rUser  ,opName, taskUuid, impersonationId);
           log.error(msg);
           throw new NotFoundException(msg);
         }
+        // Do a final permission check based on calling user/tenant and task user/tenant
+        isUserPermitted(rUser, task, oboOrImpersonatedUser, rUser.getOboTenantId(), opName);
         return task;
       }
       catch (DAOException ex)
       {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR3", "getTransferTaskParentByUUID", taskUUID, ex.getMessage());
+        String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_ERR3", rUser, opName, taskUuid, impersonationId, ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
       }
     }
+
+  /**
+   * Get transfer task top level attributes.
+   * Simple wrapper for convenience. Many callers do not need summary attributes or impersonation support.
+   * @param uuidStr Id of transfer task.
+   * @return transfer task
+   * @throws ServiceException - on error
+   * @throws NotFoundException - UUID not found
+   */
+  public TransferTask getTransferTaskByUuid(@NotNull ResourceRequestUser rUser, String uuidStr)
+          throws ServiceException, NotFoundException
+  {
+    return getTransferTaskByUuid(rUser, uuidStr, includeSummaryFalse, impersonationIdNull);
+  }
 
     /**
      * Creates the top level TransferTask in table transfer_tasks
@@ -338,11 +341,34 @@ public class TransfersService
       }
     }
 
-    public void cancelTransfer(@NotNull TransferTask task) throws ServiceException, NotFoundException
+    /**
+     * Cancel a transfer task given the task UUID.
+     * @param uuidStr - unique id of task
+     * @throws ServiceException on error
+     * @throws NotFoundException task not found
+     */
+    public void cancelTransfer(@NotNull ResourceRequestUser rUser, @NotNull String uuidStr)
+            throws ServiceException, NotFoundException
     {
+      String opName = "cancelTransfer";
+      UUID taskUuid = UUID.fromString(uuidStr);
+      TransferTask task;
       try
       {
+        // Get top level attributes for the transfer task. Needed for dao call and perm check.
+        task = dao.getTransferTaskByUUID(taskUuid, includeSummaryFalse);
+        if (task == null) {
+          String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_NOT_FOUND", rUser, opName, taskUuid, impersonationIdNull);
+          log.error(msg);
+          throw new NotFoundException(msg);
+        }
+        // Do a final permission check based on calling user/tenant and task user/tenant
+        isUserPermitted(rUser, task, rUser.getOboUserId(), rUser.getOboTenantId(), opName);
+
+        // Make dao call to update DB
         dao.cancelTransfer(task);
+
+        // Queue up the cancel message on the control channel
         TransferControlAction action = new TransferControlAction();
         action.setAction(TransferControlAction.ControlAction.CANCEL);
         action.setCreated(Instant.now());
@@ -352,8 +378,7 @@ public class TransfersService
       }
       catch (DAOException ex)
       {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                                     "cancelTransfer", task.getId(), task.getTag(), task.getUuid(), ex.getMessage());
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_CANCEL_ERR", rUser, uuidStr, ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
       }
@@ -414,6 +439,41 @@ public class TransfersService
   // ************************************************************************
   // *********************** Private Methods ********************************
   // ************************************************************************
+
+  /**
+   * Check that user has permission to access and act on the task
+   * Permitted only if task tenant+user match obo tenant+user
+   * @param task - task to check
+   * @param oboUser - user trying to act on the task
+   */
+  private void isUserPermitted(ResourceRequestUser rUser, TransferTask task, String oboUser, String oboTenant, String opName)
+  {
+    if (task.getTenantId().equals(oboTenant) && task.getUsername().equals(oboUser)) return;
+    throw new ForbiddenException(LibUtils.getMsgAuthR("FILES_TASK_UNAUTH", rUser, oboTenant,
+                                 oboUser, task.getTenantId(), task.getUsername(), task.getUuid(), opName));
+  }
+
+  /*
+   * Check that caller is allowed to use impersonation
+   * Permitted only for certain services.
+   */
+  private static void checkPermImpersonate(ResourceRequestUser rUser, String impersonationId, String opName, String uuidStr)
+  {
+    // If no impersonation then OK, return now.
+    if (StringUtils.isBlank(impersonationId)) return;
+
+    // If a service request the username will be the service name. E.g. systems, jobs, streams, etc
+    String svcName = rUser.getJwtUserId();
+    if (!rUser.isServiceRequest() || !SVCLIST_IMPERSONATE.contains(svcName))
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_IMPERSONATE_TXFR", rUser, opName,
+                                        uuidStr, impersonationId);
+      throw new ForbiddenException(msg);
+    }
+    // An allowed service is impersonating, log it
+    log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE_TXFR", rUser, opName,
+                                  uuidStr, impersonationId));
+  }
 
   /**
    * Initialize the RabbitMQ exchanges and queues.
