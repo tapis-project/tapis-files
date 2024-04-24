@@ -712,19 +712,6 @@ public class FileTransfersDAO {
         }
     }
 
-// TODO/TBD remove? only in test? Was this for getDetails?
-//    public TransferTask getHistory(@NotNull UUID taskUUID) throws DAOException {
-//        //TODO: This could be done in one query with a couple of joins quicker
-//        TransferTask task = this.getTransferTaskByUUID(taskUUID);
-//        List<TransferTaskParent> parents = this.getAllParentsForTaskByID(task.getId());
-//        for (TransferTaskParent parent: parents) {
-//            List<TransferTaskChild> children = this.getAllChildren(parent);
-//            parent.setChildren(children);
-//        }
-//        task.setParentTasks(parents);
-//        return task;
-//    }
-
     public void cancelTransfer(@NotNull TransferTask task) throws DAOException
     {
         try (Connection connection = HikariConnectionPool.getConnection())

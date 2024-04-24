@@ -113,29 +113,6 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
     Assert.assertNotNull(child.getEndTime());
   }
 
-// TODO/TBD remove?
-//  @Test
-//  public void testGetHistory() throws Exception
-//  {
-//    TransferTask t1 = createTransferTask(testUser1);
-//    TransferTaskParent parent = t1.getParentTasks().get(0);
-//    FileInfo fileInfo = new FileInfo();
-//    fileInfo.setPath("/a/b/c.txt");
-//    fileInfo.setType(FileInfo.FileType.FILE);
-//    fileInfo.setSize(1000);
-//
-//    //create 3 children on the first parent
-//    TransferTaskChild child = new TransferTaskChild(parent, fileInfo, null);
-//    dao.insertChildTask(child);
-//    dao.insertChildTask(child);
-//    dao.insertChildTask(child);
-//
-//    TransferTask task = dao.getHistory(t1.getUuid());
-//    Assert.assertNotNull(task.getParentTasks());
-//    Assert.assertNotNull(task.getParentTasks().get(0).getChildren());
-//    Assert.assertEquals(task.getParentTasks().get(0).getChildren().size(), 3);
-//  }
-
   /*
    * Create a single transfer task for given userName
    */
