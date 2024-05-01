@@ -43,7 +43,6 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
-import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /**
  * This class provides remoteDataClient file operations for S3 systems.
@@ -65,6 +64,7 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
 public class S3DataClient implements IRemoteDataClient
 {
   private final Logger log = LoggerFactory.getLogger(S3DataClient.class);
+  public static final long MAX_LISTING_SIZE = Long.MAX_VALUE;
   private final String oboTenant;
   private final String oboUser;
   private final S3Client client;

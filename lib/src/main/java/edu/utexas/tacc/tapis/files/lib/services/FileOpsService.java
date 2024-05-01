@@ -62,7 +62,6 @@ import static edu.utexas.tacc.tapis.shared.uri.TapisUrl.TAPIS_PROTOCOL_PREFIX;
 @Service
 public class FileOpsService
 {
-  public static final int MAX_LISTING_SIZE = 1000;
   public static final int MAX_RECURSION = 20;
 
   public enum MoveCopyOperation {MOVE, COPY, SERVICE_MOVE_DIRECTORY_CONTENTS, SERVICE_MOVE_FILE_OR_DIRECTORY}
@@ -142,7 +141,7 @@ public class FileOpsService
    * @throws NotFoundException - requested path not found
    */
   public List<FileInfo> ls(@NotNull ResourceRequestUser rUser, @NotNull String sysId, @NotNull String pathStr,
-                           long limit, long offset, String pattern, String impersonationId, String sharedCtxGrantor)
+                           FileListingOpts fileListingOpts, String impersonationId, String sharedCtxGrantor)
           throws WebApplicationException
   {
     String opName = "ls";
@@ -162,7 +161,7 @@ public class FileOpsService
     {
       // Get the connection and increment the reservation count
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, impersonationId, sharedCtxGrantor);
-      return ls(client, relPathStr, limit, offset, pattern);
+      return ls(client, relPathStr, fileListingOpts);
     }
     catch (IOException | ServiceException ex)
     {
@@ -189,14 +188,14 @@ public class FileOpsService
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    */
-  public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String pathStr, long limit, long offset, String pattern)
+  public List<FileInfo> ls(@NotNull IRemoteDataClient client, @NotNull String pathStr, FileListingOpts fileListingOpts)
           throws ServiceException
   {
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
     try
     {
-      List<FileInfo> listing = client.ls(relPathStr, limit, offset, pattern);
+      List<FileInfo> listing = client.ls(relPathStr, fileListingOpts.getPageSize(), fileListingOpts.getItemOffset(), fileListingOpts.getPattern());
       listing.forEach(f ->
         {
           f.setUrl(PathUtils.getTapisUrlFromPath(f.getPath(), client.getSystemId()));
@@ -229,7 +228,7 @@ public class FileOpsService
    * @throws ForbiddenException - user not authorized
    */
     public List<FileInfo> lsRecursive(@NotNull ResourceRequestUser rUser, @NotNull String sysId, @NotNull String pathStr,
-                                      int depth, String regex, String impersonationId, String sharedCtxGrantor)
+                                      FileListingOpts fileListingOpts, String impersonationId, String sharedCtxGrantor)
             throws WebApplicationException
     {
       String opName = "lsRecursive";
@@ -249,7 +248,7 @@ public class FileOpsService
       {
         // Get the connection and increment the reservation count
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
-        return lsRecursive(client, relPathStr, false, depth, regex);
+        return lsRecursive(client, relPathStr, false, fileListingOpts);
       }
       catch (IOException | ServiceException ex)
       {
@@ -274,12 +273,12 @@ public class FileOpsService
    * @throws ServiceException - general error
    * @throws NotFoundException - requested path not found
    */
-  public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String relPathStr, boolean followLinks, int depth, String regex)
+  public List<FileInfo> lsRecursive(@NotNull IRemoteDataClient client, @NotNull String relPathStr, boolean followLinks, FileListingOpts fileListingOpts)
           throws ServiceException
   {
     List<FileInfo> listing = new ArrayList<>();
     // Make the call that does recursion
-    listDirectoryRecurse(client, relPathStr, listing, followLinks, 0, Math.min(depth, MAX_RECURSION), regex);
+    listDirectoryRecurse(client, relPathStr, listing, followLinks, 0, fileListingOpts);
     return listing;
   }
 
@@ -1029,8 +1028,9 @@ public class FileOpsService
     {
       // Get a remoteDataClient to do the listing and stream contents
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      FileListingOpts.Builder optsBuilder = new FileListingOpts.Builder();
       // Step through a recursive listing up to some max depth
-      List<FileInfo> listing = lsRecursive(client, relPathStr, true, MAX_RECURSION, IRemoteDataClient.NO_PATTERN);
+      List<FileInfo> listing = lsRecursive(client, relPathStr, true, optsBuilder.build());
       for (FileInfo fileInfo : listing)
       {
         // Build the path we will use for the zip entry
@@ -1102,10 +1102,10 @@ public class FileOpsService
    * @throws NotFoundException - requested path not found
    */
   private void listDirectoryRecurse(@NotNull IRemoteDataClient client, String basePath, List<FileInfo> listing,
-                                    boolean followLinks, int depth, int maxDepth, String pattern)
+                                    boolean followLinks, int depth, FileListingOpts fileListingOpts)
           throws ServiceException
   {
-    List<FileInfo> currentListing = ls(client, basePath, MAX_LISTING_SIZE, 0, pattern);
+    List<FileInfo> currentListing = ls(client, basePath, fileListingOpts);
     listing.addAll(currentListing);
     // If client is S3 we are done.
     if (SystemTypeEnum.S3.equals(client.getSystemType())) return;
@@ -1125,9 +1125,9 @@ public class FileOpsService
         }
         fileInfo = tmpInfo;
       }
-      if (fileInfo.isDir() && depth < maxDepth)
+      if (fileInfo.isDir() && depth < fileListingOpts.getRecursionLimit())
       {
-        listDirectoryRecurse(client, fileInfo.getPath(), listing, followLinks, depth + 1, maxDepth, pattern);
+        listDirectoryRecurse(client, fileInfo.getPath(), listing, followLinks, depth + 1, fileListingOpts);
       }
     }
   }

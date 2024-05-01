@@ -49,7 +49,6 @@ import edu.utexas.tacc.tapis.shared.ssh.apache.SSHSftpClient;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /**
  * This class provides remoteDataClient file operations for SSH systems.
@@ -59,6 +58,8 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
 public class SSHDataClient implements ISSHDataClient
 {
   private static final int MAX_PERMS_INT = Integer.parseInt("777", 8);
+  public static final long MAX_LISTING_VALUE = Long.MAX_VALUE;
+
   // SFTP client throws IOException containing this string if a path does not exist.
   private static final String NO_SUCH_FILE = "no such file";
   private static final int MAX_STDOUT_SIZE = 1000;
@@ -113,7 +114,7 @@ public class SSHDataClient implements ISSHDataClient
 
   public List<FileInfo> ls(@NotNull String path) throws IOException, NotFoundException
   {
-    return ls(path, MAX_LISTING_SIZE, 0);
+    return ls(path, MAX_LISTING_VALUE, 0);
   }
 
   public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException {
@@ -136,7 +137,6 @@ public class SSHDataClient implements ISSHDataClient
   public List<FileInfo> ls(@NotNull String path, long limit, long offset, String pattern) throws IOException, NotFoundException
   {
     String opName = "ls";
-    long count = Math.min(limit, MAX_LISTING_SIZE);
     long startIdx = Math.max(offset, 0);
     List<FileInfo> filesList = new ArrayList<>();
     List<DirEntry> dirEntries = new ArrayList<>();
@@ -218,7 +218,7 @@ public class SSHDataClient implements ISSHDataClient
 
 
     if(StringUtils.isBlank(pattern))  {
-      return filesList.stream().skip(startIdx).limit(count).collect(Collectors.toList());
+      return filesList.stream().skip(startIdx).limit(limit).collect(Collectors.toList());
     }
 
     final boolean isRegEx = (StringUtils.startsWithIgnoreCase(pattern, IRemoteDataClient.REGEX_PREFIX)) ? true : false;
@@ -232,7 +232,7 @@ public class SSHDataClient implements ISSHDataClient
         return FilenameUtils.wildcardMatch(fileInfo.getName(), patternOnly);
       }
 
-    }).skip(startIdx).limit(count).collect(Collectors.toList());
+    }).skip(startIdx).limit(limit).collect(Collectors.toList());
   }
 
   /**

@@ -27,6 +27,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+
+import edu.utexas.tacc.tapis.files.lib.services.FileListingOpts;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
@@ -111,7 +113,12 @@ public class OperationsApiResource
                             @Context SecurityContext securityContext)
   {
     String opName = "listFiles";
-    return getListing(opName, systemId, path, limit, offset, recurse, pattern, impersonationId, sharedCtx, securityContext);
+    FileListingOpts.Builder listOptsBuilder = new FileListingOpts.Builder()
+            .setPageSize(limit)
+            .setItemOffset(offset)
+            .setRecurse(recurse)
+            .setPattern(pattern);
+    return getListing(opName, systemId, path, listOptsBuilder.build(), impersonationId, sharedCtx, securityContext);
   }
 
   @GET
@@ -127,7 +134,12 @@ public class OperationsApiResource
                                 @Context SecurityContext securityContext)
   {
     String opName = "listFilesRoot";
-    return getListing(opName, systemId, "", limit, offset, recurse, pattern, impersonationId, sharedCtx, securityContext);
+    FileListingOpts.Builder listOptsBuilder = new FileListingOpts.Builder()
+            .setPageSize(limit)
+            .setItemOffset(offset)
+            .setRecurse(recurse)
+            .setPattern(pattern);
+    return getListing(opName, systemId, "", listOptsBuilder.build(), impersonationId, sharedCtx, securityContext);
   }
 
   /**
@@ -305,7 +317,7 @@ public class OperationsApiResource
   /*
    * Common routine to perform a listing
    */
-  private Response getListing(String opName, String systemId, String path, int limit, long offset, boolean recurse, String pattern,
+  private Response getListing(String opName, String systemId, String path, FileListingOpts fileListingOpts,
                               String impersonationId, String sharedCtx, SecurityContext securityContext)
   {
     AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
@@ -322,7 +334,7 @@ public class OperationsApiResource
     // Trace this request.
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path,
-              "limit="+limit, "offset="+offset, "recurse="+recurse,"impersonationId="+impersonationId,
+              "pageLimit="+fileListingOpts.getPattern(), "itemOffset="+fileListingOpts.getItemOffset(), "recurse="+fileListingOpts.isRecurse(),"impersonationId="+impersonationId,
               "sharedCtx="+sharedCtx);
     Instant start = Instant.now();
     List<FileInfo> listing;
@@ -330,8 +342,8 @@ public class OperationsApiResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    if (recurse) listing = fileOpsService.lsRecursive(rUser, systemId, path, MAX_RECURSION, pattern, impersonationId, sharedCtx);
-    else listing = fileOpsService.ls(rUser, systemId, path, limit, offset, pattern, impersonationId, sharedCtx);
+    if (fileListingOpts.isRecurse()) listing = fileOpsService.lsRecursive(rUser, systemId, path, fileListingOpts, impersonationId, sharedCtx);
+    else listing = fileOpsService.ls(rUser, systemId, path, fileListingOpts, impersonationId, sharedCtx);
 
     String msg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.debug(msg);
