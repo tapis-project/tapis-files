@@ -168,7 +168,7 @@ public class  TransfersApiResource
     // Trace this request.
     if (log.isTraceEnabled())
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId="+taskUuid,
-                          "includeSummary"+includeSummary, "impersonationId="+impersonationId);
+                          "includeSummary="+includeSummary, "impersonationId="+impersonationId);
 
     TransferTask task;
     try
