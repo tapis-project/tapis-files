@@ -46,7 +46,6 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /**
  * This class provides remoteDataClient file operations for IRODS systems.
@@ -67,6 +66,7 @@ public class IrodsDataClient implements IRemoteDataClient
   private final int port;
   private static final String DEFAULT_RESC = "";
   private static final int MAX_BYTES_PER_CHUNK = 1000000;
+  public static final long MAX_LISTING_SIZE = Long.MAX_VALUE;
 
   public IrodsDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1) throws IOException
   {

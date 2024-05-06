@@ -272,13 +272,13 @@ public class FileShareServiceTests {
         Assert.assertFalse(fileShareService.isSharedWithUser(rtestuser2, tSys, pathToShare, testuser2));
 
         // Check that testUser can see the file and testUser2 cannot
-        fileOpsService.ls(rtestuser1, sysId, pathToShare, 1, 0, null, null, IRemoteDataClient.NO_PATTERN);
-        fileOpsService.ls(rtestuser1, sysId, fileToCheck, 1, 0, null, null, IRemoteDataClient.NO_PATTERN);
+        fileOpsService.ls(rtestuser1, sysId, pathToShare, new FileListingOpts.Builder().setPageSize(1).build(), null, null);
+        fileOpsService.ls(rtestuser1, sysId, fileToCheck, new FileListingOpts.Builder().setPageSize(1).build(), null, null);
         fileOpsService.getFileInfo(rtestuser1, sysId, fileToCheck, true, null, null);
         boolean pass = false;
         try
         {
-            fileOpsService.ls(rtestuser2, sysId, pathToShare, 1, 0, null, null, IRemoteDataClient.NO_PATTERN);
+            fileOpsService.ls(rtestuser2, sysId, pathToShare, new FileListingOpts.Builder().setPageSize(1).build(), null, null);
         }
         catch (ForbiddenException e) { pass = true; }
         Assert.assertTrue(pass, "User testUser2 should not be able to list path");
@@ -292,7 +292,7 @@ public class FileShareServiceTests {
         pass = false;
         try
         {
-            fileOpsService.ls(rtestuser2, sysId, fileToCheck, 1 , 0, null, null, IRemoteDataClient.NO_PATTERN);
+            fileOpsService.ls(rtestuser2, sysId, fileToCheck, new FileListingOpts.Builder().setPageSize(1).build(), null, null);
         }
         catch (ForbiddenException e) { pass = true; }
         Assert.assertTrue(pass, "User testUser2 should not be able to list path to file");
@@ -325,8 +325,8 @@ public class FileShareServiceTests {
         Assert.assertTrue(fileShareService.isSharedWithUser(rtestuser2, tSys, fileToCheck, testuser2));
 
         // Check that testUser and testUser2 can now see the path
-        fileOpsService.ls(rtestuser1, sysId, pathToShare, 1, 0, null, null, IRemoteDataClient.NO_PATTERN);
-        fileOpsService.ls(rtestuser2, sysId, pathToShare, 1, 0, null, null, IRemoteDataClient.NO_PATTERN);
+        fileOpsService.ls(rtestuser1, sysId, pathToShare, new FileListingOpts.Builder().setPageSize(1).build(), null, null);
+        fileOpsService.ls(rtestuser2, sysId, pathToShare, new FileListingOpts.Builder().setPageSize(1).build(), null, null);
         fileOpsService.getFileInfo(rtestuser2, sysId, pathToShare, true, null, null);
         fileOpsService.getFileInfo(rtestuser2, sysId, fileToCheck, true, null, null);
 
@@ -344,11 +344,11 @@ public class FileShareServiceTests {
         Assert.assertFalse(fileShareService.isSharedWithUser(rtestuser2, tSys, fileToCheck, testuser2));
 
         // Check that once again testUser can see the file and testUser2 cannot
-        fileOpsService.ls(rtestuser1, sysId, pathToShare, 1, 0, null, null, IRemoteDataClient.NO_PATTERN);
+        fileOpsService.ls(rtestuser1, sysId, pathToShare, new FileListingOpts.Builder().setPageSize(1).build(), null, null);
         pass = false;
         try
         {
-            fileOpsService.ls(rtestuser2, sysId, pathToShare, 1, 0, null, null, IRemoteDataClient.NO_PATTERN);
+            fileOpsService.ls(rtestuser2, sysId, pathToShare, new FileListingOpts.Builder().setPageSize(1).build(), null, null);
         }
         catch (ForbiddenException e) { pass = true; }
         Assert.assertTrue(pass, "User testUser2 should not be able to list path");

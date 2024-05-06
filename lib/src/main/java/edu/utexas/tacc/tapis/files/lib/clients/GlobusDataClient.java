@@ -37,7 +37,6 @@ import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.globusproxy.client.GlobusProxyClient;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
-import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTING_SIZE;
 
 /**
  * This class provides remoteDataClient file operations for Globus systems.
@@ -62,6 +61,7 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.MAX_LISTIN
  */
 public class GlobusDataClient implements IRemoteDataClient
 {
+  public static final long MAX_LISTING_SIZE = Long.MAX_VALUE;
   // Timestamp parse pattern used by Globus for lastModified, e.g. 2022-01-31 20:31:01+00:00
   // Note that this is not ISO 8601 because there is a space and not a T between data and time.
   // NOTE: It appears globus is using RFC 3339 rather than ISO 8601.
