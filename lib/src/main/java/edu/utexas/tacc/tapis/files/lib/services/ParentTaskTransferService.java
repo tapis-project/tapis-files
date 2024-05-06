@@ -223,6 +223,9 @@ public class ParentTaskTransferService {
         lastException = ex;
       } catch (Exception ex) {
         lastException = ex;
+        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
+                "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
+        log.error(msg, ex);
         // unexpected exception occurred - don't retry, just fail
         break;
       }
@@ -501,12 +504,13 @@ public class ParentTaskTransferService {
     // NOTE Treat all source system types the same. For S3 it will be all objects matching the srcPath as a prefix.
     log.trace(LibUtils.getMsg("FILES_TXFR_LSR1", taskTenant, taskUser, "doParentStepOneA07", parentId, parentUuid, srcId, srcPath, tag));
 
+    FileListingOpts.Builder optBuilder = new FileListingOpts.Builder();
     // If both source and destination are GLOBUS, do a non-recursive listing. Globus will handle transfer of directories.
     if (srcIsGlobus && dstIsGlobus) {
-      fileListing = fileOpsService.ls(srcClient, srcPath, FileOpsService.MAX_LISTING_SIZE, 0, IRemoteDataClient.NO_PATTERN);
+      fileListing = fileOpsService.ls(srcClient, srcPath, optBuilder.build());
     }
     else {
-      fileListing = fileOpsService.lsRecursive(srcClient, srcPath, false, FileOpsService.MAX_RECURSION, IRemoteDataClient.NO_PATTERN);
+      fileListing = fileOpsService.lsRecursive(srcClient, srcPath, false, optBuilder.build());
     }
     if (fileListing == null) fileListing = Collections.emptyList();
     log.trace(LibUtils.getMsg("FILES_TXFR_LSR2", taskTenant, taskUser, "doParentStepOneA08", parentId, parentUuid, srcId, srcPath, fileListing.size(), tag));
