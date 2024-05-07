@@ -57,7 +57,6 @@ public class IrodsDataClient implements IRemoteDataClient
   private static final Logger log = LoggerFactory.getLogger(IrodsDataClient.class);
   private final String oboTenant;
   private final String oboUser;
-  private final String impersonationId;
   private final TapisSystem system;
   private final String systemId;
   private final String irodsZone;
@@ -69,15 +68,10 @@ public class IrodsDataClient implements IRemoteDataClient
   private static final int MAX_BYTES_PER_CHUNK = 1000000;
   public static final long MAX_LISTING_SIZE = Long.MAX_VALUE;
 
-  public IrodsDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1) throws IOException {
-      this(oboTenant1, oboUser1, null, system1);
-  }
-
-  public IrodsDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull String impersonationId1, @NotNull TapisSystem system1) throws IOException
+  public IrodsDataClient(@NotNull String oboTenant1, @NotNull String oboUser1, @NotNull TapisSystem system1) throws IOException
   {
     oboTenant = oboTenant1;
     oboUser = oboUser1;
-    impersonationId = impersonationId1;
     system = system1;
     systemId = system1.getId();
     // Make sure we have a valid rootDir that is not null and does not have extra whitespace
@@ -544,7 +538,7 @@ public class IrodsDataClient implements IRemoteDataClient
 
       // getUseProxy returns capital B Boolean.  Use Boolean.TRUE.equals() to handle null propeerly
       if(Boolean.TRUE.equals(system.getUseProxy()))  {
-          return IRODSAccount.instanceWithProxy(host, port, getProxiedOboUser(), password,
+          return IRODSAccount.instanceWithProxy(host, port, oboUser, password,
                   homeDir, irodsZone, DEFAULT_RESC, user, irodsZone);
       } else {
           return IRODSAccount.instance(host, port, user, password,
@@ -552,12 +546,4 @@ public class IrodsDataClient implements IRemoteDataClient
       }
   }
 
-  // TODO:  Ask Steve ... Is this safe?  Is it ok to assume that if there is something in impersonationId I should use it?
-  private String getProxiedOboUser() {
-      if (StringUtils.isBlank(impersonationId))
-          return oboUser;
-      else {
-          return impersonationId;
-      }
-  }
 }
