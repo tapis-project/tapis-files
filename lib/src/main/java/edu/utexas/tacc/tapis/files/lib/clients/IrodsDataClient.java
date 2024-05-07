@@ -238,7 +238,11 @@ public class IrodsDataClient implements IRemoteDataClient
                     throw new BadRequestException(msg);
                 }
                 if (!newCollection.exists()) {
-                    newCollection.mkdir();
+                    if(!newCollection.mkdir()) {
+                        String msg = LibUtils.getMsg("FILES_IRODS_DIRECTORY_NOT_CREATED", oboTenant, oboUser,
+                                systemId, system.getEffectiveUserId(), host, tmpPath.toString(), tmp.toString());
+                        throw new IOException(msg);
+                    }
                 }
                 newCollection.close();
             }
@@ -532,7 +536,14 @@ public class IrodsDataClient implements IRemoteDataClient
           throw new IllegalArgumentException(msg);
       }
 
-      return IRODSAccount.instance(host, port, user, password,
-              homeDir, irodsZone, DEFAULT_RESC, AuthScheme.STANDARD);
+      // getUseProxy returns capital B Boolean.  Use Boolean.TRUE.equals() to handle null propeerly
+      if(Boolean.TRUE.equals(system.getUseProxy()))  {
+          return IRODSAccount.instanceWithProxy(host, port, oboUser, password,
+                  homeDir, irodsZone, DEFAULT_RESC, user, irodsZone);
+      } else {
+          return IRODSAccount.instance(host, port, user, password,
+                  homeDir, irodsZone, DEFAULT_RESC, AuthScheme.STANDARD);
+      }
   }
+
 }
