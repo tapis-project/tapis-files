@@ -62,7 +62,8 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
     }
     else if (SystemTypeEnum.IRODS.equals(system.getSystemType()))
     {
-      return new IrodsDataClient(oboTenant, oboUser, system);
+      String clientOboUser = (impersonationId == null) ? oboUser : impersonationId;
+      return new IrodsDataClient(oboTenant, clientOboUser, system);
     }
     else if (SystemTypeEnum.GLOBUS.equals(system.getSystemType()))
     {

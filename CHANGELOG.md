@@ -15,9 +15,12 @@ Incremental improvements and new features.
 Enhancements to concurrency in the way that SSH/SFTP Sessions are used improving performance.
 
 ### New features:
-
+- Improved handling of pool ssh/sftp connections allowing for better performance under higher loads.
+- Added proxy user for irods.
 
 ### Bug fixes:
+- Fixed issue concerning making directories starting with a '.'.
+- Fixed issue where directories with more than 1000 entries were not handled properly for most operations.
 
 ### Breaking Changes
 - None
