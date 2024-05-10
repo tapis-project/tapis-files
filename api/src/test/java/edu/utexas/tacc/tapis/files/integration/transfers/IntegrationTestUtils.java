@@ -273,7 +273,7 @@ public class IntegrationTestUtils {
                 String transferTaskId = result.get("result").getAsJsonObject().get("uuid").getAsString();
                 if (terminalStates.contains(transferTaskStatus)) {
                     log.info("Transfer Done: " + transferTaskId + " Status: " + transferTaskStatus);
-                    Assert.assertEquals(TransferTaskStatus.COMPLETED, transferTaskStatus);
+                    Assert.assertEquals(transferTaskStatus, TransferTaskStatus.COMPLETED);
                     completedTransfers.put(transferTaskId, result);
                 } else {
                     log.info("Waiting for transfer: " + transferTaskId);

@@ -275,9 +275,18 @@ public class SSHDataClient implements ISSHDataClient
 
       // Get the sftpClient so we can perform operations
       try(var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
-        sessionHolder.getSession().mkdir(tmpPathStr); }
-      catch (SftpException e)
-      {
+        sessionHolder.getSession().mkdir(tmpPathStr);
+      } catch (SftpException e) {
+        try (var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
+          // Caught an exception.  If we look and see a directory there, it most likely means it was create
+          // by another thread.  That's fine.  It's been created, so we will call it a success.
+          FileInfo fileInfo = getFileInfo(path, true);
+          if((fileInfo != null) && (fileInfo.isDir())) {
+            return;
+          }
+        } catch (Exception ex) {
+          // ignore this - it's handled below with the original exception
+        }
         handleSftpException(e, "mkdir", tmpPathStr);
       }
     }

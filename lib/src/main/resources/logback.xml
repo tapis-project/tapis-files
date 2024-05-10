@@ -72,6 +72,10 @@
     <!-- by default, don't log ssh pool trace info to stdout or normal log files.  set to trace to enable -->
     <logger name="edu.utexas.tacc.tapis.shared.ssh" level="WARN"/>
 
+    <!--
+    <logger name="org.apache.sshd.sftp.client.impl.DefaultSftpClient" level="TRACE"/>
+    -->
+
     <!-- ssh session pooling logging.  logs to a separate file -->
     <logger name="edu.utexas.tacc.tapis.shared.ssh" level="INFO" additivity="false">
         <appender-ref ref="SSH_POOL_FILE"/>
