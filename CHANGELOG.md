@@ -21,6 +21,7 @@ Enhancements to concurrency in the way that SSH/SFTP Sessions are used improving
 ### Bug fixes:
 - Fixed issue concerning making directories starting with a '.'.
 - Fixed issue where directories with more than 1000 entries were not handled properly for most operations.
+- Fixed issue where making a directory during a transfer could fail.
 
 ### Breaking Changes
 - None

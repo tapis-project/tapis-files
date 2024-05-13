@@ -63,8 +63,9 @@
 
     <!-- Control library logging. -->
     <logger name="com.zaxxer.hikari" level="ERROR"/>
-    <logger name="org.apache.sshd.client.impl.DefaultSftpClient" level="TRACE"/>
-
+    <!--
+    <logger name="org.apache.sshd.sftp.client.impl.DefaultSftpClient" level="TRACE"/>
+    -->
     <logger name="edu.utexas.tacc.tapis.shared.ssh" level="WARN"/>
 
     <!-- ssh session pooling logging.  set to "TRACE" for debugging message (very verbose) -->
