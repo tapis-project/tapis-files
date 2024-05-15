@@ -14,6 +14,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
@@ -104,6 +105,7 @@ public class TransfersApp
     });
 
     try {
+      checkRequiredSettings();
       SshSessionPoolPolicy poolPolicy = SshSessionPoolPolicy.defaultPolicy()
               .setMaxConnectionDuration(Duration.ofHours(6))
               .setMaxConnectionIdleTime(Duration.ofMinutes(8))
@@ -147,6 +149,53 @@ public class TransfersApp
     } catch(Exception ex) {
       String msg = LibUtils.getMsg("FILES_WORKER_APPLICATION_FAILED_TO_START", ex.getMessage());
       log.error(msg, ex);
+    }
+  }
+
+  private static void checkRequiredSettings() {
+    StringBuilder missingVars = new StringBuilder();
+    if(RuntimeSettings.get().getSiteId() == null) {
+      missingVars.append("TAPIS_SITE_ID ");
+    }
+
+    if (RuntimeSettings.get().getDbHost() == null) {
+      missingVars.append("DB_HOST ");
+    }
+
+    if (RuntimeSettings.get().getDbName() == null) {
+      missingVars.append("DB_NAME ");
+    }
+
+    if (RuntimeSettings.get().getDbUsername() == null) {
+      missingVars.append("DB_USERNAME ");
+    }
+
+    if (RuntimeSettings.get().getDbPassword() == null) {
+      missingVars.append("DB_PASSWORD ");
+    }
+
+    if (RuntimeSettings.get().getRabbitMQHost() == null) {
+      missingVars.append("RABBITMQ_HOSTNAME ");
+    }
+
+    if (RuntimeSettings.get().getRabbitMQUsername() == null) {
+      missingVars.append("RABBITMQ_USERNAME ");
+    }
+
+    if (RuntimeSettings.get().getRabbitMQVHost() == null) {
+      missingVars.append("RABBITMQ_VHOST ");
+    }
+
+    if (RuntimeSettings.get().getRabbitmqPassword() == null) {
+      missingVars.append("RABBITMQ_PASSWORD ");
+    }
+
+    if (RuntimeSettings.get().getServicePassword() == null) {
+      missingVars.append("SERVICE_PASSWORD ");
+    }
+
+    if(!missingVars.isEmpty()) {
+      throw new RuntimeException(MsgUtils.getMsg("FILES_TRANSFER_SERVICE_MISSING_REQUIRED_VARIABLES", missingVars.toString()));
     }
   }
 
