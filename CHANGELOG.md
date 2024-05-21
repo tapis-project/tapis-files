@@ -9,7 +9,7 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.6.2 - 2024-??-??
+## 1.6.2 - 2024-05-21
 
 Incremental improvements and new features.  
 Enhancements to concurrency in the way that SSH/SFTP Sessions are used improving performance.
