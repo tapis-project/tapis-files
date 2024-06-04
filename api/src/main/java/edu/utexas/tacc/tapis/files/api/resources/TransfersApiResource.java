@@ -307,6 +307,8 @@ public class  TransfersApiResource
       throw new WebApplicationException(msg, ex);
     }
     String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CREATED", rUser, task.getTag(), task.getUuid());
+    // temporarilly null out task.parent to avoid giant response in the case of huge (Joshua style) transfers
+    task.setParentTasks(null);
     TapisResponse<TransferTask> resp = TapisResponse.createSuccessResponse(msg, task);
     // Trace details of the created txfr task.
     if (log.isTraceEnabled()) log.trace(task.toString());
