@@ -36,7 +36,7 @@ public class RuntimeSettings {
         protected final int sshPoolApiMaxSessionLifetimeMillis = getIntSetting("TAPIS_SSH_POOL_API_MAX_SESSION_LIFETIME_MILLIS", 300000);
         protected final int sshPoolWorkerMaxConnectionsPerKey = getIntSetting("TAPIS_SSH_POOL_WORKER_MAX_CONNECTIONS_PER_KEY", 8);
         protected final int sshPoolWorkerMaxSessionsPerConnection = getIntSetting("TAPIS_SSH_POOL_WORKER_MAX_SESSIONS_PER_CONNECTION", 10);
-        protected final int sshPoolWorkerMaxSessionLifetimeMillis = getIntSetting("TAPIS_SSH_POOL_API_MAX_SESSION_LIFETIME_MILLIS", 60000);
+        protected final int sshPoolWorkerMaxSessionLifetimeMillis = getIntSetting("TAPIS_SSH_POOL_API_MAX_SESSION_LIFETIME_MILLIS", 300000);
         protected final int grizzlyPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 40);
         protected final int grizzlyPoolMaxSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 50);
         protected final String tapisDebugSystemServicePath = settings.get("TAPIS_DEBUG_SYSTEM_SERVICE_PATH", null);

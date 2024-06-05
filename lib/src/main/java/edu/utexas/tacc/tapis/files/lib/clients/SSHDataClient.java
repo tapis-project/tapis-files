@@ -676,11 +676,11 @@ public class SSHDataClient implements ISSHDataClient
     if (parentPath != null) {
       mkdir(parentPath.toString());
     }
-    try (fileStream; var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
-      OutputStream outputStream = sessionHolder.getSession().write(absolutePath.toString());
+    try (fileStream;
+         var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true);
+         var outputStream = sessionHolder.getSession().write(absolutePath.toString())) {
       fileStream.transferTo(outputStream);
       outputStream.flush();
-      outputStream.close();
     } catch (IOException ex) {
       handleSftpException(ex, "createFile", path);
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "insertOrAppend", systemId, effectiveUserId, host, path, ex.getMessage());
