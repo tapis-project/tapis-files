@@ -33,12 +33,14 @@ public class RuntimeSettings {
         protected final int sshPoolTraceOnCleanupInterval = getIntSetting("TAPIS_SSH_POOL_TRACE_ON_CLEANUP_INTERVAL", 4);
         protected final int sshPoolApiMaxConnectionsPerKey = getIntSetting("TAPIS_SSH_POOL_API_MAX_CONNECTIONS_PER_KEY", 8);
         protected final int sshPoolApiMaxSessionsPerConnection = getIntSetting("TAPIS_SSH_POOL_API_MAX_SESSIONS_PER_CONNECTION", 10);
+        protected final int sshPoolApiMaxSessionLifetimeMillis = getIntSetting("TAPIS_SSH_POOL_API_MAX_SESSION_LIFETIME_MILLIS", 300000);
         protected final int sshPoolWorkerMaxConnectionsPerKey = getIntSetting("TAPIS_SSH_POOL_WORKER_MAX_CONNECTIONS_PER_KEY", 8);
         protected final int sshPoolWorkerMaxSessionsPerConnection = getIntSetting("TAPIS_SSH_POOL_WORKER_MAX_SESSIONS_PER_CONNECTION", 10);
+        protected final int sshPoolWorkerMaxSessionLifetimeMillis = getIntSetting("TAPIS_SSH_POOL_API_MAX_SESSION_LIFETIME_MILLIS", 60000);
         protected final int grizzlyPoolCoreSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_CORE_SIZE", 40);
         protected final int grizzlyPoolMaxSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 50);
         protected final String tapisDebugSystemServicePath = settings.get("TAPIS_DEBUG_SYSTEM_SERVICE_PATH", null);
-        protected final int maxTransferCount = getIntSetting("MAX_TRANSFER_COUNT", 3000);
+        protected final int maxTransferCount = getIntSetting("MAX_TRANSFER_COUNT", 10000);
 
         public String getHostName() {
             return hostName;
@@ -128,6 +130,9 @@ public class RuntimeSettings {
             return sshPoolTraceOnCleanupInterval;
         }
 
+        public int getSshPoolApiMaxSessionLifetimeMillis() {
+            return sshPoolApiMaxSessionLifetimeMillis;
+        }
         public int getSshPoolApiMaxConnectionsPerKey() {
             return sshPoolApiMaxConnectionsPerKey;
         }
@@ -144,6 +149,10 @@ public class RuntimeSettings {
             return sshPoolWorkerMaxSessionsPerConnection;
         }
 
+        public int getSshPoolWorkerMaxSessionLifetimeMillis() {
+            return sshPoolWorkerMaxSessionLifetimeMillis;
+        }
+
         public int getMaxTransferCount() {
             return maxTransferCount;
         }
@@ -156,7 +165,6 @@ public class RuntimeSettings {
             return Integer.parseInt(settingValue);
         }
     }
-
 
     private static class TestConfig extends BaseConfig {
         protected String dbHost = settings.get("DB_HOST", "localhost");
