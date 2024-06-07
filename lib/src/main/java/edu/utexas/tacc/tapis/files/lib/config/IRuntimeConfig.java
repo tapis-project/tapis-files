@@ -25,8 +25,10 @@ public interface IRuntimeConfig {
     int getSshPoolTraceOnCleanupInterval();
     int getSshPoolApiMaxConnectionsPerKey();
     int getSshPoolApiMaxSessionsPerConnection();
+    int getSshPoolApiMaxSessionLifetimeMillis();
     int getSshPoolWorkerMaxConnectionsPerKey();
     int getSshPoolWorkerMaxSessionsPerConnection();
+    int getSshPoolWorkerMaxSessionLifetimeMillis();
     int getMaxTransferCount();
     public int getGrizzlyPoolCoreSize();
     public int getGrizzlyPoolMaxSize();

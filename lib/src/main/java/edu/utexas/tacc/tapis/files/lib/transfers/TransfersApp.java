@@ -113,7 +113,7 @@ public class TransfersApp
               .setMaxSessionsPerConnection(RuntimeSettings.get().getSshPoolWorkerMaxSessionsPerConnection())
               .setCleanupInterval(Duration.ofSeconds(15))
               .setTraceDuringCleanupFrequency(RuntimeSettings.get().getSshPoolTraceOnCleanupInterval())
-              .setSessionCreationStrategy(SshSessionPoolPolicy.SessionCreationStrategy.MINIMIZE_CONNECTIONS);
+              .setMaxSessionLifetime(Duration.ofMillis(RuntimeSettings.get().getSshPoolWorkerMaxSessionLifetimeMillis()));
       SshSessionPool.init(poolPolicy);
 
       // Get runtime parameters

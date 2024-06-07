@@ -207,7 +207,7 @@ public class FilesApplication extends ResourceConfig
               .setMaxSessionsPerConnection(RuntimeSettings.get().getSshPoolApiMaxSessionsPerConnection())
               .setCleanupInterval(Duration.ofSeconds(15))
               .setTraceDuringCleanupFrequency(RuntimeSettings.get().getSshPoolTraceOnCleanupInterval())
-              .setSessionCreationStrategy(SshSessionPoolPolicy.SessionCreationStrategy.MINIMIZE_CONNECTIONS);
+              .setMaxSessionLifetime(Duration.ofMillis(RuntimeSettings.get().getSshPoolApiMaxSessionLifetimeMillis()));
       SshSessionPool.init(poolPolicy);
 
     }
