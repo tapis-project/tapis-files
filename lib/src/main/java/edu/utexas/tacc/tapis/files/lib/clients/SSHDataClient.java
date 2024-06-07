@@ -4,7 +4,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -676,11 +675,11 @@ public class SSHDataClient implements ISSHDataClient
     if (parentPath != null) {
       mkdir(parentPath.toString());
     }
-    try (fileStream; var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
-      OutputStream outputStream = sessionHolder.getSession().write(absolutePath.toString());
+    try (fileStream;
+         var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true);
+         var outputStream = sessionHolder.getSession().write(absolutePath.toString())) {
       fileStream.transferTo(outputStream);
       outputStream.flush();
-      outputStream.close();
     } catch (IOException ex) {
       handleSftpException(ex, "createFile", path);
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "insertOrAppend", systemId, effectiveUserId, host, path, ex.getMessage());
