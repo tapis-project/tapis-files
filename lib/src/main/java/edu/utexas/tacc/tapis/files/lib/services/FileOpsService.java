@@ -847,11 +847,11 @@ public class FileOpsService
                                                            impersonationId, sharedCtxGrantor);
 
     StreamingOutput outStream = output -> {
-      InputStream stream = null;
       try
       {
-        stream = getAllBytes(rUser, sys, pathStr);
-        stream.transferTo(output);
+        try(InputStream stream = getAllBytes(rUser, sys, pathStr)) {
+          stream.transferTo(output);
+        }
       }
       catch (NotFoundException ex)
       {
@@ -862,10 +862,6 @@ public class FileOpsService
         String msg = LibUtils.getMsgAuthR("FILES_CONT_ERR", rUser, sysId, relPathStr, e.getMessage());
         log.error(msg, e);
         throw new WebApplicationException(msg, e);
-      }
-      finally
-      {
-        IOUtils.closeQuietly(stream);
       }
     };
     return outStream;
