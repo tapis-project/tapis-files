@@ -9,6 +9,20 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.6.3 - 2024-06-14
+
+Incremental improvements and new features.  
+
+### New features:
+- None
+
+### Bug fixes:
+- Performance improvements in transfers with many files.
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.6.2 - 2024-05-21
 
 Incremental improvements and new features.  
