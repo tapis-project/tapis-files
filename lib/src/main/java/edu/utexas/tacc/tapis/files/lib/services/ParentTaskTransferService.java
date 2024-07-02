@@ -558,7 +558,7 @@ public class ParentTaskTransferService {
     parentTask = dao.updateTransferTaskParent(parentTask);
     dao.bulkInsertChildTasks(children);
     children = dao.getAllChildren(parentTask);
-    transfersService.publishBulkChildMessages(children);
+//    transfersService.publishBulkChildMessages(children);
   }
 
   private void handleNonTapisTransfer(TransferTaskParent parentTask) throws ServiceException, DAOException {

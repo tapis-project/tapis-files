@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
+import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
@@ -13,14 +14,13 @@ import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 
@@ -30,138 +30,6 @@ public class FileTransfersDAO {
 
     private static final Logger log = LoggerFactory.getLogger(FileTransfersDAO.class);
 
-
-    private static class TransferTaskSummaryRowProcessor extends  BasicRowProcessor {
-        @Override
-        public TransferTaskSummary toBean(ResultSet rs, Class type) throws SQLException {
-            TransferTaskSummary summary = new TransferTaskSummary();
-            summary.setCompleteTransfers(rs.getInt("complete"));
-            summary.setTotalTransfers(rs.getInt("total_transfers"));
-            summary.setEstimatedTotalBytes(rs.getLong("total_bytes"));
-            summary.setTotalBytesTransferred(rs.getLong("total_bytes_transferred"));
-            return summary;
-        }
-
-        @Override
-        public List<TransferTaskSummary> toBeanList(ResultSet rs, Class type) throws SQLException {
-            List<TransferTaskSummary> list = new ArrayList<>();
-            while (rs.next()) {
-                list.add(toBean(rs, type));
-            }
-            return list;
-        }
-    }
-
-
-
-    // TODO: There should be some way to not duplicate this code...
-    private static class TransferTaskRowProcessor extends BasicRowProcessor {
-
-        @Override
-        public TransferTask toBean(ResultSet rs, Class type) throws SQLException {
-            TransferTask task = new TransferTask();
-            task.setId(rs.getInt("id"));
-            task.setTenantId(rs.getString("tenant_id"));
-            task.setUsername(rs.getString("username"));
-            task.setCreated(rs.getTimestamp("created").toInstant());
-            task.setUuid(UUID.fromString(rs.getString("uuid")));
-            task.setStatus(rs.getString("status"));
-            task.setTag(rs.getString("tag"));
-            task.setErrorMessage(rs.getString("error_message"));
-            Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
-            Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
-            return task;
-        }
-
-        @Override
-        public List<TransferTask> toBeanList(ResultSet rs, Class type) throws SQLException {
-            List<TransferTask> list = new ArrayList<>();
-            while (rs.next()) {
-                list.add(toBean(rs, type));
-            }
-            return list;
-        }
-    }
-
-    // TODO: There should be some way to not duplicate this code...
-    private static class TransferTaskParentRowProcessor extends BasicRowProcessor
-    {
-        @Override
-        public TransferTaskParent toBean(ResultSet rs, Class type) throws SQLException
-        {
-            TransferTaskParent task = new TransferTaskParent();
-            task.setId(rs.getInt("id"));
-            task.setTaskId(rs.getInt("task_id"));
-            task.setUsername(rs.getString("username"));
-            task.setTenantId(rs.getString("tenant_id"));
-            task.setSourceURI(rs.getString("source_uri"));
-            task.setDestinationURI(rs.getString("destination_uri"));
-            task.setCreated(rs.getTimestamp("created").toInstant());
-            task.setUuid(UUID.fromString(rs.getString("uuid")));
-            task.setStatus(rs.getString("status"));
-            task.setOptional(rs.getBoolean("optional"));
-            task.setSrcSharedCtxGrantor(rs.getString("src_shared_ctx"));
-            task.setDestSharedCtxGrantor(rs.getString("dst_shared_ctx"));
-            task.setTag(rs.getString("tag"));
-            task.setTotalBytes(rs.getLong("total_bytes"));
-            task.setBytesTransferred(rs.getLong("bytes_transferred"));
-            task.setErrorMessage(rs.getString("error_message"));
-            task.setFinalMessage(rs.getString("final_message"));
-            String transferTypeString = rs.getString("transfer_type");
-            if(!StringUtils.isBlank(transferTypeString)) {
-                task.setTransferType(TransferTaskParent.TransferType.valueOf(transferTypeString));
-            }
-            Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
-            Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
-            return task;
-        }
-
-        @Override
-        public List<TransferTaskParent> toBeanList(ResultSet rs, Class type) throws SQLException {
-            List<TransferTaskParent> list = new ArrayList<>();
-            while (rs.next()) {
-                list.add(toBean(rs, type));
-            }
-            return list;
-        }
-    }
-
-
-    private static class TransferTaskChildRowProcessor extends BasicRowProcessor {
-
-        @Override
-        public TransferTaskChild toBean(ResultSet rs, Class type) throws SQLException {
-            TransferTaskChild task = new TransferTaskChild();
-            task.setId(rs.getInt("id"));
-            task.setTaskId(rs.getInt("task_id"));
-            task.setParentTaskId(rs.getInt("parent_task_id"));
-            task.setUsername(rs.getString("username"));
-            task.setTenantId(rs.getString("tenant_id"));
-            task.setSourceURI(rs.getString("source_uri"));
-            task.setDestinationURI(rs.getString("destination_uri"));
-            task.setCreated(rs.getTimestamp("created").toInstant());
-            task.setRetries(rs.getInt("retries"));
-            task.setUuid(UUID.fromString(rs.getString("uuid")));
-            task.setStatus(rs.getString("status"));
-            task.setDir(rs.getBoolean("is_dir"));
-            task.setTotalBytes(rs.getLong("total_bytes"));
-            task.setBytesTransferred(rs.getLong("bytes_transferred"));
-            task.setErrorMessage(rs.getString("error_message"));
-            task.setExternalTaskId(rs.getString("external_task_id"));
-            Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts-> task.setStartTime(ts.toInstant()));
-            Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts-> task.setEndTime(ts.toInstant()));
-            return task;
-        }
-
-        @Override
-        public List<TransferTaskChild> toBeanList(ResultSet rs, Class type) throws SQLException {
-            List<TransferTaskChild> list = new ArrayList<>();
-            while (rs.next()) {
-                list.add(toBean(rs, type));
-            }
-            return list;
-        }
-    }
 
     /**
      * Create a transfer task and all the associated TransferTaskParent objects.
@@ -300,6 +168,38 @@ public class FileTransfersDAO {
             return runner.query(connection, query, handler, taskUUID);
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskChild", taskUUID), ex);
+        }
+    }
+
+    public TransferTaskChild lockChildTaskAndPerformActionAndSetStatus(@NotNull UUID taskUUID, Function<TransferTaskChild, TransferTaskChild> function) throws DAOException {
+        try {
+            RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
+            Connection connection = HikariConnectionPool.getConnection();
+            try {
+                connection.setAutoCommit(false);
+                BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
+                String query = FileTransfersDAOStatements.GET_CHILD_TASK_FOR_UPDATE_BY_UUID;
+                QueryRunner runner = new QueryRunner();
+                TransferTaskChild lockedChildTask = runner.query(connection, query, handler, taskUUID);
+                try {
+                    lockedChildTask = function.apply(lockedChildTask);
+                    connection.commit();
+                    return lockedChildTask;
+                } catch (RuntimeException ex) {
+                    // TODO: fix message
+                    throw new DAOException(LibUtils.getMsg("ERRROR_HERE", "getTransferTaskChild", taskUUID), ex);
+                }
+            } catch (SQLException ex) {
+                throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskChild", taskUUID), ex);
+            } finally {
+                if (!connection.isClosed()) {
+                    connection.rollback();
+                    connection.setAutoCommit(true);
+                }
+            }
+        } catch (SQLException ex) {
+            // TODO: fix message
+            throw new DAOException(LibUtils.getMsg("MESSAGE_HERE", taskUUID), ex);
         }
     }
 
@@ -689,6 +589,29 @@ public class FileTransfersDAO {
                   "getAllChildren1", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
+
+    public List<PrioritizedObject<TransferTaskChild>> getAcceptedChildTasksForTenantsAndUsers(int maxTasksPerTenantAndUser) throws DAOException {
+        RowProcessor rowProcessor = new PrioritizedObjectRowProcessor(new TransferTaskChildRowProcessor(), TransferTaskChild.class);
+
+        try (Connection connection = HikariConnectionPool.getConnection()) {
+            ResultSetHandler<List<PrioritizedObject>> handler =
+                    new BeanListHandler<PrioritizedObject>(PrioritizedObject.class, rowProcessor);
+            String stmt = FileTransfersDAOStatements.GET_ACCEPTED_CHILD_TASKS_FOR_TENANTS_AND_USERS;
+            QueryRunner runner = new QueryRunner();
+
+            List<PrioritizedObject> children = runner.query(
+                    connection,
+                    stmt,
+                    handler,
+                    maxTasksPerTenantAndUser
+            );
+
+            return (List<PrioritizedObject<TransferTaskChild>>)(Object)children;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_RETRIEVING_ACCEPTED_TASKS", ex.getMessage()), ex);
+        }
+    }
+
 
     public List<TransferTaskChild> getAllChildren(@NotNull TransferTaskParent task) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();

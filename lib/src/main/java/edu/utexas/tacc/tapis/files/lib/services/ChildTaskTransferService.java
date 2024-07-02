@@ -5,8 +5,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
@@ -15,6 +16,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import javax.inject.Inject;
@@ -35,6 +37,7 @@ import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
@@ -52,6 +55,7 @@ import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import io.jsonwebtoken.lang.Collections;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -84,8 +88,8 @@ public class ChildTaskTransferService {
     // this ends up being the maximum number of un-acked items.  This include all items in progress as well as items
     // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
     // 5 items in the queue
-    private static final int QOS = 2;
-    private static final int MAX_CONSUMERS = RuntimeSettings.get().getChildThreadPoolSize();
+//    private static final int QOS = 2;
+    private static final int MAX_THREADS = RuntimeSettings.get().getChildThreadPoolSize();
     private static String CHILD_QUEUE = "tapis.files.transfers.child";
     private static final int maxRetries = 3;
     private final TransfersService transfersService;
@@ -101,7 +105,17 @@ public class ChildTaskTransferService {
     private Connection connection;
     private List<Channel> channels = new ArrayList<Channel>();
     private ExecutorService connectionThreadPool = null;
-    private ScheduledExecutorService channelMonitorService = Executors.newSingleThreadScheduledExecutor();
+//    private ScheduledExecutorService channelMonitorService = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledExecutorService childScheduler = Executors.newSingleThreadScheduledExecutor();
+    private ExecutorService childWorkers = Executors.newFixedThreadPool(MAX_THREADS, new ThreadFactory() {
+        ThreadFactory defaultFactory = Executors.defaultThreadFactory();
+        @Override
+        public Thread newThread(@NotNull Runnable runnable) {
+            Thread th = defaultFactory.newThread(runnable);
+            th.setDaemon(true);
+            return th;
+        }
+    });
 
     /* *********************************************************************** */
     /*            Constructors                                                 */
@@ -126,7 +140,7 @@ public class ChildTaskTransferService {
         this.remoteDataClientFactory = remoteDataClientFactory;
         this.fileUtilsService = fileUtilsService;
 
-        connectionThreadPool = Executors.newFixedThreadPool(MAX_CONSUMERS);
+//        connectionThreadPool = Executors.newFixedThreadPool(MAX_CONSUMERS);
         connection = RabbitMQConnection.getInstance().newConnection(connectionThreadPool);
     }
 
@@ -135,103 +149,144 @@ public class ChildTaskTransferService {
     /* *********************************************************************** */
 
     public void startListeners() throws IOException, TimeoutException {
-        createChannels();
+//        createChannels();
+//        channelMonitorService.scheduleWithFixedDelay(new Runnable() {
+//            @Override
+//            public void run() {
+//                try {
+//                    // discard any closed channels
+//                    Iterator<Channel> channelIterator = channels.iterator();
+//                    while (channelIterator.hasNext()) {
+//                        Channel channel = channelIterator.next();
+//                        if (!channel.isOpen()) {
+//                            log.warn("RabbitMQ channel is closed");
+//                            channelIterator.remove();
+//                        }
+//                    }
+//
+//                    // re-open channels
+//                    try {
+//                        createChannels();
+//                    } catch (Exception ex) {
+//                        log.error("Unable to re-open channels", ex);
+//                    }
+//                } catch (Throwable th) {
+//                    String msg = LibUtils.getMsg("FILES_TXFR_CLEANUP_FAILURE");
+//                    log.warn(msg, th);
+//                }
+//            }
+//        }, 5, 5, TimeUnit.MINUTES);
 
-        channelMonitorService.scheduleWithFixedDelay(new Runnable() {
+        childScheduler.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                try {
-                    // discard any closed channels
-                    Iterator<Channel> channelIterator = channels.iterator();
-                    while (channelIterator.hasNext()) {
-                        Channel channel = channelIterator.next();
-                        if (!channel.isOpen()) {
-                            log.warn("RabbitMQ channel is closed");
-                            channelIterator.remove();
+                boolean shouldExit = false;
+                Map<UUID, Future<TransferTaskChild>> futures = new HashMap<UUID, Future<TransferTaskChild>>();
+
+                while(!shouldExit) {
+                    try {
+                        List<PrioritizedObject<TransferTaskChild>> ttcList = dao.getAcceptedChildTasksForTenantsAndUsers(10);
+                        for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
+                            UUID childUuid = ttc.getObject().getUuid();
+                            if (futures.containsKey(childUuid)) {
+                                if (futures.get(childUuid).isDone()) {
+                                    futures.remove(childUuid);
+                                }
+                            } else {
+                                System.out.println("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
+                                try {
+                                    Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
+                                        @Override
+                                        public TransferTaskChild call() throws Exception {
+                                            return handleTask(ttc.getObject());
+                                        }
+                                    });
+                                    futures.put(childUuid, future);
+                                } catch (Throwable th) {
+                                    TransferTaskChild childTask = dao.getChildTaskByUUID(childUuid);
+                                    childTask.setStatus(childTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
+                                }
+                            }
                         }
+                    } catch (DAOException ex) {
+
                     }
 
-                    // re-open channels
-                    try {
-                        createChannels();
-                    } catch (Exception ex) {
-                        log.error("Unable to re-open channels", ex);
-                    }
-                } catch (Throwable th) {
-                    String msg = LibUtils.getMsg("FILES_TXFR_CLEANUP_FAILURE");
-                    log.warn(msg, th);
-                }
-            }
-        }, 5, 5, TimeUnit.MINUTES);
-    }
-
-    private void createChannels() throws IOException, TimeoutException {
-        int channelsToOpen = MAX_CONSUMERS - channels.size();
-        if(channelsToOpen == 0) {
-            return;
-        }
-
-        log.info("Opening " + channelsToOpen + " rabbitmq channels");
-        ChildTaskTransferService service = this;
-        for (int i = 0; i < channelsToOpen; i++) {
-            Channel channel = connection.createChannel();
-            channel.basicQos(QOS);
-
-            TransfersService.declareRabbitMQObjects(connection);
-
-            channel.basicConsume(CHILD_QUEUE, false, new DefaultConsumer(channel) {
-                @Override
-                public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
-                    try {
-                        service.handleDelivery(channel, consumerTag, envelope, properties, body);
-                    } catch (Throwable th) {
-                        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR_CONSUME_MESSAGE", consumerTag);
-                        log.error(msg, th);
+                    if(Collections.isEmpty(futures) || (futures.size() >= (MAX_THREADS * 5))) {
+                        shouldExit = true;
                     }
                 }
-            });
-            channels.add(channel);
-        }
+            }
+        }, 5, 5, TimeUnit.SECONDS);
     }
 
-    public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
-        TransferTaskChild taskChild = null;
+//    private void createChannels() throws IOException, TimeoutException {
+//        int channelsToOpen = MAX_CONSUMERS - channels.size();
+//        if(channelsToOpen == 0) {
+//            return;
+//        }
+//
+//        log.info("Opening " + channelsToOpen + " rabbitmq channels");
+//        ChildTaskTransferService service = this;
+//        for (int i = 0; i < channelsToOpen; i++) {
+//            Channel channel = connection.createChannel();
+//            channel.basicQos(QOS);
+//
+//            TransfersService.declareRabbitMQObjects(connection);
+//
+//            channel.basicConsume(CHILD_QUEUE, false, new DefaultConsumer(channel) {
+//                @Override
+//                public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
+//                    try {
+//                        service.handleDelivery(channel, consumerTag, envelope, properties, body);
+//                    } catch (Throwable th) {
+//                        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR_CONSUME_MESSAGE", consumerTag);
+//                        log.error(msg, th);
+//                    }
+//                }
+//            });
+//            channels.add(channel);
+//        }
+//    }
 
-        try {
-            taskChild = getChildTaskFromMessageBody(body);
-            if (taskChild == null) {
-                // log the error, and continue - this really shouldn't happen since we wrote the message ourselves, but being defensive.
-                String msg = LibUtils.getMsg("FILES_TXFR_UNABLE_TO_PARSE_MESSAGE");
-                log.error(msg);
-                throw new RuntimeException(msg);
-            }
+//    public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
+//        TransferTaskChild taskChild = null;
+//
+//        try {
+//            taskChild = getChildTaskFromMessageBody(body);
+//            if (taskChild == null) {
+//                // log the error, and continue - this really shouldn't happen since we wrote the message ourselves, but being defensive.
+//                String msg = LibUtils.getMsg("FILES_TXFR_UNABLE_TO_PARSE_MESSAGE");
+//                log.error(msg);
+//                throw new RuntimeException(msg);
+//            }
+//
+//            handleMessage(channel, envelope, taskChild);
+//        } catch (Exception ex) {
+//            try {
+//                doErrorStepOne(ex, taskChild);
+//                channel.basicNack(envelope.getDeliveryTag(), false, false);
+//            } catch (IOException e) {
+//                // in this case we either couldn't do our error processing or our nack
+//                // all we can do is log this if we get here, and throw and exception to get out.  This is due to something
+//                // like a db error or a rabbitmq error.
+//                String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+//                        "handleDelivery", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+//                log.error(msg, e);
+//                throw new RuntimeException(msg, e);
+//            }
+//
+//            // in this case we WERE able to do our error processing and our nack, but we still need to log the exception
+//            // all we can do is log this if we get here, and throw and exception to get out.  This is due to something
+//            // like a db error or a rabbitmq error.
+//            String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+//                    "handleDelivery", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+//            log.error(msg, ex);
+//            throw new RuntimeException(msg, ex);
+//        }
+//    }
 
-            handleMessage(channel, envelope, taskChild);
-        } catch (Exception ex) {
-            try {
-                doErrorStepOne(ex, taskChild);
-                channel.basicNack(envelope.getDeliveryTag(), false, false);
-            } catch (IOException e) {
-                // in this case we either couldn't do our error processing or our nack
-                // all we can do is log this if we get here, and throw and exception to get out.  This is due to something
-                // like a db error or a rabbitmq error.
-                String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                        "handleDelivery", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
-                log.error(msg, e);
-                throw new RuntimeException(msg, e);
-            }
-
-            // in this case we WERE able to do our error processing and our nack, but we still need to log the exception
-            // all we can do is log this if we get here, and throw and exception to get out.  This is due to something
-            // like a db error or a rabbitmq error.
-            String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                    "handleDelivery", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
-            log.error(msg, ex);
-            throw new RuntimeException(msg, ex);
-        }
-    }
-
-    public void handleMessage(Channel channel, Envelope envelope, TransferTaskChild taskChild) throws IOException {
+    public TransferTaskChild handleTask(TransferTaskChild taskChild) {
 
         int retry = 0;
         boolean preTransferUpdateComplete = false;
@@ -292,8 +347,7 @@ public class ChildTaskTransferService {
                     }
                 }
 
-                channel.basicAck(envelope.getDeliveryTag(), false);
-                return;
+                return taskChild;
             } catch (Exception e) {
                 String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", tenantId, user,
                         "handleMessage", id, tag, uuid, e.getMessage());
@@ -304,9 +358,85 @@ public class ChildTaskTransferService {
         }
 
         doErrorStepOne(lastException, taskChild);
-        // out of retries, so give up on this one.
-        channel.basicNack(envelope.getDeliveryTag(), false, false);
+        return taskChild;
     }
+
+//    public void handleMessage(Channel channel, Envelope envelope, TransferTaskChild taskChild) throws IOException {
+//
+//        int retry = 0;
+//        boolean preTransferUpdateComplete = false;
+//        boolean transferComplete = false;
+//        boolean postTransferUpdateComplete = false;
+//        boolean parentCheckComplete = false;
+//        Exception lastException = null;
+//
+//
+//        // save some info in case we have an error
+//        String tenantId = taskChild.getTenantId();
+//        String user = taskChild.getUsername();
+//        int id = taskChild.getId();
+//        String tag = taskChild.getTag();
+//        UUID uuid = taskChild.getUuid();
+//
+//        while (retry < maxRetries) {
+//            try {
+//                if(!preTransferUpdateComplete) {
+//                    taskChild = updateStatusBeforeTransfer(taskChild);
+//                    if (taskChild == null) {
+//                        // if updateStatusBeforeTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
+//                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after updateStatusBeforeTransfer");
+//                        throw new IOException(msg);
+//                    } else {
+//                        preTransferUpdateComplete = true;
+//                    }
+//                }
+//
+//                if(!transferComplete) {
+//                    taskChild = doTransfer(taskChild);
+//                    if (taskChild == null) {
+//                        // if doTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
+//                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after doTransfer");
+//                        throw new IOException(msg);
+//                    } else {
+//                        transferComplete = true;
+//                    }
+//                }
+//
+//                if(!postTransferUpdateComplete) {
+//                    taskChild = updateStatusAfterTransfer(taskChild);
+//                    if (taskChild == null) {
+//                        // if updateStatusAfterTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
+//                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after updateStatusAfterTransfer");
+//                        throw new IOException(msg);
+//                    } else {
+//                        postTransferUpdateComplete = true;
+//                    }
+//                }
+//
+//                if(!parentCheckComplete) {
+//                    taskChild = checkForParentCompletion(taskChild);
+//                    if (taskChild == null) {
+//                        // if checkForParentCompletion fails, it throws an exception.  We shouldn't get here.  Just being defensive
+//                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after checkForParentComplete");
+//                        throw new IOException(msg);
+//                    }
+//                }
+//
+//                channel.basicAck(envelope.getDeliveryTag(), false);
+//                return;
+//            } catch (Exception e) {
+//                String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", tenantId, user,
+//                        "handleMessage", id, tag, uuid, e.getMessage());
+//                log.error(msg, e);
+//                lastException = e;
+//            }
+//            retry++;
+//        }
+//
+//        doErrorStepOne(lastException, taskChild);
+//        // out of retries, so give up on this one.
+//        channel.basicNack(envelope.getDeliveryTag(), false, false);
+//    }
 
     public void nackMessage(Channel channel, Envelope envelope, boolean requeue) throws IOException {
         channel.basicNack(envelope.getDeliveryTag(), false, requeue);

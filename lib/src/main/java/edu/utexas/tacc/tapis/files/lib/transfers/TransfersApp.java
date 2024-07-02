@@ -5,6 +5,9 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferWorkerDAO;
+import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
@@ -33,6 +36,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Singleton;
 import java.time.Duration;
+import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /*
  * Class with main used to start a Files worker. See deploy/Dockerfile.workers
@@ -73,6 +79,9 @@ public class TransfersApp
   public static String getSiteId() {return siteId;}
   private static String siteAdminTenantId;
   public static String getSiteAdminTenantId() {return siteAdminTenantId;}
+
+  private static TransferWorkerDAO workerDAO = new TransferWorkerDAO();
+  private static UUID myId = null;
 
   public static void main(String[] args)
   {
@@ -146,6 +155,41 @@ public class TransfersApp
       log.info("Starting child pipeline.");
       childTaskTransferService.startListeners();
       log.info("Started child pipeline.");
+      Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+        @Override
+        public void run() {
+          if(TransfersApp.myId != null) {
+            try (DAOTransactionContext context = new DAOTransactionContext()) {
+              TransfersApp.workerDAO.deleteTransferWorkerById(context, TransfersApp.myId);
+              context.commit();
+            } catch (DAOException ex) {
+              // TODO:  log something maybe?  Not much we can do really
+            }
+          }
+        }
+      }));
+      try (DAOTransactionContext context = new DAOTransactionContext()) {
+        TransferWorker me = workerDAO.insertTransferWorker(context);
+        context.commit();
+        // TODO:  Must Log myID!!
+        TransfersApp.myId = me.getUuid();
+      }
+
+      Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(new Runnable() {
+        @Override
+        public void run() {
+          try(DAOTransactionContext context = new DAOTransactionContext()) {
+            if(TransfersApp.myId != null) {
+              new TransferWorkerDAO().updateTransferWorker(context, TransfersApp.myId);
+              context.commit();
+            } else {
+              // TODO:  Log something?
+            }
+          } catch (DAOException ex) {
+            // TODO:  Log something?
+          }
+        }
+      }, 0, 5, TimeUnit.MINUTES);
     } catch(Exception ex) {
       String msg = LibUtils.getMsg("FILES_WORKER_APPLICATION_FAILED_TO_START", ex.getMessage());
       log.error(msg, ex);

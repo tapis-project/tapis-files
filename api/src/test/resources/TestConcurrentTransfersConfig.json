@@ -1,6 +1,7 @@
 {
   "maxThreads": 100,
   "timeout": 300000,
+  "pollingIntervalMillis" : 1000,
   "uploadFiles": [
     {
       "uploadSystem": "tapisv3-storage1-dvernon",

@@ -26,6 +26,9 @@ public class FileTransfersDAOStatements
     public static final String GET_CHILD_TASK_BY_UUID =
         "SELECT * FROM transfer_tasks_child where uuid = ?";
 
+    public static final String GET_CHILD_TASK_FOR_UPDATE_BY_UUID =
+            "SELECT * FROM transfer_tasks_child where uuid = ? FOR UPDATE";
+
     //language=SQL
     public static final String GET_ALL_CHILDREN_FOR_PARENT =
         "SELECT * FROM transfer_tasks_child where parent_task_id = ?";
@@ -143,7 +146,7 @@ public class FileTransfersDAOStatements
     //language=SQL
     public static final String UPDATE_PARENT_TASK_BYTES_TRANSFERRED =
         "UPDATE transfer_tasks_parent " +
-            "SET bytes_transferred = bytes_transferred + ?" +
+            "SET bytes_transferred = bytes_transferred + ? " +
             "WHERE id = ? " +
             "RETURNING *";
 
@@ -203,4 +206,30 @@ public class FileTransfersDAOStatements
           """
               DELETE FROM transfer_tasks WHERE tenant_id = ? AND username = ?;
           """;
+
+    public static final String GET_ACCEPTED_CHILD_TASKS_FOR_TENANTS_AND_USERS =
+          """
+            select * from (
+              select
+                *, row_number() over (
+                  partition by
+                    tenant_id,
+                    username
+                  order by 
+                    created
+                )
+              from
+                transfer_tasks_child
+              where 
+                status = 'ACCEPTED'
+            )
+              where
+                row_number <= ?
+              order by
+                row_number;
+                    
+          """ ;
+
+
+
 }

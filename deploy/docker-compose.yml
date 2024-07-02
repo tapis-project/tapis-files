@@ -2,7 +2,7 @@
 version: "3"
 
 volumes:
-  files-postgres-data:
+  files-postgres-16-data:
   files-rabbitmq-data:
 
 networks:
@@ -11,7 +11,7 @@ networks:
 
 services:
   postgres:
-    image: postgres:11
+    image: postgres:16
     container_name: tapis_files_postgres
     labels:
       name: tapis_files_postgres
@@ -23,7 +23,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - files-postgres-data:/var/lib/postgresql/data
+      - files-postgres-16-data:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:3.8.11-management

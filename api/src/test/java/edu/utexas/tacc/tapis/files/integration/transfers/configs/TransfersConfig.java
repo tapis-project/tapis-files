@@ -11,7 +11,6 @@ public class TransfersConfig {
     private String destinationProtocol;
     private String destinationSystem;
     private Path destinationPath;
-    // default to waiting 10 seconds
 
     public String getSourceSystem() {
         return sourceSystem;
