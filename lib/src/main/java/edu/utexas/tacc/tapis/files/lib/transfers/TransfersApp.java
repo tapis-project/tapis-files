@@ -81,7 +81,7 @@ public class TransfersApp
   public static String getSiteAdminTenantId() {return siteAdminTenantId;}
 
   private static TransferWorkerDAO workerDAO = new TransferWorkerDAO();
-  private static UUID myId = null;
+  private static UUID myUuid = null;
 
   public static void main(String[] args)
   {
@@ -142,25 +142,12 @@ public class TransfersApp
       ServiceContext serviceContext = locator.getService(ServiceContext.class);
       log.info("Got serviceContext.");
 
-      log.info("Getting childTxfrSvc.");
-      ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
-      log.info("Got childTxfrSvc.");
-      log.info("Getting parentTxfrSvc.");
-      ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
-      log.info("Got parentTxfrSvc.");
-      log.info("Starting parent pipeline.");
-      parentTaskTransferService.startListeners();
-      log.info("Started parent pipeline.");
-
-      log.info("Starting child pipeline.");
-      childTaskTransferService.startListeners();
-      log.info("Started child pipeline.");
       Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
         @Override
         public void run() {
-          if(TransfersApp.myId != null) {
+          if(TransfersApp.myUuid != null) {
             try (DAOTransactionContext context = new DAOTransactionContext()) {
-              TransfersApp.workerDAO.deleteTransferWorkerById(context, TransfersApp.myId);
+              TransfersApp.workerDAO.deleteTransferWorkerById(context, TransfersApp.myUuid);
               context.commit();
             } catch (DAOException ex) {
               // TODO:  log something maybe?  Not much we can do really
@@ -172,15 +159,15 @@ public class TransfersApp
         TransferWorker me = workerDAO.insertTransferWorker(context);
         context.commit();
         // TODO:  Must Log myID!!
-        TransfersApp.myId = me.getUuid();
+        TransfersApp.myUuid = me.getUuid();
       }
 
       Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(new Runnable() {
         @Override
         public void run() {
           try(DAOTransactionContext context = new DAOTransactionContext()) {
-            if(TransfersApp.myId != null) {
-              new TransferWorkerDAO().updateTransferWorker(context, TransfersApp.myId);
+            if(TransfersApp.myUuid != null) {
+              new TransferWorkerDAO().updateTransferWorker(context, TransfersApp.myUuid);
               context.commit();
             } else {
               // TODO:  Log something?
@@ -190,6 +177,23 @@ public class TransfersApp
           }
         }
       }, 0, 5, TimeUnit.MINUTES);
+
+      log.info("Getting parentTxfrSvc.");
+      ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
+      log.info("Got parentTxfrSvc.");
+
+      log.info("Starting parent pipeline.");
+      parentTaskTransferService.startListeners();
+      log.info("Started parent pipeline.");
+
+      log.info("Getting childTxfrSvc.");
+      ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
+      log.info("Got childTxfrSvc.");
+
+      log.info("Starting child pipeline.");
+      childTaskTransferService.startListeners(myUuid);
+      log.info("Started child pipeline.");
+
     } catch(Exception ex) {
       String msg = LibUtils.getMsg("FILES_WORKER_APPLICATION_FAILED_TO_START", ex.getMessage());
       log.error(msg, ex);

@@ -3,15 +3,18 @@ package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransferWorker;
 import org.flywaydb.core.Flyway;
+import org.jooq.DAO;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.logging.Handler;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestTransferWorkerDAO {
 
@@ -31,109 +34,99 @@ public class TestTransferWorkerDAO {
 
     @Test
     public void testCreateAndReadWorker() throws DAOException {
-        TransferWorker insertedWorker = null;
-        try(DAOTransactionContext context = new DAOTransactionContext()) {
-            insertedWorker = dao.insertTransferWorker(context);
+        TransferWorker insertedWorker = DAOTransactionContext.doInTransaction((context) -> {
+            TransferWorker worker = dao.insertTransferWorker(context);
             context.commit();
-        }
+            return worker;
+        });
+
         checkWorkerFieldsNotNull(insertedWorker);
-        TransferWorker retrievedWorker = null;
-        try(DAOTransactionContext context = new DAOTransactionContext()) {
-            retrievedWorker = dao.getTransferWorkerById(context, insertedWorker.getUuid());
-        }
+        TransferWorker retrievedWorker = DAOTransactionContext.doInTransaction((context) -> {
+            return dao.getTransferWorkerById(context, insertedWorker.getUuid());
+        });
+
         compareWorkers(insertedWorker, retrievedWorker);
     }
 
     @Test
     public void testUpdateWorker() throws DAOException {
-        TransferWorker insertedWorker = null;
-        try(DAOTransactionContext context = new DAOTransactionContext()) {
-            insertedWorker = dao.insertTransferWorker(context);
+        TransferWorker insertedWorker = DAOTransactionContext.doInTransaction((context) -> {
+            TransferWorker worker = dao.insertTransferWorker(context);
             context.commit();
-        }
+            return worker;
+        });
         checkWorkerFieldsNotNull(insertedWorker);
-        TransferWorker updatedWorker = null;
-        try(DAOTransactionContext context = new DAOTransactionContext()) {
-            updatedWorker = dao.updateTransferWorker(context, insertedWorker.getUuid());
+        TransferWorker updatedWorker = DAOTransactionContext.doInTransaction((context) -> {
+            TransferWorker worker = dao.updateTransferWorker(context, insertedWorker.getUuid());
             context.commit();
-        }
+            return worker;
+        });
         Assert.assertTrue(updatedWorker.getLastUpdated().isAfter(insertedWorker.getLastUpdated()));
-        TransferWorker retrievedWorker = null;
-        try(DAOTransactionContext context = new DAOTransactionContext()) {
-            retrievedWorker = dao.getTransferWorkerById(context, insertedWorker.getUuid());
-        }
+        TransferWorker retrievedWorker = DAOTransactionContext.doInTransaction((context) -> {
+            return dao.getTransferWorkerById(context, insertedWorker.getUuid());
+        });
         compareWorkers(updatedWorker, retrievedWorker);
     }
 
     @Test
     public void testCreateAndListAllWorkers() throws DAOException {
-        TransferWorker insertedWorker1 = null;
-        TransferWorker insertedWorker2 = null;
-        TransferWorker insertedWorker3 = null;
+        List<TransferWorker> insertedWorkers = new ArrayList<>();
 
-        try(DAOTransactionContext context = new DAOTransactionContext()) {
-            insertedWorker1 = dao.insertTransferWorker(context);
-            insertedWorker2 = dao.insertTransferWorker(context);
-            insertedWorker3 = dao.insertTransferWorker(context);
+        DAOTransactionContext.doInTransaction((context) -> {
+            insertedWorkers.add(dao.insertTransferWorker(context));
+            insertedWorkers.add(dao.insertTransferWorker(context));
+            insertedWorkers.add(dao.insertTransferWorker(context));
             context.commit();
+            return insertedWorkers;
+        });
+
+        Map<UUID, TransferWorker> insertedWorkerMap = new HashMap<>();
+        for(TransferWorker worker : insertedWorkers) {
+            checkWorkerFieldsNotNull(worker);
+            insertedWorkerMap.put(worker.getUuid(), worker);
         }
 
-        Map<UUID, TransferWorker> insertedWorkers = new HashMap<>();
-        checkWorkerFieldsNotNull(insertedWorker1);
-        checkWorkerFieldsNotNull(insertedWorker2);
-        checkWorkerFieldsNotNull(insertedWorker3);
-
-        insertedWorkers.put(insertedWorker1.getUuid(), insertedWorker1);
-        insertedWorkers.put(insertedWorker2.getUuid(), insertedWorker2);
-        insertedWorkers.put(insertedWorker3.getUuid(), insertedWorker3);
-
-
-        List<TransferWorker> retrievedWorkers = null;
-        try(DAOTransactionContext context = new DAOTransactionContext()) {
-            retrievedWorkers = dao.getTransferWorkers(context);
-        }
+        List<TransferWorker> retrievedWorkers = DAOTransactionContext.doInTransaction((context -> {
+            return dao.getTransferWorkers(context);
+        }));
 
         for(TransferWorker worker : retrievedWorkers) {
-            compareWorkers(worker, insertedWorkers.get(worker.getUuid()));
+            compareWorkers(worker, insertedWorkerMap.get(worker.getUuid()));
         }
     }
 
     @Test
     public void testDeleteWorkerById() throws DAOException {
-        TransferWorker insertedWorker1 = null;
-        TransferWorker insertedWorker2 = null;
-        TransferWorker insertedWorker3 = null;
-
-        try(DAOTransactionContext context = new DAOTransactionContext()) {
-            insertedWorker1 = dao.insertTransferWorker(context);
-            insertedWorker2 = dao.insertTransferWorker(context);
-            insertedWorker3 = dao.insertTransferWorker(context);
-            context.commit();
-        }
-
         Map<UUID, TransferWorker> insertedWorkers = new HashMap<>();
-        checkWorkerFieldsNotNull(insertedWorker1);
-        checkWorkerFieldsNotNull(insertedWorker2);
-        checkWorkerFieldsNotNull(insertedWorker3);
 
-        insertedWorkers.put(insertedWorker1.getUuid(), insertedWorker1);
-        insertedWorkers.put(insertedWorker2.getUuid(), insertedWorker2);
-        insertedWorkers.put(insertedWorker3.getUuid(), insertedWorker3);
+        int workersToCreate = 3;
+        DAOTransactionContext.doInTransaction((context) -> {
+            for(int i = 0;i < workersToCreate;i++) {
+                TransferWorker worker = dao.insertTransferWorker(context);
+                checkWorkerFieldsNotNull(worker);
+                insertedWorkers.put(worker.getUuid(), worker);
+            }
+            context.commit();
 
+            Assert.assertEquals(insertedWorkers.size(), workersToCreate);
+            return insertedWorkers;
+        });
 
-        int workersLeft = insertedWorkers.size();
-        for(TransferWorker worker : insertedWorkers.values()) {
-            try(DAOTransactionContext context = new DAOTransactionContext()) {
+        Iterator<TransferWorker> workerIterator= insertedWorkers.values().iterator();
+        while(workerIterator.hasNext()) {
+            TransferWorker worker = workerIterator.next();
+            DAOTransactionContext.doInTransaction((context) -> {
                 compareWorkers(worker, dao.getTransferWorkerById(context, worker.getUuid()));
                 dao.deleteTransferWorkerById(context, worker.getUuid());
                 context.commit();
                 Assert.assertNull(dao.getTransferWorkerById(context, worker.getUuid()));
-                workersLeft--;
                 List<TransferWorker> remainingWorkerList = dao.getTransferWorkers(context);
-                Assert.assertEquals(workersLeft, remainingWorkerList.size());
-            }
+                workerIterator.remove();
+                Assert.assertEquals(remainingWorkerList.size(), insertedWorkers.size());
+                return null;
+            });
         }
-        Assert.assertEquals(workersLeft, 0);
+        Assert.assertEquals(insertedWorkers.size(), 0);
     }
 
 

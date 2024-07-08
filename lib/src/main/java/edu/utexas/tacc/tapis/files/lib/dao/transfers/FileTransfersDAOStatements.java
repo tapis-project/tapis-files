@@ -207,29 +207,4 @@ public class FileTransfersDAOStatements
               DELETE FROM transfer_tasks WHERE tenant_id = ? AND username = ?;
           """;
 
-    public static final String GET_ACCEPTED_CHILD_TASKS_FOR_TENANTS_AND_USERS =
-          """
-            select * from (
-              select
-                *, row_number() over (
-                  partition by
-                    tenant_id,
-                    username
-                  order by 
-                    created
-                )
-              from
-                transfer_tasks_child
-              where 
-                status = 'ACCEPTED'
-            )
-              where
-                row_number <= ?
-              order by
-                row_number;
-                    
-          """ ;
-
-
-
 }

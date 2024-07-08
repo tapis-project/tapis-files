@@ -2,12 +2,20 @@ package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
 public class DAOTransactionContext implements AutoCloseable {
+    private static Logger log = LoggerFactory.getLogger(DAOTransactionContext.class);
     private Connection connection = null;
+
+    public static interface DAOOperation<T> {
+        T doOperation(DAOTransactionContext context) throws DAOException;
+    }
 
     public DAOTransactionContext() throws DAOException {
         this.connection = HikariConnectionPool.getConnection();
@@ -65,6 +73,12 @@ public class DAOTransactionContext implements AutoCloseable {
         } catch (SQLException e) {
             // TODO:  update message
             throw new DAOException("ERROR", e);
+        }
+    }
+
+    public static <T> T doInTransaction(DAOOperation<T> op) throws DAOException {
+        try(DAOTransactionContext context = new DAOTransactionContext()) {
+            return  op.doOperation(context);
         }
     }
 

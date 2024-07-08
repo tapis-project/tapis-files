@@ -8,6 +8,7 @@ import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -85,5 +86,13 @@ public class TransferWorkerDAO {
         }
 
         return retrievedWorker;
+    }
+
+    public List<TransferWorker> getWorkersThatNeedWork() {
+        List<TransferWorker> transferWorkersThatNeedWork = new ArrayList<>();
+
+
+
+        return transferWorkersThatNeedWork;
     }
 }

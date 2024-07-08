@@ -34,6 +34,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.GlobusDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -45,6 +46,8 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
+import edu.utexas.tacc.tapis.files.lib.transfers.DefaultSchedulingPolicy;
+import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
@@ -148,7 +151,7 @@ public class ChildTaskTransferService {
     /*                      Public Methods                                     */
     /* *********************************************************************** */
 
-    public void startListeners() throws IOException, TimeoutException {
+    public void startListeners(UUID myUuid) throws IOException, TimeoutException {
 //        createChannels();
 //        channelMonitorService.scheduleWithFixedDelay(new Runnable() {
 //            @Override
@@ -183,9 +186,12 @@ public class ChildTaskTransferService {
                 boolean shouldExit = false;
                 Map<UUID, Future<TransferTaskChild>> futures = new HashMap<UUID, Future<TransferTaskChild>>();
 
+                // TODO: this '10' should be variable - maybe even runtime setting
+                SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(10);
+
                 while(!shouldExit) {
                     try {
-                        List<PrioritizedObject<TransferTaskChild>> ttcList = dao.getAcceptedChildTasksForTenantsAndUsers(10);
+                        List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getWorkForWorker(myUuid);
                         for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
                             UUID childUuid = ttc.getObject().getUuid();
                             if (futures.containsKey(childUuid)) {

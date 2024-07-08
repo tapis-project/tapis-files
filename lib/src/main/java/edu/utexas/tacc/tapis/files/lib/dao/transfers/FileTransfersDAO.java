@@ -590,29 +590,6 @@ public class FileTransfersDAO {
         }
     }
 
-    public List<PrioritizedObject<TransferTaskChild>> getAcceptedChildTasksForTenantsAndUsers(int maxTasksPerTenantAndUser) throws DAOException {
-        RowProcessor rowProcessor = new PrioritizedObjectRowProcessor(new TransferTaskChildRowProcessor(), TransferTaskChild.class);
-
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            ResultSetHandler<List<PrioritizedObject>> handler =
-                    new BeanListHandler<PrioritizedObject>(PrioritizedObject.class, rowProcessor);
-            String stmt = FileTransfersDAOStatements.GET_ACCEPTED_CHILD_TASKS_FOR_TENANTS_AND_USERS;
-            QueryRunner runner = new QueryRunner();
-
-            List<PrioritizedObject> children = runner.query(
-                    connection,
-                    stmt,
-                    handler,
-                    maxTasksPerTenantAndUser
-            );
-
-            return (List<PrioritizedObject<TransferTaskChild>>)(Object)children;
-        } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_RETRIEVING_ACCEPTED_TASKS", ex.getMessage()), ex);
-        }
-    }
-
-
     public List<TransferTaskChild> getAllChildren(@NotNull TransferTaskParent task) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
 
