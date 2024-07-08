@@ -23,7 +23,7 @@ class TransferTaskParentRowProcessor extends BasicRowProcessor {
         task.setSourceURI(rs.getString("source_uri"));
         task.setDestinationURI(rs.getString("destination_uri"));
         task.setCreated(rs.getTimestamp("created").toInstant());
-        task.setUuid(UUID.fromString(rs.getString("uuid")));
+        task.setUuid(rs.getObject("uuid", UUID.class));
         task.setStatus(rs.getString("status"));
         task.setOptional(rs.getBoolean("optional"));
         task.setSrcSharedCtxGrantor(rs.getString("src_shared_ctx"));
@@ -34,6 +34,7 @@ class TransferTaskParentRowProcessor extends BasicRowProcessor {
         task.setErrorMessage(rs.getString("error_message"));
         task.setFinalMessage(rs.getString("final_message"));
         String transferTypeString = rs.getString("transfer_type");
+        task.setAssignedTo(rs.getObject("assigned_to", UUID.class));
         if (!StringUtils.isBlank(transferTypeString)) {
             task.setTransferType(TransferTaskParent.TransferType.valueOf(transferTypeString));
         }

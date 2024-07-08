@@ -34,8 +34,8 @@ import edu.utexas.tacc.tapis.files.lib.clients.GlobusDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
-import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
+import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
@@ -53,6 +53,7 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -91,8 +92,14 @@ public class ChildTaskTransferService {
     // this ends up being the maximum number of un-acked items.  This include all items in progress as well as items
     // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
     // 5 items in the queue
-//    private static final int QOS = 2;
     private static final int MAX_THREADS = RuntimeSettings.get().getChildThreadPoolSize();
+
+    // this parameter is slightly confusing.  For each combination of tenant/user we will get a maximum of
+    // this many items.  For example if there are 3 users (2 in one tenant and 1 in another), and the each have
+    // exactly 3 tasks, and MAX_WORK_ITEM_DEPTH is set to 2 we will get back a max of 2 per user, so 6 items.  If
+    // one of those users only had 1 task, we would get 2 for the first 2 users, and one for that user.  Hopefully
+    // this makes sense - if not please update the comment :)
+    private static final int MAX_WORK_ITEM_DEPTH = 50;
     private static String CHILD_QUEUE = "tapis.files.transfers.child";
     private static final int maxRetries = 3;
     private final TransfersService transfersService;
@@ -108,7 +115,6 @@ public class ChildTaskTransferService {
     private Connection connection;
     private List<Channel> channels = new ArrayList<Channel>();
     private ExecutorService connectionThreadPool = null;
-//    private ScheduledExecutorService channelMonitorService = Executors.newSingleThreadScheduledExecutor();
     private ScheduledExecutorService childScheduler = Executors.newSingleThreadScheduledExecutor();
     private ExecutorService childWorkers = Executors.newFixedThreadPool(MAX_THREADS, new ThreadFactory() {
         ThreadFactory defaultFactory = Executors.defaultThreadFactory();
@@ -143,7 +149,6 @@ public class ChildTaskTransferService {
         this.remoteDataClientFactory = remoteDataClientFactory;
         this.fileUtilsService = fileUtilsService;
 
-//        connectionThreadPool = Executors.newFixedThreadPool(MAX_CONSUMERS);
         connection = RabbitMQConnection.getInstance().newConnection(connectionThreadPool);
     }
 
@@ -152,145 +157,58 @@ public class ChildTaskTransferService {
     /* *********************************************************************** */
 
     public void startListeners(UUID myUuid) throws IOException, TimeoutException {
-//        createChannels();
-//        channelMonitorService.scheduleWithFixedDelay(new Runnable() {
-//            @Override
-//            public void run() {
-//                try {
-//                    // discard any closed channels
-//                    Iterator<Channel> channelIterator = channels.iterator();
-//                    while (channelIterator.hasNext()) {
-//                        Channel channel = channelIterator.next();
-//                        if (!channel.isOpen()) {
-//                            log.warn("RabbitMQ channel is closed");
-//                            channelIterator.remove();
-//                        }
-//                    }
-//
-//                    // re-open channels
-//                    try {
-//                        createChannels();
-//                    } catch (Exception ex) {
-//                        log.error("Unable to re-open channels", ex);
-//                    }
-//                } catch (Throwable th) {
-//                    String msg = LibUtils.getMsg("FILES_TXFR_CLEANUP_FAILURE");
-//                    log.warn(msg, th);
-//                }
-//            }
-//        }, 5, 5, TimeUnit.MINUTES);
-
         childScheduler.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
-                boolean shouldExit = false;
-                Map<UUID, Future<TransferTaskChild>> futures = new HashMap<UUID, Future<TransferTaskChild>>();
+                try {
+                    boolean shouldExit = false;
+                    Map<UUID, Future<TransferTaskChild>> futures = new HashMap<UUID, Future<TransferTaskChild>>();
 
-                // TODO: this '10' should be variable - maybe even runtime setting
-                SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(10);
+                    SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(MAX_WORK_ITEM_DEPTH);
 
-                while(!shouldExit) {
-                    try {
-                        List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getWorkForWorker(myUuid);
-                        for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
-                            UUID childUuid = ttc.getObject().getUuid();
-                            if (futures.containsKey(childUuid)) {
-                                if (futures.get(childUuid).isDone()) {
-                                    futures.remove(childUuid);
-                                }
-                            } else {
-                                System.out.println("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
-                                try {
-                                    Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
-                                        @Override
-                                        public TransferTaskChild call() throws Exception {
-                                            return handleTask(ttc.getObject());
-                                        }
-                                    });
-                                    futures.put(childUuid, future);
-                                } catch (Throwable th) {
-                                    TransferTaskChild childTask = dao.getChildTaskByUUID(childUuid);
-                                    childTask.setStatus(childTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
+                    while (!shouldExit) {
+                        try {
+                            List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getWorkForWorker(myUuid);
+                            for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
+                                UUID childUuid = ttc.getObject().getUuid();
+                                if (futures.containsKey(childUuid)) {
+                                    if (futures.get(childUuid).isDone()) {
+                                        futures.remove(childUuid);
+                                    }
+                                } else {
+                                    System.out.println("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
+                                    try {
+                                        Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
+                                            @Override
+                                            public TransferTaskChild call() throws Exception {
+                                                return handleTask(ttc.getObject());
+                                            }
+                                        });
+                                        futures.put(childUuid, future);
+                                    } catch (Throwable th) {
+                                        TransferTaskChild childTask = dao.getChildTaskByUUID(childUuid);
+                                        childTask.setStatus(childTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
+                                        // TODO:  // should we be saving this?  I'm thinking YES!
+                                    }
                                 }
                             }
+                        } catch (DAOException | SchedulingPolicyException ex) {
+                            log.error(MsgUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
+                            break;
                         }
-                    } catch (DAOException ex) {
 
+                        if (Collections.isEmpty(futures) || (futures.size() >= (MAX_THREADS * 5))) {
+                            shouldExit = true;
+                        }
                     }
-
-                    if(Collections.isEmpty(futures) || (futures.size() >= (MAX_THREADS * 5))) {
-                        shouldExit = true;
-                    }
+                } catch (Throwable th) {
+                    // if this method throws, it will not get rescheduled.  We would have a zombie worker.  I think the
+                    // best thing to do here is exit - we have caught some completely unexpected exception
+                    System.exit(0);
                 }
             }
         }, 5, 5, TimeUnit.SECONDS);
     }
-
-//    private void createChannels() throws IOException, TimeoutException {
-//        int channelsToOpen = MAX_CONSUMERS - channels.size();
-//        if(channelsToOpen == 0) {
-//            return;
-//        }
-//
-//        log.info("Opening " + channelsToOpen + " rabbitmq channels");
-//        ChildTaskTransferService service = this;
-//        for (int i = 0; i < channelsToOpen; i++) {
-//            Channel channel = connection.createChannel();
-//            channel.basicQos(QOS);
-//
-//            TransfersService.declareRabbitMQObjects(connection);
-//
-//            channel.basicConsume(CHILD_QUEUE, false, new DefaultConsumer(channel) {
-//                @Override
-//                public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
-//                    try {
-//                        service.handleDelivery(channel, consumerTag, envelope, properties, body);
-//                    } catch (Throwable th) {
-//                        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR_CONSUME_MESSAGE", consumerTag);
-//                        log.error(msg, th);
-//                    }
-//                }
-//            });
-//            channels.add(channel);
-//        }
-//    }
-
-//    public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
-//        TransferTaskChild taskChild = null;
-//
-//        try {
-//            taskChild = getChildTaskFromMessageBody(body);
-//            if (taskChild == null) {
-//                // log the error, and continue - this really shouldn't happen since we wrote the message ourselves, but being defensive.
-//                String msg = LibUtils.getMsg("FILES_TXFR_UNABLE_TO_PARSE_MESSAGE");
-//                log.error(msg);
-//                throw new RuntimeException(msg);
-//            }
-//
-//            handleMessage(channel, envelope, taskChild);
-//        } catch (Exception ex) {
-//            try {
-//                doErrorStepOne(ex, taskChild);
-//                channel.basicNack(envelope.getDeliveryTag(), false, false);
-//            } catch (IOException e) {
-//                // in this case we either couldn't do our error processing or our nack
-//                // all we can do is log this if we get here, and throw and exception to get out.  This is due to something
-//                // like a db error or a rabbitmq error.
-//                String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-//                        "handleDelivery", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
-//                log.error(msg, e);
-//                throw new RuntimeException(msg, e);
-//            }
-//
-//            // in this case we WERE able to do our error processing and our nack, but we still need to log the exception
-//            // all we can do is log this if we get here, and throw and exception to get out.  This is due to something
-//            // like a db error or a rabbitmq error.
-//            String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-//                    "handleDelivery", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
-//            log.error(msg, ex);
-//            throw new RuntimeException(msg, ex);
-//        }
-//    }
 
     public TransferTaskChild handleTask(TransferTaskChild taskChild) {
 
@@ -366,83 +284,6 @@ public class ChildTaskTransferService {
         doErrorStepOne(lastException, taskChild);
         return taskChild;
     }
-
-//    public void handleMessage(Channel channel, Envelope envelope, TransferTaskChild taskChild) throws IOException {
-//
-//        int retry = 0;
-//        boolean preTransferUpdateComplete = false;
-//        boolean transferComplete = false;
-//        boolean postTransferUpdateComplete = false;
-//        boolean parentCheckComplete = false;
-//        Exception lastException = null;
-//
-//
-//        // save some info in case we have an error
-//        String tenantId = taskChild.getTenantId();
-//        String user = taskChild.getUsername();
-//        int id = taskChild.getId();
-//        String tag = taskChild.getTag();
-//        UUID uuid = taskChild.getUuid();
-//
-//        while (retry < maxRetries) {
-//            try {
-//                if(!preTransferUpdateComplete) {
-//                    taskChild = updateStatusBeforeTransfer(taskChild);
-//                    if (taskChild == null) {
-//                        // if updateStatusBeforeTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
-//                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after updateStatusBeforeTransfer");
-//                        throw new IOException(msg);
-//                    } else {
-//                        preTransferUpdateComplete = true;
-//                    }
-//                }
-//
-//                if(!transferComplete) {
-//                    taskChild = doTransfer(taskChild);
-//                    if (taskChild == null) {
-//                        // if doTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
-//                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after doTransfer");
-//                        throw new IOException(msg);
-//                    } else {
-//                        transferComplete = true;
-//                    }
-//                }
-//
-//                if(!postTransferUpdateComplete) {
-//                    taskChild = updateStatusAfterTransfer(taskChild);
-//                    if (taskChild == null) {
-//                        // if updateStatusAfterTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
-//                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after updateStatusAfterTransfer");
-//                        throw new IOException(msg);
-//                    } else {
-//                        postTransferUpdateComplete = true;
-//                    }
-//                }
-//
-//                if(!parentCheckComplete) {
-//                    taskChild = checkForParentCompletion(taskChild);
-//                    if (taskChild == null) {
-//                        // if checkForParentCompletion fails, it throws an exception.  We shouldn't get here.  Just being defensive
-//                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after checkForParentComplete");
-//                        throw new IOException(msg);
-//                    }
-//                }
-//
-//                channel.basicAck(envelope.getDeliveryTag(), false);
-//                return;
-//            } catch (Exception e) {
-//                String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", tenantId, user,
-//                        "handleMessage", id, tag, uuid, e.getMessage());
-//                log.error(msg, e);
-//                lastException = e;
-//            }
-//            retry++;
-//        }
-//
-//        doErrorStepOne(lastException, taskChild);
-//        // out of retries, so give up on this one.
-//        channel.basicNack(envelope.getDeliveryTag(), false, false);
-//    }
 
     public void nackMessage(Channel channel, Envelope envelope, boolean requeue) throws IOException {
         channel.basicNack(envelope.getDeliveryTag(), false, requeue);
@@ -537,6 +378,7 @@ public class ChildTaskTransferService {
             try {
                 taskChild.setEndTime(Instant.now());
                 taskChild.setStatus(TransferTaskStatus.COMPLETED);
+                taskChild.setAssignedTo(null);
                 taskChild.setBytesTransferred(taskChild.getTotalBytes());
                 return dao.updateTransferTaskChild(taskChild);
             } catch (DAOException ex) {
@@ -560,6 +402,7 @@ public class ChildTaskTransferService {
             // If cancelled or failed set the end time, and we are done
             if (taskChild.isTerminal()) {
                 taskChild.setEndTime(Instant.now());
+                taskChild.setAssignedTo(null);
                 taskChild = dao.updateTransferTaskChild(taskChild);
                 return taskChild;
             }
@@ -719,6 +562,7 @@ public class ChildTaskTransferService {
             }
             TransferTaskChild updatedChildTask = dao.getChildTaskByUUID(taskChild.getUuid());
             updatedChildTask.setStatus(TransferTaskStatus.COMPLETED);
+            updatedChildTask.setAssignedTo(null);
             updatedChildTask.setEndTime(Instant.now());
             updatedChildTask = dao.updateTransferTaskChild(updatedChildTask);
             dao.updateTransferTaskParentBytesTransferred(updatedChildTask.getParentTaskId(), updatedChildTask.getBytesTransferred());
@@ -775,6 +619,7 @@ public class ChildTaskTransferService {
         }
         child.setErrorMessage(cause.getMessage());
         child.setEndTime(Instant.now());
+        child.setAssignedTo(null);
         try {
             child = dao.updateTransferTaskChild(child);
             // In theory should never happen, it means that the child with that ID was not in the database.
@@ -925,6 +770,7 @@ public class ChildTaskTransferService {
         log.info("CANCELLING TRANSFER CHILD");
         taskChild.setStatus(TransferTaskStatus.CANCELLED);
         taskChild.setEndTime(Instant.now());
+        taskChild.setAssignedTo(null);
         try {
             retChild = dao.updateTransferTaskChild(taskChild);
         } catch (DAOException ex) {
@@ -1170,12 +1016,14 @@ public class ChildTaskTransferService {
                         if (taskChild.isOptional()) taskChild.setStatus(TransferTaskStatus.FAILED_OPT);
                         else taskChild.setStatus(TransferTaskStatus.FAILED);
                         taskChild.setEndTime(Instant.now());
+                        taskChild.setAssignedTo(null);
                         taskChild = dao.updateTransferTaskChild(taskChild);
                     }
                     case "SUCCEEDED" -> {
                         isTerminal = true;
                         // Update status of taskChild.
                         taskChild.setStatus(TransferTaskStatus.COMPLETED);
+                        taskChild.setAssignedTo(null);
                         taskChild.setEndTime(Instant.now());
                         taskChild = dao.updateTransferTaskChild(taskChild);
                     }

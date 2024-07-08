@@ -398,6 +398,7 @@ public class FileTransfersDAO {
                 endTime,
                 task.getErrorMessage(),
                 task.getExternalTaskId(),
+                task.getAssignedTo(),
                 task.getId()
             );
             return updatedTask;

@@ -113,7 +113,8 @@ public class FileTransfersDAOStatements
                      start_time = ?, 
                      end_time = ?,
                      error_message = ?,
-                     external_task_id = ?
+                     external_task_id = ?,
+                     assigned_to = ?
                 WHERE id = ? 
                 RETURNING *
         """;

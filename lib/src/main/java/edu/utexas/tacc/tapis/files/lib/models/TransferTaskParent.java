@@ -44,6 +44,7 @@ public class TransferTaskParent
   protected String errorMessage;
   protected String finalMessage;
   protected TransferType transferType;
+  protected UUID assignedTo;
 
   public TransferTaskParent(){}
 
@@ -60,6 +61,7 @@ public class TransferTaskParent
     destSharedCtxGrantor = dstCtx1;
     tag = tag1;
     uuid = UUID.randomUUID();
+    assignedTo = null;
     this.transferType = transferType;
   }
 
@@ -200,6 +202,14 @@ public class TransferTaskParent
   }
   public void setStatus(String s) {
     status = TransferTaskStatus.valueOf(s);
+  }
+
+  public UUID getAssignedTo() {
+    return assignedTo;
+  }
+
+  public void setAssignedTo(UUID assignedTo) {
+    this.assignedTo = assignedTo;
   }
 
   // Support for equals
