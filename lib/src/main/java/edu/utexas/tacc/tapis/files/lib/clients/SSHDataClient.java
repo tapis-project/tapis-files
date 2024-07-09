@@ -213,7 +213,7 @@ public class SSHDataClient implements ISSHDataClient
       }
       filesList.add(fileInfo);
     }
-    filesList.sort(Comparator.comparing(FileInfo::getName));
+    filesList.sort(Comparator.comparing(FileInfo::getName, String.CASE_INSENSITIVE_ORDER));
 
 
     if(StringUtils.isBlank(pattern))  {
