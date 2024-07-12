@@ -14,6 +14,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFileTransfersConfig> {
     private static final String TEST_CONFIG = "TestConcurrentTransfersConfig.json";
@@ -114,7 +115,7 @@ public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFi
         }
 
         // wait for aall tranfer ids to complete
-        IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferIds, getTestConfig().getTimeout(), threadPool);
+        IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferIds, getTestConfig().getTimeout(), threadPool, getTestConfig().getPollingIntervalMillis(), TimeUnit.MILLISECONDS);
 
         // request download and validation of each file
         List<Future<Void>> downloadFutures = new ArrayList<>();
