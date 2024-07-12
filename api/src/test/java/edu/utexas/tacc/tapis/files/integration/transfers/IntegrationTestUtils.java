@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.integration.transfers;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
@@ -51,6 +52,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class IntegrationTestUtils {
     private Logger log = LoggerFactory.getLogger(IntegrationTestUtils.class);
@@ -244,11 +246,11 @@ public class IntegrationTestUtils {
     }
     public Collection<JsonObject> waitForTransfers(String baseUrl, String token, List<String> transferTaskIds,
                                                    long maxWaitMillis) throws Exception {
-        return waitForTransfers(baseUrl, token, transferTaskIds, maxWaitMillis, Executors.newSingleThreadExecutor());
+        return waitForTransfers(baseUrl, token, transferTaskIds, maxWaitMillis, Executors.newSingleThreadExecutor(), 1, TimeUnit.SECONDS);
     }
 
     public Collection<JsonObject> waitForTransfers(String baseUrl, String token, List<String> transferTaskIds,
-                                                   long maxWaitMillis, ExecutorService threadPool) throws Exception {
+                                                   long maxWaitMillis, ExecutorService threadPool, int pollingInterval, TimeUnit pollingIntervalTimeUnit) throws Exception {
         Map<String, JsonObject> completedTransfers = new HashMap<>();
         List<String> uncompletedTransfers = new ArrayList<>();
         uncompletedTransfers.addAll(transferTaskIds);
@@ -268,13 +270,15 @@ public class IntegrationTestUtils {
             }
 
             for(Future<JsonObject> statusFuture : statusFutures) {
-                JsonObject result = statusFuture.get();
-                TransferTaskStatus transferTaskStatus = TransferTaskStatus.valueOf(result.get("result").getAsJsonObject().get("status").getAsString());
-                String transferTaskId = result.get("result").getAsJsonObject().get("uuid").getAsString();
+                JsonObject response = statusFuture.get();
+                JsonObject result = response.get("result").getAsJsonObject();
+                TransferTaskStatus transferTaskStatus = TransferTaskStatus.valueOf(result.get("status").getAsString());
+                String transferTaskId = result.get("uuid").getAsString();
                 if (terminalStates.contains(transferTaskStatus)) {
                     log.info("Transfer Done: " + transferTaskId + " Status: " + transferTaskStatus);
-                    Assert.assertEquals(transferTaskStatus, TransferTaskStatus.COMPLETED);
-                    completedTransfers.put(transferTaskId, result);
+                    JsonElement errorMessageElement = result.get("errorMessage");
+                    Assert.assertEquals(transferTaskStatus, TransferTaskStatus.COMPLETED, (errorMessageElement == null) ? "No error message in result" : errorMessageElement.toString());
+                    completedTransfers.put(transferTaskId, response);
                 } else {
                     log.info("Waiting for transfer: " + transferTaskId);
                 }
@@ -290,7 +294,7 @@ public class IntegrationTestUtils {
                     // the max wait time.  Sleep a second to allow some time for
                     // transfers before checking agian.
                     log.info(String.format(" --- Uncompleted transfers: %d ---", uncompletedTransfers.size()));
-                    Thread.sleep(1000);
+                    Thread.sleep(pollingIntervalTimeUnit.toMillis(pollingInterval));
                 }
             }
         }
@@ -311,17 +315,29 @@ public class IntegrationTestUtils {
 
     public List<FileInfo> getListing(String baseUrl, String token, String systemId, Path path) {
         Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
-        Response response = client.target(baseUrl)
-                .path(getUrlPath("ops", systemId, path)).request(MediaType.APPLICATION_JSON)
-                .header(TAPIS_TOKEN_HEADER, token)
-                .get();
-        Assert.assertEquals(response.getStatus(), 200);
-        String json = response.readEntity(String.class);
-        JsonObject jsonResponse = TapisGsonUtils.getGson().fromJson(json, JsonObject.class);
-        JsonArray resultArray = jsonResponse.getAsJsonArray("result");
+        boolean moreFiles = true;
         List<FileInfo> fileInfos = new ArrayList<>();
-        for(int i=0 ; i < resultArray.size() ; i++) {
-            fileInfos.add(TapisGsonUtils.getGson().fromJson(resultArray.get(i), FileInfo.class));
+        int limit = 1000;
+        int offset = 0;
+        while(moreFiles) {
+            Response response = client.target(baseUrl)
+                    .queryParam("limit", limit)
+                    .queryParam("offset", String.valueOf(offset))
+                    .path(getUrlPath("ops", systemId, path)).request(MediaType.APPLICATION_JSON)
+                    .header(TAPIS_TOKEN_HEADER, token)
+                    .get();
+            Assert.assertEquals(response.getStatus(), 200);
+            String json = response.readEntity(String.class);
+            JsonObject jsonResponse = TapisGsonUtils.getGson().fromJson(json, JsonObject.class);
+            JsonArray resultArray = jsonResponse.getAsJsonArray("result");
+            if(resultArray.size() < limit) {
+                moreFiles = false;
+            } else {
+                offset = offset + limit;
+            }
+            for (int i = 0; i < resultArray.size(); i++) {
+                fileInfos.add(TapisGsonUtils.getGson().fromJson(resultArray.get(i), FileInfo.class));
+            }
         }
         return fileInfos;
     }
