@@ -497,9 +497,7 @@ public class SSHDataClient implements ISSHDataClient
       InputStream inputStream = sftpClient.getSession().read(absPath.toString());
       // TapisSSHInputStream closes the sftp connection after reading completes
       return new TapisSSHInputStream(inputStream, sftpClient);
-    }
-    catch (IOException e)
-    {
+    } catch (IOException e) {
       if(sftpClient != null) {
         sftpClient.close();
       }
@@ -515,6 +513,14 @@ public class SSHDataClient implements ISSHDataClient
         log.error(msg, e);
         throw new IOException(msg, e);
       }
+    } catch (Throwable th) {
+      if (sftpClient != null) {
+        // in the case of ANY exception, we should be closing the sftpclient (we dont close it when it's
+        // successfully returnted though - that's the callers responsibility).
+        sftpClient.close();
+      }
+      // rethrow - wrap in runtime exception to preserve stack trace in the throwable.
+      throw new RuntimeException(th);
     }
   }
 
