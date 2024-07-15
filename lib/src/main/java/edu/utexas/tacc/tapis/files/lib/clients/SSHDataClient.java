@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -213,7 +214,7 @@ public class SSHDataClient implements ISSHDataClient
       }
       filesList.add(fileInfo);
     }
-    filesList.sort(Comparator.comparing(FileInfo::getName));
+    filesList.sort(Comparator.comparing(FileInfo::getName, String.CASE_INSENSITIVE_ORDER));
 
 
     if(StringUtils.isBlank(pattern))  {
@@ -496,9 +497,7 @@ public class SSHDataClient implements ISSHDataClient
       InputStream inputStream = sftpClient.getSession().read(absPath.toString());
       // TapisSSHInputStream closes the sftp connection after reading completes
       return new TapisSSHInputStream(inputStream, sftpClient);
-    }
-    catch (IOException e)
-    {
+    } catch (IOException e) {
       if(sftpClient != null) {
         sftpClient.close();
       }
@@ -514,6 +513,14 @@ public class SSHDataClient implements ISSHDataClient
         log.error(msg, e);
         throw new IOException(msg, e);
       }
+    } catch (Throwable th) {
+      if (sftpClient != null) {
+        // in the case of ANY exception, we should be closing the sftpclient (we dont close it when it's
+        // successfully returnted though - that's the callers responsibility).
+        sftpClient.close();
+      }
+      // rethrow - wrap in runtime exception to preserve stack trace in the throwable.
+      throw new RuntimeException(th);
     }
   }
 
@@ -675,15 +682,21 @@ public class SSHDataClient implements ISSHDataClient
     if (parentPath != null) {
       mkdir(parentPath.toString());
     }
-    try (fileStream;
-         var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true);
-         var outputStream = sessionHolder.getSession().write(absolutePath.toString())) {
+
+    SshSessionPool.PooledSshSession<SSHSftpClient> sessionHolder = null;
+    OutputStream outputStream = null;
+    try {
+      sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true);
+      outputStream = sessionHolder.getSession().write(absolutePath.toString());
       fileStream.transferTo(outputStream);
       outputStream.flush();
     } catch (IOException ex) {
       handleSftpException(ex, "createFile", path);
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "insertOrAppend", systemId, effectiveUserId, host, path, ex.getMessage());
       throw new IOException(msg, ex);
+    } finally {
+      outputStream.close();
+      sessionHolder.close();
     }
   }
 

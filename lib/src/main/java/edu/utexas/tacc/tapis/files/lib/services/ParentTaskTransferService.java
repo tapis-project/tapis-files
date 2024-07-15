@@ -589,6 +589,7 @@ public class ParentTaskTransferService {
    * @return TransferTasksParent TransferTaskParent
    */
   private TransferTaskParent doErrorParentStepOne(Exception caughtException, TransferTaskParent parent) {
+    String exceptionErrorMessage = (caughtException == null) ? "<NULL>" : caughtException.getMessage();
     try {
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString(), caughtException));
 
@@ -598,7 +599,7 @@ public class ParentTaskTransferService {
       else
         parent.setStatus(TransferTaskStatus.FAILED);
       parent.setEndTime(Instant.now());
-      parent.setErrorMessage(caughtException.getMessage());
+      parent.setErrorMessage(exceptionErrorMessage);
       parent.setFinalMessage("Failed - doErrorParentStepOne");
       parent = dao.updateTransferTaskParent(parent);
       // This should really never happen, it means that the parent with that ID was not in the database.
@@ -620,7 +621,7 @@ public class ParentTaskTransferService {
       } else {
         topTask.setStatus(TransferTaskStatus.FAILED);
         topTask.setEndTime(Instant.now());
-        topTask.setErrorMessage(caughtException.getMessage());
+        topTask.setErrorMessage(exceptionErrorMessage);
         log.debug(LibUtils.getMsg("FILES_TXFR_SVC_ERR7C", topTask.getId(), topTask.getTag(), topTask.getUuid(), parent.getId(), parent.getUuid()));
         dao.updateTransferTask(topTask);
       }

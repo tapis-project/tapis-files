@@ -9,6 +9,20 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.6.4 - 2024-07-12
+
+Incremental improvements and new features.  
+
+### New features:
+- None
+
+### Bug fixes:
+- Fixed minor issue with ssh session caching / session closing
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.6.3 - 2024-06-14
 
 Incremental improvements and new features.  

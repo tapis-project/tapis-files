@@ -609,6 +609,7 @@ public class ChildTaskTransferService {
      * @return Mono with the updated TransferTaskChild
      */
     private TransferTaskChild doErrorStepOne(Throwable cause, TransferTaskChild child) {
+        String exceptionMessage = (cause == null) ? "<NULL>" : cause.getMessage();
         log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR10", child.toString()));
 
         // First update child task, mark FAILED_OPT or FAILED and set error message
@@ -617,7 +618,7 @@ public class ChildTaskTransferService {
         } else {
             child.setStatus(TransferTaskStatus.FAILED);
         }
-        child.setErrorMessage(cause.getMessage());
+        child.setErrorMessage(exceptionMessage);
         child.setEndTime(Instant.now());
         child.setAssignedTo(null);
         try {
@@ -645,7 +646,7 @@ public class ChildTaskTransferService {
                     parent.setStatus(TransferTaskStatus.FAILED);
                 }
                 parent.setEndTime(Instant.now());
-                parent.setErrorMessage(cause.getMessage());
+                parent.setErrorMessage(exceptionMessage);
                 parent.setFinalMessage("Failed - Child doErrorStepOne");
                 log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR14", parent.getId(), parent.getTag(), parent.getUuid(), child.getId(), child.getUuid(), parent.getStatus()));
                 dao.updateTransferTaskParent(parent);
@@ -657,7 +658,7 @@ public class ChildTaskTransferService {
                         return null;
                     }
                     topTask.setStatus(TransferTaskStatus.FAILED);
-                    topTask.setErrorMessage(cause.getMessage());
+                    topTask.setErrorMessage(exceptionMessage);
                     topTask.setEndTime(Instant.now());
                     log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR13", topTask.getId(), topTask.getTag(), topTask.getUuid(), parent.getId(), parent.getUuid(), child.getId(), child.getUuid()));
                     dao.updateTransferTask(topTask);
