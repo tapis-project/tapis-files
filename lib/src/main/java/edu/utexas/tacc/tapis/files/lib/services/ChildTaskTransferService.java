@@ -61,6 +61,7 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import io.jsonwebtoken.lang.Collections;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.sshd.common.io.WritePendingException;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -687,7 +688,12 @@ public class ChildTaskTransferService {
         Future<TransferTaskChild> future = executorService.submit(new Callable<TransferTaskChild>() {
             @Override
             public TransferTaskChild call() throws IOException, ServiceException {
-                return processTransfer(taskChild);
+                try {
+                    return processTransfer(taskChild);
+                } catch (WritePendingException ex) {
+                    // TODO: log something?
+                    throw new IOException("Write Pending", ex);
+                }
             }
         });
 
@@ -734,6 +740,12 @@ public class ChildTaskTransferService {
             }
         } catch (CancellationException ex) {
             return cancelTransferChild(taskChild);
+        } catch (WritePendingException ex) {
+            // TODO:  log something?
+            throw new IOException("WritePendingException error", ex);
+        } catch (RuntimeException ex) {
+            // TODO:  log something?
+            throw new IOException("WritePendingException error", ex);
         } finally {
             try {
                 channel.close();

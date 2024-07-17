@@ -77,8 +77,16 @@ public class DAOTransactionContext implements AutoCloseable {
     }
 
     public static <T> T doInTransaction(DAOOperation<T> op) throws DAOException {
-        try(DAOTransactionContext context = new DAOTransactionContext()) {
-            return  op.doOperation(context);
+        DAOTransactionContext context = new DAOTransactionContext();
+        try {
+            T returnValue = op.doOperation(context);
+            context.commit();
+            return returnValue;
+        } finally {
+            // this will rollback anything not committed.  This really amounts to rolling back
+            // if an exception occurs;
+            context.rollback();
+            context.close();
         }
     }
 

@@ -557,8 +557,6 @@ public class ParentTaskTransferService {
     parentTask.setStatus(TransferTaskStatus.STAGED);
     parentTask = dao.updateTransferTaskParent(parentTask);
     dao.bulkInsertChildTasks(children);
-    children = dao.getAllChildren(parentTask);
-//    transfersService.publishBulkChildMessages(children);
   }
 
   private void handleNonTapisTransfer(TransferTaskParent parentTask) throws ServiceException, DAOException {
@@ -574,7 +572,6 @@ public class ParentTaskTransferService {
     task.setTenantId(parentTask.getTenantId());
     task.setUsername(parentTask.getUsername());
     task = dao.insertChildTask(task);
-    transfersService.publishChildMessage(task);
     parentTask.setStatus(TransferTaskStatus.STAGED);
     dao.updateTransferTaskParent(parentTask);
   }
@@ -590,8 +587,9 @@ public class ParentTaskTransferService {
    */
   private TransferTaskParent doErrorParentStepOne(Exception caughtException, TransferTaskParent parent) {
     String exceptionErrorMessage = (caughtException == null) ? "<NULL>" : caughtException.getMessage();
+
     try {
-      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString(), caughtException));
+      log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString(), exceptionErrorMessage));
 
       // First update parent task, mark FAILED_OPT or FAILED
       if (parent.isOptional())

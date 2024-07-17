@@ -305,20 +305,15 @@ public class TransfersService
       task.setStatus(TransferTaskStatus.ACCEPTED);
       task.setTag(tag);
 
-      // Persist the transfer task and queue up parent transfer tasks.
+      // Persist the transfer task
       try
       {
         // Persist the transfer task to the DB
         log.trace(LibUtils.getMsgAuthR("FILES_TXFR_PERSIST_TASK", rUser, tag, elements.size()));
         TransferTask newTask = dao.createTransferTask(task, elements);
-        // Put the parent transfer tasks onto the queue for asynchronous processing.
-        for (TransferTaskParent parent : newTask.getParentTasks())
-        {
-          publishParentTaskMessage(parent);
-        }
         return newTask;
       }
-      catch (DAOException | ServiceException e)
+      catch (DAOException e)
       {
         String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_ERR6", rUser, "createTransfer", tag, e.getMessage());
         throw new ServiceException(msg, e);
@@ -407,35 +402,6 @@ public class TransfersService
       }
     }
 
-    /**
-     * Helper function to publish many child task messages at once.
-     *
-     * @param children A list of TransferTaskChild
-     */
-    public void publishBulkChildMessages(List<TransferTaskChild> children) throws ServiceException
-    {
-      for(TransferTaskChild child : children) {
-        publishChildMessage(child);
-      }
-    }
-
-    public void publishChildMessage(TransferTaskChild childTask) throws ServiceException
-    {
-
-      Channel channel = null;
-      try
-      {
-        channel = connection.createChannel();
-        String m = mapper.writeValueAsString(childTask);
-        channel.basicPublish(CHILD_EXCHANGE, CHILD_ROUTING_KEY, MessageProperties.PERSISTENT_TEXT_PLAIN, m.getBytes());
-      } catch (IOException e) {
-        throw new RuntimeException(e.getMessage(), e);
-      } finally {
-        closeChannel(channel);
-      }
-
-}
-
   // ************************************************************************
   // *********************** Private Methods ********************************
   // ************************************************************************
@@ -507,24 +473,6 @@ public class TransfersService
     }
     // Quick check to see if Rabbit is responding.
     return connection.isOpen();
-  }
-
-  /*
-   * Publish a parent task to RabbitMQ PARENT_QUEUE
-   */
-  private void publishParentTaskMessage(@NotNull TransferTaskParent task) throws ServiceException
-  {
-    Channel channel = null;
-    try
-    {
-      channel = connection.createChannel();
-      String m = mapper.writeValueAsString(task);
-      channel.basicPublish(PARENT_EXCHANGE, PARENT_ROUTING_KEY, MessageProperties.PERSISTENT_TEXT_PLAIN, m.getBytes());
-    } catch (IOException e) {
-      throw new RuntimeException(e.getMessage(), e);
-    } finally {
-      closeChannel(channel);
-    }
   }
 
   /**

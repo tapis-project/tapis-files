@@ -49,7 +49,7 @@ public class TransfersScheduler
 {
     private static final Logger log = LoggerFactory.getLogger(TransfersApp.class);
     private static int WORKER_BACKLOG_THRESHOLD = 100;
-    private static int ROW_NUMBER_CUTOFF = 3;
+    private static int ROW_NUMBER_CUTOFF = 300;
     private static long EXPECT_HEARTBEAT_BEFORE_MILLIS = 300000;
 
     private FileTransfersDAO dao = new FileTransfersDAO();
@@ -132,7 +132,6 @@ public class TransfersScheduler
 
     private void cleanupDeadWorker(UUID workerUuid) {
         TransferTaskChildDAO childTaskDao = new TransferTaskChildDAO();
-        TransferWorkerDAO trasferWorkerDao = new TransferWorkerDAO();
         try {
             DAOTransactionContext.doInTransaction(context -> {
                 childTaskDao.unassignTasksFromWorker(context, workerUuid);
