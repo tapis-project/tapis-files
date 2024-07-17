@@ -183,7 +183,7 @@ public class TransfersApp
       log.info("Got parentTxfrSvc.");
 
       log.info("Starting parent pipeline.");
-      parentTaskTransferService.startListeners();
+      parentTaskTransferService.startListeners(myUuid);
       log.info("Started parent pipeline.");
 
       log.info("Getting childTxfrSvc.");

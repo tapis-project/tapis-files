@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.transfers;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferWorkerDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
@@ -51,9 +52,6 @@ public class TransfersScheduler
     private static int WORKER_BACKLOG_THRESHOLD = 100;
     private static int ROW_NUMBER_CUTOFF = 300;
     private static long EXPECT_HEARTBEAT_BEFORE_MILLIS = 300000;
-
-    private FileTransfersDAO dao = new FileTransfersDAO();
-    private TransferWorkerDAO transferWorkerDAO = new TransferWorkerDAO();
     private SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(ROW_NUMBER_CUTOFF);
 
     public static void main(String[] args)
@@ -72,7 +70,8 @@ public class TransfersScheduler
 
     void run() throws InterruptedException {
         for(;;) {
-            scheduleWork();
+            scheduleChildTasks();
+            scheduleParentTasks();
             // TODO:  fix this to acutally do something smart
 //            politePause();  -- sleeping now, but maybe a method that does something more intersting
             Thread.sleep(10000);
@@ -103,6 +102,8 @@ public class TransfersScheduler
     }
 
     void updateWorkerList(Map<UUID, Integer> activeWorkerMap) {
+        TransferWorkerDAO transferWorkerDAO = new TransferWorkerDAO();
+
         List<TransferWorker> workers = null;
         try {
             workers = DAOTransactionContext.doInTransaction((context) -> {
@@ -131,8 +132,11 @@ public class TransfersScheduler
     }
 
     private void cleanupDeadWorker(UUID workerUuid) {
+        TransferWorkerDAO transferWorkerDAO = new TransferWorkerDAO();
         TransferTaskChildDAO childTaskDao = new TransferTaskChildDAO();
+
         try {
+            // TODO:  PARENT handle all "non-terminal" statuses and heandle parent tasks too.
             DAOTransactionContext.doInTransaction(context -> {
                 childTaskDao.unassignTasksFromWorker(context, workerUuid);
                 transferWorkerDAO.deleteTransferWorkerById(context, workerUuid);
@@ -145,6 +149,7 @@ public class TransfersScheduler
     }
 
     private void cleanupZombieAssignments() {
+        // TODO:  PARENT handle all "non-terminal" statuses and heandle parent tasks too.
         TransferTaskChildDAO childTaskDao = new TransferTaskChildDAO();
         try {
             DAOTransactionContext.doInTransaction(context -> {
@@ -158,12 +163,12 @@ public class TransfersScheduler
 
     }
 
-    private void updateWorkCounts(Map<UUID, Integer> activeWorkerMap) {
-        TransferTaskChildDAO dao = new TransferTaskChildDAO();
+    private void updateChildWorkCounts(Map<UUID, Integer> activeWorkerMap) {
+        TransferTaskChildDAO transferTaskChildDAO = new TransferTaskChildDAO();
 
         try {
             Map<UUID, Integer> assignedWorkerCount = DAOTransactionContext.doInTransaction((context -> {
-                return dao.getAssignedWorkerCount(context);
+                return transferTaskChildDAO.getAssignedWorkerCount(context);
             }));
 
             for(var workerUuid : assignedWorkerCount.keySet()) {
@@ -177,11 +182,30 @@ public class TransfersScheduler
         }
     }
 
-    private List<UUID> getWorkersThatNeedWork() {
+    private void updateParentWorkCounts(Map<UUID, Integer> activeWorkerMap) {
+        TransferTaskParentDAO parentDao = new TransferTaskParentDAO();
+
+        try {
+            Map<UUID, Integer> assignedWorkerCount = DAOTransactionContext.doInTransaction((context -> {
+                return parentDao.getAssignedWorkerCount(context);
+            }));
+
+            for(var workerUuid : assignedWorkerCount.keySet()) {
+                if(activeWorkerMap.containsKey(workerUuid)) {
+                    // update the count in the active worker map from the query we just did
+                    activeWorkerMap.put(workerUuid, assignedWorkerCount.get(workerUuid));
+                }
+            }
+        } catch (DAOException ex) {
+            log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkCounts", ex));
+        }
+    }
+
+    private List<UUID> getWorkersThatNeedChildTasks() {
         Map<UUID, Integer> activeWorkerMap = new HashMap<>();
 
         updateWorkerList(activeWorkerMap);
-        updateWorkCounts(activeWorkerMap);
+        updateChildWorkCounts(activeWorkerMap);
 
         List<UUID> workersThatNeedWork = new ArrayList<>();
 
@@ -196,14 +220,47 @@ public class TransfersScheduler
         return workersThatNeedWork;
     }
 
-    private void scheduleWork() {
+    private void scheduleChildTasks() {
         try {
-            List<UUID> workersThatNeedWork = getWorkersThatNeedWork();
-            List<Integer> queuedTaskIds = schedulingPolicy.getQueuedTaskIds();
+            List<UUID> workersThatNeedWork = getWorkersThatNeedChildTasks();
+            List<Integer> queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
             while (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty()) {
-                schedulingPolicy.assignWorkToWorkers(workersThatNeedWork, queuedTaskIds);
-                workersThatNeedWork = getWorkersThatNeedWork();
-                queuedTaskIds = schedulingPolicy.getQueuedTaskIds();
+                schedulingPolicy.assignChildTasksToWorkers(workersThatNeedWork, queuedTaskIds);
+                workersThatNeedWork = getWorkersThatNeedChildTasks();
+                queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
+            }
+        } catch (SchedulingPolicyException ex) {
+            log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "scheduleWork", ex));
+        }
+    }
+
+    private List<UUID> getWorkersThatNeedParentTasks() {
+        Map<UUID, Integer> activeWorkerMap = new HashMap<>();
+
+        updateWorkerList(activeWorkerMap);
+        updateParentWorkCounts(activeWorkerMap);
+
+        List<UUID> workersThatNeedWork = new ArrayList<>();
+
+        // figure out which workers need work
+        for(var workerUuid : activeWorkerMap.keySet()) {
+            int count = activeWorkerMap.get(workerUuid).intValue();
+            if(count < WORKER_BACKLOG_THRESHOLD) {
+                workersThatNeedWork.add(workerUuid);
+            }
+        }
+
+        return workersThatNeedWork;
+    }
+
+    private void scheduleParentTasks() {
+        try {
+            List<UUID> workersThatNeedWork = getWorkersThatNeedParentTasks();
+            List<Integer> queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
+            while (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty()) {
+                schedulingPolicy.assignParentTasksToWorkers(workersThatNeedWork, queuedTaskIds);
+                workersThatNeedWork = getWorkersThatNeedChildTasks();
+                queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
             }
         } catch (SchedulingPolicyException ex) {
             log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "scheduleWork", ex));

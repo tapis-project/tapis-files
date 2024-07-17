@@ -4,22 +4,20 @@ import javax.inject.Inject;
 import javax.ws.rs.WebApplicationException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.DefaultConsumer;
-import com.rabbitmq.client.Envelope;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
+import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
-import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
+import edu.utexas.tacc.tapis.files.lib.transfers.DefaultSchedulingPolicy;
+import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
@@ -30,6 +28,7 @@ import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,18 +39,20 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /*
  * Transfers service methods providing functionality for TransfersApp (a worker).
@@ -81,11 +82,27 @@ public class ParentTaskTransferService {
   private final FileOpsService fileOpsService;
   private static final Logger log = LoggerFactory.getLogger(ParentTaskTransferService.class);
   private static String PARENT_QUEUE = "tapis.files.transfers.parent";
-  private final Connection connection;
   private ExecutorService connectionThreadPool;
-  private List<Channel> channels = new ArrayList<Channel>();
   private ScheduledExecutorService channelMonitorService = Executors.newSingleThreadScheduledExecutor();
   private static final int MAX_TRANSFER_COUNT = RuntimeSettings.get().getMaxTransferCount();
+
+  // this parameter is slightly confusing.  For each combination of tenant/user we will get a maximum of
+  // this many items.  For example if there are 3 users (2 in one tenant and 1 in another), and the each have
+  // exactly 3 tasks, and MAX_WORK_ITEM_DEPTH is set to 2 we will get back a max of 2 per user, so 6 items.  If
+  // one of those users only had 1 task, we would get 2 for the first 2 users, and one for that user.  Hopefully
+  // this makes sense - if not please update the comment :)
+  private static final int MAX_WORK_ITEM_DEPTH = 50;
+  private static final int MAX_THREADS = RuntimeSettings.get().getParentThreadPoolSize();
+  private ScheduledExecutorService parentScheduler = Executors.newSingleThreadScheduledExecutor();
+  private ExecutorService parentWorkers = Executors.newFixedThreadPool(MAX_THREADS, new ThreadFactory() {
+    ThreadFactory defaultFactory = Executors.defaultThreadFactory();
+    @Override
+    public Thread newThread(@NotNull Runnable runnable) {
+      Thread th = defaultFactory.newThread(runnable);
+      th.setDaemon(true);
+      return th;
+    }
+  });
 
 
   /* *********************************************************************** */
@@ -111,112 +128,73 @@ public class ParentTaskTransferService {
     this.permsService = permsService;
 
     connectionThreadPool = Executors.newFixedThreadPool(MAX_CONSUMERS);
-    connection = RabbitMQConnection.getInstance().newConnection(connectionThreadPool);
   }
 
-  public void startListeners() throws IOException, TimeoutException {
-    createChannels();
-
-    channelMonitorService.scheduleWithFixedDelay(new Runnable() {
+  public void startListeners(UUID myUuid) {
+    parentScheduler.scheduleWithFixedDelay(new Runnable() {
       @Override
       public void run() {
         try {
-          // discard any closed channels
-          Iterator<Channel> channelIterator = channels.iterator();
-          while (channelIterator.hasNext()) {
-            Channel channel = channelIterator.next();
-            if (!channel.isOpen()) {
-              log.warn("RabbitMQ channel is closed");
-              channelIterator.remove();
+          boolean shouldExit = false;
+          Map<UUID, Future<TransferTaskParent>> futures = new HashMap<UUID, Future<TransferTaskParent>>();
+
+          SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(MAX_WORK_ITEM_DEPTH);
+
+          while (!shouldExit) {
+            try {
+              List<PrioritizedObject<TransferTaskParent>> ttpList = schedulingPolicy.getParentTasksForWorker(myUuid);
+              for (PrioritizedObject<TransferTaskParent> ttp : ttpList) {
+                UUID parentUuid = ttp.getObject().getUuid();
+                if (futures.containsKey(parentUuid)) {
+                  if (futures.get(parentUuid).isDone()) {
+                    futures.remove(parentUuid);
+                  }
+                } else {
+                  System.out.println("Priority: " + ttp.getPriority() + " tenant: " + ttp.getObject().getTenantId() + " user:" + ttp.getObject().getUsername());
+                  try {
+                    Future<TransferTaskParent> future = parentWorkers.submit(new Callable<TransferTaskParent>() {
+                      @Override
+                      public TransferTaskParent call() throws Exception {
+                        return handleTask(ttp.getObject());
+                      }
+                    });
+                    futures.put(parentUuid, future);
+                  } catch (Throwable th) {
+                    TransferTaskParent parentTask = dao.getChildTaskByUUID(parentUuid);
+                    parentTask.setStatus(parentTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
+                    // TODO:  // should we be saving this?  I'm thinking YES!
+                  }
+                }
+              }
+            } catch (DAOException | SchedulingPolicyException ex) {
+              log.error(MsgUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
+              break;
+            }
+
+            if (io.jsonwebtoken.lang.Collections.isEmpty(futures) || (futures.size() >= (MAX_THREADS * 5))) {
+              shouldExit = true;
             }
           }
-
-          // re-open channels
-          try {
-            createChannels();
-          } catch (Exception ex) {
-            log.error("Unable to re-open channels", ex);
-          }
         } catch (Throwable th) {
-          String msg = LibUtils.getMsg("FILES_TXFR_CLEANUP_FAILURE");
-          log.warn(msg, th);
-
+          // if this method throws, it will not get rescheduled.  We would have a zombie worker.  I think the
+          // best thing to do here is exit - we have caught some completely unexpected exception
+          System.exit(0);
         }
       }
-    }, 5, 5, TimeUnit.MINUTES);
+    }, 5, 5, TimeUnit.SECONDS);
   }
 
-  private void createChannels() throws IOException, TimeoutException {
-    int channelsToOpen = MAX_CONSUMERS - channels.size();
-    if(channelsToOpen == 0) {
-      return;
-    }
-
-    log.info("Opening " + channelsToOpen + " rabbitmq channels");
-    ParentTaskTransferService service = this;
-    for (int i = 0; i < channelsToOpen; i++) {
-      Channel channel = connection.createChannel();
-      channel.basicQos(QOS);
-
-      TransfersService.declareRabbitMQObjects(connection);
-
-      channel.basicConsume(PARENT_QUEUE, false, new DefaultConsumer(channel) {
-        @Override
-        public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
-          try {
-            service.handleDelivery(channel, consumerTag, envelope, properties, body);
-          } catch (Throwable th) {
-            String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR_CONSUME_MESSAGE", consumerTag);
-            log.error(msg, th);;
-          }
-        }
-      });
-      channels.add(channel);
-    }
-  }
-
-  public void handleDelivery(Channel channel, String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body)
-          throws IOException{
-    TransferTaskParent taskParent = null;
-    try {
-      String jsonMessage = new String(body, StandardCharsets.UTF_8);
-      taskParent = TapisObjectMapper.getMapper().readValue(jsonMessage, TransferTaskParent.class);
-      if (taskParent == null) {
-        // log the error, and continue - this really shouldn't happen since we wrote the message ourselves, but being defensive.
-        String msg = LibUtils.getMsg("FILES_TXFR_UNABLE_TO_PARSE_MESSAGE");
-        log.error(msg);
-        throw new RuntimeException(msg);
-      }
-      handleMessage(channel, envelope, taskParent);
-    } catch (Exception ex) {
-      channel.basicNack(envelope.getDeliveryTag(), false, false);
-      if (taskParent != null) {
-        doErrorParentStepOne(ex, taskParent);
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
-                "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
-        log.error(msg, ex);
-
-        throw new RuntimeException(msg, ex);
-      } else {
-        log.error("Unable to create parent task opject from RabbitMQ message", ex);
-      }
-    }
-
-  }
-
-  public void handleMessage(Channel channel, Envelope envelope, TransferTaskParent taskParent) throws IOException {
+  public TransferTaskParent handleTask(TransferTaskParent taskParent) throws IOException {
     int retry = 0;
     Exception lastException = null;
     while (retry < maxRetries) {
       try {
         if(isLocalMove(taskParent.getTransferType())) {
           doLocalMove(taskParent);
-          channel.basicAck(envelope.getDeliveryTag(), false);
-          return;
+          return taskParent;
         } else {
           if (createChildTasks(taskParent)) {
-            channel.basicAck(envelope.getDeliveryTag(), false);
-            return;
+            return taskParent;
           }
         }
       } catch (ServiceException ex) {
@@ -235,7 +213,8 @@ public class ParentTaskTransferService {
 
     // out of retries, so give up on this one.
     doErrorParentStepOne(lastException, taskParent);
-    channel.basicNack(envelope.getDeliveryTag(), false, false);
+
+    return null;
   }
 
   private boolean isLocalMove(TransferTaskParent.TransferType transferType) {
@@ -330,6 +309,7 @@ public class ParentTaskTransferService {
       parentTask.setStatus(TransferTaskStatus.COMPLETED);
       parentTask.setEndTime(Instant.now());
       parentTask.setFinalMessage("Completed");
+      parentTask.setAssignedTo(null);
 
       log.trace(LibUtils.getMsg("FILES_TXFR_TASK_MOVE_COMPLETE", topTaskId, topTask.getUuid(), parentTask.getId(), parentTask.getUuid(), parentTask.getTag()));
       dao.updateTransferTaskParent(parentTask);
@@ -365,6 +345,7 @@ public class ParentTaskTransferService {
       parentTask.setEndTime(Instant.now());
       parentTask.setErrorMessage(cause);
       parentTask.setFinalMessage("Failed - Child doErrorStepOne");
+      parentTask.setAssignedTo(null);
 
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_PARENT_FAILED_MOVE", parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), parentTask.getStatus()));
       dao.updateTransferTaskParent(parentTask);
@@ -429,8 +410,12 @@ public class ParentTaskTransferService {
       // Update parent task
       log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_START", taskTenant, taskUser, "doParentStepOneA05", parentId, parentUuid, tag));
       parentTask.setStartTime(Instant.now());
+
       // Update status unless already in a terminal state (such as cancelled)
-      if (!parentTask.isTerminal()) parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
+      if (!parentTask.isTerminal()) {
+        parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
+      }
+
       parentTask = dao.updateTransferTaskParent(parentTask);
 
       // If already in a terminal state then set end time and return
@@ -524,6 +509,7 @@ public class ParentTaskTransferService {
       parentTask.setEndTime(Instant.now());
       parentTask.setStatus(TransferTaskStatus.COMPLETED);
       parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_COMPLETE_NO_ITEMS", taskTenant, taskUser, srcId, srcPath, tag));
+      parentTask.setAssignedTo(null);
       dao.updateTransferTaskParent(parentTask);
       checkForComplete(parentTask.getTaskId());
       return;
@@ -555,6 +541,7 @@ public class ParentTaskTransferService {
     log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_STAGE", taskTenant, taskUser, "doParentStepOneA12", parentId, parentUuid, totalBytes, tag));
     parentTask.setTotalBytes(totalBytes);
     parentTask.setStatus(TransferTaskStatus.STAGED);
+    parentTask.setAssignedTo(null);
     parentTask = dao.updateTransferTaskParent(parentTask);
     dao.bulkInsertChildTasks(children);
   }
@@ -573,6 +560,7 @@ public class ParentTaskTransferService {
     task.setUsername(parentTask.getUsername());
     task = dao.insertChildTask(task);
     parentTask.setStatus(TransferTaskStatus.STAGED);
+    parentTask.setAssignedTo(null);
     dao.updateTransferTaskParent(parentTask);
   }
 
@@ -599,6 +587,7 @@ public class ParentTaskTransferService {
       parent.setEndTime(Instant.now());
       parent.setErrorMessage(exceptionErrorMessage);
       parent.setFinalMessage("Failed - doErrorParentStepOne");
+      parent.setAssignedTo(null);
       parent = dao.updateTransferTaskParent(parent);
       // This should really never happen, it means that the parent with that ID was not in the database.
       if (parent == null) {

@@ -157,7 +157,7 @@ public class ChildTaskTransferService {
     /*                      Public Methods                                     */
     /* *********************************************************************** */
 
-    public void startListeners(UUID myUuid) throws IOException, TimeoutException {
+    public void startListeners(UUID myUuid) {
         childScheduler.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
@@ -169,7 +169,7 @@ public class ChildTaskTransferService {
 
                     while (!shouldExit) {
                         try {
-                            List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getWorkForWorker(myUuid);
+                            List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getChildTasksForWorker(myUuid);
                             for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
                                 UUID childUuid = ttc.getObject().getUuid();
                                 if (futures.containsKey(childUuid)) {

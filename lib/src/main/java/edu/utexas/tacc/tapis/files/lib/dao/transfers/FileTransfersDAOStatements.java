@@ -163,7 +163,8 @@ public class FileTransfersDAOStatements
                          bytes_transferred =?, 
                          total_bytes = ?,
                          final_message = ?,
-                         error_message = ?
+                         error_message = ?,
+                         assigned_to = ?
                     WHERE uuid = ? 
                     RETURNING *
         """;

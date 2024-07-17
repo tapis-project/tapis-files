@@ -365,6 +365,7 @@ public class FileTransfersDAO {
                 task.getTotalBytes(),
                 task.getFinalMessage(),
                 task.getErrorMessage(),
+                task.getAssignedTo(),
                 task.getUuid()
             );
 
