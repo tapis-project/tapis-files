@@ -106,6 +106,7 @@ public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFi
             }
         }
 
+        long transferStartTime = System.currentTimeMillis();
         List<String> transferIds = new ArrayList<>();
         // make a list of all of the transferIds
         for(Future<TransferInfo> transferFuture : transferFutures) {
@@ -116,6 +117,8 @@ public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFi
 
         // wait for aall tranfer ids to complete
         IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferIds, getTestConfig().getTimeout(), threadPool, getTestConfig().getPollingIntervalMillis(), TimeUnit.MILLISECONDS);
+        long transerDuration = System.currentTimeMillis() - transferStartTime;
+        log.debug("Transfers took - total time: " + transerDuration + "   average time: " + transerDuration / transferFutures.size());
 
         // request download and validation of each file
         List<Future<Void>> downloadFutures = new ArrayList<>();

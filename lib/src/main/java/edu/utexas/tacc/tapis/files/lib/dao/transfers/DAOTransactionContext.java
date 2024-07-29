@@ -2,7 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,8 +23,7 @@ public class DAOTransactionContext implements AutoCloseable {
             connection.setAutoCommit(false);
         } catch (SQLException e) {
             rollback();
-            // TODO:  update message
-            throw new DAOException("ERROR", e);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_CONTEXT_ERROR", e.getMessage()), e);
         }
     }
 
@@ -38,8 +37,7 @@ public class DAOTransactionContext implements AutoCloseable {
                 connection.commit();
             }
         } catch (SQLException e) {
-            // TODO:  update message
-            throw new DAOException("ERROR", e);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_CONTEXT_ERROR", e.getMessage()), e);
         }
     }
 
@@ -49,8 +47,7 @@ public class DAOTransactionContext implements AutoCloseable {
                 connection.rollback();
             }
         } catch (SQLException e) {
-            // TODO:  update message
-            throw new DAOException("ERROR", e);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_CONTEXT_ERROR", e.getMessage()), e);
         }
     }
 
@@ -58,8 +55,7 @@ public class DAOTransactionContext implements AutoCloseable {
         try {
             return ((connection != null) && (!connection.isClosed()));
         } catch (SQLException e) {
-            // TODO:  update message
-            throw new DAOException("ERROR", e);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_CONTEXT_ERROR", e.getMessage()), e);
         }
     }
 
@@ -71,8 +67,7 @@ public class DAOTransactionContext implements AutoCloseable {
                 connection = null;
             }
         } catch (SQLException e) {
-            // TODO:  update message
-            throw new DAOException("ERROR", e);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_CONTEXT_ERROR", e.getMessage()), e);
         }
     }
 

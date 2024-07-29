@@ -7,9 +7,8 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferWorkerDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
-import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +51,7 @@ public class TransfersScheduler
     private static int WORKER_BACKLOG_THRESHOLD = 100;
     private static int ROW_NUMBER_CUTOFF = 300;
     private static long EXPECT_HEARTBEAT_BEFORE_MILLIS = 300000;
+    private static long MAX_WAIT_MULTIPLIER = 6;
     private SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(ROW_NUMBER_CUTOFF);
 
     public static void main(String[] args)
@@ -62,19 +62,36 @@ public class TransfersScheduler
             TransfersScheduler scheduler = new TransfersScheduler();
             scheduler.run();
         } catch(Exception ex) {
-            // TODO:  Add message to catalog
             String msg = LibUtils.getMsg("FILES_TRANSFER_SCHEDULER_APPLICATION_FAILED_TO_START", ex.getMessage());
             log.error(msg, ex);
         }
     }
 
     void run() throws InterruptedException {
+        boolean moreParentsToSchedule, moreChildrenToSchedule = false;
+        int loopsWithNoWork = 0;
         for(;;) {
-            scheduleChildTasks();
-            scheduleParentTasks();
-            // TODO:  fix this to acutally do something smart
+            try {
+                moreChildrenToSchedule = scheduleChildTasks();
+                moreParentsToSchedule = scheduleParentTasks();
+
+                // get rid of any tasks that have a worker that no longer exists assigned to it.
+                cleanupZombieAssignments();
+                if (!moreChildrenToSchedule && !moreParentsToSchedule) {
+                    // TODO:  fix this to acutally do something smart
 //            politePause();  -- sleeping now, but maybe a method that does something more intersting
-            Thread.sleep(10000);
+                    if(loopsWithNoWork < MAX_WAIT_MULTIPLIER) {
+                        loopsWithNoWork++;
+                    }
+                    int sleepTime = 500 << loopsWithNoWork;
+                    log.warn("Sleeping for " + sleepTime + " milliseconds");
+                    Thread.sleep(sleepTime);
+                } else {
+                    loopsWithNoWork = 0;
+                }
+            } catch (SchedulingPolicyException ex) {
+                log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "scheduleWork", ex));
+            }
         }
     }
 
@@ -97,7 +114,7 @@ public class TransfersScheduler
         }
 
         if(!missingVars.isEmpty()) {
-            throw new RuntimeException(MsgUtils.getMsg("FILES_TRANSFER_SCHEDULER_SERVICE_MISSING_REQUIRED_VARIABLES", missingVars.toString()));
+            throw new RuntimeException(LibUtils.getMsg("FILES_TRANSFER_SCHEDULER_SERVICE_MISSING_REQUIRED_VARIABLES", missingVars.toString()));
         }
     }
 
@@ -110,7 +127,7 @@ public class TransfersScheduler
                 return transferWorkerDAO.getTransferWorkers(context);
             });
         } catch (DAOException ex) {
-            log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkerList", ex));
+            log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkerList", ex));
         }
 
         for(TransferWorker worker : workers) {
@@ -122,43 +139,23 @@ public class TransfersScheduler
                 if(activeWorkerMap.containsKey(worker.getUuid())) {
                     activeWorkerMap.remove(worker.getUuid());
                 }
-
-                cleanupDeadWorker(worker.getUuid());
             }
-        }
-
-        // get rid of any tasks that have a worker that no longer exists assigned to it.
-        cleanupZombieAssignments();
-    }
-
-    private void cleanupDeadWorker(UUID workerUuid) {
-        TransferWorkerDAO transferWorkerDAO = new TransferWorkerDAO();
-        TransferTaskChildDAO childTaskDao = new TransferTaskChildDAO();
-
-        try {
-            // TODO:  PARENT handle all "non-terminal" statuses and heandle parent tasks too.
-            DAOTransactionContext.doInTransaction(context -> {
-                childTaskDao.unassignTasksFromWorker(context, workerUuid);
-                transferWorkerDAO.deleteTransferWorkerById(context, workerUuid);
-                context.commit();
-                return 0;
-            });
-        } catch (DAOException ex) {
-            log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "cleanupDeadWorker", ex));
         }
     }
 
     private void cleanupZombieAssignments() {
-        // TODO:  PARENT handle all "non-terminal" statuses and heandle parent tasks too.
         TransferTaskChildDAO childTaskDao = new TransferTaskChildDAO();
+        TransferTaskParentDAO parentTaskDao = new TransferTaskParentDAO();
         try {
             DAOTransactionContext.doInTransaction(context -> {
-                childTaskDao.cleanupZombieAssignments(context);
-                context.commit();
+                // TODO: more work is needed here.  Need to make sure that if a parent fails the top fails if it's  non-opt
+                // or maybe fix it so that we can never be in the middle of a parent task, (e.g. transaction) etc.
+                childTaskDao.cleanupZombieChildAssignments(context, TransferTaskChild.TERMINAL_STATES);
+//                parentTaskDao.cleanupZombieParentAssignments(context, TransferTaskParent.TERMINAL_STATES);
                 return 0;
             });
         } catch (DAOException ex) {
-            log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "cleanupZombieAssignments", ex));
+            log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "cleanupZombieAssignments", ex));
         }
 
     }
@@ -178,7 +175,7 @@ public class TransfersScheduler
                 }
             }
         } catch (DAOException ex) {
-            log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkCounts", ex));
+            log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkCounts", ex));
         }
     }
 
@@ -197,7 +194,7 @@ public class TransfersScheduler
                 }
             }
         } catch (DAOException ex) {
-            log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkCounts", ex));
+            log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkCounts", ex));
         }
     }
 
@@ -220,18 +217,13 @@ public class TransfersScheduler
         return workersThatNeedWork;
     }
 
-    private void scheduleChildTasks() {
-        try {
-            List<UUID> workersThatNeedWork = getWorkersThatNeedChildTasks();
-            List<Integer> queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
-            while (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty()) {
-                schedulingPolicy.assignChildTasksToWorkers(workersThatNeedWork, queuedTaskIds);
-                workersThatNeedWork = getWorkersThatNeedChildTasks();
-                queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
-            }
-        } catch (SchedulingPolicyException ex) {
-            log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "scheduleWork", ex));
-        }
+    private boolean scheduleChildTasks() throws SchedulingPolicyException {
+        List<UUID> workersThatNeedWork = getWorkersThatNeedChildTasks();
+        List<Integer> queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
+        schedulingPolicy.assignChildTasksToWorkers(workersThatNeedWork, queuedTaskIds);
+        workersThatNeedWork = getWorkersThatNeedChildTasks();
+        queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
+        return (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty());
     }
 
     private List<UUID> getWorkersThatNeedParentTasks() {
@@ -253,17 +245,12 @@ public class TransfersScheduler
         return workersThatNeedWork;
     }
 
-    private void scheduleParentTasks() {
-        try {
-            List<UUID> workersThatNeedWork = getWorkersThatNeedParentTasks();
-            List<Integer> queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
-            while (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty()) {
-                schedulingPolicy.assignParentTasksToWorkers(workersThatNeedWork, queuedTaskIds);
-                workersThatNeedWork = getWorkersThatNeedChildTasks();
-                queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
-            }
-        } catch (SchedulingPolicyException ex) {
-            log.error(MsgUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "scheduleWork", ex));
-        }
+    private boolean scheduleParentTasks() throws SchedulingPolicyException {
+        List<UUID> workersThatNeedWork = getWorkersThatNeedParentTasks();
+        List<Integer> queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
+        schedulingPolicy.assignParentTasksToWorkers(workersThatNeedWork, queuedTaskIds);
+        workersThatNeedWork = getWorkersThatNeedChildTasks();
+        queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
+        return (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty());
     }
 }

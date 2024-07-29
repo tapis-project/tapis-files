@@ -20,7 +20,6 @@ import edu.utexas.tacc.tapis.files.lib.transfers.DefaultSchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
@@ -162,12 +161,12 @@ public class ParentTaskTransferService {
                   } catch (Throwable th) {
                     TransferTaskParent parentTask = dao.getChildTaskByUUID(parentUuid);
                     parentTask.setStatus(parentTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
-                    // TODO:  // should we be saving this?  I'm thinking YES!
+                    dao.updateTransferTaskParent(parentTask);
                   }
                 }
               }
             } catch (DAOException | SchedulingPolicyException ex) {
-              log.error(MsgUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
+              log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
               break;
             }
 
@@ -239,13 +238,13 @@ public class ParentTaskTransferService {
     String user = taskParent.getUsername();
 
     if(!StringUtils.equals(systemId, destinationUri.getSystemId())) {
-      String msg = MsgUtils.getMsg("FILES_OPSC_DTN_MOVE_INVALID", tenant, user, taskParent.getTaskId(), "Source and destinatation are not the same");
+      String msg = LibUtils.getMsg("FILES_OPSC_DTN_MOVE_INVALID", tenant, user, taskParent.getTaskId(), "Source and destinatation are not the same");
       log.error(msg);
       throw new IOException(msg);
     }
 
     if((!sourceUri.isTapisProtocol()) || (!destinationUri.isTapisProtocol())) {
-      String msg = MsgUtils.getMsg("FILES_OPSC_DTN_MOVE_INVALID", tenant, user, taskParent.getTaskId(), "Tapis is the only supported protocol");
+      String msg = LibUtils.getMsg("FILES_OPSC_DTN_MOVE_INVALID", tenant, user, taskParent.getTaskId(), "Tapis is the only supported protocol");
       log.error(msg);
       throw new IOException(msg);
     }

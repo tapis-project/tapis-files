@@ -3,8 +3,8 @@ package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.RowProcessor;
@@ -19,6 +19,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class TransferTaskChildDAO {
@@ -88,7 +89,7 @@ public class TransferTaskChildDAO {
 
     public void assignToWorkers(DAOTransactionContext context, List<Integer> taskIds, UUID workerId) throws DAOException {
         if((workerId == null)  || (taskIds.isEmpty())) {
-            log.warn(MsgUtils.getMsg("FILES_TXFR_DAO_NO_WORKER_PROVIDED", "assignToWorkers"));
+            log.warn(LibUtils.getMsg("FILES_TXFR_DAO_NO_WORKER_PROVIDED", "assignToWorkers"));
             return;
         }
 
@@ -96,34 +97,31 @@ public class TransferTaskChildDAO {
             QueryRunner runner = new QueryRunner();
             final Array tasksToUpdate = context.getConnection().createArrayOf("int", taskIds.toArray());
             int numberAssigned = runner.update(context.getConnection(), TransferTaskChildDAOStatements.ASSIGN_TASKS_TO_WORKER, workerId, tasksToUpdate);
-            log.info(MsgUtils.getMsg("FILES_TXFR_DAO_ASSIGNED", numberAssigned, taskIds.size(), workerId));
+            log.info(LibUtils.getMsg("FILES_TXFR_DAO_ASSIGNED", numberAssigned, taskIds.size(), workerId));
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "assignToWorkers", ex.getMessage()), ex);
         }
     }
 
-    public void unassignTasksFromWorker(DAOTransactionContext context, UUID workerId) throws DAOException {
-        if(workerId == null) {
-            log.warn(MsgUtils.getMsg("FILES_TXFR_DAO_NO_WORKER_PROVIDED", "assignToWorkers"));
-            return;
-        }
-
+    public void cleanupZombieChildAssignments(DAOTransactionContext context, Set<TransferTaskStatus> terminalStates) throws DAOException {
         try {
+            // first unassign everything that's in a non-terminal state
             QueryRunner runner = new QueryRunner();
-            int numberUnassigned = runner.update(context.getConnection(), TransferTaskChildDAOStatements.UNASSIGN_TASKS_FROM_WORKER, workerId);
-            log.info(MsgUtils.getMsg("FILES_TXFR_DAO_UNASSIGNED", numberUnassigned, workerId));
-        } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAcceptedChildTasksForTenantsAndUsers", ex.getMessage()), ex);
-        }
+            final Array finalStates = context.getConnection().createArrayOf("text", terminalStates.stream().map(value -> value.name()).toArray());
+            int zombies = runner.update(context.getConnection(), TransferTaskChildDAOStatements.UNASSIGN_ZOMBIE_ASSIGNMENTS, finalStates);
+            if(zombies > 0) {
+                log.info("Reassigned child zombie tasks: " + zombies);
+            }
 
-    }
+            // Now change everything that is IN_PROGRESS, but not assigned back to 'ACCEPTED' ... this effectively restarts them
+            runner = new QueryRunner();
+            int restarted = runner.update(context.getConnection(), TransferTaskChildDAOStatements.RESTART_UNASSIGNED_BUT_IN_PROGRESS_TASKS);
+            if(restarted > 0) {
+                log.info("Restarted child tasks: " + restarted);
+            }
 
-    public void cleanupZombieAssignments(DAOTransactionContext context) throws DAOException {
-        try {
-            QueryRunner runner = new QueryRunner();
-            runner.update(context.getConnection(), TransferTaskChildDAOStatements.UNASSIGN_ZOMBIE_ASSIGNMENTS);
         } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAcceptedChildTasksForTenantsAndUsers", ex.getMessage()), ex);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "cleanupZombieChildAssignments", ex.getMessage()), ex);
         }
 
     }

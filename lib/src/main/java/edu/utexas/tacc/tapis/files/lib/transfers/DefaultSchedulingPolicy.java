@@ -8,7 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +60,7 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
                 return childDao.getAssignedWorkForWorker(context, cachedRows, workerUuid);
             });
         } catch (DAOException ex) {
-            throw new SchedulingPolicyException(MsgUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getWorkForWorker", ex));
+            throw new SchedulingPolicyException(LibUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getWorkForWorker", ex));
         }
 
         return prioritizedWork;
@@ -76,7 +76,7 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
                 return childDao.getAcceptedChildTasksForTenantsAndUsers(context, cachedRows);
             });
         } catch (DAOException ex) {
-            throw new SchedulingPolicyException(MsgUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getQueuedTaskIds", ex));
+            throw new SchedulingPolicyException(LibUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getQueuedTaskIds", ex));
         }
 
         if(CollectionUtils.isEmpty(prioritizedWork)) {
@@ -111,7 +111,7 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
                 return parentDAO.getAcceptedParentTasksForTenantsAndUsers(context, cachedRows);
             });
         } catch (DAOException ex) {
-            throw new SchedulingPolicyException(MsgUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getQueuedTaskIds", ex));
+            throw new SchedulingPolicyException(LibUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getQueuedTaskIds", ex));
         }
 
         if(CollectionUtils.isEmpty(prioritizedWork)) {
@@ -167,7 +167,7 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
                 return parentDAO.getAssignedWorkForWorker(context, cachedRows, workerUuid);
             });
         } catch (DAOException ex) {
-            throw new SchedulingPolicyException(MsgUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getWorkForWorker", ex));
+            throw new SchedulingPolicyException(LibUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getWorkForWorker", ex));
         }
 
         return prioritizedWork;
@@ -179,11 +179,10 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
             TransferTaskChildDAO childTaskDAO = new TransferTaskChildDAO();
             DAOTransactionContext.doInTransaction(context -> {
                 childTaskDAO.assignToWorkers(context, taskIds, workerId);
-                context.commit();
                 return null;
             });
         } catch (DAOException ex) {
-            throw new SchedulingPolicyException(MsgUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "assignTasksToWorker", ex));
+            throw new SchedulingPolicyException(LibUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "assignTasksToWorker", ex));
         }
 
     }
@@ -193,11 +192,10 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
             TransferTaskParentDAO parentTaskDAO = new TransferTaskParentDAO();
             DAOTransactionContext.doInTransaction(context -> {
                 parentTaskDAO.assignToWorkers(context, taskIds, workerId);
-                context.commit();
                 return null;
             });
         } catch (DAOException ex) {
-            throw new SchedulingPolicyException(MsgUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "assignParentTasksToWorker", ex));
+            throw new SchedulingPolicyException(LibUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "assignParentTasksToWorker", ex));
         }
 
     }

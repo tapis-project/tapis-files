@@ -71,16 +71,6 @@ public class TransferTaskChildDAOStatements {
                   id = ANY(?);
             """ ;
 
-    public static final String UNASSIGN_TASKS_FROM_WORKER =
-            """
-              update 
-                  transfer_tasks_child ttc 
-              set 
-                  assigned_to = NULL
-              where 
-                  assigned_to = ?;
-            """ ;
-
     public static final String UNASSIGN_ZOMBIE_ASSIGNMENTS =
             """
               update 
@@ -94,7 +84,17 @@ public class TransferTaskChildDAOStatements {
                       transfer_tasks_child ttc left join transfer_worker tw on ttc.assigned_to = tw."uuid" 
                   where 
                       assigned_to is not null and tw."uuid" is null
-              );
+              ) AND 
+                  transfer_tasks_child.status != ANY(?);
             """ ;
-
+    public static final String RESTART_UNASSIGNED_BUT_IN_PROGRESS_TASKS =
+            """
+              update 
+                  transfer_tasks_child 
+              set 
+                  status = 'ACCEPTED'
+              where
+                  status = 'IN_PROGRESS' AND                
+                  assigned_to IS NULL;
+            """ ;
 }

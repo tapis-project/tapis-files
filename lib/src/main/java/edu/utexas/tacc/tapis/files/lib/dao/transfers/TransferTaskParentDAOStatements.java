@@ -72,4 +72,52 @@ public class TransferTaskParentDAOStatements {
                   id = ANY(?);
             """ ;
 
+    public static final String UNASSIGN_ZOMBIE_ASSIGNMENTS =
+            """
+              update 
+                  transfer_tasks_parent 
+              set 
+                  assigned_to = null 
+              where id in (
+                  select 
+                      id 
+                  from 
+                      transfer_tasks_parent ttp left join transfer_worker tw on ttp.assigned_to = tw."uuid" 
+                  where 
+                      assigned_to is not null and tw."uuid" is null
+              ) AND 
+                  transfer_tasks_parent.status != ANY(?);
+            """ ;
+
+    public static final String FAIL_UNASSIGNED_BUT_IN_PROGRESS_TASKS =
+            """
+              update 
+                  transfer_tasks_parent 
+              set 
+                  status = 'FAILED'
+              where
+                  status = 'IN_PROGRESS' AND                
+                  assigned_to IS NULL
+              returning task_id;
+            """ ;
+    public static final String FAIL_ASSOCIATED_TOP_TASKS =
+            """
+                update 
+                    transfer_tasks 
+                    set 
+                        status = 'FAILED' 
+                where id 
+                in (
+                    select 
+                        tt.id 
+                    from 
+                        transfer_tasks tt 
+                    inner join 
+                        transfer_tasks_parent ttp 
+                        on 
+                            tt.id = ttp.task_id 
+                    where 
+                        tt.id = ANY(?) and ttp.optional
+                ); 
+            """ ;
 }

@@ -148,18 +148,17 @@ public class TransfersApp
           if(TransfersApp.myUuid != null) {
             try (DAOTransactionContext context = new DAOTransactionContext()) {
               TransfersApp.workerDAO.deleteTransferWorkerById(context, TransfersApp.myUuid);
-              context.commit();
             } catch (DAOException ex) {
-              // TODO:  log something maybe?  Not much we can do really
+              log.error(LibUtils.getMsg("FILES_TXFR_APP_DAO_EXCEPTION", myUuid.toString(), ex.getMessage()), ex);
             }
           }
         }
       }));
+
       try (DAOTransactionContext context = new DAOTransactionContext()) {
         TransferWorker me = workerDAO.insertTransferWorker(context);
-        context.commit();
-        // TODO:  Must Log myID!!
         TransfersApp.myUuid = me.getUuid();
+        log.info(LibUtils.getMsg("FILES_TXFR_APP_ID", myUuid));
       }
 
       Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(new Runnable() {
@@ -168,12 +167,12 @@ public class TransfersApp
           try(DAOTransactionContext context = new DAOTransactionContext()) {
             if(TransfersApp.myUuid != null) {
               new TransferWorkerDAO().updateTransferWorker(context, TransfersApp.myUuid);
-              context.commit();
             } else {
-              // TODO:  Log something?
+              log.error(LibUtils.getMsg("FILES_TXFR_APP_NO_ID"));
             }
           } catch (DAOException ex) {
             // TODO:  Log something?
+            log.error(LibUtils.getMsg("FILES_TXFR_APP_UPDATE_EXCEPTION", ex.getMessage()), ex);
           }
         }
       }, 0, 5, TimeUnit.MINUTES);

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -19,8 +20,8 @@ public class TransferTaskParent
     SERVICE_MOVE_DIRECTORY_CONTENTS,
     SERVICE_MOVE_FILE_OR_DIRECTORY,
   }
-  private static final Set<TransferTaskStatus> TERMINAL_STATES = new HashSet<>(Set.of(TransferTaskStatus.COMPLETED,
-          TransferTaskStatus.FAILED, TransferTaskStatus.FAILED_OPT, TransferTaskStatus.CANCELLED, TransferTaskStatus.PAUSED));
+  public static final Set<TransferTaskStatus> TERMINAL_STATES = Collections.unmodifiableSet(new HashSet<>(Set.of(TransferTaskStatus.COMPLETED,
+          TransferTaskStatus.FAILED, TransferTaskStatus.FAILED_OPT, TransferTaskStatus.CANCELLED, TransferTaskStatus.PAUSED)));
 
   protected int id;
   protected String tenantId;

@@ -53,7 +53,6 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -189,12 +188,12 @@ public class ChildTaskTransferService {
                                     } catch (Throwable th) {
                                         TransferTaskChild childTask = dao.getChildTaskByUUID(childUuid);
                                         childTask.setStatus(childTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
-                                        // TODO:  // should we be saving this?  I'm thinking YES!
+                                        dao.updateTransferTaskChild(childTask);
                                     }
                                 }
                             }
                         } catch (DAOException | SchedulingPolicyException ex) {
-                            log.error(MsgUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
+                            log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
                             break;
                         }
 
@@ -564,6 +563,8 @@ public class ChildTaskTransferService {
             TransferTaskChild updatedChildTask = dao.getChildTaskByUUID(taskChild.getUuid());
             updatedChildTask.setStatus(TransferTaskStatus.COMPLETED);
             updatedChildTask.setAssignedTo(null);
+            // we should count the actual bytes that we transfer.  For now this is close enough (bigger fish to fry).
+            updatedChildTask.setBytesTransferred(updatedChildTask.getTotalBytes());
             updatedChildTask.setEndTime(Instant.now());
             updatedChildTask = dao.updateTransferTaskChild(updatedChildTask);
             dao.updateTransferTaskParentBytesTransferred(updatedChildTask.getParentTaskId(), updatedChildTask.getBytesTransferred());
@@ -691,7 +692,6 @@ public class ChildTaskTransferService {
                 try {
                     return processTransfer(taskChild);
                 } catch (WritePendingException ex) {
-                    // TODO: log something?
                     throw new IOException("Write Pending", ex);
                 }
             }
@@ -741,10 +741,8 @@ public class ChildTaskTransferService {
         } catch (CancellationException ex) {
             return cancelTransferChild(taskChild);
         } catch (WritePendingException ex) {
-            // TODO:  log something?
             throw new IOException("WritePendingException error", ex);
         } catch (RuntimeException ex) {
-            // TODO:  log something?
             throw new IOException("WritePendingException error", ex);
         } finally {
             try {

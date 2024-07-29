@@ -11,3 +11,10 @@ CREATE INDEX on transfer_tasks_child (tenant_id);
 CREATE INDEX on transfer_tasks_child (username);
 CREATE INDEX on transfer_tasks_child (created);
 CREATE INDEX on transfer_tasks_child (assigned_to);
+CREATE INDEX on transfer_tasks_child (status);
+
+CREATE INDEX on transfer_tasks_parent (tenant_id);
+CREATE INDEX on transfer_tasks_parent (username);
+CREATE INDEX on transfer_tasks_parent (created);
+CREATE INDEX on transfer_tasks_parent (assigned_to);
+CREATE INDEX on transfer_tasks_parent (status);
