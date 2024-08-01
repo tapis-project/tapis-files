@@ -20,18 +20,6 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
   @Inject
   SystemsCache systemsCache;
 
-  /*
-   * Convenience wrapper for backward compatibility.
-   * Many callers do not need to pass in impersonationId and sharedCtxGrantor
-   */
-  @Override
-  public IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
-                                               @NotNull TapisSystem system)
-          throws IOException
-  {
-    return getRemoteDataClient(oboTenant, oboUser, system, null, null);
-  }
-
   /**
    * Return a remote data client from the cache given obo tenant+user, system and user accessing system.
    * For a LINUX system if ssh connection fails then the system cache entry is invalidated.
@@ -46,7 +34,7 @@ public class RemoteDataClientFactory implements IRemoteDataClientFactory
    * @return Remote data client
    * @throws IOException on error
    */
-//  @Override
+  @Override
   public IRemoteDataClient getRemoteDataClient(@NotNull String oboTenant, @NotNull String oboUser,
                                                @NotNull TapisSystem system, String impersonationId,
                                                String sharedCtxGrantor)

@@ -53,6 +53,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory.IMPERSONATION_ID_NULL;
+
 /*
  * Transfers service methods providing functionality for TransfersApp (a worker).
  *
@@ -276,7 +278,11 @@ public class ParentTaskTransferService {
     try
     {
       TapisSystem system = systemsCache.getSystem(tenant, systemId, user);
-      client = remoteDataClientFactory.getRemoteDataClient(tenant, user, system);
+
+      // with a "local move" the source and destination systmes are the same, so just use the source sharedCtxGrantor
+      // to get the system (source and dest MUST be the same - we get the system for source)
+      client = remoteDataClientFactory.getRemoteDataClient(tenant, user, system,
+              IMPERSONATION_ID_NULL, taskParent.getSrcSharedCtxGrantor());
       FileOpsService.MoveCopyOperation moveOp =
               TransferTaskParent.TransferType.SERVICE_MOVE_FILE_OR_DIRECTORY.equals(taskParent.getTransferType()) ?
               FileOpsService.MoveCopyOperation.SERVICE_MOVE_FILE_OR_DIRECTORY :
@@ -461,7 +467,6 @@ public class ParentTaskTransferService {
     String dstId = dstUri.getSystemId();
     String srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
     String dstSharedCtxGrantor = parentTask.getDestSharedCtxGrantor();
-    String impersonationIdNull = null;
     String taskTenant = parentTask.getTenantId();
     String taskUser = parentTask.getUsername();
     String tag = parentTask.getTag();
@@ -480,15 +485,15 @@ public class ParentTaskTransferService {
       throw new ServiceException(msg);
     }
     // Fetch systems, they are needed during child task creation. Also, this ensures they exist and are available
-    srcSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId, impersonationIdNull, srcSharedCtxGrantor);
-    dstSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, dstId, impersonationIdNull, dstSharedCtxGrantor);
+    srcSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, srcId, IMPERSONATION_ID_NULL, srcSharedCtxGrantor);
+    dstSystem = LibUtils.getSystemIfEnabled(rUser, systemsCache, dstId, IMPERSONATION_ID_NULL, dstSharedCtxGrantor);
     boolean srcIsS3 = SystemTypeEnum.S3.equals(srcSystem.getSystemType());
     boolean srcIsGlobus = SystemTypeEnum.GLOBUS.equals(srcSystem.getSystemType());
     boolean dstIsGlobus = SystemTypeEnum.GLOBUS.equals(dstSystem.getSystemType());
     boolean dstIsS3 = SystemTypeEnum.S3.equals(dstSystem.getSystemType());
 
     // Establish client
-    srcClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, srcSystem);
+    srcClient = remoteDataClientFactory.getRemoteDataClient(taskTenant, taskUser, srcSystem, IMPERSONATION_ID_NULL, srcSharedCtxGrantor);
 
     // Check that src path exists. If not found it is an error.
     FileInfo fileInfo = srcClient.getFileInfo(srcPath, true);

@@ -26,6 +26,8 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 
+import static edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory.IMPERSONATION_ID_NULL;
+import static edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL;
 /*
  * Service level methods for FileUtils.
  *   Uses an SSHDataClient to perform top level service operations.
@@ -100,7 +102,7 @@ public class FileUtilsService
     IRemoteDataClient client;
     try
     {
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       if (!(client instanceof ISSHDataClient)) {
         String msg = LibUtils.getMsg("FILES_CLIENT_INVALID", client.getOboTenant(), client.getOboUser(), client.getSystemId(),
                 ISSHDataClient.class.getSimpleName(), client.getClass().getSimpleName());
@@ -141,7 +143,7 @@ public class FileUtilsService
     try
     {
 
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       return linuxOp(client, relPathStr, nativeOp, natvieOpArg, recursive, isSharedTrue);
     }
     catch (TapisException | ServiceException | IOException e)
@@ -175,7 +177,7 @@ public class FileUtilsService
     IRemoteDataClient client;
     try
     {
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       return getfacl(client, relPathStr);
     }
     catch (TapisException | ServiceException | IOException e)
@@ -209,7 +211,7 @@ public class FileUtilsService
     try
     {
 
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       return setfacl(client, relPathStr, nativeOp, recursionMethod, aclString);
     }
     catch (TapisException | ServiceException | IOException e)

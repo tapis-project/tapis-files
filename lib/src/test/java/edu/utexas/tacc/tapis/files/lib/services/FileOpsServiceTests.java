@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.S3DataClient;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -75,7 +76,8 @@ public class FileOpsServiceTests {
             FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
             RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+            IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                    IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
             cleanupAll(fileOpsService, client, testSystem);
         }
     }
@@ -145,7 +147,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         RandomByteInputStream inputStream = new RandomByteInputStream(1024, SizeUnit.BYTES, true);
         fileOpsService.upload(client,"test.txt", inputStream);
@@ -168,7 +171,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
@@ -195,7 +199,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         if (!SystemTypeEnum.S3.equals(client.getSystemType())) fileOpsService.mkdir(client, "dir1");
         InputStream in = Utils.makeFakeFile(1024);
@@ -254,7 +259,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.upload(client,"/dir1/dir2/test.txt", in);
@@ -280,7 +286,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.upload(client,"a/b/c/test.txt", in);
@@ -302,7 +309,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         InputStream in = Utils.makeFakeFile(100*1024);
         fileOpsService.upload(client,"test.txt", in);
@@ -326,7 +334,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         InputStream in = Utils.makeFakeFile(100*1024);
         fileOpsService.upload(client,"test1.txt", in);
@@ -353,7 +362,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
     /*
         Create the following files and directories:
@@ -421,7 +431,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
     /*
         Create the following files and directories:
           /test1.txt
@@ -526,7 +537,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
     /*
         Create the following files and directories:
@@ -573,7 +585,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
     /*
         Create the following files and directories:
@@ -615,7 +628,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         InputStream in = Utils.makeFakeFile(10*1024);
         fileOpsService.upload(client,"dir1/test1.txt", in);
@@ -645,7 +659,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         InputStream in = Utils.makeFakeFile(100 * 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
@@ -668,7 +683,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
@@ -689,7 +705,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         InputStream in = Utils.makeFakeFile( 1000 * 1024);
         fileOpsService.upload(client,"test.txt", in);
@@ -712,7 +729,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         client.delete("/");
         fileOpsService.upload(client,"a/test1.txt", Utils.makeFakeFile( 1000 * 1024));
@@ -765,7 +783,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         client.delete("/");
         fileOpsService.upload(client,"/test.txt", Utils.makeFakeFile(10*1024));
@@ -793,7 +812,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         // Create directories and files for tests
         client.delete("/");
@@ -827,7 +847,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         int maxDepth = 5;
         client.delete("/");
@@ -865,7 +886,8 @@ public class FileOpsServiceTests {
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         client.delete("/");
         fileOpsService.upload(client,"/1.txt", Utils.makeFakeFile(0));
