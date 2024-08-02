@@ -71,6 +71,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
+import static edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory.IMPERSONATION_ID_NULL;
 
 /*
  * Transfers service methods providing functionality for TransfersApp (a worker).
@@ -227,8 +228,17 @@ public class ChildTaskTransferService {
         String tag = taskChild.getTag();
         UUID uuid = taskChild.getUuid();
 
+        // this parent is just used to populate the shared context information and remember that we've done
+        // that.  For any other purpose it's stale, and shouldn't be used.
+        TransferTaskParent parentTask = null;
+        String srcSharedCtxGrantor = null;
+
         while (retry < maxRetries) {
             try {
+                if(parentTask == null) {
+                    parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
+                    srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
+                }
                 if(!preTransferUpdateComplete) {
                     taskChild = updateStatusBeforeTransfer(taskChild);
                     if (taskChild == null) {
@@ -241,7 +251,7 @@ public class ChildTaskTransferService {
                 }
 
                 if(!transferComplete) {
-                    taskChild = doTransfer(taskChild);
+                    taskChild = doTransfer(taskChild, srcSharedCtxGrantor);
                     if (taskChild == null) {
                         // if doTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
                         String msg = LibUtils.getMsg("Internal Error.  taskChild is null after doTransfer");
@@ -373,6 +383,8 @@ public class ChildTaskTransferService {
         TapisSystem destSystem = null;
         IRemoteDataClient sourceClient;
         IRemoteDataClient destClient;
+        String srcSharedCtxGrantor = null;
+        String destSharedCtxGrantor = null;
         if (taskChild.getSourceURI().equals(taskChild.getDestinationURI())) {
             log.warn("***** Source and Destination URI's are identical - skipping transfer, and marking complete **** {}", taskChild);
             try {
@@ -393,6 +405,9 @@ public class ChildTaskTransferService {
         try {
             // Get the parent task. We will need it for shared ctx grantors.
             parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
+            // child task does not have the shared context info.  We have to get it from the parent.
+            srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
+            destSharedCtxGrantor = parentTask.getDestSharedCtxGrantor();
             if (TransferTaskStatus.CANCELLED.equals(parentTask.getStatus()) || TransferTaskStatus.FAILED.equals(parentTask.getStatus())) {
                 if (!taskChild.isTerminal()) {
                     taskChild.setStatus(parentTask.getStatus());
@@ -423,7 +438,6 @@ public class ChildTaskTransferService {
 
         TransferURI destURL = taskChild.getDestinationURI();
         TransferURI sourceURL = taskChild.getSourceURI();
-        String impersonationIdNull = null; // to help with debugging
         String sourcePath;
         String destPath = destURL.getPath();
 
@@ -448,7 +462,7 @@ public class ChildTaskTransferService {
             sourcePath = sourceURL.getPath();
             // Use a LibUtils method to properly take into account ownership, sharing and fine-grained permissions.
             sourceSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
-                    permsService, opName, sourceURL.getSystemId(), sourcePath, FileInfo.Permission.READ, impersonationIdNull,
+                    permsService, opName, sourceURL.getSystemId(), sourcePath, FileInfo.Permission.READ, IMPERSONATION_ID_NULL,
                     parentTask.getSrcSharedCtxGrantor());
             // If src system is not enabled throw an exception
             if (sourceSystem.getEnabled() == null || !sourceSystem.getEnabled()) {
@@ -460,14 +474,15 @@ public class ChildTaskTransferService {
             // Used for properly handling update of exec perm
             srcIsLinux = SystemTypeEnum.LINUX.equals(sourceSystem.getSystemType());
 
-            sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(), sourceSystem);
+            sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
+                    sourceSystem, IMPERSONATION_ID_NULL, srcSharedCtxGrantor);
         }
 
         // Initialize destination client
         try {
             // Use a LibUtils method to properly take into account ownership, sharing and fine-grained permissions.
             destSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
-                    permsService, opName, destURL.getSystemId(), destPath, FileInfo.Permission.MODIFY, impersonationIdNull,
+                    permsService, opName, destURL.getSystemId(), destPath, FileInfo.Permission.MODIFY, IMPERSONATION_ID_NULL,
                     parentTask.getSrcSharedCtxGrantor());
             // If dst system is not enabled throw an exception
             if (destSystem.getEnabled() == null || !destSystem.getEnabled()) {
@@ -480,7 +495,8 @@ public class ChildTaskTransferService {
             // Used for properly handling update of exec perm
             dstIsLinux = SystemTypeEnum.LINUX.equals(destSystem.getSystemType());
 
-            destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(), destSystem);
+            destClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
+                    destSystem, IMPERSONATION_ID_NULL, destSharedCtxGrantor);
         } catch (IOException | ServiceException ex) {
             String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                     "ChildStepTwoB", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
@@ -681,7 +697,7 @@ public class ChildTaskTransferService {
     /*
      * Perform the transfer specified in the child task
      */
-    private TransferTaskChild doTransfer(TransferTaskChild taskChild) throws Exception {
+    private TransferTaskChild doTransfer(TransferTaskChild taskChild, String srcSharedCtxGrantor) throws Exception {
         //We are going to run the meat of the transfer, step2 in a separate Future which we can cancel.
         //This just sets up the future, we first subscribe to the control messages and then start the future
         //which is a blocking call.
@@ -739,7 +755,7 @@ public class ChildTaskTransferService {
                 throw new RuntimeException(msg, ex);
             }
         } catch (CancellationException ex) {
-            return cancelTransferChild(taskChild);
+            return cancelTransferChild(taskChild, srcSharedCtxGrantor);
         } catch (WritePendingException ex) {
             throw new IOException("WritePendingException error", ex);
         } catch (RuntimeException ex) {
@@ -776,7 +792,7 @@ public class ChildTaskTransferService {
         }
     }
 
-    private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild) throws ServiceException, IOException {
+    private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild, String srcSharedCtxGrantor) throws ServiceException, IOException {
         TransferTaskChild retChild;
         log.info("CANCELLING TRANSFER CHILD");
         taskChild.setStatus(TransferTaskStatus.CANCELLED);
@@ -799,7 +815,8 @@ public class ChildTaskTransferService {
                 SystemTypeEnum.GLOBUS.equals(srcSys.getSystemType())) {
             // Get the client for the source system and make sure it is the expected type.
             IRemoteDataClient srcClient =
-                    remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(), srcSys);
+                    remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
+                            srcSys, IMPERSONATION_ID_NULL, srcSharedCtxGrantor);
             if (!(srcClient instanceof GlobusDataClient)) {
                 throw new ServiceException(LibUtils.getMsg("FILES_TXFR_GLOBUS_WRONG_CLIENT", "Source", srcUri, taskChild.getTag()));
             }

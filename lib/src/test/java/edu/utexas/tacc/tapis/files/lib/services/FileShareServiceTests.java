@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.Utils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -77,7 +78,8 @@ public class FileShareServiceTests {
         permsService.grantPermission(devTenant, testuser1, testSystem.getId(), "/", FileInfo.Permission.MODIFY);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser1, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser1, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
 
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
         fileOpsService.delete(client, "/");
@@ -97,7 +99,8 @@ public class FileShareServiceTests {
         permsService.grantPermission(devTenant, testuser1, testSystem.getId(), "/", FileInfo.Permission.MODIFY);
 
         RemoteDataClientFactory remoteDataClientFactory = locator.getService(RemoteDataClientFactory.class);
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser1, testSystem);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(devTenant, testuser1, testSystem,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
         FileOpsService fileOpsService = locator.getService(FileOpsService.class);
         fileOpsService.delete(client,"/");
     }

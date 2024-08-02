@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.integration.transfers.IntegrationTestUtils;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.IRuntimeConfig;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
@@ -266,7 +267,8 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
   public void cleanup() {
     testSystems.forEach((sys) -> {
       try {
-        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(TENANT, TEST_USR1, sys);
+        IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(TENANT, TEST_USR1, sys,
+                IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
         when(systemsCache.getSystem(any(), any(), any(), any(), any())).thenReturn(sys);
         when(systemsCacheNoAuth.getSystem(any(), any(), any())).thenReturn(sys);
         client.delete("/");
@@ -469,7 +471,8 @@ public class TestContentsRoutes extends BaseDatabaseIntegrationTest
 
   private void addTestFilesToSystem(TapisSystem system, String fileName, int fileSize) throws Exception
   {
-    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(TENANT, TEST_USR1, system);
+    IRemoteDataClient client = remoteDataClientFactory.getRemoteDataClient(TENANT, TEST_USR1, system,
+            IRemoteDataClientFactory.IMPERSONATION_ID_NULL, IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL);
     InputStream f1 = makeFakeFile(fileSize);
     client.upload(fileName, f1);
   }

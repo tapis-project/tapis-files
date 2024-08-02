@@ -49,6 +49,8 @@ import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import static edu.utexas.tacc.tapis.shared.uri.TapisUrl.TAPIS_PROTOCOL_PREFIX;
+import static edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory.IMPERSONATION_ID_NULL;
+import static edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory.SHARED_CTX_GRANTOR_NULL;
 
 /*
  * Service level methods for File Operations.
@@ -69,10 +71,6 @@ public class FileOpsService
   private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
 
   private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
-
-  // Some methods do not support impersonationId or sharedAppCtxGrantor
-  private static final String impersonationIdNull = null;
-  private static final String sharedCtxGrantorNull = null;
 
   // 0=systemId, 1=path, 2=tenant
   private final String TAPIS_FILES_URL_FORMAT = String.format("%s{0}/{1}?tenant={2}", TAPIS_PROTOCOL_PREFIX);
@@ -247,7 +245,7 @@ public class FileOpsService
       try
       {
         // Get the connection and increment the reservation count
-        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, impersonationId, sharedCtxGrantor);
         return lsRecursive(client, relPathStr, false, fileListingOpts);
       }
       catch (IOException | ServiceException ex)
@@ -315,7 +313,7 @@ public class FileOpsService
     try
     {
       // Get the connection and increment the reservation count
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, impersonationId, sharedCtxGrantor);
       return client.getFileInfo(pathStr, followLinks);
     }
     catch (IOException ex)
@@ -346,12 +344,12 @@ public class FileOpsService
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, systemId, relPathStr, Permission.MODIFY,
-                                                           impersonationIdNull, sharedCtxGrantorNull);
+                                                           IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
     try
     {
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       upload(client, relPathStr, inStrm);
     }
     catch (IOException | ServiceException ex)
@@ -435,7 +433,7 @@ public class FileOpsService
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, sysId, relPathStr, Permission.MODIFY,
-                                                           impersonationIdNull, sharedCtxGrantor);
+                                                           IMPERSONATION_ID_NULL, sharedCtxGrantor);
 
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
@@ -512,13 +510,13 @@ public class FileOpsService
       {
         sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                    opName, systemId, srcRelPathStr, Permission.READ,
-                                                   impersonationIdNull, sharedCtxGrantorNull);
+                                                   IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       }
       else
       {
         sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                    opName, systemId, srcRelPathStr, Permission.MODIFY,
-                                                   impersonationIdNull, sharedCtxGrantorNull);
+                                                   IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       }
 
       // To simplify auth check fetch the system again with check for destination path.
@@ -527,13 +525,13 @@ public class FileOpsService
       // checks. Might consider refactoring in the long term. Plus, if we ever support share with MODIFY it will change.
       sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                  opName, systemId, dstRelPathStr, Permission.MODIFY,
-                                                 impersonationIdNull, sharedCtxGrantorNull);
+                                                 IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
 
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
       try
       {
-        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
         moveOrCopy(client, op, srcRelPathStr, dstRelPathStr);
       }
       catch (IOException | ServiceException ex)
@@ -626,13 +624,13 @@ public class FileOpsService
       // Fetch system with credentials including auth checks for system and path
       TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                              opName, systemId, relativePathStr, Permission.MODIFY,
-                                                             impersonationIdNull, sharedCtxGrantorNull);
+                                                             IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
 
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
       try
       {
-        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+        client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
         // Delete files and permissions
         delete(client, relativePathStr);
         // Remove shares with recurse=true
@@ -925,7 +923,7 @@ public class FileOpsService
     try
     {
       // Get a remoteDataClient to stream contents
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       return client.getStream(relPathStr);
     }
     catch (IOException ex)
@@ -956,7 +954,7 @@ public class FileOpsService
     try
     {
       // Get a remoteDataClient to stream contents
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       return client.getBytesByRange(relPathStr, startByte, count);
     }
     catch (IOException ex)
@@ -987,7 +985,7 @@ public class FileOpsService
     try
     {
       // Get a remoteDataClient to stream contents
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       return client.getBytesByRange(relPathStr, startByte, startByte + 1023);
     }
     catch (IOException ex)
@@ -1023,7 +1021,7 @@ public class FileOpsService
     try (ZipOutputStream zipStream = new ZipOutputStream(outputStream))
     {
       // Get a remoteDataClient to do the listing and stream contents
-      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys);
+      client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
       FileListingOpts.Builder optsBuilder = new FileListingOpts.Builder();
       // Step through a recursive listing up to some max depth
       List<FileInfo> listing = lsRecursive(client, relPathStr, true, optsBuilder.build());

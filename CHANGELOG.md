@@ -18,6 +18,8 @@ Incremental improvements and new features.
 
 ### Bug fixes:
 - Fixed minor issue with ssh session caching / session closing
+- Fix for irods client not closing session in certain cases
+- Fix for transfers not properly handling sharedCtxGrantor
 
 ### Breaking Changes
 - None
