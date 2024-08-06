@@ -5,16 +5,22 @@ package edu.utexas.tacc.tapis.files.gen.jooq;
 
 
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.FilesPostits;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferWorker;
 
 
 /**
- * Convenience access to all tables in public.
+ * Convenience access to all tables in files.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Tables {
 
     /**
-     * The table <code>public.files_postits</code>.
+     * The table <code>files.files_postits</code>.
      */
     public static final FilesPostits FILES_POSTITS = FilesPostits.FILES_POSTITS;
+
+    /**
+     * The table <code>files.transfer_worker</code>.
+     */
+    public static final TransferWorker TRANSFER_WORKER = TransferWorker.TRANSFER_WORKER;
 }

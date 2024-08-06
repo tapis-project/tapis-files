@@ -4,7 +4,7 @@
 package edu.utexas.tacc.tapis.files.gen.jooq.routines;
 
 
-import edu.utexas.tacc.tapis.files.gen.jooq.Public;
+import edu.utexas.tacc.tapis.files.gen.jooq.Files;
 
 import java.util.UUID;
 
@@ -23,7 +23,7 @@ public class UuidGenerateV4 extends AbstractRoutine<UUID> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The parameter <code>public.uuid_generate_v4.RETURN_VALUE</code>.
+     * The parameter <code>files.uuid_generate_v4.RETURN_VALUE</code>.
      */
     public static final Parameter<UUID> RETURN_VALUE = Internal.createParameter("RETURN_VALUE", SQLDataType.UUID, false, false);
 
@@ -31,7 +31,7 @@ public class UuidGenerateV4 extends AbstractRoutine<UUID> {
      * Create a new routine call instance
      */
     public UuidGenerateV4() {
-        super("uuid_generate_v4", Public.PUBLIC, SQLDataType.UUID);
+        super("uuid_generate_v4", Files.FILES, SQLDataType.UUID);
 
         setReturnParameter(RETURN_VALUE);
     }

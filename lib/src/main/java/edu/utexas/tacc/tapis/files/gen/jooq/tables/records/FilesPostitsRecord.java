@@ -24,168 +24,168 @@ public class FilesPostitsRecord extends UpdatableRecordImpl<FilesPostitsRecord> 
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>public.files_postits.id</code>.
+     * Setter for <code>files.files_postits.id</code>.
      */
     public void setId(String value) {
         set(0, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.id</code>.
+     * Getter for <code>files.files_postits.id</code>.
      */
     public String getId() {
         return (String) get(0);
     }
 
     /**
-     * Setter for <code>public.files_postits.system_id</code>.
+     * Setter for <code>files.files_postits.system_id</code>.
      */
     public void setSystemId(String value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.system_id</code>.
+     * Getter for <code>files.files_postits.system_id</code>.
      */
     public String getSystemId() {
         return (String) get(1);
     }
 
     /**
-     * Setter for <code>public.files_postits.path</code>.
+     * Setter for <code>files.files_postits.path</code>.
      */
     public void setPath(String value) {
         set(2, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.path</code>.
+     * Getter for <code>files.files_postits.path</code>.
      */
     public String getPath() {
         return (String) get(2);
     }
 
     /**
-     * Setter for <code>public.files_postits.allowed_uses</code>.
+     * Setter for <code>files.files_postits.allowed_uses</code>.
      */
     public void setAllowedUses(Integer value) {
         set(3, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.allowed_uses</code>.
+     * Getter for <code>files.files_postits.allowed_uses</code>.
      */
     public Integer getAllowedUses() {
         return (Integer) get(3);
     }
 
     /**
-     * Setter for <code>public.files_postits.times_used</code>.
+     * Setter for <code>files.files_postits.times_used</code>.
      */
     public void setTimesUsed(Integer value) {
         set(4, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.times_used</code>.
+     * Getter for <code>files.files_postits.times_used</code>.
      */
     public Integer getTimesUsed() {
         return (Integer) get(4);
     }
 
     /**
-     * Setter for <code>public.files_postits.jwt_user</code>.
+     * Setter for <code>files.files_postits.jwt_user</code>.
      */
     public void setJwtUser(String value) {
         set(5, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.jwt_user</code>.
+     * Getter for <code>files.files_postits.jwt_user</code>.
      */
     public String getJwtUser() {
         return (String) get(5);
     }
 
     /**
-     * Setter for <code>public.files_postits.jwt_tenant_id</code>.
+     * Setter for <code>files.files_postits.jwt_tenant_id</code>.
      */
     public void setJwtTenantId(String value) {
         set(6, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.jwt_tenant_id</code>.
+     * Getter for <code>files.files_postits.jwt_tenant_id</code>.
      */
     public String getJwtTenantId() {
         return (String) get(6);
     }
 
     /**
-     * Setter for <code>public.files_postits.owner</code>.
+     * Setter for <code>files.files_postits.owner</code>.
      */
     public void setOwner(String value) {
         set(7, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.owner</code>.
+     * Getter for <code>files.files_postits.owner</code>.
      */
     public String getOwner() {
         return (String) get(7);
     }
 
     /**
-     * Setter for <code>public.files_postits.tenant_id</code>.
+     * Setter for <code>files.files_postits.tenant_id</code>.
      */
     public void setTenantId(String value) {
         set(8, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.tenant_id</code>.
+     * Getter for <code>files.files_postits.tenant_id</code>.
      */
     public String getTenantId() {
         return (String) get(8);
     }
 
     /**
-     * Setter for <code>public.files_postits.expiration</code>.
+     * Setter for <code>files.files_postits.expiration</code>.
      */
     public void setExpiration(LocalDateTime value) {
         set(9, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.expiration</code>.
+     * Getter for <code>files.files_postits.expiration</code>.
      */
     public LocalDateTime getExpiration() {
         return (LocalDateTime) get(9);
     }
 
     /**
-     * Setter for <code>public.files_postits.created</code>.
+     * Setter for <code>files.files_postits.created</code>.
      */
     public void setCreated(LocalDateTime value) {
         set(10, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.created</code>.
+     * Getter for <code>files.files_postits.created</code>.
      */
     public LocalDateTime getCreated() {
         return (LocalDateTime) get(10);
     }
 
     /**
-     * Setter for <code>public.files_postits.updated</code>.
+     * Setter for <code>files.files_postits.updated</code>.
      */
     public void setUpdated(LocalDateTime value) {
         set(11, value);
     }
 
     /**
-     * Getter for <code>public.files_postits.updated</code>.
+     * Getter for <code>files.files_postits.updated</code>.
      */
     public LocalDateTime getUpdated() {
         return (LocalDateTime) get(11);

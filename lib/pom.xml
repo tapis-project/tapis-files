@@ -13,7 +13,7 @@
         <db.url>jdbc:postgresql://localhost:5432/dev</db.url>
         <db.username>dev</db.username>
         <db.password>dev</db.password>
-        <db.schema>public</db.schema>
+        <db.schema>files</db.schema>
     </properties>
     <build>
         <plugins>

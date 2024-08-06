@@ -50,7 +50,7 @@ public class TransfersScheduler
     private static final Logger log = LoggerFactory.getLogger(TransfersApp.class);
     private static int WORKER_BACKLOG_THRESHOLD = 100;
     private static int ROW_NUMBER_CUTOFF = 300;
-    private static long EXPECT_HEARTBEAT_BEFORE_MILLIS = 300000;
+    private static long EXPECT_HEARTBEAT_BEFORE_MILLIS = 600000;
     private static long MAX_WAIT_MULTIPLIER = 6;
     private SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(ROW_NUMBER_CUTOFF);
 
@@ -136,10 +136,25 @@ public class TransfersScheduler
                 // set the count to 0, but it will get updated later.
                 activeWorkerMap.put(worker.getUuid(), 0);
             } else {
+                // the work is expired, so remove it from the map, and the database
                 if(activeWorkerMap.containsKey(worker.getUuid())) {
                     activeWorkerMap.remove(worker.getUuid());
                 }
+                cleanupZombieWorker(worker.getUuid());
             }
+        }
+    }
+
+    private void cleanupZombieWorker(UUID workerUuid) {
+        TransferWorkerDAO transferWorkerDAO = new TransferWorkerDAO();
+        try {
+            // TODO:  PARENT handle all "non-terminal" statuses and heandle parent tasks too.
+            DAOTransactionContext.doInTransaction(context -> {
+                transferWorkerDAO.deleteTransferWorkerById(context, workerUuid);
+                return null;
+            });
+        } catch (DAOException ex) {
+            log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "cleanupDeadWorker", ex));
         }
     }
 

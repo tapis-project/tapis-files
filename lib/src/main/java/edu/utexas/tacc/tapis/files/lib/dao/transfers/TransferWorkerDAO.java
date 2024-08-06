@@ -50,6 +50,7 @@ public class TransferWorkerDAO {
             BeanHandler<TransferWorker> handler = new BeanHandler<>(TransferWorker.class, rowProcessor);
             QueryRunner runner = new QueryRunner();
             transferWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.UPDATE_TRANSFER_WORKER_TIME, handler, uuid);
+            // TODO:  Add null check for trasnferWorker - means it couldn't be updated.  Maybe insert if this fails?  Not sure
         } catch (SQLException e) {
             // TODO:  add to messsage catalog
             throw new DAOException("ERROR", e);

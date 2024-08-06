@@ -146,8 +146,11 @@ public class TransfersApp
         @Override
         public void run() {
           if(TransfersApp.myUuid != null) {
-            try (DAOTransactionContext context = new DAOTransactionContext()) {
-              TransfersApp.workerDAO.deleteTransferWorkerById(context, TransfersApp.myUuid);
+            try {
+              DAOTransactionContext.doInTransaction((context) -> {
+                TransfersApp.workerDAO.deleteTransferWorkerById(context, TransfersApp.myUuid);
+                return null;
+              });
             } catch (DAOException ex) {
               log.error(LibUtils.getMsg("FILES_TXFR_APP_DAO_EXCEPTION", myUuid.toString(), ex.getMessage()), ex);
             }
@@ -155,23 +158,27 @@ public class TransfersApp
         }
       }));
 
-      try (DAOTransactionContext context = new DAOTransactionContext()) {
+      TransfersApp.myUuid = DAOTransactionContext.doInTransaction((context) -> {
         TransferWorker me = workerDAO.insertTransferWorker(context);
-        TransfersApp.myUuid = me.getUuid();
-        log.info(LibUtils.getMsg("FILES_TXFR_APP_ID", myUuid));
-      }
+        return me.getUuid();
+      });
+
+      log.info(LibUtils.getMsg("FILES_TXFR_APP_ID", myUuid));
 
       Executors.newSingleThreadScheduledExecutor().scheduleWithFixedDelay(new Runnable() {
         @Override
         public void run() {
-          try(DAOTransactionContext context = new DAOTransactionContext()) {
+          try {
             if(TransfersApp.myUuid != null) {
-              new TransferWorkerDAO().updateTransferWorker(context, TransfersApp.myUuid);
+              DAOTransactionContext.doInTransaction((context) -> {
+                new TransferWorkerDAO().updateTransferWorker(context, TransfersApp.myUuid);
+                return null;
+              });
             } else {
               log.error(LibUtils.getMsg("FILES_TXFR_APP_NO_ID"));
             }
           } catch (DAOException ex) {
-            // TODO:  Log something?
+            // TODO:  Log something? If this fails maybe we should exit?
             log.error(LibUtils.getMsg("FILES_TXFR_APP_UPDATE_EXCEPTION", ex.getMessage()), ex);
           }
         }

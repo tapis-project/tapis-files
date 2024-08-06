@@ -89,6 +89,7 @@ public class TransferTaskChildDAO {
 
     public void assignToWorkers(DAOTransactionContext context, List<Integer> taskIds, UUID workerId) throws DAOException {
         if((workerId == null)  || (taskIds.isEmpty())) {
+            // TODO: fix this warning message.  It could be no worker id or could be no taskIds
             log.warn(LibUtils.getMsg("FILES_TXFR_DAO_NO_WORKER_PROVIDED", "assignToWorkers"));
             return;
         }
