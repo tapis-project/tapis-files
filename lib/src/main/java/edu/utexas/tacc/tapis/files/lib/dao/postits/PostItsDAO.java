@@ -400,8 +400,15 @@ public class PostItsDAO {
      * @throws TapisException
      */
     public int deleteExpiredPostIts() throws TapisException {
-        return deletePostIt(FILES_POSTITS.EXPIRATION.lessThan(localDateTimeOfInstant(Instant.now())).
-                or(FILES_POSTITS.TIMES_USED.greaterOrEqual(FILES_POSTITS.ALLOWED_USES)));
+        // delete were either the expiration has past
+        // -OR-
+        // allowed uses is not -1, and uses >= allowedUses
+        return deletePostIt(FILES_POSTITS.EXPIRATION.lessThan(localDateTimeOfInstant(Instant.now()))
+                .or(
+                        FILES_POSTITS.ALLOWED_USES.notEqual(-1)
+                                .and(FILES_POSTITS.TIMES_USED.greaterOrEqual(FILES_POSTITS.ALLOWED_USES))
+                )
+        );
     }
 
     private int deletePostIt(Condition deleteCondition) throws TapisException {
