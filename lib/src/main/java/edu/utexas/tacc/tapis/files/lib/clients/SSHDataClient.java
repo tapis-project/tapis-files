@@ -607,25 +607,6 @@ public class SSHDataClient implements ISSHDataClient
           throws TapisException, IOException, NotFoundException
   {
     String opName = "chmod";
-    // Parse and validate the chmod perms argument
-
-    try
-    {
-      int permsInt = Integer.parseInt(permsStr, 8);
-      // Check that value is in allowed range
-      if (permsInt > MAX_PERMS_INT || permsInt < 0)
-      {
-        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_CHMOD_PERMS", oboTenant, oboUser, systemId, effectiveUserId, host,
-                path, permsStr);
-        throw new TapisException(msg);
-      }
-    }
-    catch (NumberFormatException e)
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_CHMOD_ERR", oboTenant, oboUser, systemId, effectiveUserId, host,
-              path, permsStr, e.getMessage());
-      throw new TapisException(msg, e);
-    }
 
     // Run the command
     return runLinuxChangeOp(opName, permsStr, path, recursive);
@@ -792,7 +773,7 @@ public class SSHDataClient implements ISSHDataClient
     try (var sessionHolder = borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
       StringBuilder sb = new StringBuilder(opName);
       if (recursive) sb.append(" -R");
-      sb.append(" ").append(arg1).append(" ").append(absolutePathStr);
+      sb.append(" ").append(safelySingleQuoteString(arg1)).append(" ").append(safelySingleQuoteString(absolutePathStr));
       String cmdStr = sb.toString();
       // Execute the command
       ByteArrayOutputStream stdOut = new ByteArrayOutputStream();

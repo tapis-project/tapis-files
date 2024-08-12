@@ -885,12 +885,13 @@ public class ChildTaskTransferService {
                     taskChild.getUsername(), taskChild.getId(),
                     taskChild.getUuid(), srcPath, taskChild.getTag()));
         }
+
         if (!item.isDir() && item.getNativePermissions().contains("x")) {
             try {
                 // If in a sharedAppCtx, tell linuxOp to skip the perms check.
                 // so the linuxOp will skip the perm check
                 boolean recurseFalse = false;
-                fileUtilsService.linuxOp(dstClient, dstPath, FileUtilsService.NativeLinuxOperation.CHMOD, "700",
+                fileUtilsService.linuxOp(dstClient, dstPath, FileUtilsService.NativeLinuxOperation.CHMOD, "u+x",
                         recurseFalse, isDestShared);
             } catch (TapisException ex) {
                 String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
