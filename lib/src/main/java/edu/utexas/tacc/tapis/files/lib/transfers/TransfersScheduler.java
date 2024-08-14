@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferWorkerDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -166,7 +167,7 @@ public class TransfersScheduler
                 // TODO: more work is needed here.  Need to make sure that if a parent fails the top fails if it's  non-opt
                 // or maybe fix it so that we can never be in the middle of a parent task, (e.g. transaction) etc.
                 childTaskDao.cleanupZombieChildAssignments(context, TransferTaskChild.TERMINAL_STATES);
-//                parentTaskDao.cleanupZombieParentAssignments(context, TransferTaskParent.TERMINAL_STATES);
+                parentTaskDao.cleanupZombieParentAssignments(context, TransferTaskParent.TERMINAL_STATES);
                 return 0;
             });
         } catch (DAOException ex) {

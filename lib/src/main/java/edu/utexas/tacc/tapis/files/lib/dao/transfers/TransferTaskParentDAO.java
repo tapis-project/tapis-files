@@ -1,22 +1,28 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.RowProcessor;
+import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Array;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -119,26 +125,47 @@ public class TransferTaskParentDAO {
             // we ever do decide to change this we have to figure out what to do about parent tasks in progress - the are creating child tasks, and
             // we want to avoid duplication.  Child tasks are pretty easy to restart, but parents would require more thought.
             Statement statement = context.getConnection().createStatement();
-            ResultSet resultSet = statement.executeQuery(TransferTaskParentDAOStatements.FAIL_UNASSIGNED_BUT_IN_PROGRESS_TASKS);
+            ResultSet resultSet = statement.executeQuery(TransferTaskParentDAOStatements.RESET_UNASSIGNED_BUT_IN_STAGING_TASKS);
             List<Long> topTasksAffected = new ArrayList<Long>();
-            while(resultSet.next()) {
-                topTasksAffected.add(resultSet.getLong("task_id"));
-            }
-
-            if(topTasksAffected.size() > 0) {
-                log.info("Failed parent tasks: " + topTasksAffected.size());
-                // if we failed a parent task, we must fail it's top task if this is a non-optional task
-                runner = new QueryRunner();
-                final Array topTaskIds = context.getConnection().createArrayOf("long", topTasksAffected.toArray());
-                int failedTopTasks = runner.update(context.getConnection(), TransferTaskParentDAOStatements.FAIL_ASSOCIATED_TOP_TASKS, topTaskIds);
-                if(failedTopTasks > 0) {
-                    log.info("Failed top tasks: " + failedTopTasks);
-                }
-            }
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "cleanupZombieParentAssignments", ex.getMessage()), ex);
         }
-
     }
+
+    public TransferTaskParent updateTransferTaskParent(DAOTransactionContext context, TransferTaskParent task) throws DAOException {
+        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
+        try {
+            BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
+            String stmt = TransferTaskParentDAOStatements.UPDATE_PARENT_TASK;
+            QueryRunner runner = new QueryRunner();
+            Timestamp startTime = null;
+            Timestamp endTime = null;
+            if (task.getStartTime() != null) {
+                startTime = Timestamp.from(task.getStartTime());
+            }
+            if (task.getEndTime() != null) {
+                endTime = Timestamp.from(task.getEndTime());
+            }
+            TransferTaskParent updatedTask = runner.query(context.getConnection(), stmt, handler,
+                    task.getSourceURI().toString(),
+                    task.getDestinationURI().toString(),
+                    task.getStatus().name(),
+                    startTime,
+                    endTime,
+                    task.getBytesTransferred(),
+                    task.getTotalBytes(),
+                    task.getFinalMessage(),
+                    task.getErrorMessage(),
+                    task.getAssignedTo(),
+                    task.getUuid()
+            );
+
+            return updatedTask;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
+                    "updateTransferTaskParent", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
+        }
+    }
+
 
 }

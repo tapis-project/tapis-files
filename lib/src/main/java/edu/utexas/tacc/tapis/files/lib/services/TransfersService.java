@@ -320,22 +320,6 @@ public class TransfersService
       }
     }
 
-    /*
-     * Create a transfer task child in the DB. Currently only used for testing.
-     * Might be able to make this package-private
-     */
-    public TransferTaskChild createTransferTaskChild(@NotNull TransferTaskChild task) throws ServiceException
-    {
-      try { return dao.insertChildTask(task); }
-      catch (DAOException ex)
-      {
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", task.getTenantId(), task.getUsername(),
-                                     "createTransferTaskChild", task.getId(), task.getTag(), task.getUuid(), ex.getMessage());
-        log.error(msg, ex);
-        throw new ServiceException(msg, ex);
-      }
-    }
-
     /**
      * Cancel a transfer task given the task UUID.
      * @param uuidStr - unique id of task

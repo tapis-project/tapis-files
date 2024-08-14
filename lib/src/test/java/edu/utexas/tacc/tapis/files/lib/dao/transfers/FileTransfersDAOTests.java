@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -89,8 +90,7 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
   }
 
   @Test
-  public void testUpdateChild() throws Exception
-  {
+  public void testUpdateChild() throws Exception {
     TransferTask t1 = createTransferTask(testUser1);
     TransferTaskParent parent = t1.getParentTasks().get(0);
     FileInfo fileInfo = new FileInfo();
@@ -98,8 +98,15 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
     fileInfo.setSize(1000);
     fileInfo.setType(FileInfo.FileType.FILE);
 
-    TransferTaskChild child = new TransferTaskChild(parent, fileInfo, null);
-    child = dao.insertChildTask(child);
+    TransferTaskChild child = DAOTransactionContext.doInTransaction((context) -> {
+      try {
+        TransferTaskChild newChild = new TransferTaskChild(parent, fileInfo, null);
+        TransferTaskChildDAO childDAO = new TransferTaskChildDAO();
+        return childDAO.insertChildTask(context, newChild);
+      } catch (TapisException ex) {
+        throw new DAOException(ex.getMessage(), ex);
+      }
+    });
 
     child.setRetries(10);
     child.setBytesTransferred(10000);

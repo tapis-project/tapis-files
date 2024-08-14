@@ -89,14 +89,14 @@ public class TransferTaskParentDAOStatements {
                   transfer_tasks_parent.status != ANY(?);
             """ ;
 
-    public static final String FAIL_UNASSIGNED_BUT_IN_PROGRESS_TASKS =
+    public static final String RESET_UNASSIGNED_BUT_IN_STAGING_TASKS =
             """
               update 
                   transfer_tasks_parent 
               set 
-                  status = 'FAILED'
+                  status = 'ACCEPTED'
               where
-                  status = 'IN_PROGRESS' AND                
+                  status = 'STAGING' AND
                   assigned_to IS NULL
               returning task_id;
             """ ;
@@ -120,4 +120,21 @@ public class TransferTaskParentDAOStatements {
                         tt.id = ANY(?) and ttp.optional
                 ); 
             """ ;
+    public static final String UPDATE_PARENT_TASK =
+            """
+                UPDATE transfer_tasks_parent 
+                         SET source_uri = ?, 
+                             destination_uri = ?, 
+                             status = ?, 
+                             start_time = ?, 
+                             end_time = ?, 
+                             bytes_transferred =?, 
+                             total_bytes = ?,
+                             final_message = ?,
+                             error_message = ?,
+                             assigned_to = ?
+                        WHERE uuid = ? 
+                        RETURNING *
+            """;
+
 }

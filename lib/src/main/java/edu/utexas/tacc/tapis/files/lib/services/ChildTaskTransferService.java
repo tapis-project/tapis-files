@@ -34,6 +34,8 @@ import edu.utexas.tacc.tapis.files.lib.clients.GlobusDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -342,7 +344,7 @@ public class ChildTaskTransferService {
             if (!parentTask.isTerminal() && !parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS)) {
                 parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
                 if (parentTask.getStartTime() == null) parentTask.setStartTime(Instant.now());
-                dao.updateTransferTaskParent(parentTask);
+                updateParentTask(parentTask);
             }
 
             // If cancelled or failed set the end time, and we are done
@@ -364,6 +366,13 @@ public class ChildTaskTransferService {
             log.error(msg, ex);
             throw new ServiceException(msg, ex);
         }
+    }
+
+    private TransferTaskParent updateParentTask(final TransferTaskParent parentTask) throws DAOException {
+        return DAOTransactionContext.doInTransaction((context) -> {
+            TransferTaskParentDAO parentDAO = new TransferTaskParentDAO();
+            return parentDAO.updateTransferTaskParent(context, parentTask);
+        });
     }
 
     /**
@@ -667,7 +676,7 @@ public class ChildTaskTransferService {
                 parent.setErrorMessage(exceptionMessage);
                 parent.setFinalMessage("Failed - Child doErrorStepOne");
                 log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR14", parent.getId(), parent.getTag(), parent.getUuid(), child.getId(), child.getUuid(), parent.getStatus()));
-                dao.updateTransferTaskParent(parent);
+                updateParentTask(parent);
                 // If parent is required update top level task to FAILED and set error message
                 if (!parent.isOptional()) {
                     TransferTask topTask = dao.getTransferTaskByID(child.getTaskId());
@@ -845,7 +854,7 @@ public class ChildTaskTransferService {
                 parentTask.setEndTime(Instant.now());
                 parentTask.setFinalMessage("Completed");
                 log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_COMPLETE", topTaskId, topTask.getUuid(), parentTaskId, parentTask.getUuid(), parentTask.getTag()));
-                dao.updateTransferTaskParent(parentTask);
+                updateParentTask(parentTask);
             }
         }
         // Check to see if all the children of a top task are complete. If so, update the top task.

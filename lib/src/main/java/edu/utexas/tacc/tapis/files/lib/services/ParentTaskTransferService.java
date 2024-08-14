@@ -6,6 +6,9 @@ import javax.ws.rs.WebApplicationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
@@ -163,7 +166,7 @@ public class ParentTaskTransferService {
                   } catch (Throwable th) {
                     TransferTaskParent parentTask = dao.getChildTaskByUUID(parentUuid);
                     parentTask.setStatus(parentTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
-                    dao.updateTransferTaskParent(parentTask);
+                    updateParentTask(parentTask);
                   }
                 }
               }
@@ -317,7 +320,7 @@ public class ParentTaskTransferService {
       parentTask.setAssignedTo(null);
 
       log.trace(LibUtils.getMsg("FILES_TXFR_TASK_MOVE_COMPLETE", topTaskId, topTask.getUuid(), parentTask.getId(), parentTask.getUuid(), parentTask.getTag()));
-      dao.updateTransferTaskParent(parentTask);
+      updateParentTask(parentTask);
     }
     // Check to see if all the children of a top task are complete. If so, update the top task.
     if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
@@ -338,7 +341,8 @@ public class ParentTaskTransferService {
 
     // Update the parent task
     try {
-      parentTask = dao.updateTransferTaskParent(parentTask);
+      TransferTaskParent updateTask = parentTask;
+      parentTask = updateParentTask(parentTask);
 
       // Mark FAILED_OPT or FAILED and set error message
       // NOTE: We can have a child which is required but the parent is optional
@@ -353,7 +357,8 @@ public class ParentTaskTransferService {
       parentTask.setAssignedTo(null);
 
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_PARENT_FAILED_MOVE", parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), parentTask.getStatus()));
-      dao.updateTransferTaskParent(parentTask);
+      updateParentTask(parentTask);
+
       // If parent is required update top level task to FAILED and set error message
       TransferTask topTask = dao.getTransferTaskByID(parentTask.getTaskId());
       if (parentTask.isOptional()) {
@@ -373,6 +378,13 @@ public class ParentTaskTransferService {
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_UPDATE_STATUS_ERROR", parentTask.getTenantId(), parentTask.getUsername(),
               "move error", parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), ex.getMessage()), ex);
     }
+  }
+
+  private TransferTaskParent updateParentTask(final TransferTaskParent parentTask) throws DAOException {
+    return DAOTransactionContext.doInTransaction((context) -> {
+      TransferTaskParentDAO parentDAO = new TransferTaskParentDAO();
+      return parentDAO.updateTransferTaskParent(context, parentTask);
+    });
   }
 
   /**
@@ -418,17 +430,17 @@ public class ParentTaskTransferService {
 
       // Update status unless already in a terminal state (such as cancelled)
       if (!parentTask.isTerminal()) {
-        parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
+        parentTask.setStatus(TransferTaskStatus.STAGING);
       }
 
-      parentTask = dao.updateTransferTaskParent(parentTask);
+      parentTask = updateParentTask(parentTask);
 
       // If already in a terminal state then set end time and return
       if (parentTask.isTerminal()) {
         log.warn(LibUtils.getMsg("FILES_TXFR_PARENT_TERM", taskTenant, taskUser, "doParentStepOneA01", topTaskId, parentId, parentTask.getStatus(), parentUuid, tag));
         parentTask.setEndTime(Instant.now());
         parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_END_TERM", tag, parentTask.getStatus()));
-        dao.updateTransferTaskParent(parentTask);
+        updateParentTask(parentTask);
         return false;
       }
     } catch (DAOException ex) {
@@ -514,7 +526,7 @@ public class ParentTaskTransferService {
       parentTask.setStatus(TransferTaskStatus.COMPLETED);
       parentTask.setFinalMessage(LibUtils.getMsg("FILES_TXFR_PARENT_COMPLETE_NO_ITEMS", taskTenant, taskUser, srcId, srcPath, tag));
       parentTask.setAssignedTo(null);
-      dao.updateTransferTaskParent(parentTask);
+      updateParentTask(parentTask);
       checkForComplete(parentTask.getTaskId());
       return;
     } else if(fileListing.size() > MAX_TRANSFER_COUNT) {
@@ -546,26 +558,36 @@ public class ParentTaskTransferService {
     parentTask.setTotalBytes(totalBytes);
     parentTask.setStatus(TransferTaskStatus.STAGED);
     parentTask.setAssignedTo(null);
-    parentTask = dao.updateTransferTaskParent(parentTask);
-    dao.bulkInsertChildTasks(children);
+    DAOTransactionContext.doInTransaction((context) -> {
+      TransferTaskParentDAO parentDAO = new TransferTaskParentDAO();
+      TransferTaskChildDAO childDAO = new TransferTaskChildDAO();
+      parentDAO.updateTransferTaskParent(context, parentTask);
+      childDAO.bulkInsertChildTasks(context, children);
+      return null;
+    });
   }
 
-  private void handleNonTapisTransfer(TransferTaskParent parentTask) throws ServiceException, DAOException {
-    // Handle all non-tapis protocols. These are http:// and https://
-    // Create a single child task and update parent task status
-    TransferTaskChild task = new TransferTaskChild();
-    task.setTag(parentTask.getTag());
-    task.setSourceURI(parentTask.getSourceURI());
-    task.setParentTaskId(parentTask.getId());
-    task.setTaskId(parentTask.getTaskId());
-    task.setDestinationURI(parentTask.getDestinationURI());
-    task.setStatus(TransferTaskStatus.ACCEPTED);
-    task.setTenantId(parentTask.getTenantId());
-    task.setUsername(parentTask.getUsername());
-    task = dao.insertChildTask(task);
-    parentTask.setStatus(TransferTaskStatus.STAGED);
-    parentTask.setAssignedTo(null);
-    dao.updateTransferTaskParent(parentTask);
+  private void handleNonTapisTransfer(TransferTaskParent parentTask) throws DAOException {
+    DAOTransactionContext.doInTransaction((context -> {
+      // Handle all non-tapis protocols. These are http:// and https://
+      // Create a single child task and update parent task status
+      TransferTaskChild task = new TransferTaskChild();
+      task.setTag(parentTask.getTag());
+      task.setSourceURI(parentTask.getSourceURI());
+      task.setParentTaskId(parentTask.getId());
+      task.setTaskId(parentTask.getTaskId());
+      task.setDestinationURI(parentTask.getDestinationURI());
+      task.setStatus(TransferTaskStatus.ACCEPTED);
+      task.setTenantId(parentTask.getTenantId());
+      task.setUsername(parentTask.getUsername());
+      TransferTaskChildDAO childDAO = new TransferTaskChildDAO();
+      task = childDAO.insertChildTask(context, task);
+      parentTask.setStatus(TransferTaskStatus.STAGED);
+      parentTask.setAssignedTo(null);
+      TransferTaskParentDAO parentDAO = new TransferTaskParentDAO();
+      parentDAO.updateTransferTaskParent(context, parentTask);
+      return null;
+    }));
   }
 
 
@@ -592,7 +614,7 @@ public class ParentTaskTransferService {
       parent.setErrorMessage(exceptionErrorMessage);
       parent.setFinalMessage("Failed - doErrorParentStepOne");
       parent.setAssignedTo(null);
-      parent = dao.updateTransferTaskParent(parent);
+      parent = updateParentTask(parent);
       // This should really never happen, it means that the parent with that ID was not in the database.
       if (parent == null) {
         return null;

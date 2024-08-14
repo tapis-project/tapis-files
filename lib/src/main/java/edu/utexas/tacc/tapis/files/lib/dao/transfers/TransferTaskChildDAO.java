@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
@@ -8,14 +9,18 @@ import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.RowProcessor;
+import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Array;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -126,5 +131,64 @@ public class TransferTaskChildDAO {
         }
 
     }
+    public void bulkInsertChildTasks(DAOTransactionContext context, List<TransferTaskChild> children) throws DAOException {
+        List<Object[]> params = new ArrayList<>();
+        children.forEach( (child)->{
+            params.add( new Object[] {
+                    child.getTenantId(),
+                    child.getTaskId(),
+                    child.getParentTaskId(),
+                    child.getUsername(),
+                    child.getSourceURI().toString(),
+                    child.getDestinationURI().toString(),
+                    child.getStatus().name(),
+                    child.getBytesTransferred(),
+                    child.getTotalBytes(),
+                    child.isDir(),
+                    child.getTag(),
+                    child.getExternalTaskId()
+            });
+        });
+        Object[][] t = new Object[params.size()][];
+        params.toArray(t);
+        try {
+            String stmt = TransferTaskChildDAOStatements.INSERT_CHILD_TASK;
+            QueryRunner runner = new QueryRunner();
+            runner.batch(context.getConnection(), stmt, t);
+        } catch (SQLException ex) {
+            throw new DAOException("Bulk insert failed!", ex);
+        }
+    }
+
+    public TransferTaskChild insertChildTask(DAOTransactionContext context, TransferTaskChild task) throws DAOException {
+        RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
+
+        try {
+            BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
+            String stmt = TransferTaskChildDAOStatements.INSERT_CHILD_TASK;
+            QueryRunner runner = new QueryRunner();
+            TransferTaskChild child = runner.query(context.getConnection(), stmt, handler,
+                    task.getTenantId(),
+                    task.getTaskId(),
+                    task.getParentTaskId(),
+                    task.getUsername(),
+                    task.getSourceURI().toString(),
+                    task.getDestinationURI().toString(),
+                    task.getStatus().name(),
+                    task.getBytesTransferred(),
+                    task.getTotalBytes(),
+                    task.isDir(),
+                    task.getTag(),
+                    task.getExternalTaskId()
+            );
+
+            return child;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
+                    "insertChildTask", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
+        }
+    }
+
+
 
 }

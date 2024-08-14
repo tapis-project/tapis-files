@@ -152,23 +152,6 @@ public class FileTransfersDAOStatements
             "RETURNING *";
 
     //language=SQL
-    public static final String UPDATE_PARENT_TASK =
-        """
-            UPDATE transfer_tasks_parent 
-                     SET source_uri = ?, 
-                         destination_uri = ?, 
-                         status = ?, 
-                         start_time = ?, 
-                         end_time = ?, 
-                         bytes_transferred =?, 
-                         total_bytes = ?,
-                         final_message = ?,
-                         error_message = ?,
-                         assigned_to = ?
-                    WHERE uuid = ? 
-                    RETURNING *
-        """;
-
     //language=SQL
     public static final String INSERT_TASK =
         "INSERT into transfer_tasks " +
@@ -182,13 +165,6 @@ public class FileTransfersDAOStatements
             "(tenant_id, task_id, username, source_uri, destination_uri, status, optional, src_shared_ctx, dst_shared_ctx, tag, transfer_type)" +
             "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)" +
             "RETURNING *";
-
-    //language=SQL
-    public static final String INSERT_CHILD_TASK =
-        "INSERT into transfer_tasks_child " +
-            " (tenant_id, task_id, parent_task_id, username, source_uri, destination_uri, status, bytes_transferred, total_bytes, is_dir, tag, external_task_id)" +
-            " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-            " RETURNING * ";
 
     //language=SQL
     public static final String CANCEL_TRANSFER_TASK_AND_CHILDREN =

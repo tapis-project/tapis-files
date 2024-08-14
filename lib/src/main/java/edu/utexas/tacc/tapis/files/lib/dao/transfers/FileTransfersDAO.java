@@ -341,41 +341,6 @@ public class FileTransfersDAO {
 
     }
 
-    public TransferTaskParent updateTransferTaskParent(@NotNull TransferTaskParent task) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
-            String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK;
-            QueryRunner runner = new QueryRunner();
-            Timestamp startTime = null;
-            Timestamp endTime = null;
-            if (task.getStartTime() != null) {
-                startTime = Timestamp.from(task.getStartTime());
-            }
-            if (task.getEndTime() != null) {
-                endTime = Timestamp.from(task.getEndTime());
-            }
-            TransferTaskParent updatedTask = runner.query(connection, stmt, handler,
-                task.getSourceURI().toString(),
-                task.getDestinationURI().toString(),
-                task.getStatus().name(),
-                startTime,
-                endTime,
-                task.getBytesTransferred(),
-                task.getTotalBytes(),
-                task.getFinalMessage(),
-                task.getErrorMessage(),
-                task.getAssignedTo(),
-                task.getUuid()
-            );
-
-            return updatedTask;
-        } catch (SQLException ex) {
-          throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "updateTransferTaskParent", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
-        }
-    }
-
     public TransferTaskChild updateTransferTaskChild(@NotNull TransferTaskChild task) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
@@ -434,64 +399,6 @@ public class FileTransfersDAO {
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
                   "createTransferTaskParent", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
-        }
-    }
-
-    public void bulkInsertChildTasks(@NotNull List<TransferTaskChild> children) throws DAOException {
-        List<Object[]> params = new ArrayList<>();
-        children.forEach( (child)->{
-            params.add( new Object[] {
-                child.getTenantId(),
-                child.getTaskId(),
-                child.getParentTaskId(),
-                child.getUsername(),
-                child.getSourceURI().toString(),
-                child.getDestinationURI().toString(),
-                child.getStatus().name(),
-                child.getBytesTransferred(),
-                child.getTotalBytes(),
-                child.isDir(),
-                child.getTag(),
-                child.getExternalTaskId()
-            });
-        });
-        Object[][] t = new Object[params.size()][];
-        params.toArray(t);
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            String stmt = FileTransfersDAOStatements.INSERT_CHILD_TASK;
-            QueryRunner runner = new QueryRunner();
-            runner.batch(connection, stmt, t);
-        } catch (SQLException ex) {
-            throw new DAOException("Bulk insert failed!", ex);
-        }
-    }
-
-    public TransferTaskChild insertChildTask(@NotNull TransferTaskChild task) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
-
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
-            String stmt = FileTransfersDAOStatements.INSERT_CHILD_TASK;
-            QueryRunner runner = new QueryRunner();
-            TransferTaskChild child = runner.query(connection, stmt, handler,
-                task.getTenantId(),
-                task.getTaskId(),
-                task.getParentTaskId(),
-                task.getUsername(),
-                task.getSourceURI().toString(),
-                task.getDestinationURI().toString(),
-                task.getStatus().name(),
-                task.getBytesTransferred(),
-                task.getTotalBytes(),
-                task.isDir(),
-                task.getTag(),
-                task.getExternalTaskId()
-            );
-
-            return child;
-        } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "insertChildTask", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
 
