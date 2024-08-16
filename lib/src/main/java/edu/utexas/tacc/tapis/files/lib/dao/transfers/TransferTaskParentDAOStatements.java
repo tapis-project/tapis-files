@@ -9,12 +9,12 @@ public class TransferTaskParentDAOStatements {
                     partition by
                       tenant_id,
                       username
-                    order by 
+                    order by
                       created
                   )
                 from
                   transfer_tasks_parent
-                where 
+                where
                   status = 'ACCEPTED' AND
                   assigned_to IS NULL
               )
@@ -22,7 +22,6 @@ public class TransferTaskParentDAOStatements {
                   row_number <= ?
                 order by
                   row_number;
-                      
             """ ;
 
     public static final String GET_ACCEPTED_PARENT_TASKS_ASSIGNED_TO_WORKER =
@@ -33,12 +32,12 @@ public class TransferTaskParentDAOStatements {
                     partition by
                       tenant_id,
                       username
-                    order by 
+                    order by
                       created
                   )
                 from
                   transfer_tasks_parent
-                where 
+                where
                   status = 'ACCEPTED' AND
                   assigned_to = ?
               )
@@ -46,54 +45,53 @@ public class TransferTaskParentDAOStatements {
                   row_number <= ?
                 order by
                   row_number;
-                      
             """ ;
 
 
     public static final String GET_ASSIGNED_PARENT_COUNT =
             """
-              select 
-                  assigned_to, count(*) 
-              from 
-                  transfer_tasks_parent ttp 
-                  inner join transfer_worker tw on ttp.assigned_to=tw.uuid 
-              group by 
+              select
+                  assigned_to, count(*)
+              from
+                  transfer_tasks_parent ttp
+                  inner join transfer_worker tw on ttp.assigned_to=tw.uuid
+              group by
                   assigned_to;
             """ ;
 
 
     public static final String ASSIGN_TASKS_TO_WORKER =
             """
-              update 
+              update
                   transfer_tasks_parent ttp
-              set 
+              set
                   assigned_to = ?
-              where 
+              where
                   id = ANY(?);
             """ ;
 
     public static final String UNASSIGN_ZOMBIE_ASSIGNMENTS =
             """
-              update 
-                  transfer_tasks_parent 
-              set 
-                  assigned_to = null 
+              update
+                  transfer_tasks_parent
+              set
+                  assigned_to = null
               where id in (
-                  select 
-                      id 
-                  from 
-                      transfer_tasks_parent ttp left join transfer_worker tw on ttp.assigned_to = tw."uuid" 
-                  where 
+                  select
+                      id
+                  from
+                      transfer_tasks_parent ttp left join transfer_worker tw on ttp.assigned_to = tw."uuid"
+                  where
                       assigned_to is not null and tw."uuid" is null
-              ) AND 
+              ) AND
                   transfer_tasks_parent.status != ANY(?);
             """ ;
 
     public static final String RESET_UNASSIGNED_BUT_IN_STAGING_TASKS =
             """
-              update 
-                  transfer_tasks_parent 
-              set 
+              update
+                  transfer_tasks_parent
+              set
                   status = 'ACCEPTED'
               where
                   status = 'STAGING' AND
@@ -102,38 +100,38 @@ public class TransferTaskParentDAOStatements {
             """ ;
     public static final String FAIL_ASSOCIATED_TOP_TASKS =
             """
-                update 
-                    transfer_tasks 
-                    set 
-                        status = 'FAILED' 
-                where id 
+                update
+                    transfer_tasks
+                    set
+                        status = 'FAILED'
+                where id
                 in (
-                    select 
-                        tt.id 
-                    from 
-                        transfer_tasks tt 
-                    inner join 
-                        transfer_tasks_parent ttp 
-                        on 
-                            tt.id = ttp.task_id 
-                    where 
+                    select
+                        tt.id
+                    from
+                        transfer_tasks tt
+                    inner join
+                        transfer_tasks_parent ttp
+                        on
+                            tt.id = ttp.task_id
+                    where
                         tt.id = ANY(?) and ttp.optional
-                ); 
+                );
             """ ;
     public static final String UPDATE_PARENT_TASK =
             """
-                UPDATE transfer_tasks_parent 
-                         SET source_uri = ?, 
-                             destination_uri = ?, 
-                             status = ?, 
-                             start_time = ?, 
-                             end_time = ?, 
-                             bytes_transferred =?, 
+                UPDATE transfer_tasks_parent
+                         SET source_uri = ?,
+                             destination_uri = ?,
+                             status = ?,
+                             start_time = ?,
+                             end_time = ?,
+                             bytes_transferred =?,
                              total_bytes = ?,
                              final_message = ?,
                              error_message = ?,
                              assigned_to = ?
-                        WHERE uuid = ? 
+                        WHERE uuid = ?
                         RETURNING *
             """;
 

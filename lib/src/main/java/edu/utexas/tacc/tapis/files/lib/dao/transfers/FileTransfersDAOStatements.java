@@ -26,9 +26,6 @@ public class FileTransfersDAOStatements
     public static final String GET_CHILD_TASK_BY_UUID =
         "SELECT * FROM transfer_tasks_child where uuid = ?";
 
-    public static final String GET_CHILD_TASK_FOR_UPDATE_BY_UUID =
-            "SELECT * FROM transfer_tasks_child where uuid = ? FOR UPDATE";
-
     //language=SQL
     public static final String GET_ALL_CHILDREN_FOR_PARENT =
         "SELECT * FROM transfer_tasks_child where parent_task_id = ?";

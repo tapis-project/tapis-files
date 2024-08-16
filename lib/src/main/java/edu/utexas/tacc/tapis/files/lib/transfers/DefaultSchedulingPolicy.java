@@ -46,7 +46,11 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
                     break;
                 }
             }
-            assignChildTasksToWorker(tasksToAssign, uuid);
+
+            if(!tasksToAssign.isEmpty()) {
+                // assign child tasks, but only if we got some tasks to assing
+                assignChildTasksToWorker(tasksToAssign, uuid);
+            }
         }
     }
 
@@ -153,7 +157,10 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
                     break;
                 }
             }
-            assignParentTasksToWorker(tasksToAssign, uuid);
+            if(!tasksToAssign.isEmpty()) {
+                // assign parent tasks, but only if we got some tasks to assing
+                assignParentTasksToWorker(tasksToAssign, uuid);
+            }
         }
     }
 

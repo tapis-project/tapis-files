@@ -395,7 +395,8 @@ public class ChildTaskTransferService {
         String srcSharedCtxGrantor = null;
         String destSharedCtxGrantor = null;
         if (taskChild.getSourceURI().equals(taskChild.getDestinationURI())) {
-            log.warn("***** Source and Destination URI's are identical - skipping transfer, and marking complete **** {}", taskChild);
+            log.warn(LibUtils.getMsg("FILES_TXFR_CHILD_SAME_SRC_DEST", taskChild.getTenantId(), taskChild.getUsername(),
+                    taskChild.getId(), taskChild.getTag(), taskChild.getTaskId(), taskChild.getSourceURI(), taskChild.getDestinationURI()));
             try {
                 taskChild.setEndTime(Instant.now());
                 taskChild.setStatus(TransferTaskStatus.COMPLETED);
@@ -717,7 +718,7 @@ public class ChildTaskTransferService {
                 try {
                     return processTransfer(taskChild);
                 } catch (WritePendingException ex) {
-                    throw new IOException("Write Pending", ex);
+                    throw new IOException(ex.getMessage(), ex);
                 }
             }
         });
@@ -766,9 +767,9 @@ public class ChildTaskTransferService {
         } catch (CancellationException ex) {
             return cancelTransferChild(taskChild, srcSharedCtxGrantor);
         } catch (WritePendingException ex) {
-            throw new IOException("WritePendingException error", ex);
+            throw new IOException(ex.getMessage(), ex);
         } catch (RuntimeException ex) {
-            throw new IOException("WritePendingException error", ex);
+            throw new IOException(ex.getMessage(), ex);
         } finally {
             try {
                 channel.close();

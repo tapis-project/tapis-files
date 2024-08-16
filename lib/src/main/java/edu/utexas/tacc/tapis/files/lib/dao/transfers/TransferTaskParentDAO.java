@@ -1,9 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
-import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
@@ -12,12 +10,10 @@ import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.RowProcessor;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Array;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -94,9 +90,13 @@ public class TransferTaskParentDAO {
     }
 
     public void assignToWorkers(DAOTransactionContext context, List<Integer> taskIds, UUID workerId) throws DAOException {
-        if((workerId == null)  || (taskIds.isEmpty())) {
-            // TODO: fix this warning message.  It could be no worker id or could be no taskIds
-            log.warn(LibUtils.getMsg("FILES_TXFR_DAO_NO_WORKER_PROVIDED", "assignToWorkers"));
+        if(workerId == null) {
+            log.error(LibUtils.getMsg("FILES_TXFR_DAO_NO_WORKER_PROVIDED", "assignToWorkers"));
+            return;
+        }
+
+        if(taskIds.isEmpty()) {
+            log.debug(LibUtils.getMsg("FILES_TXFR_DAO_NO_TASKS_TO_ASSIGN", "assignToWorkers"));
             return;
         }
 
@@ -117,7 +117,7 @@ public class TransferTaskParentDAO {
             final Array finalStates = context.getConnection().createArrayOf("text", terminalStates.stream().map(value -> value.name()).toArray());
             int zombies = runner.update(context.getConnection(), TransferTaskParentDAOStatements.UNASSIGN_ZOMBIE_ASSIGNMENTS, finalStates);
             if(zombies > 0) {
-                log.info("Reassigned parent zombie tasks: " + zombies);
+                log.info(LibUtils.getMsg("FILES_TXFR_DAO_REASSIGNED_ZOMBIES", zombies, "parent"));
             }
 
 

@@ -154,7 +154,9 @@ public class ParentTaskTransferService {
                     futures.remove(parentUuid);
                   }
                 } else {
-                  System.out.println("Priority: " + ttp.getPriority() + " tenant: " + ttp.getObject().getTenantId() + " user:" + ttp.getObject().getUsername());
+                  log.debug(LibUtils.getMsg("FILES_TXFR_SVC_DEBUG_PRIORITY_INFO", ttp.getObject().getTenantId(),
+                                  ttp.getObject().getUsername(), ttp.getObject().getTag(), ttp.getObject().getTaskId(),
+                                  ttp.getObject().getUuid(), ttp.getPriority()));
                   try {
                     Future<TransferTaskParent> future = parentWorkers.submit(new Callable<TransferTaskParent>() {
                       @Override

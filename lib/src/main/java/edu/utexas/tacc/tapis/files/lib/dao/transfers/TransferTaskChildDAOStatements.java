@@ -9,12 +9,12 @@ public class TransferTaskChildDAOStatements {
                     partition by
                       tenant_id,
                       username
-                    order by 
+                    order by
                       created
                   )
                 from
                   transfer_tasks_child
-                where 
+                where
                   status = 'ACCEPTED' AND
                   assigned_to IS NULL
               )
@@ -22,7 +22,6 @@ public class TransferTaskChildDAOStatements {
                   row_number <= ?
                 order by
                   row_number;
-                      
             """ ;
 
     public static final String GET_ACCEPTED_CHILD_TASKS_ASSIGNED_TO_WORKER =
@@ -33,12 +32,12 @@ public class TransferTaskChildDAOStatements {
                     partition by
                       tenant_id,
                       username
-                    order by 
+                    order by
                       created
                   )
                 from
                   transfer_tasks_child
-                where 
+                where
                   status = 'ACCEPTED' AND
                   assigned_to = ?
               )
@@ -46,55 +45,54 @@ public class TransferTaskChildDAOStatements {
                   row_number <= ?
                 order by
                   row_number;
-                      
             """ ;
 
 
     public static final String GET_ASSIGNED_CHILD_COUNT =
             """
-              select 
-                  assigned_to, count(*) 
-              from 
-                  transfer_tasks_child ttc 
-                  inner join transfer_worker tw on ttc.assigned_to=tw.uuid 
-              group by 
+              select
+                  assigned_to, count(*)
+              from
+                  transfer_tasks_child ttc
+                  inner join transfer_worker tw on ttc.assigned_to=tw.uuid
+              group by
                   assigned_to;
             """ ;
 
     public static final String ASSIGN_TASKS_TO_WORKER =
             """
-              update 
-                  transfer_tasks_child ttc 
-              set 
+              update
+                  transfer_tasks_child ttc
+              set
                   assigned_to = ?
-              where 
+              where
                   id = ANY(?);
             """ ;
 
     public static final String UNASSIGN_ZOMBIE_ASSIGNMENTS =
             """
-              update 
-                  transfer_tasks_child 
-              set 
-                  assigned_to = null 
+              update
+                  transfer_tasks_child
+              set
+                  assigned_to = null
               where id in (
-                  select 
-                      id 
-                  from 
-                      transfer_tasks_child ttc left join transfer_worker tw on ttc.assigned_to = tw."uuid" 
-                  where 
+                  select
+                      id
+                  from
+                      transfer_tasks_child ttc left join transfer_worker tw on ttc.assigned_to = tw."uuid"
+                  where
                       assigned_to is not null and tw."uuid" is null
-              ) AND 
+              ) AND
                   transfer_tasks_child.status != ANY(?);
             """ ;
     public static final String RESTART_UNASSIGNED_BUT_IN_PROGRESS_TASKS =
             """
-              update 
-                  transfer_tasks_child 
-              set 
+              update
+                  transfer_tasks_child
+              set
                   status = 'ACCEPTED'
               where
-                  status = 'IN_PROGRESS' AND                
+                  status = 'IN_PROGRESS' AND
                   assigned_to IS NULL;
             """ ;
 

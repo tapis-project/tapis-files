@@ -2,13 +2,13 @@ package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransferWorker;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.RowProcessor;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,9 +20,8 @@ public class TransferWorkerDAO {
             BeanListHandler<TransferWorker> handler = new BeanListHandler<>(TransferWorker.class, rowProcessor);
             QueryRunner runner = new QueryRunner();
             retrievedWorkers = runner.query(context.getConnection(), TransferWorkerDAOStatements.SELECT_ALL_TRANSFER_WORKERS, handler);
-        } catch (SQLException e) {
-            // TODO:  add to messsage catalog
-            throw new DAOException("ERROR", e);
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getTransferWorkers", ex.getMessage()), ex);
         }
 
         return retrievedWorkers;
@@ -35,9 +34,8 @@ public class TransferWorkerDAO {
             BeanHandler<TransferWorker> handler = new BeanHandler<>(TransferWorker.class, rowProcessor);
             QueryRunner runner = new QueryRunner();
             transferWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.INSERT_TRANSFER_WORKER, handler);
-        } catch (SQLException e) {
-            // TODO:  add to messsage catalog
-            throw new DAOException("ERROR", e);
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertTransferWorker", ex.getMessage()), ex);
         }
 
         return transferWorker;
@@ -50,10 +48,11 @@ public class TransferWorkerDAO {
             BeanHandler<TransferWorker> handler = new BeanHandler<>(TransferWorker.class, rowProcessor);
             QueryRunner runner = new QueryRunner();
             transferWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.UPDATE_TRANSFER_WORKER_TIME, handler, uuid);
-            // TODO:  Add null check for trasnferWorker - means it couldn't be updated.  Maybe insert if this fails?  Not sure
-        } catch (SQLException e) {
-            // TODO:  add to messsage catalog
-            throw new DAOException("ERROR", e);
+            if(transferWorker == null) {
+                throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_WORKER_NOT_FOUND", uuid));
+            }
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "updateTransferWorker", ex.getMessage()), ex);
         }
 
         return transferWorker;
@@ -66,9 +65,8 @@ public class TransferWorkerDAO {
             BeanHandler<TransferWorker> handler = new BeanHandler<>(TransferWorker.class, rowProcessor);
             QueryRunner runner = new QueryRunner();
             transferWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.DELETE_TRANSFER_WORKER_BY_UUID, handler, uuid);
-        } catch (SQLException e) {
-            // TODO:  add to messsage catalog
-            throw new DAOException("ERROR", e);
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "deleteTransferWorkerById", ex.getMessage()), ex);
         }
 
         return transferWorker;
@@ -81,19 +79,10 @@ public class TransferWorkerDAO {
             BeanHandler<TransferWorker> handler = new BeanHandler<>(TransferWorker.class, rowProcessor);
             QueryRunner runner = new QueryRunner();
             retrievedWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.SELECT_TRANSFER_WORKER_BY_UUID, handler, uuid);
-        } catch (SQLException e) {
-            // TODO:  add to messsage catalog
-            throw new DAOException("ERROR", e);
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getTransferWorkerById", ex.getMessage()), ex);
         }
 
         return retrievedWorker;
-    }
-
-    public List<TransferWorker> getWorkersThatNeedWork() {
-        List<TransferWorker> transferWorkersThatNeedWork = new ArrayList<>();
-
-
-
-        return transferWorkersThatNeedWork;
     }
 }

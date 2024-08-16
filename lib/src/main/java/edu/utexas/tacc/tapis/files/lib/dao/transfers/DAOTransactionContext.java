@@ -71,6 +71,16 @@ public class DAOTransactionContext implements AutoCloseable {
         }
     }
 
+    /**
+     * Provide a lambda expression or use the functional interface DAOOperation&lt;T&gt; to provide the
+     * code to do in the transaction.  If the code returns with no exception, the transaction will be
+     * committed, if it throws an execption it's rolled back.  You can of course commit or rollback the
+     * transaction in the code using context passed into the function.
+     * @param op - function to do in a transaction
+     * @return returns a value of type T
+     * @param <T> return type
+     * @throws DAOException - if an error occurs.
+     */
     public static <T> T doInTransaction(DAOOperation<T> op) throws DAOException {
         DAOTransactionContext context = new DAOTransactionContext();
         try {

@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-// TODO: There should be some way to not duplicate this code...
 class TransferTaskRowProcessor extends BasicRowProcessor {
 
     @Override

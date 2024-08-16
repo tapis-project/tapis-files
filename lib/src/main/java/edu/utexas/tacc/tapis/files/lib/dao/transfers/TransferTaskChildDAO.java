@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
-import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
@@ -11,12 +10,10 @@ import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.RowProcessor;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Array;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -93,9 +90,13 @@ public class TransferTaskChildDAO {
     }
 
     public void assignToWorkers(DAOTransactionContext context, List<Integer> taskIds, UUID workerId) throws DAOException {
-        if((workerId == null)  || (taskIds.isEmpty())) {
-            // TODO: fix this warning message.  It could be no worker id or could be no taskIds
-            log.warn(LibUtils.getMsg("FILES_TXFR_DAO_NO_WORKER_PROVIDED", "assignToWorkers"));
+        if(workerId == null) {
+            log.error(LibUtils.getMsg("FILES_TXFR_DAO_NO_WORKER_PROVIDED", "assignToWorkers"));
+            return;
+        }
+
+        if(taskIds.isEmpty()) {
+            log.debug(LibUtils.getMsg("FILES_TXFR_DAO_NO_TASKS_TO_ASSIGN", "assignToWorkers"));
             return;
         }
 
@@ -116,14 +117,14 @@ public class TransferTaskChildDAO {
             final Array finalStates = context.getConnection().createArrayOf("text", terminalStates.stream().map(value -> value.name()).toArray());
             int zombies = runner.update(context.getConnection(), TransferTaskChildDAOStatements.UNASSIGN_ZOMBIE_ASSIGNMENTS, finalStates);
             if(zombies > 0) {
-                log.info("Reassigned child zombie tasks: " + zombies);
+                log.info(LibUtils.getMsg("FILES_TXFR_DAO_REASSIGNED_ZOMBIES", zombies, "child"));
             }
 
             // Now change everything that is IN_PROGRESS, but not assigned back to 'ACCEPTED' ... this effectively restarts them
             runner = new QueryRunner();
             int restarted = runner.update(context.getConnection(), TransferTaskChildDAOStatements.RESTART_UNASSIGNED_BUT_IN_PROGRESS_TASKS);
             if(restarted > 0) {
-                log.info("Restarted child tasks: " + restarted);
+                log.info(LibUtils.getMsg("FILES_TXFR_DAO_RESTARTED_TASKS", restarted, "child"));
             }
 
         } catch (SQLException ex) {
@@ -156,7 +157,7 @@ public class TransferTaskChildDAO {
             QueryRunner runner = new QueryRunner();
             runner.batch(context.getConnection(), stmt, t);
         } catch (SQLException ex) {
-            throw new DAOException("Bulk insert failed!", ex);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "bulkInsertChildTasks", ex.getMessage()), ex);
         }
     }
 
@@ -188,7 +189,4 @@ public class TransferTaskChildDAO {
                     "insertChildTask", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
-
-
-
 }

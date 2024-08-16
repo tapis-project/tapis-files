@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
-import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
@@ -17,10 +16,8 @@ import org.apache.commons.dbutils.handlers.ScalarHandler;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Function;
 
 import org.slf4j.Logger;
 
@@ -168,38 +165,6 @@ public class FileTransfersDAO {
             return runner.query(connection, query, handler, taskUUID);
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskChild", taskUUID), ex);
-        }
-    }
-
-    public TransferTaskChild lockChildTaskAndPerformActionAndSetStatus(@NotNull UUID taskUUID, Function<TransferTaskChild, TransferTaskChild> function) throws DAOException {
-        try {
-            RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
-            Connection connection = HikariConnectionPool.getConnection();
-            try {
-                connection.setAutoCommit(false);
-                BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
-                String query = FileTransfersDAOStatements.GET_CHILD_TASK_FOR_UPDATE_BY_UUID;
-                QueryRunner runner = new QueryRunner();
-                TransferTaskChild lockedChildTask = runner.query(connection, query, handler, taskUUID);
-                try {
-                    lockedChildTask = function.apply(lockedChildTask);
-                    connection.commit();
-                    return lockedChildTask;
-                } catch (RuntimeException ex) {
-                    // TODO: fix message
-                    throw new DAOException(LibUtils.getMsg("ERRROR_HERE", "getTransferTaskChild", taskUUID), ex);
-                }
-            } catch (SQLException ex) {
-                throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskChild", taskUUID), ex);
-            } finally {
-                if (!connection.isClosed()) {
-                    connection.rollback();
-                    connection.setAutoCommit(true);
-                }
-            }
-        } catch (SQLException ex) {
-            // TODO: fix message
-            throw new DAOException(LibUtils.getMsg("MESSAGE_HERE", taskUUID), ex);
         }
     }
 
