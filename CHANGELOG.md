@@ -20,6 +20,7 @@ Incremental improvements and new features.
 - Fixed minor issue with ssh session caching / session closing
 - Fix for irods client not closing session in certain cases
 - Fix for transfers not properly handling sharedCtxGrantor
+- Fix for very large globus file listings
 
 ### Breaking Changes
 - None
