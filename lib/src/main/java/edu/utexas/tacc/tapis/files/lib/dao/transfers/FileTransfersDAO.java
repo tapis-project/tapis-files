@@ -23,6 +23,9 @@ import org.slf4j.Logger;
 
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * See note in DAOContext about deadlocks/lock order/transactions
+ */
 public class FileTransfersDAO {
 
     private static final Logger log = LoggerFactory.getLogger(FileTransfersDAO.class);

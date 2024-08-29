@@ -52,7 +52,7 @@ public class TransfersScheduler
     private static int WORKER_BACKLOG_THRESHOLD = 100;
     private static int ROW_NUMBER_CUTOFF = 300;
     private static long EXPECT_HEARTBEAT_BEFORE_MILLIS = 600000;
-    private static long MAX_WAIT_MULTIPLIER = 6;
+    private static long MAX_WAIT_MULTIPLIER = 5;
     private SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(ROW_NUMBER_CUTOFF);
 
     public static void main(String[] args)
@@ -79,8 +79,6 @@ public class TransfersScheduler
                 // get rid of any tasks that have a worker that no longer exists assigned to it.
                 cleanupZombieAssignments();
                 if (!moreChildrenToSchedule && !moreParentsToSchedule) {
-                    // TODO:  fix this to acutally do something smart
-//            politePause();  -- sleeping now, but maybe a method that does something more intersting
                     if(loopsWithNoWork < MAX_WAIT_MULTIPLIER) {
                         loopsWithNoWork++;
                     }

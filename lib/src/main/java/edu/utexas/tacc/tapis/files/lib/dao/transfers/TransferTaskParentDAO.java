@@ -26,6 +26,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * See note in DAOContext about deadlocks/lock order/transactions
+ */
 public class TransferTaskParentDAO {
     Logger log = LoggerFactory.getLogger(TransferTaskParentDAO.class);
 

@@ -9,6 +9,15 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+/**
+ * DAOTransactionContext - in order to prevent deadlocks, be certain tables are always
+ * locked in a single transaction in the order:
+ * TopTask
+ * ParentTask
+ * ChildTask
+ *
+ * Locks happen with select for update and with things that modify the database.
+ */
 public class DAOTransactionContext implements AutoCloseable {
     private static Logger log = LoggerFactory.getLogger(DAOTransactionContext.class);
     private Connection connection = null;

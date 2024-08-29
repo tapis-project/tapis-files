@@ -237,11 +237,11 @@ public class ChildTaskTransferService {
 
         while (retry < maxRetries) {
             try {
-                if(parentTask == null) {
+                if (parentTask == null) {
                     parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
                     srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
                 }
-                if(!preTransferUpdateComplete) {
+                if (!preTransferUpdateComplete) {
                     taskChild = updateStatusBeforeTransfer(taskChild);
                     if (taskChild == null) {
                         // if updateStatusBeforeTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
@@ -252,7 +252,7 @@ public class ChildTaskTransferService {
                     }
                 }
 
-                if(!transferComplete) {
+                if (!transferComplete) {
                     taskChild = doTransfer(taskChild, srcSharedCtxGrantor);
                     if (taskChild == null) {
                         // if doTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
@@ -263,7 +263,7 @@ public class ChildTaskTransferService {
                     }
                 }
 
-                if(!postTransferUpdateComplete) {
+                if (!postTransferUpdateComplete) {
                     taskChild = updateStatusAfterTransfer(taskChild);
                     if (taskChild == null) {
                         // if updateStatusAfterTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
@@ -274,8 +274,8 @@ public class ChildTaskTransferService {
                     }
                 }
 
-                if(!parentCheckComplete) {
-                    taskChild = checkForParentCompletion(taskChild);
+                if (!parentCheckComplete) {
+                    taskChild = checkForComplete(taskChild);
                     if (taskChild == null) {
                         // if checkForParentCompletion fails, it throws an exception.  We shouldn't get here.  Just being defensive
                         String msg = LibUtils.getMsg("Internal Error.  taskChild is null after checkForParentComplete");
@@ -602,17 +602,7 @@ public class ChildTaskTransferService {
             throw new ServiceException(msg, ex);
         }
     }
-
-    /**
-     * In this step, we check to see if there are any unfinished children for either the top level TransferTask
-     * or the TransferTaskParent.
-     * If all children that belong to a parent are COMPLETED, then we can mark the parent as COMPLETED.
-     * Similarly, for the top TransferTask, if ALL children have completed, the entire transfer is done.
-     *
-     * @param taskChild TransferTaskChild instance
-     * @return updated child
-     * @throws ServiceException If the updates to the records in the DB failed
-     */
+/*
     private TransferTaskChild checkForParentCompletion(@NotNull TransferTaskChild taskChild) throws ServiceException {
         String stepLabel = "Four";
         log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
@@ -626,7 +616,7 @@ public class ChildTaskTransferService {
         }
         return taskChild;
     }
-
+*/
     /**
      * Error handler for any of the steps.
      * Since FAILED_OPT is now supported we also need to check here if
@@ -659,7 +649,7 @@ public class ChildTaskTransferService {
             // If child is optional we need to check to see if top task and/or parent status should be updated
             // else child is required so update top level task and parent task to FAILED / FAILED_OPT
             if (child.isOptional()) {
-                checkForComplete(child.getTaskId(), child.getParentTaskId());
+                child = checkForComplete(child);
             } else {
                 TransferTaskParent parent = dao.getTransferTaskParentById(child.getParentTaskId());
                 // This also should not happen, it means that the parent with that ID was not in the database.
@@ -838,15 +828,24 @@ public class ChildTaskTransferService {
     }
 
     /**
-     * Check to see if the ParentTask and/or the top level TransferTask
-     * should be marked as finished. If yes then update status.
+     * In this step, we check to see if there are any unfinished children for either the top level TransferTask
+     * or the TransferTaskParent.
+     * If all children that belong to a parent are COMPLETED, then we can mark the parent as COMPLETED.
+     * Similarly, for the top TransferTask, if ALL children have completed, the entire transfer is done.
      *
-     * @param topTaskId    ID of top level TransferTask
-     * @param parentTaskId ID of parent task associated with the child task
+     * @param taskChild TransferTaskChild instance
+     * @return updated child
+     * @throws ServiceException If the updates to the records in the DB failed
      */
-    private void checkForComplete(int topTaskId, int parentTaskId) throws DAOException {
+    private TransferTaskChild checkForComplete(TransferTaskChild taskChild) throws DAOException {
+        int topTaskId = taskChild.getTaskId();
+        int parentTaskId = taskChild.getParentTaskId();
+
+        String stepLabel = "Four";
+        log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
         TransferTask topTask = dao.getTransferTaskByID(topTaskId);
         TransferTaskParent parentTask = dao.getTransferTaskParentById(parentTaskId);
+
         // Check to see if all children of a parent task are complete. If so, update the parent task.
         if (!parentTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
             long incompleteCount = dao.getIncompleteChildrenCountForParent(parentTaskId);
@@ -858,6 +857,7 @@ public class ChildTaskTransferService {
                 updateParentTask(parentTask);
             }
         }
+
         // Check to see if all the children of a top task are complete. If so, update the top task.
         if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
             long incompleteParentCount = dao.getIncompleteParentCount(topTaskId);
@@ -869,6 +869,7 @@ public class ChildTaskTransferService {
                 dao.updateTransferTask(topTask);
             }
         }
+        return taskChild;
     }
 
 

@@ -76,6 +76,9 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
         List<PrioritizedObject<TransferTaskChild>> prioritizedWork = null;
         try {
             TransferTaskChildDAO childDao = new TransferTaskChildDAO();
+            // This gets the work that is to be done so that we get the first 'X' tasks for each unique combination
+            // of tenant/user.  X in this case is cachedRows (which is passed inot the constructor).  Each of the
+            // results is returned as a PrioritiezedObject - a class that has a priority and the real object.
             prioritizedWork = DAOTransactionContext.doInTransaction(context -> {
                 return childDao.getAcceptedChildTasksForTenantsAndUsers(context, cachedRows);
             });
@@ -87,12 +90,19 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
             return Collections.emptyList();
         }
 
+
+        // The code below makes a list of the child tasks that need to be worked on in the order that they need to be worked
+        // on.  Round robin throw each tenant getting the first item that needs to be worked on, and add it to the list.
         List<Integer> queuedTaskIds = new ArrayList<>();
+        // create a map with key = tenant, and value = a list of child task ids representing all of the work that needs
+        // to be done for this tenant.
         Map<String, List<Integer>> tenantWorkMap = refillChildTasks(prioritizedWork);
         while(!tenantWorkMap.isEmpty()) {
+            // step through each tenant
             Iterator<String> tenantIterator = tenantWorkMap.keySet().iterator();
             while (tenantIterator.hasNext()) {
                 String tenant = tenantIterator.next();
+                // get the list of child tasks for this tenant
                 List<Integer> childList = tenantWorkMap.get(tenant);
                 if (childList.isEmpty()) {
                     tenantIterator.remove();
