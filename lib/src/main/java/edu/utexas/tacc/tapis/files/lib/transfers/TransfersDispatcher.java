@@ -46,7 +46,7 @@ import java.util.UUID;
  * When the child task service reads a child task message from rabbitmq, it will process it by transferring
  * the file described by the child task message, and marking the task compoleted (or failed or whatever).
  */
-public class TransfersScheduler
+public class TransfersDispatcher
 {
     private static final Logger log = LoggerFactory.getLogger(TransfersApp.class);
     private static int WORKER_BACKLOG_THRESHOLD = 100;
@@ -57,27 +57,37 @@ public class TransfersScheduler
 
     public static void main(String[] args)
     {
-        log.info("Starting transfers scheduler.");
+        log.info("Starting transfers dispatcher.");
         try {
             checkRequiredSettings();
-            TransfersScheduler scheduler = new TransfersScheduler();
-            scheduler.run();
+            TransfersDispatcher dispatcher = new TransfersDispatcher();
+            dispatcher.run();
         } catch(Exception ex) {
             String msg = LibUtils.getMsg("FILES_TRANSFER_SCHEDULER_APPLICATION_FAILED_TO_START", ex.getMessage());
             log.error(msg, ex);
         }
     }
 
+    // main loop for the transfers dispatcher.  Assign children, assign parents, do cleanup.  If we didn't assignthing
+    // this time through the loop, sleep a little before going around again.
     void run() throws InterruptedException {
         boolean moreParentsToSchedule, moreChildrenToSchedule = false;
         int loopsWithNoWork = 0;
         for(;;) {
             try {
-                moreChildrenToSchedule = scheduleChildTasks();
-                moreParentsToSchedule = scheduleParentTasks();
+                // Assign child and parent tasks.  Keep track of if there's more wore of each
+                // to do.
+                moreChildrenToSchedule = assignChildTasks();
+
+                // Assign child and parent tasks.  Keep track of if there's more wore of each
+                // to do.
+                moreParentsToSchedule = assignParentTasks();
 
                 // get rid of any tasks that have a worker that no longer exists assigned to it.
                 cleanupZombieAssignments();
+
+                // sleep progressively longer (up to a max) if we don't have more work to do, but don't sleep
+                // if there's work to do.
                 if (!moreChildrenToSchedule && !moreParentsToSchedule) {
                     if(loopsWithNoWork < MAX_WAIT_MULTIPLIER) {
                         loopsWithNoWork++;
@@ -147,7 +157,6 @@ public class TransfersScheduler
     private void cleanupZombieWorker(UUID workerUuid) {
         TransferWorkerDAO transferWorkerDAO = new TransferWorkerDAO();
         try {
-            // TODO:  PARENT handle all "non-terminal" statuses and heandle parent tasks too.
             DAOTransactionContext.doInTransaction(context -> {
                 transferWorkerDAO.deleteTransferWorkerById(context, workerUuid);
                 return null;
@@ -162,8 +171,6 @@ public class TransfersScheduler
         TransferTaskParentDAO parentTaskDao = new TransferTaskParentDAO();
         try {
             DAOTransactionContext.doInTransaction(context -> {
-                // TODO: more work is needed here.  Need to make sure that if a parent fails the top fails if it's  non-opt
-                // or maybe fix it so that we can never be in the middle of a parent task, (e.g. transaction) etc.
                 childTaskDao.cleanupZombieChildAssignments(context, TransferTaskChild.TERMINAL_STATES);
                 parentTaskDao.cleanupZombieParentAssignments(context, TransferTaskParent.TERMINAL_STATES);
                 return 0;
@@ -174,6 +181,7 @@ public class TransfersScheduler
 
     }
 
+    // Get the count of child tasks assigned to each worker uuid in the activeWorkerMap
     private void updateChildWorkCounts(Map<UUID, Integer> activeWorkerMap) {
         TransferTaskChildDAO transferTaskChildDAO = new TransferTaskChildDAO();
 
@@ -193,6 +201,8 @@ public class TransfersScheduler
         }
     }
 
+
+    // Get the count of parent tasks assigned to each worker uuid in the activeWorkerMap
     private void updateParentWorkCounts(Map<UUID, Integer> activeWorkerMap) {
         TransferTaskParentDAO parentDao = new TransferTaskParentDAO();
 
@@ -212,6 +222,10 @@ public class TransfersScheduler
         }
     }
 
+    // return workers that "need work".  This is determined by building a map with key of worker uuid,
+    // and value equal to the number of child tasks assigned to that worker uuid.  Then go through
+    // each key and compare the count to "WORKER_BACKLOG_THRESHOLD".  If it's less, add the worker to
+    // the workers that need work list.  Return the list.
     private List<UUID> getWorkersThatNeedChildTasks() {
         Map<UUID, Integer> activeWorkerMap = new HashMap<>();
 
@@ -231,15 +245,29 @@ public class TransfersScheduler
         return workersThatNeedWork;
     }
 
-    private boolean scheduleChildTasks() throws SchedulingPolicyException {
+    //  Assigns child tasks and returns true if there are more that need to be assigned, or false if
+    //  not.
+    private boolean assignChildTasks() throws SchedulingPolicyException {
+        // find the uuid's of the workers that need more child tasks.
         List<UUID> workersThatNeedWork = getWorkersThatNeedChildTasks();
+
+        // get all of the task ids that need to be assigned
         List<Integer> queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
+
+        // do the actual assignment of tasks to workers
         schedulingPolicy.assignChildTasksToWorkers(workersThatNeedWork, queuedTaskIds);
+
+        // if there are still workers that need work and there are still tasks left in the list
+        // continue to do assignments.
         workersThatNeedWork = getWorkersThatNeedChildTasks();
         queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
         return (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty());
     }
 
+    // return workers that "need work".  This is determined by building a map with key of worker uuid,
+    // and value equal to the number of parent tasks assigned to that worker uuid.  Then go through
+    // each key and compare the count to "WORKER_BACKLOG_THRESHOLD".  If it's less, add the worker to
+    // the workers that need work list.  Return the list.
     private List<UUID> getWorkersThatNeedParentTasks() {
         Map<UUID, Integer> activeWorkerMap = new HashMap<>();
 
@@ -259,10 +287,18 @@ public class TransfersScheduler
         return workersThatNeedWork;
     }
 
-    private boolean scheduleParentTasks() throws SchedulingPolicyException {
+    private boolean assignParentTasks() throws SchedulingPolicyException {
+        // find the uuid's of the workers that need more parent tasks.
         List<UUID> workersThatNeedWork = getWorkersThatNeedParentTasks();
+
+        // get all of the task ids that need to be assigned
         List<Integer> queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
+
+        // do the actual assignment of tasks to workers
         schedulingPolicy.assignParentTasksToWorkers(workersThatNeedWork, queuedTaskIds);
+
+        // if there are still workers that need work and there are still tasks left in the list
+        // continue to do assignments.
         workersThatNeedWork = getWorkersThatNeedChildTasks();
         queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
         return (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty());

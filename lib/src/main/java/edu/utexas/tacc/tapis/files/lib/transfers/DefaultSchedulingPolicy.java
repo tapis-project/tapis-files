@@ -70,8 +70,28 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
         return prioritizedWork;
     }
 
+    /**
+     * Gets the queued child task ids.  This is the list containing the next batch of child tasks that need to be assigned
+     * in priority order
+     *
+     * This list is built by getting all of th work that needs to be assigned.  The work is returned with a priority value.
+     * This value is set in like this - for each unique combination of tenant/user we will take the first task that was
+     * submitted, and all of those will be given a priority of 1.  For the second task submitted for each of those combinatiuons
+     * of user/tenant they will get a priortiy 2 and so on.  Some user/tenant combinations will have less tasks than others.
+     * Only the top "cachedRows" priorities will be returned - if there are more than that number of tasks for a tenant/user
+     * then they will be picked up later.
+     *
+     * @return a list of child tasks ordered by priority
+     * @throws SchedulingPolicyException
+     */
     @Override
     public List<Integer> getQueuedChildTaskIds() throws SchedulingPolicyException {
+        // this code is slightly confusing, so here is the high level explanation.  Get the top X priority of tasks
+        // priority is computed by locking at each user/tenant combo and assigning priority based on submission time.
+        // Once we have this, we will order the work to be done by taking one job from each tenant (round robining through
+        // the users in the tenant).  The goal is to give equal attention to each tenant, and within each tenant give
+        // equal attention to each task.
+
         // get all the work to be assigned
         List<PrioritizedObject<TransferTaskChild>> prioritizedWork = null;
         try {
@@ -92,7 +112,7 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
 
 
         // The code below makes a list of the child tasks that need to be worked on in the order that they need to be worked
-        // on.  Round robin throw each tenant getting the first item that needs to be worked on, and add it to the list.
+        // on.  Round robin through each tenant getting the first item that needs to be worked on, and add it to the list.
         List<Integer> queuedTaskIds = new ArrayList<>();
         // create a map with key = tenant, and value = a list of child task ids representing all of the work that needs
         // to be done for this tenant.
