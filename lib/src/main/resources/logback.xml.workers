@@ -16,11 +16,11 @@
     </appender>
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${tapis.log.directory:-${user.home}}/tapis-filesapi.log</file>
+        <file>${tapis.log.directory:-${user.home}}/tapis-files-worker.log</file>
         <rollingPolicy
                 class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- Rollover monthly, incorporate size-triggered sequence number. -->
-            <fileNamePattern>${tapis.log.directory:-${user.home}}/tapis-filesapi.%d{yyyy-MM}.%i.log</fileNamePattern>
+            <fileNamePattern>${tapis.log.directory:-${user.home}}/tapis-files-worker.%d{yyyy-MM}.%i.log</fileNamePattern>
             <!-- Each file should be at most 500MB, keep 6 months worth of history,
                  but at most a total of 10GB across all log files. -->
             <maxFileSize>500MB</maxFileSize>
@@ -34,13 +34,13 @@
     </appender>
 
     <appender name="SSH_POOL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${tapis.log.directory:-${user.home}}/tapis-filesapi-sshpool.log</file>
+        <file>${tapis.log.directory:-${user.home}}/tapis-files-worker-sshpool.log</file>
         <rollingPolicy
                 class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- Rollover monthly, incorporate size-triggered sequence number. -->
             <fileNamePattern>${tapis.log.directory:-${user.home}}/tapis-filesapi-sshpool.%d{yyyy-MM}.%i.log</fileNamePattern>
-            <!-- Each file should be at most 10MB, keep 6 months worth of history,
-                 but at most a total of 50GB across all log files. -->
+            <!-- Each file should be at most 500MB, keep 6 months worth of history,
+                 but at most a total of 10GB across all log files. -->
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>5</maxHistory>
             <totalSizeCap>50MB</totalSizeCap>
@@ -50,6 +50,11 @@
             <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %class{36}:%line - %msg%n</Pattern>
         </encoder>
     </appender>
+
+    <!-- Rollover to a new log file on a monthly basis, set a limits to manage sizes,
+         default output to the user's home directory. Each job JVM is expected to have
+         its own dedicated logfile.  This removes the need to run in prudent mode
+         and deal with attendant scalability issues. -->
 
 
     <!-- Root logger's appenders are inherited by other loggers by default -->
@@ -63,12 +68,15 @@
 
     <!-- Control library logging. -->
     <logger name="com.zaxxer.hikari" level="ERROR"/>
+
+    <!-- by default, don't log ssh pool trace info to stdout or normal log files.  set to trace to enable -->
+    <logger name="edu.utexas.tacc.tapis.shared.ssh" level="WARN"/>
+
     <!--
     <logger name="org.apache.sshd.sftp.client.impl.DefaultSftpClient" level="TRACE"/>
     -->
-    <logger name="edu.utexas.tacc.tapis.shared.ssh" level="WARN"/>
 
-    <!-- ssh session pooling logging.  set to "TRACE" for debugging message (very verbose) -->
+    <!-- ssh session pooling logging.  logs to a separate file -->
     <logger name="edu.utexas.tacc.tapis.shared.ssh" level="INFO" additivity="false">
         <appender-ref ref="SSH_POOL_FILE"/>
     </logger>

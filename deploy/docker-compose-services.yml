@@ -1,0 +1,98 @@
+---
+version: "3"
+
+services:
+  files-api:
+    image: tapis/tapis-files:dev_local
+    container_name: tapis-files-api
+    labels:
+      name: tapis_files_api
+    restart: always
+    environment:
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_DATABASE=dev
+      - DB_HOST=host.docker.internal
+      - DB_NAME=dev
+      - DB_PASSWORD=dev
+      - DB_USERNAME=dev
+      - POSTITS_REAPER_INTERVAL_MINUTES=1
+      - RABBITMQ_HOSTNAME=host.docker.internal
+      - RABBITMQ_PASSWORD=password
+      - RABBITMQ_USERNAME=tapis
+      - RABBITMQ_VHOST=rabbit
+      - SERVICE_PASSWORD=yH9BjcnJ0XUuk3yTB9BAu8Jw
+      - TAPIS_SITE_ID=tacc
+      - TAPIS_SSH_POOL_TRACE_ON_CLEANUP_INTERVAL=1
+    ports:
+      - 8080:8080
+
+  files-worker-1:
+    image: tapis/tapis-files-workers:dev_local
+    container_name: tapis-files-worker-1
+    labels:
+      name: tapis_files_worker
+    restart: always
+    environment:
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_DATABASE=dev
+      - DB_HOST=host.docker.internal
+      - DB_NAME=dev
+      - DB_PASSWORD=dev
+      - DB_USERNAME=dev
+      - POSTITS_REAPER_INTERVAL_MINUTES=1
+      - RABBITMQ_HOSTNAME=host.docker.internal
+      - RABBITMQ_PASSWORD=password
+      - RABBITMQ_USERNAME=tapis
+      - RABBITMQ_VHOST=rabbit
+      - SERVICE_PASSWORD=yH9BjcnJ0XUuk3yTB9BAu8Jw
+      - TAPIS_SITE_ID=tacc
+      - TAPIS_SSH_POOL_TRACE_ON_CLEANUP_INTERVAL=1
+
+  files-worker-2:
+    image: tapis/tapis-files-workers:dev_local
+    container_name: tapis-files-worker-2
+    labels:
+      name: tapis_files_worker
+    restart: always
+    environment:
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_DATABASE=dev
+      - DB_HOST=host.docker.internal
+      - DB_NAME=dev
+      - DB_PASSWORD=dev
+      - DB_USERNAME=dev
+      - POSTITS_REAPER_INTERVAL_MINUTES=1
+      - RABBITMQ_HOSTNAME=host.docker.internal
+      - RABBITMQ_PASSWORD=password
+      - RABBITMQ_USERNAME=tapis
+      - RABBITMQ_VHOST=rabbit
+      - SERVICE_PASSWORD=yH9BjcnJ0XUuk3yTB9BAu8Jw
+      - TAPIS_SITE_ID=tacc
+      - TAPIS_SSH_POOL_TRACE_ON_CLEANUP_INTERVAL=1
+
+  files-assigner:
+    image: tapis/tapis-files-assigner:dev_local
+    container_name: tapis-files-assigner
+    labels:
+      name: tapis_files_assigner
+    restart: always
+    environment:
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_DATABASE=dev
+      - DB_HOST=host.docker.internal
+      - DB_NAME=dev
+      - DB_PASSWORD=dev
+      - DB_USERNAME=dev
+      - POSTITS_REAPER_INTERVAL_MINUTES=1
+      - RABBITMQ_HOSTNAME=host.docker.internal
+      - RABBITMQ_PASSWORD=password
+      - RABBITMQ_USERNAME=tapis
+      - RABBITMQ_VHOST=rabbit
+      - SERVICE_PASSWORD=yH9BjcnJ0XUuk3yTB9BAu8Jw
+      - TAPIS_SITE_ID=tacc
+      - TAPIS_SSH_POOL_TRACE_ON_CLEANUP_INTERVAL=1
+

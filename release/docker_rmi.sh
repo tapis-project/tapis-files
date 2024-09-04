@@ -11,6 +11,7 @@ USAGE="Usage: $PrgName { dev staging prod }"
 SVC_NAME="files"
 SVC_NAME2="tapis-${SVC_NAME}"
 SVC_NAME2_W="${SVC_NAME2}-workers"
+SVC_NAME2_A="${SVC_NAME2}-assigner"
 REPO="tapis"
 
 BUILD_DIR=../api/target
@@ -50,12 +51,16 @@ GIT_BRANCH_LBL=$(awk '{print $1}' classes/git.info)
 GIT_COMMIT_LBL=$(awk '{print $2}' classes/git.info)
 TAG_UNIQ="${REPO}/${SVC_NAME2}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
 TAGW_UNIQ="${REPO}/${SVC_NAME2_W}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
+TAGA_UNIQ="${REPO}/${SVC_NAME2_A}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
 TAG_ENV="${REPO}/${SVC_NAME2}:${ENV}"
 TAGW_ENV="${REPO}/${SVC_NAME2_W}:${ENV}"
+TAGA_ENV="${REPO}/${SVC_NAME2_A}:${ENV}"
 TAG_LATEST="${REPO}/${SVC_NAME2}:latest"
 TAGW_LATEST="${REPO}/${SVC_NAME2_W}:latest"
+TAGA_LATEST="${REPO}/${SVC_NAME2_A}:latest"
 TAG_LOCAL="${REPO}/${SVC_NAME2}:dev_local"
 TAGW_LOCAL="${REPO}/${SVC_NAME2_W}:dev_local"
+TAGA_LOCAL="${REPO}/${SVC_NAME2_A}:dev_local"
 
 # If branch name is UNKNOWN or empty as might be the case in a jenkins job then
 #   set it to GIT_BRANCH. Jenkins jobs should have this set in the env.

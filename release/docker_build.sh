@@ -16,6 +16,7 @@ USAGE="Usage: $PrgName { dev staging prod } [ -push ]"
 SVC_NAME="files"
 SVC_NAME2="tapis-${SVC_NAME}"
 SVC_NAME2_W="${SVC_NAME2}-workers"
+SVC_NAME2_A="${SVC_NAME2}-assigner"
 REPO="tapis"
 
 BUILD_DIR=../api/target
@@ -64,12 +65,16 @@ GIT_BRANCH_LBL=$(awk '{print $1}' classes/git.info)
 GIT_COMMIT_LBL=$(awk '{print $2}' classes/git.info)
 TAG_UNIQ="${REPO}/${SVC_NAME2}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
 TAGW_UNIQ="${REPO}/${SVC_NAME2_W}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
+TAGA_UNIQ="${REPO}/${SVC_NAME2_A}:${ENV}-${VER}-$(date +%Y%m%d%H%M)-${GIT_COMMIT_LBL}"
 TAG_ENV="${REPO}/${SVC_NAME2}:${ENV}"
 TAGW_ENV="${REPO}/${SVC_NAME2_W}:${ENV}"
+TAGA_ENV="${REPO}/${SVC_NAME2_A}:${ENV}"
 TAG_LATEST="${REPO}/${SVC_NAME2}:latest"
 TAGW_LATEST="${REPO}/${SVC_NAME2_W}:latest"
+TAGA_LATEST="${REPO}/${SVC_NAME2_A}:latest"
 TAG_LOCAL="${REPO}/${SVC_NAME2}:dev_local"
 TAGW_LOCAL="${REPO}/${SVC_NAME2_W}:dev_local"
+TAGA_LOCAL="${REPO}/${SVC_NAME2_A}:dev_local"
 
 # If branch name is UNKNOWN or empty as might be the case in a jenkins job then
 #   set it to GIT_BRANCH. Jenkins jobs should have this set in the env.
@@ -103,10 +108,16 @@ docker build -f ./deploy/Dockerfile.workers \
    --label VER="${VER}" --label GIT_COMMIT="${GIT_COMMIT_LBL}" --label GIT_BRANCH="${GIT_BRANCH_LBL}" \
     -t "${TAGW_UNIQ}" .
 
+echo "Building local image using primary tag: $TAGA_UNIQ"
+docker build -f ./deploy/Dockerfile.assigner \
+   --label VER="${VER}" --label GIT_COMMIT="${GIT_COMMIT_LBL}" --label GIT_BRANCH="${GIT_BRANCH_LBL}" \
+    -t "${TAGA_UNIQ}" .
+
 # Create other tags for remote repo
 echo "Creating image for local testing user tag: $TAG_LOCAL"
 docker tag "$TAG_UNIQ" "$TAG_LOCAL"
 docker tag "$TAGW_UNIQ" "$TAGW_LOCAL"
+docker tag "$TAGA_UNIQ" "$TAGA_LOCAL"
 
 # Push to remote repo
 if [ "x$2" = "x-push" ]; then
@@ -114,6 +125,7 @@ if [ "x$2" = "x-push" ]; then
     echo "Creating third image tag for prod env: $TAG_LATEST"
     docker tag "$TAG_UNIQ" "$TAG_LATEST"
     docker tag "$TAGW_UNIQ" "$TAGW_LATEST"
+    docker tag "$TAGA_UNIQ" "$TAGA_LATEST"
   fi
   echo "Pushing images to docker hub."
   # NOTE: Use current login. Jenkins job does login
@@ -133,12 +145,15 @@ if [ "x$2" = "x-push" ]; then
     echo "Creating ENV image tag: $TAG_ENV"
     docker tag "$TAG_UNIQ" "$TAG_ENV"
     docker tag "$TAGW_UNIQ" "$TAGW_ENV"
+    docker tag "$TAGA_UNIQ" "$TAGA_ENV"
     docker push "$TAG_ENV"
     docker push "$TAGW_ENV"
+    docker push "$TAGA_ENV"
   fi
   if [ "$ENV" = "prod" ]; then
     docker push "$TAG_LATEST"
     docker push "$TAGW_LATEST"
+    docker push "$TAGA_LATEST"
   fi
 fi
 cd "$RUN_DIR"

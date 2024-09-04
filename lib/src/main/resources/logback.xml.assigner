@@ -16,7 +16,7 @@
     </appender>
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${tapis.log.directory:-${user.home}}/tapis-fileslib.log</file>
+        <file>${tapis.log.directory:-${user.home}}/tapis-files-assigner.log</file>
         <rollingPolicy
                 class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- Rollover monthly, incorporate size-triggered sequence number. -->
@@ -26,24 +26,6 @@
             <maxFileSize>500MB</maxFileSize>
             <maxHistory>6</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
-        </rollingPolicy>
-        <encoder>
-            <!-- See console pattern for description. -->
-            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %class{36}:%line - %msg%n</Pattern>
-        </encoder>
-    </appender>
-
-    <appender name="SSH_POOL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${tapis.log.directory:-${user.home}}/tapis-filesapi-sshpool.log</file>
-        <rollingPolicy
-                class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <!-- Rollover monthly, incorporate size-triggered sequence number. -->
-            <fileNamePattern>${tapis.log.directory:-${user.home}}/tapis-filesapi-sshpool.%d{yyyy-MM}.%i.log</fileNamePattern>
-            <!-- Each file should be at most 500MB, keep 6 months worth of history,
-                 but at most a total of 10GB across all log files. -->
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>5</maxHistory>
-            <totalSizeCap>50MB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <!-- See console pattern for description. -->
@@ -75,9 +57,4 @@
     <!--
     <logger name="org.apache.sshd.sftp.client.impl.DefaultSftpClient" level="TRACE"/>
     -->
-
-    <!-- ssh session pooling logging.  logs to a separate file -->
-    <logger name="edu.utexas.tacc.tapis.shared.ssh" level="INFO" additivity="false">
-        <appender-ref ref="SSH_POOL_FILE"/>
-    </logger>
 </configuration>

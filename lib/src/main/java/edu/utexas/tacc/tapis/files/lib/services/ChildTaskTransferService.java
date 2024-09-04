@@ -281,6 +281,7 @@ public class ChildTaskTransferService {
                         String msg = LibUtils.getMsg("Internal Error.  taskChild is null after checkForParentComplete");
                         throw new IOException(msg);
                     }
+                    taskChild = unassignChild(taskChild);
                 }
 
                 return taskChild;
@@ -400,7 +401,6 @@ public class ChildTaskTransferService {
             try {
                 taskChild.setEndTime(Instant.now());
                 taskChild.setStatus(TransferTaskStatus.COMPLETED);
-                taskChild.setAssignedTo(null);
                 taskChild.setBytesTransferred(taskChild.getTotalBytes());
                 return dao.updateTransferTaskChild(taskChild);
             } catch (DAOException ex) {
@@ -427,7 +427,6 @@ public class ChildTaskTransferService {
             // If cancelled or failed set the end time, and we are done
             if (taskChild.isTerminal()) {
                 taskChild.setEndTime(Instant.now());
-                taskChild.setAssignedTo(null);
                 taskChild = dao.updateTransferTaskChild(taskChild);
                 return taskChild;
             }
@@ -588,7 +587,6 @@ public class ChildTaskTransferService {
             }
             TransferTaskChild updatedChildTask = dao.getChildTaskByUUID(taskChild.getUuid());
             updatedChildTask.setStatus(TransferTaskStatus.COMPLETED);
-            updatedChildTask.setAssignedTo(null);
             // we should count the actual bytes that we transfer.  For now this is close enough (bigger fish to fry).
             updatedChildTask.setBytesTransferred(updatedChildTask.getTotalBytes());
             updatedChildTask.setEndTime(Instant.now());
@@ -638,7 +636,6 @@ public class ChildTaskTransferService {
         }
         child.setErrorMessage(exceptionMessage);
         child.setEndTime(Instant.now());
-        child.setAssignedTo(null);
         try {
             child = dao.updateTransferTaskChild(child);
             // In theory should never happen, it means that the child with that ID was not in the database.
@@ -682,6 +679,7 @@ public class ChildTaskTransferService {
                     dao.updateTransferTask(topTask);
                 }
             }
+            child = unassignChild(child);
         } catch (DAOException ex) {
             log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
                     "doChildErrorStepOne", child.getId(), child.getTag(), child.getUuid(), ex.getMessage()), ex);
@@ -797,7 +795,6 @@ public class ChildTaskTransferService {
         log.info("CANCELLING TRANSFER CHILD");
         taskChild.setStatus(TransferTaskStatus.CANCELLED);
         taskChild.setEndTime(Instant.now());
-        taskChild.setAssignedTo(null);
         try {
             retChild = dao.updateTransferTaskChild(taskChild);
         } catch (DAOException ex) {
@@ -872,6 +869,13 @@ public class ChildTaskTransferService {
         return taskChild;
     }
 
+    private TransferTaskChild unassignChild(TransferTaskChild taskChild) throws DAOException {
+        // make this a transaction - requires moving method
+        FileTransfersDAO transfersDAO  = new FileTransfersDAO();
+        taskChild =  transfersDAO.getTransferTaskChild(taskChild.getUuid());
+        taskChild.setAssignedTo(null);
+        return transfersDAO.updateTransferTaskChild(taskChild);
+    }
 
     /**
      * Update perm on LINUX exe file
