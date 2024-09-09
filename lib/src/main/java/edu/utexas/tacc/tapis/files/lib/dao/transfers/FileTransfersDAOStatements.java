@@ -143,7 +143,7 @@ public class FileTransfersDAOStatements
     //language=SQL
     public static final String UPDATE_PARENT_TASK_BYTES_TRANSFERRED =
         "UPDATE transfer_tasks_parent " +
-            "SET bytes_transferred = bytes_transferred + ?" +
+            "SET bytes_transferred = bytes_transferred + ? " +
             "WHERE id = ? " +
             "RETURNING *";
 

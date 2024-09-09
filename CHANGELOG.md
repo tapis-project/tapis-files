@@ -9,6 +9,21 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.7.0 - 2024-09-09
+
+Incremental improvements and new features.  
+
+### New features:
+- None
+
+### Bug fixes:
+- Fixed minor issue with file permissions of executable files during transfers
+- Fixed issue with "postit" expiration
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.6.4 - 2024-07-12
 
 Incremental improvements and new features.  
