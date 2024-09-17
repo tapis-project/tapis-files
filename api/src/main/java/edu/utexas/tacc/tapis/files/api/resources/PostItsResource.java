@@ -288,10 +288,10 @@ public class PostItsResource {
             String filename = redeemContext.getFilename();
             if(download) {
                 responseBuilder = Response.ok(redeemContext.getOutStream(), MediaType.APPLICATION_OCTET_STREAM)
-                        .header("content-disposition", "attachment; filename=" + redeemContext.getFilename());
+                        .header("content-disposition", "attachment; filename=\"" + redeemContext.getFilename() + "\"");
             } else {
                 responseBuilder = Response.ok(redeemContext.getOutStream(), MimeType.getByFilename(filename))
-                        .header("content-disposition", "inline; filename=" + filename);
+                        .header("content-disposition", "inline; filename=\"" + filename + "\"");
             }
 
             if (!redeemContext.isZip()) {

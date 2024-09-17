@@ -163,7 +163,7 @@ public class ContentApiResource
       // Send a zip stream. This can handle a path ending in /
       outStream = fileOpsService.getZipStream(rUser, systemId, path, impersonationId, sharedCtx);
       String newName = FilenameUtils.removeExtension(fileName) + ".zip";
-      contentDisposition = String.format("attachment; filename=%s", newName);
+      contentDisposition = String.format("attachment; filename=\"%s\"", newName);
       mediaType = MediaType.APPLICATION_OCTET_STREAM;
     }
     else
@@ -182,7 +182,7 @@ public class ContentApiResource
       if (range != null)
       {
         outStream = fileOpsService.getByteRangeStream(rUser, systemId, path, range, impersonationId, sharedCtx);
-        contentDisposition = String.format("attachment; filename=%s", fileName);
+        contentDisposition = String.format("attachment; filename=\"%s\"", fileName);
         mediaType = MediaType.TEXT_PLAIN;
       }
       else if (!Objects.isNull(startPage))
@@ -194,7 +194,7 @@ public class ContentApiResource
       else
       {
         outStream = fileOpsService.getFullStream(rUser, systemId, path, impersonationId, sharedCtx);
-        contentDisposition = String.format("attachment; filename=%s", fileName);
+        contentDisposition = String.format("attachment; filename=\"%s\"", fileName);
         mediaType = MediaType.APPLICATION_OCTET_STREAM;
       }
     }
