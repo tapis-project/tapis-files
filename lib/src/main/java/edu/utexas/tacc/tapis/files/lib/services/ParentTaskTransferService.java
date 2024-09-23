@@ -290,6 +290,17 @@ public class ParentTaskTransferService {
     log.debug("***** Starting Parent Task ****");
     log.debug(parentTask.toString());
 
+    try {
+      parentTask = dao.getTransferTaskParentById(parentTask.getId());
+      if (parentTask.isTerminal()) {
+        return false;
+      }
+    } catch (DAOException e) {
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parentTask.getTaskId(), parentTask.getUsername(), "createChildTasks",
+              parentTask.getId(), parentTask.getTag(), parentTask.getUuid(), e.getMessage());
+      log.error(msg, e);
+    }
+
     // used to return a parent task.
     if (!updateTopTask(parentTask)) {
       return false;
