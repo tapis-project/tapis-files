@@ -18,3 +18,7 @@ CREATE INDEX on transfer_tasks_parent (username);
 CREATE INDEX on transfer_tasks_parent (created);
 CREATE INDEX on transfer_tasks_parent (assigned_to);
 CREATE INDEX on transfer_tasks_parent (status);
+
+UPDATE transfer_tasks_child SET status = 'FAILED' WHERE  created < now() - INTERVAL '7 days' AND status NOT IN ( 'COMPLETED', 'FAILED', 'FAILED_OPT', 'CANCELLED', 'PAUSED');
+UPDATE transfer_tasks_parent SET status = 'FAILED' WHERE  created < now() - INTERVAL '7 days' AND status NOT IN ( 'COMPLETED', 'FAILED', 'FAILED_OPT', 'CANCELLED', 'PAUSED');
+UPDATE transfer_tasks SET status = 'FAILED' WHERE  created < now() - INTERVAL '7 days' AND status NOT IN ( 'COMPLETED', 'FAILED', 'FAILED_OPT', 'CANCELLED', 'PAUSED');
