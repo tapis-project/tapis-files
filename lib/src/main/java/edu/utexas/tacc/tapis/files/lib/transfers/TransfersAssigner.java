@@ -46,7 +46,7 @@ import java.util.UUID;
  * When the child task service reads a child task message from rabbitmq, it will process it by transferring
  * the file described by the child task message, and marking the task compoleted (or failed or whatever).
  */
-public class TransfersDispatcher
+public class TransfersAssigner
 {
     private static final Logger log = LoggerFactory.getLogger(TransfersApp.class);
     private static int WORKER_BACKLOG_THRESHOLD = 100;
@@ -60,8 +60,8 @@ public class TransfersDispatcher
         log.info("Starting transfers dispatcher.");
         try {
             checkRequiredSettings();
-            TransfersDispatcher dispatcher = new TransfersDispatcher();
-            dispatcher.run();
+            TransfersAssigner assigner = new TransfersAssigner();
+            assigner.run();
         } catch(Exception ex) {
             String msg = LibUtils.getMsg("FILES_TRANSFER_SCHEDULER_APPLICATION_FAILED_TO_START", ex.getMessage());
             log.error(msg, ex);
