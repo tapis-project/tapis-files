@@ -141,6 +141,7 @@ if [ "x$2" = "x-push" ]; then
   echo "********** Pushed image: $TAG_UNIQ"
 
   docker push "$TAGW_UNIQ"
+  docker push "$TAGA_UNIQ"
   if [ "x$TAPIS_DEPLOY_MANUAL" = "xtrue" ]; then
     echo "Creating ENV image tag: $TAG_ENV"
     docker tag "$TAG_UNIQ" "$TAG_ENV"
