@@ -4,9 +4,9 @@
 package edu.utexas.tacc.tapis.files.gen.jooq.tables;
 
 
-import edu.utexas.tacc.tapis.files.gen.jooq.Files;
 import edu.utexas.tacc.tapis.files.gen.jooq.Indexes;
 import edu.utexas.tacc.tapis.files.gen.jooq.Keys;
+import edu.utexas.tacc.tapis.files.gen.jooq.Public;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.FilesPostitsRecord;
 
 import java.time.LocalDateTime;
@@ -42,7 +42,7 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The reference instance of <code>files.files_postits</code>
+     * The reference instance of <code>public.files_postits</code>
      */
     public static final FilesPostits FILES_POSTITS = new FilesPostits();
 
@@ -55,62 +55,62 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
     }
 
     /**
-     * The column <code>files.files_postits.id</code>.
+     * The column <code>public.files_postits.id</code>.
      */
     public final TableField<FilesPostitsRecord, String> ID = createField(DSL.name("id"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
-     * The column <code>files.files_postits.system_id</code>.
+     * The column <code>public.files_postits.system_id</code>.
      */
     public final TableField<FilesPostitsRecord, String> SYSTEM_ID = createField(DSL.name("system_id"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>files.files_postits.path</code>.
+     * The column <code>public.files_postits.path</code>.
      */
     public final TableField<FilesPostitsRecord, String> PATH = createField(DSL.name("path"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>files.files_postits.allowed_uses</code>.
+     * The column <code>public.files_postits.allowed_uses</code>.
      */
     public final TableField<FilesPostitsRecord, Integer> ALLOWED_USES = createField(DSL.name("allowed_uses"), SQLDataType.INTEGER, this, "");
 
     /**
-     * The column <code>files.files_postits.times_used</code>.
+     * The column <code>public.files_postits.times_used</code>.
      */
     public final TableField<FilesPostitsRecord, Integer> TIMES_USED = createField(DSL.name("times_used"), SQLDataType.INTEGER, this, "");
 
     /**
-     * The column <code>files.files_postits.jwt_user</code>.
+     * The column <code>public.files_postits.jwt_user</code>.
      */
     public final TableField<FilesPostitsRecord, String> JWT_USER = createField(DSL.name("jwt_user"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>files.files_postits.jwt_tenant_id</code>.
+     * The column <code>public.files_postits.jwt_tenant_id</code>.
      */
     public final TableField<FilesPostitsRecord, String> JWT_TENANT_ID = createField(DSL.name("jwt_tenant_id"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>files.files_postits.owner</code>.
+     * The column <code>public.files_postits.owner</code>.
      */
     public final TableField<FilesPostitsRecord, String> OWNER = createField(DSL.name("owner"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>files.files_postits.tenant_id</code>.
+     * The column <code>public.files_postits.tenant_id</code>.
      */
     public final TableField<FilesPostitsRecord, String> TENANT_ID = createField(DSL.name("tenant_id"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>files.files_postits.expiration</code>.
+     * The column <code>public.files_postits.expiration</code>.
      */
     public final TableField<FilesPostitsRecord, LocalDateTime> EXPIRATION = createField(DSL.name("expiration"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field("timezone('utc'::text, now())", SQLDataType.LOCALDATETIME)), this, "");
 
     /**
-     * The column <code>files.files_postits.created</code>.
+     * The column <code>public.files_postits.created</code>.
      */
     public final TableField<FilesPostitsRecord, LocalDateTime> CREATED = createField(DSL.name("created"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field("timezone('utc'::text, now())", SQLDataType.LOCALDATETIME)), this, "");
 
     /**
-     * The column <code>files.files_postits.updated</code>.
+     * The column <code>public.files_postits.updated</code>.
      */
     public final TableField<FilesPostitsRecord, LocalDateTime> UPDATED = createField(DSL.name("updated"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field("timezone('utc'::text, now())", SQLDataType.LOCALDATETIME)), this, "");
 
@@ -123,21 +123,21 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
     }
 
     /**
-     * Create an aliased <code>files.files_postits</code> table reference
+     * Create an aliased <code>public.files_postits</code> table reference
      */
     public FilesPostits(String alias) {
         this(DSL.name(alias), FILES_POSTITS);
     }
 
     /**
-     * Create an aliased <code>files.files_postits</code> table reference
+     * Create an aliased <code>public.files_postits</code> table reference
      */
     public FilesPostits(Name alias) {
         this(alias, FILES_POSTITS);
     }
 
     /**
-     * Create a <code>files.files_postits</code> table reference
+     * Create a <code>public.files_postits</code> table reference
      */
     public FilesPostits() {
         this(DSL.name("files_postits"), null);
@@ -149,7 +149,7 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
 
     @Override
     public Schema getSchema() {
-        return aliased() ? null : Files.FILES;
+        return aliased() ? null : Public.PUBLIC;
     }
 
     @Override

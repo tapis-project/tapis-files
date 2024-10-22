@@ -24,28 +24,28 @@ public class TransferWorkerRecord extends TableRecordImpl<TransferWorkerRecord> 
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>files.transfer_worker.uuid</code>.
+     * Setter for <code>public.transfer_worker.uuid</code>.
      */
     public void setUuid(UUID value) {
         set(0, value);
     }
 
     /**
-     * Getter for <code>files.transfer_worker.uuid</code>.
+     * Getter for <code>public.transfer_worker.uuid</code>.
      */
     public UUID getUuid() {
         return (UUID) get(0);
     }
 
     /**
-     * Setter for <code>files.transfer_worker.last_updated</code>.
+     * Setter for <code>public.transfer_worker.last_updated</code>.
      */
     public void setLastUpdated(OffsetDateTime value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>files.transfer_worker.last_updated</code>.
+     * Getter for <code>public.transfer_worker.last_updated</code>.
      */
     public OffsetDateTime getLastUpdated() {
         return (OffsetDateTime) get(1);

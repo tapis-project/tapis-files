@@ -22,13 +22,13 @@ import org.jooq.Field;
 
 
 /**
- * Convenience access to all stored procedures and functions in files.
+ * Convenience access to all stored procedures and functions in public.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Routines {
 
     /**
-     * Call <code>files.uuid_generate_v1</code>
+     * Call <code>public.uuid_generate_v1</code>
      */
     public static UUID uuidGenerateV1(
           Configuration configuration
@@ -40,7 +40,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_generate_v1</code> as a field.
+     * Get <code>public.uuid_generate_v1</code> as a field.
      */
     public static Field<UUID> uuidGenerateV1() {
         UuidGenerateV1 f = new UuidGenerateV1();
@@ -49,7 +49,7 @@ public class Routines {
     }
 
     /**
-     * Call <code>files.uuid_generate_v1mc</code>
+     * Call <code>public.uuid_generate_v1mc</code>
      */
     public static UUID uuidGenerateV1mc(
           Configuration configuration
@@ -61,7 +61,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_generate_v1mc</code> as a field.
+     * Get <code>public.uuid_generate_v1mc</code> as a field.
      */
     public static Field<UUID> uuidGenerateV1mc() {
         UuidGenerateV1mc f = new UuidGenerateV1mc();
@@ -70,7 +70,7 @@ public class Routines {
     }
 
     /**
-     * Call <code>files.uuid_generate_v3</code>
+     * Call <code>public.uuid_generate_v3</code>
      */
     public static UUID uuidGenerateV3(
           Configuration configuration
@@ -86,7 +86,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_generate_v3</code> as a field.
+     * Get <code>public.uuid_generate_v3</code> as a field.
      */
     public static Field<UUID> uuidGenerateV3(
           UUID namespace
@@ -100,7 +100,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_generate_v3</code> as a field.
+     * Get <code>public.uuid_generate_v3</code> as a field.
      */
     public static Field<UUID> uuidGenerateV3(
           Field<UUID> namespace
@@ -114,7 +114,7 @@ public class Routines {
     }
 
     /**
-     * Call <code>files.uuid_generate_v4</code>
+     * Call <code>public.uuid_generate_v4</code>
      */
     public static UUID uuidGenerateV4(
           Configuration configuration
@@ -126,7 +126,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_generate_v4</code> as a field.
+     * Get <code>public.uuid_generate_v4</code> as a field.
      */
     public static Field<UUID> uuidGenerateV4() {
         UuidGenerateV4 f = new UuidGenerateV4();
@@ -135,7 +135,7 @@ public class Routines {
     }
 
     /**
-     * Call <code>files.uuid_generate_v5</code>
+     * Call <code>public.uuid_generate_v5</code>
      */
     public static UUID uuidGenerateV5(
           Configuration configuration
@@ -151,7 +151,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_generate_v5</code> as a field.
+     * Get <code>public.uuid_generate_v5</code> as a field.
      */
     public static Field<UUID> uuidGenerateV5(
           UUID namespace
@@ -165,7 +165,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_generate_v5</code> as a field.
+     * Get <code>public.uuid_generate_v5</code> as a field.
      */
     public static Field<UUID> uuidGenerateV5(
           Field<UUID> namespace
@@ -179,7 +179,7 @@ public class Routines {
     }
 
     /**
-     * Call <code>files.uuid_nil</code>
+     * Call <code>public.uuid_nil</code>
      */
     public static UUID uuidNil(
           Configuration configuration
@@ -191,7 +191,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_nil</code> as a field.
+     * Get <code>public.uuid_nil</code> as a field.
      */
     public static Field<UUID> uuidNil() {
         UuidNil f = new UuidNil();
@@ -200,7 +200,7 @@ public class Routines {
     }
 
     /**
-     * Call <code>files.uuid_ns_dns</code>
+     * Call <code>public.uuid_ns_dns</code>
      */
     public static UUID uuidNsDns(
           Configuration configuration
@@ -212,7 +212,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_ns_dns</code> as a field.
+     * Get <code>public.uuid_ns_dns</code> as a field.
      */
     public static Field<UUID> uuidNsDns() {
         UuidNsDns f = new UuidNsDns();
@@ -221,7 +221,7 @@ public class Routines {
     }
 
     /**
-     * Call <code>files.uuid_ns_oid</code>
+     * Call <code>public.uuid_ns_oid</code>
      */
     public static UUID uuidNsOid(
           Configuration configuration
@@ -233,7 +233,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_ns_oid</code> as a field.
+     * Get <code>public.uuid_ns_oid</code> as a field.
      */
     public static Field<UUID> uuidNsOid() {
         UuidNsOid f = new UuidNsOid();
@@ -242,7 +242,7 @@ public class Routines {
     }
 
     /**
-     * Call <code>files.uuid_ns_url</code>
+     * Call <code>public.uuid_ns_url</code>
      */
     public static UUID uuidNsUrl(
           Configuration configuration
@@ -254,7 +254,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_ns_url</code> as a field.
+     * Get <code>public.uuid_ns_url</code> as a field.
      */
     public static Field<UUID> uuidNsUrl() {
         UuidNsUrl f = new UuidNsUrl();
@@ -263,7 +263,7 @@ public class Routines {
     }
 
     /**
-     * Call <code>files.uuid_ns_x500</code>
+     * Call <code>public.uuid_ns_x500</code>
      */
     public static UUID uuidNsX500(
           Configuration configuration
@@ -275,7 +275,7 @@ public class Routines {
     }
 
     /**
-     * Get <code>files.uuid_ns_x500</code> as a field.
+     * Get <code>public.uuid_ns_x500</code> as a field.
      */
     public static Field<UUID> uuidNsX500() {
         UuidNsX500 f = new UuidNsX500();

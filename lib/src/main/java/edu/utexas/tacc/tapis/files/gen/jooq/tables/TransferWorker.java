@@ -4,7 +4,7 @@
 package edu.utexas.tacc.tapis.files.gen.jooq.tables;
 
 
-import edu.utexas.tacc.tapis.files.gen.jooq.Files;
+import edu.utexas.tacc.tapis.files.gen.jooq.Public;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.TransferWorkerRecord;
 
 import java.time.OffsetDateTime;
@@ -36,7 +36,7 @@ public class TransferWorker extends TableImpl<TransferWorkerRecord> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The reference instance of <code>files.transfer_worker</code>
+     * The reference instance of <code>public.transfer_worker</code>
      */
     public static final TransferWorker TRANSFER_WORKER = new TransferWorker();
 
@@ -49,12 +49,12 @@ public class TransferWorker extends TableImpl<TransferWorkerRecord> {
     }
 
     /**
-     * The column <code>files.transfer_worker.uuid</code>.
+     * The column <code>public.transfer_worker.uuid</code>.
      */
-    public final TableField<TransferWorkerRecord, java.util.UUID> UUID = createField(DSL.name("uuid"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field("uuid_generate_v4()", SQLDataType.UUID)), this, "");
+    public final TableField<TransferWorkerRecord, java.util.UUID> UUID = createField(DSL.name("uuid"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field("public.uuid_generate_v4()", SQLDataType.UUID)), this, "");
 
     /**
-     * The column <code>files.transfer_worker.last_updated</code>.
+     * The column <code>public.transfer_worker.last_updated</code>.
      */
     public final TableField<TransferWorkerRecord, OffsetDateTime> LAST_UPDATED = createField(DSL.name("last_updated"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field("CURRENT_TIMESTAMP", SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
@@ -67,21 +67,21 @@ public class TransferWorker extends TableImpl<TransferWorkerRecord> {
     }
 
     /**
-     * Create an aliased <code>files.transfer_worker</code> table reference
+     * Create an aliased <code>public.transfer_worker</code> table reference
      */
     public TransferWorker(String alias) {
         this(DSL.name(alias), TRANSFER_WORKER);
     }
 
     /**
-     * Create an aliased <code>files.transfer_worker</code> table reference
+     * Create an aliased <code>public.transfer_worker</code> table reference
      */
     public TransferWorker(Name alias) {
         this(alias, TRANSFER_WORKER);
     }
 
     /**
-     * Create a <code>files.transfer_worker</code> table reference
+     * Create a <code>public.transfer_worker</code> table reference
      */
     public TransferWorker() {
         this(DSL.name("transfer_worker"), null);
@@ -93,7 +93,7 @@ public class TransferWorker extends TableImpl<TransferWorkerRecord> {
 
     @Override
     public Schema getSchema() {
-        return aliased() ? null : Files.FILES;
+        return aliased() ? null : Public.PUBLIC;
     }
 
     @Override

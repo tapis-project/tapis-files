@@ -9,18 +9,18 @@ import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferWorker;
 
 
 /**
- * Convenience access to all tables in files.
+ * Convenience access to all tables in public.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Tables {
 
     /**
-     * The table <code>files.files_postits</code>.
+     * The table <code>public.files_postits</code>.
      */
     public static final FilesPostits FILES_POSTITS = FilesPostits.FILES_POSTITS;
 
     /**
-     * The table <code>files.transfer_worker</code>.
+     * The table <code>public.transfer_worker</code>.
      */
     public static final TransferWorker TRANSFER_WORKER = TransferWorker.TRANSFER_WORKER;
 }
