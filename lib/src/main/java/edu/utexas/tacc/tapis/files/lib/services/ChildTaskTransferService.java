@@ -720,7 +720,7 @@ public class ChildTaskTransferService {
         //We are going to run the meat of the transfer, step2 in a separate Future which we can cancel.
         //This just sets up the future, we first subscribe to the control messages and then start the future
         //which is a blocking call.
-/*
+
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<TransferTaskChild> future = executorService.submit(new Callable<TransferTaskChild>() {
             @Override
@@ -732,8 +732,6 @@ public class ChildTaskTransferService {
                 }
             }
         });
-
- */
 /*
         Channel channel = connection.createChannel();
         String queueName = "control." + UUID.randomUUID();
@@ -764,10 +762,8 @@ public class ChildTaskTransferService {
 */
         try {
             // Blocking call, but the subscription above will still listen
-//            TransferTaskChild returnChild = future.get();
-//            return returnChild;
-            return processTransfer(taskChild);
-            /*
+            TransferTaskChild returnChild = future.get();
+            return returnChild;
         } catch (ExecutionException ex) {
             String msg = ex.getCause().getMessage();
             log.error(msg, ex);
@@ -778,8 +774,6 @@ public class ChildTaskTransferService {
             } else {
                 throw new RuntimeException(msg, ex);
             }
-
-             */
         } catch (CancellationException ex) {
             return cancelTransferChild(taskChild, srcSharedCtxGrantor);
         } catch (WritePendingException ex) {
@@ -794,7 +788,7 @@ public class ChildTaskTransferService {
                 throw new RuntimeException(e);
             }
              */
-//            executorService.shutdown();
+            executorService.shutdown();
         }
     }
 
