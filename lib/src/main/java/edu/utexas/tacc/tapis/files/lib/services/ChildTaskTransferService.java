@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -160,12 +161,16 @@ public class ChildTaskTransferService {
     /* *********************************************************************** */
 
     public void startListeners(UUID myUuid) {
+        Map<UUID, Future<TransferTaskChild>> futures = new ConcurrentHashMap<UUID, Future<TransferTaskChild>>();
+
+        // max number of futures to store in the futures map
+        int maxFutures = MAX_THREADS * 5;
+
         childScheduler.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
                 try {
                     boolean shouldExit = false;
-                    Map<UUID, Future<TransferTaskChild>> futures = new HashMap<UUID, Future<TransferTaskChild>>();
 
                     SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(MAX_WORK_ITEM_DEPTH);
 
@@ -179,6 +184,10 @@ public class ChildTaskTransferService {
                                         futures.remove(childUuid);
                                     }
                                 } else {
+                                    if(!canCreateNewFutures(futures, maxFutures)) {
+                                        log.trace("Max future capacity reached - wait for some to complete");
+                                        continue;
+                                    }
                                     System.out.println("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
                                     try {
                                         Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
@@ -211,6 +220,16 @@ public class ChildTaskTransferService {
                 }
             }
         }, 5, 5, TimeUnit.SECONDS);
+    }
+
+    private boolean canCreateNewFutures(Map<UUID, Future<TransferTaskChild>> futures, int capacity) {
+        for(UUID key : futures.keySet()) {
+            if(futures.get(key).isDone()) {
+                futures.remove(key);
+            }
+        }
+
+        return futures.size() < capacity;
     }
 
     public TransferTaskChild handleTask(TransferTaskChild taskChild) {

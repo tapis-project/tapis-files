@@ -44,11 +44,11 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -135,12 +135,16 @@ public class ParentTaskTransferService {
   }
 
   public void startListeners(UUID myUuid) {
+    Map<UUID, Future<TransferTaskParent>> futures = new ConcurrentHashMap<UUID, Future<TransferTaskParent>>();
+
+    // max number of futures to store in the futures map
+    int maxFutures = MAX_THREADS * 5;
+
     parentScheduler.scheduleWithFixedDelay(new Runnable() {
       @Override
       public void run() {
         try {
           boolean shouldExit = false;
-          Map<UUID, Future<TransferTaskParent>> futures = new HashMap<UUID, Future<TransferTaskParent>>();
 
           SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(MAX_WORK_ITEM_DEPTH);
 
@@ -154,6 +158,10 @@ public class ParentTaskTransferService {
                     futures.remove(parentUuid);
                   }
                 } else {
+                  if(!canCreateNewFutures(futures, maxFutures)) {
+                    log.trace("Max future capacity reached - wait for some to complete");
+                    continue;
+                  }
                   log.debug(LibUtils.getMsg("FILES_TXFR_SVC_DEBUG_PRIORITY_INFO", ttp.getObject().getTenantId(),
                                   ttp.getObject().getUsername(), ttp.getObject().getTag(), ttp.getObject().getTaskId(),
                                   ttp.getObject().getUuid(), ttp.getPriority()));
@@ -189,7 +197,15 @@ public class ParentTaskTransferService {
       }
     }, 5, 5, TimeUnit.SECONDS);
   }
+  private boolean canCreateNewFutures(Map<UUID, Future<TransferTaskParent>> futures, int capacity) {
+    for(UUID key : futures.keySet()) {
+      if(futures.get(key).isDone()) {
+        futures.remove(key);
+      }
+    }
 
+    return futures.size() < capacity;
+  }
   public TransferTaskParent handleTask(TransferTaskParent taskParent) throws IOException {
     int retry = 0;
     Exception lastException = null;
