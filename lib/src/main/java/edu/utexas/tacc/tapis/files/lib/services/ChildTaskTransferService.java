@@ -186,7 +186,7 @@ public class ChildTaskTransferService {
                                 } else {
                                     if(!canCreateNewFutures(futures, maxFutures)) {
                                         log.trace("Max future capacity reached - wait for some to complete");
-                                        continue;
+                                        break;
                                     }
                                     System.out.println("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
                                     try {
@@ -223,9 +223,11 @@ public class ChildTaskTransferService {
     }
 
     private boolean canCreateNewFutures(Map<UUID, Future<TransferTaskChild>> futures, int capacity) {
-        for(UUID key : futures.keySet()) {
-            if(futures.get(key).isDone()) {
-                futures.remove(key);
+        if(futures.size() >= capacity) {
+            for (UUID key : futures.keySet()) {
+                if (futures.get(key).isDone()) {
+                    futures.remove(key);
+                }
             }
         }
 

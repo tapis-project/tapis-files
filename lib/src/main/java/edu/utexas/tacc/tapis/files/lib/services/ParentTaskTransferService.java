@@ -160,7 +160,7 @@ public class ParentTaskTransferService {
                 } else {
                   if(!canCreateNewFutures(futures, maxFutures)) {
                     log.trace("Max future capacity reached - wait for some to complete");
-                    continue;
+                    break;
                   }
                   log.debug(LibUtils.getMsg("FILES_TXFR_SVC_DEBUG_PRIORITY_INFO", ttp.getObject().getTenantId(),
                                   ttp.getObject().getUsername(), ttp.getObject().getTag(), ttp.getObject().getTaskId(),
@@ -198,9 +198,11 @@ public class ParentTaskTransferService {
     }, 5, 5, TimeUnit.SECONDS);
   }
   private boolean canCreateNewFutures(Map<UUID, Future<TransferTaskParent>> futures, int capacity) {
-    for(UUID key : futures.keySet()) {
-      if(futures.get(key).isDone()) {
-        futures.remove(key);
+    if(futures.size() >= capacity) {
+      for (UUID key : futures.keySet()) {
+        if (futures.get(key).isDone()) {
+          futures.remove(key);
+        }
       }
     }
 
