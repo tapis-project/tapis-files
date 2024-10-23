@@ -6,11 +6,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -161,12 +163,12 @@ public class ChildTaskTransferService {
     /* *********************************************************************** */
 
     public void startListeners(UUID myUuid) {
+        Map<UUID, Future<TransferTaskChild>> futures = new ConcurrentHashMap<UUID, Future<TransferTaskChild>>();
         childScheduler.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
                 try {
                     boolean shouldExit = false;
-                    Map<UUID, Future<TransferTaskChild>> futures = new HashMap<UUID, Future<TransferTaskChild>>();
 
                     SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(MAX_WORK_ITEM_DEPTH);
 
@@ -174,14 +176,20 @@ public class ChildTaskTransferService {
                         try {
                             Stopwatch sw1 = Stopwatch.createStarted();
                             List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getChildTasksForWorker(myUuid);
-                            log.trace("TIMING:" + Thread.currentThread().getId() + ":  child main loop after query: " + sw1.elapsed(TimeUnit.MICROSECONDS));
+                            log.trace("TIMING:" + Thread.currentThread().getId() + ":  child main loop after query: " + sw1.elapsed(TimeUnit.MICROSECONDS) + " ttcList.size: " + ttcList.size());
                             for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
                                 UUID childUuid = ttc.getObject().getUuid();
                                 if (futures.containsKey(childUuid)) {
-                                    if (futures.get(childUuid).isDone()) {
+                                    Future<TransferTaskChild> ttcFuture = futures.get(childUuid);
+                                    if (ttcFuture.isDone()) {
+                                        log.trace("Removing future for taskid: " + childUuid);
                                         futures.remove(childUuid);
                                     }
                                 } else {
+                                    if (futures.size() >= (MAX_THREADS * 5)) {
+                                        // we already have enough in progress.  Let some complete before adding more
+                                        continue;
+                                    }
                                     System.out.println("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
                                     try {
                                         Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
@@ -203,12 +211,20 @@ public class ChildTaskTransferService {
                                     }
                                 }
                             }
+                            // small sleep to help in cpu scheduling
+                            Thread.sleep(100);
                         } catch (DAOException | SchedulingPolicyException ex) {
                             log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
                             break;
                         }
 
-                        if (Collections.isEmpty(futures) || (futures.size() >= (MAX_THREADS * 5))) {
+                        for(UUID key : futures.keySet()) {
+                            if(futures.get(key).isDone()) {
+                                futures.remove(key);
+                            }
+                        }
+
+                        if (Collections.isEmpty(futures)) {
                             shouldExit = true;
                         }
                     }
