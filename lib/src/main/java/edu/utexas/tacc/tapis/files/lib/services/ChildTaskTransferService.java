@@ -781,13 +781,11 @@ public class ChildTaskTransferService {
         } catch (RuntimeException ex) {
             throw new IOException(ex.getMessage(), ex);
         } finally {
-            /*
             try {
                 channel.close();
             } catch (TimeoutException e) {
                 throw new RuntimeException(e);
             }
-             */
             executorService.shutdown();
         }
     }
