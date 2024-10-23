@@ -209,7 +209,7 @@ public class ChildTaskTransferService {
                             break;
                         }
 
-                        if (Collections.isEmpty(futures) || (futures.size() >= (MAX_THREADS * 5))) {
+                        if (Collections.isEmpty(futures)) {
                             shouldExit = true;
                         }
                     }

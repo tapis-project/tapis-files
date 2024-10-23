@@ -185,7 +185,7 @@ public class ParentTaskTransferService {
               break;
             }
 
-            if (io.jsonwebtoken.lang.Collections.isEmpty(futures) || (futures.size() >= (MAX_THREADS * 5))) {
+            if (io.jsonwebtoken.lang.Collections.isEmpty(futures)) {
               shouldExit = true;
             }
           }
