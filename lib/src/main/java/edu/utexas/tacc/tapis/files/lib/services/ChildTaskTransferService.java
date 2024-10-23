@@ -24,7 +24,6 @@ import javax.ws.rs.NotFoundException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Stopwatch;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
@@ -172,9 +171,7 @@ public class ChildTaskTransferService {
 
                     while (!shouldExit) {
                         try {
-                            Stopwatch sw1 = Stopwatch.createStarted();
                             List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getChildTasksForWorker(myUuid);
-                            log.trace("TIMING:" + Thread.currentThread().getId() + ":  child main loop after query: " + sw1.elapsed(TimeUnit.MICROSECONDS));
                             for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
                                 UUID childUuid = ttc.getObject().getUuid();
                                 if (futures.containsKey(childUuid)) {
@@ -187,12 +184,7 @@ public class ChildTaskTransferService {
                                         Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
                                             @Override
                                             public TransferTaskChild call() throws Exception {
-                                                log.trace("TIMING:" + Thread.currentThread().getId() + ":  time till handletask: " + sw1.elapsed(TimeUnit.MICROSECONDS));
-                                                Stopwatch sw2 = Stopwatch.createStarted();
-                                                log.trace("TIMING:" + Thread.currentThread().getId() + ":  before handletask: " + sw2.elapsed(TimeUnit.MICROSECONDS));
-                                                TransferTaskChild ttcReturn = handleTask(ttc.getObject());
-                                                log.trace("TIMING:" + Thread.currentThread().getId() + ":  after handletask: " + sw2.elapsed(TimeUnit.MICROSECONDS));
-                                                return ttcReturn;
+                                                return handleTask(ttc.getObject());
                                             }
                                         });
                                         futures.put(childUuid, future);
@@ -403,9 +395,6 @@ public class ChildTaskTransferService {
         IRemoteDataClient destClient;
         String srcSharedCtxGrantor = null;
         String destSharedCtxGrantor = null;
-
-        Stopwatch sw = Stopwatch.createStarted();
-
         if (taskChild.getSourceURI().equals(taskChild.getDestinationURI())) {
             log.warn(LibUtils.getMsg("FILES_TXFR_CHILD_SAME_SRC_DEST", taskChild.getTenantId(), taskChild.getUsername(),
                     taskChild.getId(), taskChild.getTag(), taskChild.getTaskId(), taskChild.getSourceURI(), taskChild.getDestinationURI()));
@@ -421,8 +410,6 @@ public class ChildTaskTransferService {
                 throw new ServiceException(msg, ex);
             }
         }
-
-        log.trace("TIMING:" + Thread.currentThread().getId() + ":processTransfer:After src/dest same check" + sw.elapsed(TimeUnit.MICROSECONDS));
 
         TransferTaskParent parentTask;
         try {
@@ -457,8 +444,6 @@ public class ChildTaskTransferService {
             log.error(msg, ex);
             throw new ServiceException(msg, ex);
         }
-
-        log.trace("TIMING:" + Thread.currentThread().getId() + ":processTransfer:After top/parent check and status to IN_PROGRESS" + sw.elapsed(TimeUnit.MICROSECONDS));
 
         TransferURI destURL = taskChild.getDestinationURI();
         TransferURI sourceURL = taskChild.getSourceURI();
@@ -501,7 +486,6 @@ public class ChildTaskTransferService {
             sourceClient = remoteDataClientFactory.getRemoteDataClient(taskChild.getTenantId(), taskChild.getUsername(),
                     sourceSystem, IMPERSONATION_ID_NULL, srcSharedCtxGrantor);
         }
-        log.trace("TIMING:" + Thread.currentThread().getId() + ":processTransfer:After source auth checks" + sw.elapsed(TimeUnit.MICROSECONDS));
 
         // Initialize destination client
         try {
@@ -529,8 +513,6 @@ public class ChildTaskTransferService {
             throw new ServiceException(msg, ex);
         }
 
-        log.trace("TIMING:" + Thread.currentThread().getId() + ":processTransfer:After destination auth checks" + sw.elapsed(TimeUnit.MICROSECONDS));
-
         // Determine if it is a Globus transfer. Consider it a Globus transfer if either source or destination
         //   is of type GLOBUS. Note that currently only Globus to Globus is supported.
         boolean isGlobus = ((sourceSystem != null && SystemTypeEnum.GLOBUS.equals(sourceSystem.getSystemType())) ||
@@ -555,9 +537,7 @@ public class ChildTaskTransferService {
         if (isGlobus) {
             performASynchFileTransfer(taskChild, sourceClient, sourceURL, destClient, destURL);
         } else {
-            log.trace("TIMING:" + Thread.currentThread().getId() + ":processTransfer:Before performSynchFileTransfer" + sw.elapsed(TimeUnit.MICROSECONDS));
             performSynchFileTransfer(taskChild, sourceClient, sourceURL, destClient, destURL, sourcePath);
-            log.trace("TIMING:" + Thread.currentThread().getId() + ":processTransfer:After performSynchFileTransfer" + sw.elapsed(TimeUnit.MICROSECONDS));
         }
 
         // If it is an executable file on a posix system going to a posix system, chmod it to be +x.
@@ -585,7 +565,6 @@ public class ChildTaskTransferService {
                     "processTransfer", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
             throw new ServiceException(msg);
         }
-        log.trace("TIMING:" + Thread.currentThread().getId() + ":processTransfer:Done" + sw.elapsed(TimeUnit.MICROSECONDS));
         return taskChild;
     }
 
@@ -720,7 +699,6 @@ public class ChildTaskTransferService {
         //We are going to run the meat of the transfer, step2 in a separate Future which we can cancel.
         //This just sets up the future, we first subscribe to the control messages and then start the future
         //which is a blocking call.
-
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<TransferTaskChild> future = executorService.submit(new Callable<TransferTaskChild>() {
             @Override
@@ -732,7 +710,7 @@ public class ChildTaskTransferService {
                 }
             }
         });
-/*
+
         Channel channel = connection.createChannel();
         String queueName = "control." + UUID.randomUUID();
 
@@ -759,7 +737,7 @@ public class ChildTaskTransferService {
                 }
             }
         });
-*/
+
         try {
             // Blocking call, but the subscription above will still listen
             TransferTaskChild returnChild = future.get();
