@@ -95,7 +95,7 @@ public class ParentTaskTransferService {
   // exactly 3 tasks, and MAX_WORK_ITEM_DEPTH is set to 2 we will get back a max of 2 per user, so 6 items.  If
   // one of those users only had 1 task, we would get 2 for the first 2 users, and one for that user.  Hopefully
   // this makes sense - if not please update the comment :)
-  private static final int MAX_WORK_ITEM_DEPTH = 50;
+  private static final int MAX_WORK_ITEM_DEPTH = 100;
   private static final int MAX_THREADS = RuntimeSettings.get().getParentThreadPoolSize();
   private ScheduledExecutorService parentScheduler = Executors.newSingleThreadScheduledExecutor();
   private ExecutorService parentWorkers = Executors.newFixedThreadPool(MAX_THREADS, new ThreadFactory() {
@@ -149,6 +149,11 @@ public class ParentTaskTransferService {
           SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(MAX_WORK_ITEM_DEPTH);
 
           while (!shouldExit) {
+            if(!canCreateNewFutures(futures, maxFutures)) {
+              log.trace("Max future capacity reached - wait for some to complete");
+              Thread.sleep(500);
+              continue;
+            }
             try {
               List<PrioritizedObject<TransferTaskParent>> ttpList = schedulingPolicy.getParentTasksForWorker(myUuid);
               for (PrioritizedObject<TransferTaskParent> ttp : ttpList) {
@@ -158,10 +163,6 @@ public class ParentTaskTransferService {
                     futures.remove(parentUuid);
                   }
                 } else {
-                  if(!canCreateNewFutures(futures, maxFutures)) {
-                    log.trace("Max future capacity reached - wait for some to complete");
-                    break;
-                  }
                   log.debug(LibUtils.getMsg("FILES_TXFR_SVC_DEBUG_PRIORITY_INFO", ttp.getObject().getTenantId(),
                                   ttp.getObject().getUsername(), ttp.getObject().getTag(), ttp.getObject().getTaskId(),
                                   ttp.getObject().getUuid(), ttp.getPriority()));

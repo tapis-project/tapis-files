@@ -103,7 +103,7 @@ public class ChildTaskTransferService {
     // exactly 3 tasks, and MAX_WORK_ITEM_DEPTH is set to 2 we will get back a max of 2 per user, so 6 items.  If
     // one of those users only had 1 task, we would get 2 for the first 2 users, and one for that user.  Hopefully
     // this makes sense - if not please update the comment :)
-    private static final int MAX_WORK_ITEM_DEPTH = 50;
+    private static final int MAX_WORK_ITEM_DEPTH = 100;
     private static String CHILD_QUEUE = "tapis.files.transfers.child";
     private static final int maxRetries = 3;
     private final TransfersService transfersService;
@@ -175,6 +175,11 @@ public class ChildTaskTransferService {
                     SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(MAX_WORK_ITEM_DEPTH);
 
                     while (!shouldExit) {
+                        if(!canCreateNewFutures(futures, maxFutures)) {
+                            log.trace("Max future capacity reached - wait for some to complete");
+                            Thread.sleep(500);
+                            continue;
+                        }
                         try {
                             List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getChildTasksForWorker(myUuid);
                             for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
@@ -184,10 +189,6 @@ public class ChildTaskTransferService {
                                         futures.remove(childUuid);
                                     }
                                 } else {
-                                    if(!canCreateNewFutures(futures, maxFutures)) {
-                                        log.trace("Max future capacity reached - wait for some to complete");
-                                        break;
-                                    }
                                     System.out.println("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
                                     try {
                                         Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
