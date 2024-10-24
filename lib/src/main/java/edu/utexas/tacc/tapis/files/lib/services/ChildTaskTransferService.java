@@ -24,6 +24,7 @@ import javax.ws.rs.NotFoundException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Stopwatch;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
@@ -193,11 +194,13 @@ public class ChildTaskTransferService {
                                         Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
                                             @Override
                                             public TransferTaskChild call() throws Exception {
+                                                Stopwatch sw = Stopwatch.createStarted();
                                                 try {
                                                     return handleTask(ttc.getObject());
                                                 } catch (Throwable th) {
                                                     log.error("Caught exception while handling transfer task", th);
                                                 }
+                                                log.trace("TIMING: TransferTaskChild callable childId: " + ttc.getObject().getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                                                 return null;
                                             }
                                         });
@@ -265,10 +268,13 @@ public class ChildTaskTransferService {
         while (retry < maxRetries) {
             try {
                 if (parentTask == null) {
+                    Stopwatch sw = Stopwatch.createStarted();
                     parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
                     srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
+                    log.trace("TIMING: Get parent task info: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
                 if (!preTransferUpdateComplete) {
+                    Stopwatch sw = Stopwatch.createStarted();
                     taskChild = updateStatusBeforeTransfer(taskChild);
                     if (taskChild == null) {
                         // if updateStatusBeforeTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
@@ -277,9 +283,11 @@ public class ChildTaskTransferService {
                     } else {
                         preTransferUpdateComplete = true;
                     }
+                    log.trace("TIMING: Update status before transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
 
                 if (!transferComplete) {
+                    Stopwatch sw = Stopwatch.createStarted();
                     taskChild = doTransfer(taskChild, srcSharedCtxGrantor);
                     if (taskChild == null) {
                         // if doTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
@@ -288,9 +296,11 @@ public class ChildTaskTransferService {
                     } else {
                         transferComplete = true;
                     }
+                    log.trace("TIMING: doTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
 
                 if (!postTransferUpdateComplete) {
+                    Stopwatch sw = Stopwatch.createStarted();
                     taskChild = updateStatusAfterTransfer(taskChild);
                     if (taskChild == null) {
                         // if updateStatusAfterTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
@@ -299,9 +309,11 @@ public class ChildTaskTransferService {
                     } else {
                         postTransferUpdateComplete = true;
                     }
+                    log.trace("TIMING: update status after transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
 
                 if (!parentCheckComplete) {
+                    Stopwatch sw = Stopwatch.createStarted();
                     taskChild = checkForComplete(taskChild);
                     if (taskChild == null) {
                         // if checkForParentCompletion fails, it throws an exception.  We shouldn't get here.  Just being defensive
@@ -309,6 +321,7 @@ public class ChildTaskTransferService {
                         throw new IOException(msg);
                     }
                     taskChild = unassignChild(taskChild);
+                    log.trace("TIMING: check for complete: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
 
                 return taskChild;
@@ -959,6 +972,7 @@ public class ChildTaskTransferService {
                                           IRemoteDataClient dstClient, TransferURI dstUri,
                                           String srcPath)
             throws IOException {
+        Stopwatch sw = Stopwatch.createStarted();
         String dstPath = dstUri.getPath();
         String msg = LibUtils.getMsg("FILES_TXFR_CHILD_SYNCH_BEGIN", taskChild.getTenantId(), taskChild.getUsername(),
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
@@ -976,6 +990,7 @@ public class ChildTaskTransferService {
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
         log.trace(msg);
+        log.trace("TIMING: performSynchFileTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
     }
 
     /**
