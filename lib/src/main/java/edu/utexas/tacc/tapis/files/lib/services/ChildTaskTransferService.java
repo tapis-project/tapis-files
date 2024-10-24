@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -177,7 +176,7 @@ public class ChildTaskTransferService {
                     while (!shouldExit) {
                         if(!canCreateNewFutures(futures, maxFutures)) {
                             log.trace("Max future capacity reached - wait for some to complete");
-                            Thread.sleep(500);
+                            Thread.yield();
                             continue;
                         }
                         try {
@@ -194,7 +193,12 @@ public class ChildTaskTransferService {
                                         Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
                                             @Override
                                             public TransferTaskChild call() throws Exception {
-                                                return handleTask(ttc.getObject());
+                                                try {
+                                                    return handleTask(ttc.getObject());
+                                                } catch (Throwable th) {
+                                                    log.error("Caught exception while handling transfer task", th);
+                                                }
+                                                return null;
                                             }
                                         });
                                         futures.put(childUuid, future);
@@ -219,6 +223,7 @@ public class ChildTaskTransferService {
                     // best thing to do here is exit - we have caught some completely unexpected exception
                     System.exit(0);
                 }
+                Thread.yield();
             }
         }, 5, 5, TimeUnit.SECONDS);
     }

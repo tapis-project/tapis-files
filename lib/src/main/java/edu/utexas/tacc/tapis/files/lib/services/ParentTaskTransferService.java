@@ -151,7 +151,7 @@ public class ParentTaskTransferService {
           while (!shouldExit) {
             if(!canCreateNewFutures(futures, maxFutures)) {
               log.trace("Max future capacity reached - wait for some to complete");
-              Thread.sleep(500);
+              Thread.yield();
               continue;
             }
             try {
@@ -170,7 +170,12 @@ public class ParentTaskTransferService {
                     Future<TransferTaskParent> future = parentWorkers.submit(new Callable<TransferTaskParent>() {
                       @Override
                       public TransferTaskParent call() throws Exception {
-                        return handleTask(ttp.getObject());
+                        try {
+                          return handleTask(ttp.getObject());
+                        } catch (Throwable th) {
+                          log.error("Caught exception while handling transfer task", th);
+                        }
+                        return null;
                       }
                     });
                     futures.put(parentUuid, future);
@@ -189,6 +194,7 @@ public class ParentTaskTransferService {
             if (io.jsonwebtoken.lang.Collections.isEmpty(futures)) {
               shouldExit = true;
             }
+            Thread.yield();
           }
         } catch (Throwable th) {
           // if this method throws, it will not get rescheduled.  We would have a zombie worker.  I think the
