@@ -41,6 +41,7 @@ public class RuntimeSettings {
         protected final int grizzlyPoolMaxSize = getIntSetting("TAPIS_DB_CONNECTION_POOL_SIZE", 50);
         protected final String tapisDebugSystemServicePath = settings.get("TAPIS_DEBUG_SYSTEM_SERVICE_PATH", null);
         protected final int maxTransferCount = getIntSetting("MAX_TRANSFER_COUNT", 10000);
+        protected final int maxAssignmentWaitMultiplier = getIntSetting("MAX_ASSIGNMENT_WAIT_MULTIPLIER", 5);
 
         public String getHostName() {
             return hostName;
@@ -155,6 +156,9 @@ public class RuntimeSettings {
 
         public int getMaxTransferCount() {
             return maxTransferCount;
+        }
+        public int getMaxAssignmentWaitMultiplier() {
+            return maxAssignmentWaitMultiplier;
         }
 
         public static int getIntSetting(String settingName, int defaultValue) {

@@ -52,8 +52,7 @@ public class TransfersAssigner
     private static int WORKER_BACKLOG_THRESHOLD = 100;
     private static int ROW_NUMBER_CUTOFF = 300;
     private static long EXPECT_HEARTBEAT_BEFORE_MILLIS = 600000;
-//    private static long MAX_WAIT_MULTIPLIER = 5;
-    private static long MAX_WAIT_MULTIPLIER = 2;
+    private static int MAX_WAIT_MULTIPLIER = RuntimeSettings.get().getMaxAssignmentWaitMultiplier();
     private SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(ROW_NUMBER_CUTOFF);
 
     public static void main(String[] args)
@@ -262,7 +261,7 @@ public class TransfersAssigner
         // continue to do assignments.
         workersThatNeedWork = getWorkersThatNeedChildTasks();
         queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
-        return (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty());
+        return (!queuedTaskIds.isEmpty());
     }
 
     // return workers that "need work".  This is determined by building a map with key of worker uuid,
@@ -302,6 +301,6 @@ public class TransfersAssigner
         // continue to do assignments.
         workersThatNeedWork = getWorkersThatNeedChildTasks();
         queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
-        return (!workersThatNeedWork.isEmpty() && !queuedTaskIds.isEmpty());
+        return (!queuedTaskIds.isEmpty());
     }
 }
