@@ -200,7 +200,7 @@ public class ChildTaskTransferService {
                                                 } catch (Throwable th) {
                                                     log.error("Caught exception while handling transfer task", th);
                                                 }
-                                                log.trace("TIMING: TransferTaskChild callable childId: " + ttc.getObject().getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+                                                log.trace("CHILD TRANSFER TIMING: TransferTaskChild callable childId: " + ttc.getObject().getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                                                 return null;
                                             }
                                         });
@@ -271,7 +271,7 @@ public class ChildTaskTransferService {
                     Stopwatch sw = Stopwatch.createStarted();
                     parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
                     srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
-                    log.trace("TIMING: Get parent task info: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+                    log.trace("CHILD TRANSFER TIMING: Get parent task info: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
                 if (!preTransferUpdateComplete) {
                     Stopwatch sw = Stopwatch.createStarted();
@@ -283,7 +283,7 @@ public class ChildTaskTransferService {
                     } else {
                         preTransferUpdateComplete = true;
                     }
-                    log.trace("TIMING: Update status before transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+                    log.trace("CHILD TRANSFER TIMING: Update status before transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
 
                 if (!transferComplete) {
@@ -296,7 +296,7 @@ public class ChildTaskTransferService {
                     } else {
                         transferComplete = true;
                     }
-                    log.trace("TIMING: doTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+                    log.trace("CHILD TRANSFER TIMING: doTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
 
                 if (!postTransferUpdateComplete) {
@@ -309,7 +309,7 @@ public class ChildTaskTransferService {
                     } else {
                         postTransferUpdateComplete = true;
                     }
-                    log.trace("TIMING: update status after transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+                    log.trace("CHILD TRANSFER TIMING: update status after transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
 
                 if (!parentCheckComplete) {
@@ -321,7 +321,7 @@ public class ChildTaskTransferService {
                         throw new IOException(msg);
                     }
                     taskChild = unassignChild(taskChild);
-                    log.trace("TIMING: check for complete: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+                    log.trace("CHILD TRANSFER TIMING: check for complete: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
 
                 return taskChild;
@@ -739,7 +739,6 @@ public class ChildTaskTransferService {
         //We are going to run the meat of the transfer, step2 in a separate Future which we can cancel.
         //This just sets up the future, we first subscribe to the control messages and then start the future
         //which is a blocking call.
-        /*
         ExecutorService executorService = Executors.newSingleThreadExecutor();
         Future<TransferTaskChild> future = executorService.submit(new Callable<TransferTaskChild>() {
             @Override
@@ -778,14 +777,11 @@ public class ChildTaskTransferService {
                 }
             }
         });
-         */
 
         try {
             // Blocking call, but the subscription above will still listen
-//            TransferTaskChild returnChild = future.get();
-            TransferTaskChild returnChild = processTransfer(taskChild);
+            TransferTaskChild returnChild = future.get();
             return returnChild;
-            /*
         } catch (ExecutionException ex) {
             String msg = ex.getCause().getMessage();
             log.error(msg, ex);
@@ -796,8 +792,6 @@ public class ChildTaskTransferService {
             } else {
                 throw new RuntimeException(msg, ex);
             }
-
-             */
         } catch (CancellationException ex) {
             return cancelTransferChild(taskChild, srcSharedCtxGrantor);
         } catch (WritePendingException ex) {
@@ -805,14 +799,12 @@ public class ChildTaskTransferService {
         } catch (RuntimeException ex) {
             throw new IOException(ex.getMessage(), ex);
         } finally {
-            /*
             try {
                 channel.close();
             } catch (TimeoutException e) {
                 throw new RuntimeException(e);
             }
             executorService.shutdown();
-             */
         }
     }
 
@@ -998,7 +990,7 @@ public class ChildTaskTransferService {
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
         log.trace(msg);
-        log.trace("TIMING: performSynchFileTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+        log.trace("CHILD TRANSFER TIMING: performSynchFileTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
     }
 
     /**

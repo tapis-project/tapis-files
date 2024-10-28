@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.PostgresDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferWorkerDAO;
@@ -105,6 +106,19 @@ public class TransfersAssigner
     }
 
     private static void checkRequiredSettings() {
+        PostgresDAO pgDao = new PostgresDAO();
+        try {
+            DAOTransactionContext.doInTransaction(context -> {
+                long postgresVersion = pgDao.getPostgresVersion(context);
+                if (postgresVersion < RuntimeSettings.get().getRequiredPostgresVersion()) {
+                    throw new RuntimeException(LibUtils.getMsg("FILES_TXFR_UNSUPPORTED_POSTGRES_VERSION", postgresVersion, RuntimeSettings.get().getRequiredPostgresVersion()));
+                }
+                return postgresVersion;
+            });
+        } catch (DAOException ex) {
+            throw new RuntimeException(ex.getMessage(), ex);
+        }
+
         StringBuilder missingVars = new StringBuilder();
         if (RuntimeSettings.get().getDbHost() == null) {
             missingVars.append("DB_HOST ");

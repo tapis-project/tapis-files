@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.config;
 
 public interface IRuntimeConfig {
+    long getRequiredPostgresVersion();
     String getHostName();
     String getDbUsername();
     String getDbHost();

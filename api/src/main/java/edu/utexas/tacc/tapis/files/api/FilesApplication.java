@@ -6,6 +6,9 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.caches.TenantAdminCache;
 import edu.utexas.tacc.tapis.files.lib.dao.postits.PostItsDAO;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.PostgresDAO;
+import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -14,6 +17,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
 import edu.utexas.tacc.tapis.files.lib.services.PostItsService;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
@@ -290,6 +294,19 @@ public class FilesApplication extends ResourceConfig
   }
 
   private void checkRequiredSettings() {
+    PostgresDAO pgDao = new PostgresDAO();
+    try {
+      DAOTransactionContext.doInTransaction(context -> {
+        long postgresVersion = pgDao.getPostgresVersion(context);
+        if (postgresVersion < RuntimeSettings.get().getRequiredPostgresVersion()) {
+          throw new RuntimeException(LibUtils.getMsg("FILES_TXFR_UNSUPPORTED_POSTGRES_VERSION", postgresVersion, RuntimeSettings.get().getRequiredPostgresVersion()));
+        }
+        return postgresVersion;
+      });
+    } catch (DAOException ex) {
+      throw new RuntimeException(ex.getMessage(), ex);
+    }
+
     StringBuilder missingVars = new StringBuilder();
     if(RuntimeSettings.get().getSiteId() == null) {
       missingVars.append("TAPIS_SITE_ID ");
