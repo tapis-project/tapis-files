@@ -9,6 +9,20 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.7.1 - 2024-10-30
+
+Bug fix for setting destination shared context for transfers.
+
+### New features:
+- None
+
+### Bug fixes:
+- Fix issue with passing in correct destination shared context during file transfers. 
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.7.0 - 2024-09-09
 
 Incremental improvements and new features.  
