@@ -532,7 +532,7 @@ public class ChildTaskTransferService {
             // Use a LibUtils method to properly take into account ownership, sharing and fine-grained permissions.
             destSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth,
                     permsService, opName, destURL.getSystemId(), destPath, FileInfo.Permission.MODIFY, IMPERSONATION_ID_NULL,
-                    parentTask.getSrcSharedCtxGrantor());
+                    parentTask.getDestSharedCtxGrantor());
             // If dst system is not enabled throw an exception
             if (destSystem.getEnabled() == null || !destSystem.getEnabled()) {
                 String msg = LibUtils.getMsg("FILES_TXFR_SYS_NOTENABLED", taskChild.getTenantId(), taskChild.getUsername(),
