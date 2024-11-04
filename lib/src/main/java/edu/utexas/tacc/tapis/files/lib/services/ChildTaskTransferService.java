@@ -176,7 +176,6 @@ public class ChildTaskTransferService {
 
                     while (!shouldExit) {
                         if(!canCreateNewFutures(futures, maxFutures)) {
-                            log.trace("Max future capacity reached - wait for some to complete");
                             Thread.yield();
                             continue;
                         }
@@ -189,7 +188,7 @@ public class ChildTaskTransferService {
                                         futures.remove(childUuid);
                                     }
                                 } else {
-                                    System.out.println("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
+                                    log.debug("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
                                     try {
                                         Future<TransferTaskChild> future = childWorkers.submit(new Callable<TransferTaskChild>() {
                                             @Override
