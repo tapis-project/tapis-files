@@ -275,7 +275,7 @@ public class TransfersService
      * @throws ForbiddenException - user not authorized, only certain services authorized
      */
     public TransferTask createTransfer(@NotNull ResourceRequestUser rUser, String tag,
-                                       List<TransferTaskRequestElement> elements)
+                                       List<TransferTaskRequestElement> elements, String reqTrackingId)
             throws ServiceException
     {
       String opName = "createTransfer";
@@ -303,6 +303,7 @@ public class TransfersService
       task.setUsername(rUser.getOboUserId());
       task.setStatus(TransferTaskStatus.ACCEPTED);
       task.setTag(tag);
+      task.setReqTrackingId(reqTrackingId);
 
       // Persist the transfer task
       try

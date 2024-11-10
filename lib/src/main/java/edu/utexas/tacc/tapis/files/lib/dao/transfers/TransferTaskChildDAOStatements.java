@@ -98,7 +98,7 @@ public class TransferTaskChildDAOStatements {
 
     public static final String INSERT_CHILD_TASK =
             "INSERT into transfer_tasks_child " +
-                    " (tenant_id, task_id, parent_task_id, username, source_uri, destination_uri, status, bytes_transferred, total_bytes, is_dir, tag, external_task_id)" +
-                    " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                    " (tenant_id, task_id, parent_task_id, username, source_uri, destination_uri, status, bytes_transferred, total_bytes, is_dir, tag, external_task_id, req_tracking_id)" +
+                    " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                     " RETURNING * ";
 }

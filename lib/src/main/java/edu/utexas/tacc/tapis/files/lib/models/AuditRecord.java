@@ -44,12 +44,25 @@ public class AuditRecord {
         auditData.targetSystemType = targetSystem.getSystemType().name();
         auditData.targetHost = targetSystem.getHost();
         auditData.targetPath = targetPath;
+
+        // TODO This way?
+        auditData.sourceSystemId = (sourceSystem == null) ? AuditUtils.AUDIT_EMPTY : sourceSystem.getId();
+        auditData.sourceSystemType = (sourceSystem == null) ? AuditUtils.AUDIT_EMPTY : sourceSystem.getSystemType().name();
+        auditData.sourceHost = (sourceSystem == null) ? AuditUtils.AUDIT_EMPTY : sourceSystem.getHost();
+        auditData.sourcePath = (sourceSystem == null || StringUtils.isBlank(sourcePath)) ? AuditUtils.AUDIT_EMPTY : sourcePath;
+        // TODO or this way
         if (sourceSystem != null) {
             auditData.sourceSystemId = sourceSystem.getId();
             auditData.sourceSystemType = sourceSystem.getSystemType().name();
             auditData.sourceHost = sourceSystem.getId();
-            auditData.sourcePath = sourcePath;
+            auditData.sourcePath = (StringUtils.isBlank(sourcePath)) ? AuditUtils.AUDIT_EMPTY : sourcePath;
+        } else {
+            auditData.sourceSystemId = AuditUtils.AUDIT_EMPTY;
+            auditData.sourceSystemType = AuditUtils.AUDIT_EMPTY;
+            auditData.sourceHost = AuditUtils.AUDIT_EMPTY;
+            auditData.sourcePath = AuditUtils.AUDIT_EMPTY;
         }
+
         auditData.trackingId = AuditUtils.TRACKING_PREFIX_FILES + UUID.randomUUID();
         auditData.parentTrackingId = StringUtils.isBlank(reqTrackingId) ? AuditUtils.AUDIT_EMPTY : reqTrackingId;
         auditData.data = StringUtils.isBlank(data) ? TapisConstants.EMPTY_JSON : data;

@@ -40,14 +40,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
-import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
-import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
+import edu.utexas.tacc.tapis.files.lib.models.*;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.DefaultSchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
@@ -57,6 +50,7 @@ import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -116,6 +110,7 @@ public class ChildTaskTransferService {
     private final SystemsCacheNoAuth systemsCacheNoAuth;
     private final FileUtilsService fileUtilsService;
     private static final Logger log = LoggerFactory.getLogger(ChildTaskTransferService.class);
+    private static final Logger audit = LoggerFactory.getLogger(AuditUtils.LOGGER_NAME);
     private Connection connection;
     private List<Channel> channels = new ArrayList<Channel>();
     private ExecutorService connectionThreadPool = null;
@@ -477,6 +472,7 @@ public class ChildTaskTransferService {
 
             // For some reason taskChild does not have the tag set at this point.
             taskChild.setTag(parentTask.getTag());
+            taskChild.setReqTrackingId(parentTask.getReqTrackingId());
         } catch (DAOException ex) {
             String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                     "ChildStepTwoA", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
@@ -593,6 +589,7 @@ public class ChildTaskTransferService {
                 isDestShared = (isSharedPublic || isSharedDirect);
             }
             updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, isDestShared);
+            // TODO audit here?
         }
 
         // The ChildTransferTask may have been updated by calling thread, e.g. cancelled, so we look it up again
@@ -990,6 +987,19 @@ public class ChildTaskTransferService {
                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
         log.trace(msg);
         log.trace("CHILD TRANSFER TIMING: performSynchFileTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+        // TODO: audit here?
+        // If audit enabled log a message. This method is only called by a worker, so component=filesworker
+        if (RuntimeSettings.get().isAuditingEnabled()) {
+            // TODO build additional data as json
+            var auditData = null;
+            // TODO For convenience, construct a ResourceRequestUser
+            ResourceRequestUser rUser = null;
+            // TODO Are the paths already absolute paths?
+            AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.TRANSFER,
+                    dstClient.getSystem(), dstPath, srcClient.getSystem(), srcPath, reqTrackingId,
+                    IMPERSONATION_ID_NULL, auditData);
+            audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+        }
     }
 
     /**
@@ -1064,6 +1074,7 @@ public class ChildTaskTransferService {
 
             // Update child task with external task id.
             taskChild.setExternalTaskId(externalTaskId);
+            taskChild.setReqTrackingId(reqTrackingId);
             taskChild = dao.updateTransferTaskChild(taskChild);
             // Monitor the status of the transfer until it is in a final state.
             // Loop forever waiting for task to finish or be cancelled.
@@ -1133,5 +1144,7 @@ public class ChildTaskTransferService {
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), externalTaskId,
                 srcUri.getSystemId(), srcRelPath, dstUri.getSystemId(), dstRelPath);
         log.trace(msg);
+        // TODO: audit here?
+        // TODO For external transfers (i.e. Globus) we always have relative paths. Just log those.
     }
 }

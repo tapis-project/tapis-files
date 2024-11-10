@@ -36,6 +36,7 @@ public class TransferTaskParent
   protected String srcSharedCtxGrantor;
   protected String destSharedCtxGrantor;
   protected String tag;
+  protected String reqTrackingId;
 
   protected Instant created;
   protected Instant startTime;
@@ -49,7 +50,7 @@ public class TransferTaskParent
   public TransferTaskParent(){}
 
   public TransferTaskParent(String tenantId1, String username1, String srcURI1, String dstURI1, boolean optional1,
-                            String srcCtx1, String dstCtx1, String tag1, TransferType transferType)
+                            String srcCtx1, String dstCtx1, String tag1, String reqTrackingId1, TransferType transferType)
   {
     tenantId = tenantId1;
     username = username1;
@@ -60,6 +61,7 @@ public class TransferTaskParent
     srcSharedCtxGrantor = srcCtx1;
     destSharedCtxGrantor = dstCtx1;
     tag = tag1;
+    reqTrackingId = reqTrackingId1;
     uuid = UUID.randomUUID();
     assignedTo = null;
     this.transferType = transferType;
@@ -178,6 +180,9 @@ public class TransferTaskParent
   public String getTag() { return tag; }
   public void setTag(String s) { tag = s; }
 
+  public String getReqTrackingId() { return reqTrackingId; }
+  public void setReqTrackingId(String s) { reqTrackingId = s; }
+
   public List<TransferTaskChild> getChildren() { return children; }
   public void setChildren(List<TransferTaskChild> tlist) { children = tlist; }
 
@@ -238,6 +243,7 @@ public class TransferTaskParent
             .add("id=" + id)
             .add("taskId=" + taskId)
             .add("tag=" + tag)
+            .add("reqTrackingId=" + reqTrackingId)
             .add("tenantId='" + tenantId + "'")
             .add("username='" + username + "'")
             .add("sourceURI='" + sourceURI + "'")

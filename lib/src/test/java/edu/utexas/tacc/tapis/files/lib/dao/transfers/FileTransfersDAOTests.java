@@ -128,6 +128,7 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
     String tag = "testTag";
     TransferTask task = new TransferTask();
     task.setTag(tag);
+    task.setReqTrackingId("");
     task.setTenantId(testTenant);
     task.setUsername(userName);
     task.setStatus(TransferTaskStatus.ACCEPTED.name());
