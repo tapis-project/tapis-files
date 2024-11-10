@@ -20,7 +20,10 @@ import javax.ws.rs.core.StreamingOutput;
 
 import edu.utexas.tacc.tapis.files.lib.clients.ISSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
+import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -69,11 +72,19 @@ public class FileOpsService
   public enum MoveCopyOperation {MOVE, COPY, SERVICE_MOVE_DIRECTORY_CONTENTS, SERVICE_MOVE_FILE_OR_DIRECTORY}
 
   private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
+  private static final Logger audit = LoggerFactory.getLogger(AuditUtils.LOGGER_NAME);
 
   private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
 
   // 0=systemId, 1=path, 2=tenant
   private final String TAPIS_FILES_URL_FORMAT = String.format("%s{0}/{1}?tenant={2}", TAPIS_PROTOCOL_PREFIX);
+
+  // Define some nulls here for readability.
+  // Some methods do not support certain options, like impersonationId and audit data.
+  private static final String impersonationIdNull = null;
+  private static final String auditDataNull = null;
+  private static final TapisSystem sourceSystemNull = null;
+  private static final String sourcePathNull = null;
 
   private static final String SYSTEMS_SERVICE = TapisConstants.SERVICE_NAME_SYSTEMS;
   private static final String APPS_SERVICE = TapisConstants.SERVICE_NAME_APPS;
@@ -333,7 +344,7 @@ public class FileOpsService
    * @throws ForbiddenException - user not authorized
    */
   public void upload(@NotNull ResourceRequestUser rUser, @NotNull String systemId, @NotNull String pathStr,
-                     @NotNull InputStream inStrm)
+                     @NotNull InputStream inStrm, String reqTrackingId)
           throws WebApplicationException
   {
     String opName = "upload";
@@ -357,6 +368,14 @@ public class FileOpsService
       String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
+    }
+    // If audit enabled log a message. This method is only called by the api, so component=filesapi
+    if (RuntimeSettings.get().isAuditingEnabled()) {
+      String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.UPLOAD,
+              sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
+              impersonationIdNull, auditDataNull);
+      audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
   }
 
@@ -416,10 +435,11 @@ public class FileOpsService
    * @param sysId - System
    * @param pathStr - path on system relative to system rootDir
    * @param sharedCtxGrantor - Share grantor for the case of a shared context.
+   * @param reqTrackingId - Audit tracking Id received as part of the request.
    * @throws ForbiddenException - user not authorized
    */
   public void mkdir(@NotNull ResourceRequestUser rUser, @NotNull String sysId, @NotNull String pathStr,
-                    String sharedCtxGrantor)
+                    String sharedCtxGrantor, String reqTrackingId)
           throws WebApplicationException
   {
     // Trace the call
@@ -448,6 +468,14 @@ public class FileOpsService
       String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, sysId, pathStr, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
+    }
+    // If audit enabled log a message. This method is only called by the api, so component=filesapi
+    if (RuntimeSettings.get().isAuditingEnabled()) {
+      String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.MKDIR,
+                                       sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
+                                       impersonationIdNull, auditDataNull);
+      audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
   }
 
@@ -612,18 +640,18 @@ public class FileOpsService
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-    public void delete(@NotNull ResourceRequestUser rUser, @NotNull String systemId, @NotNull String pathStr)
+    public void delete(@NotNull ResourceRequestUser rUser, @NotNull String systemId, @NotNull String pathStr, String reqTrackingId)
             throws WebApplicationException
     {
       String opName = "delete";
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       // Get normalized path relative to system rootDir and protect against ../..
-      String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
+      String relPathStr = PathUtils.getRelativePath(pathStr).toString();
 
       // Fetch system with credentials including auth checks for system and path
       TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
-                                                             opName, systemId, relativePathStr, Permission.MODIFY,
+                                                             opName, systemId, relPathStr, Permission.MODIFY,
                                                              IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
 
       // Reserve a client connection, use it to perform the operation and then release it
@@ -632,13 +660,21 @@ public class FileOpsService
       {
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
         // Delete files and permissions
-        delete(client, relativePathStr);
+        delete(client, relPathStr);
+        // If audit enabled log a message. This method is only called by the api, so component=filesapi
+        if (RuntimeSettings.get().isAuditingEnabled()) {
+          String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
+          AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.DELETE,
+                  sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
+                  impersonationIdNull, auditDataNull);
+          audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+        }
         // Remove shares with recurse=true
-        shareService.removeAllSharesForPathWithoutAuth(oboTenant, systemId, relativePathStr, true);
+        shareService.removeAllSharesForPathWithoutAuth(oboTenant, systemId, relPathStr, true);
       }
       catch (IOException | ServiceException ex)
       {
-        String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "delete", systemId, relativePathStr, ex.getMessage());
+        String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "delete", systemId, relPathStr, ex.getMessage());
         log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
       }

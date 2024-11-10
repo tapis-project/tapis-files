@@ -177,7 +177,7 @@ public class OperationsApiResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.upload(rUser, systemId, path, fileInputStream);
+    fileOpsService.upload(rUser, systemId, path, fileInputStream, threadContext.getTrackingId());
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
@@ -221,7 +221,7 @@ public class OperationsApiResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.mkdir(rUser, systemId, mkdirRequest.getPath(), sharedCtx);
+    fileOpsService.mkdir(rUser, systemId, mkdirRequest.getPath(), sharedCtx, threadContext.getTrackingId());
     String durationMsg = LibUtils.getMsgAuth("FILES_DURATION", user, opName, systemId, Duration.between(start, Instant.now()).toMillis());
     log.trace(durationMsg);
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, mkdirRequest.getPath());
@@ -304,7 +304,7 @@ public class OperationsApiResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.delete(rUser, systemId, path);
+    fileOpsService.delete(rUser, systemId, path, threadContext.getTrackingId());
     String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName, systemId, path);
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();
