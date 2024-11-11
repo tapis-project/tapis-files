@@ -51,6 +51,8 @@ import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
+import edu.utexas.tacc.tapis.shared.utils.PathUtils;
+import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -124,6 +126,9 @@ public class ChildTaskTransferService {
             return th;
         }
     });
+
+    // Wrapper for additional file transfer audit data.
+    private record FileTransferAuditInfo(String uuid, String tenant, String username, String externalTaskId, String elapsedTime) {}
 
     /* *********************************************************************** */
     /*            Constructors                                                 */
@@ -422,6 +427,7 @@ public class ChildTaskTransferService {
         String stepLabel = "Two";
         log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
         boolean srcIsLinux = false, dstIsLinux = false; // Used for properly handling update of exec perm
+        String oboUser = taskChild.getUsername();
 
         TapisSystem sourceSystem = null;
         TapisSystem destSystem = null;
@@ -487,13 +493,7 @@ public class ChildTaskTransferService {
 
         // Simulate a ResourceRequestUser since we will need to make some calls that require it
         // Obo tenant and user come from task, jwt tenant and user are files@<site admin tenant>
-        String oboUser = taskChild.getUsername();
-        String oboTenant = taskChild.getTenantId();
-        String jwtUser = TapisConstants.SERVICE_NAME_FILES;
-        String jwtTenant = TransfersApp.getSiteAdminTenantId();
-        ResourceRequestUser rUser =
-                new ResourceRequestUser(new AuthenticatedUser(jwtUser, jwtTenant, TapisThreadContext.AccountType.service.name(),
-                        null, oboUser, oboTenant, null, null, null));
+        ResourceRequestUser rUser = simulateResourceRequestUser(taskChild);
 
         // Initialize source path and client
         if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://")) {
@@ -974,6 +974,9 @@ public class ChildTaskTransferService {
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
         log.trace(msg);
+        TapisSystem srcSystem = srcClient.getSystem();
+        TapisSystem dstSystem = dstClient.getSystem();
+
         // Stream the file contents to destination. While the InputStream is open,
         // we put a tap on it and send events that get grouped into 100 ms intervals. Progress
         // on the child tasks are updated during the reading of the source input stream.
@@ -986,18 +989,21 @@ public class ChildTaskTransferService {
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
         log.trace(msg);
-        log.trace("CHILD TRANSFER TIMING: performSynchFileTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
-        // TODO: audit here?
+        String elapsedTimeStr = String.format("%d", sw.elapsed(TimeUnit.MILLISECONDS));
+        log.trace("CHILD TRANSFER TIMING: performSynchFileTransfer: " + taskChild.getId() + " time: " + elapsedTimeStr);
         // If audit enabled log a message. This method is only called by a worker, so component=filesworker
         if (RuntimeSettings.get().isAuditingEnabled()) {
-            // TODO build additional data as json
-//TODO            var auditData = null;
-            // TODO For convenience, construct a ResourceRequestUser
-            ResourceRequestUser rUser = null;
-            // TODO Are the paths already absolute paths?
-            AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.TRANSFER,
-                    dstClient.getSystem(), dstPath, srcClient.getSystem(), srcPath, taskChild.getReqTrackingId(),
-                    IMPERSONATION_ID_NULL, null);
+            // For convenience, construct a ResourceRequestUser
+            ResourceRequestUser rUser = simulateResourceRequestUser(taskChild);
+            // Build additional data as json.
+            var auditInfo = new FileTransferAuditInfo(taskChild.getUuid().toString(), taskChild.getTenantId(),
+                    taskChild.getUsername(), taskChild.getExternalTaskId(), elapsedTimeStr);
+            String auditData = TapisGsonUtils.getGson().toJson(auditInfo);
+            String dstAbsPathStr = PathUtils.getAbsolutePath(dstSystem.getRootDir(), dstPath).toString();
+            String srcAbsPathStr = PathUtils.getAbsolutePath(srcSystem.getRootDir(), srcPath).toString();
+            AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.ACTION_TRANSFER,
+                                             dstSystem, dstAbsPathStr, srcSystem, srcAbsPathStr,
+                                             taskChild.getReqTrackingId(), IMPERSONATION_ID_NULL, auditData);
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
     }
@@ -1145,5 +1151,18 @@ public class ChildTaskTransferService {
         log.trace(msg);
         // TODO: audit here?
         // TODO For external transfers (i.e. Globus) we always have relative paths. Just log those.
+    }
+
+    /*
+     * Simulate a ResourceRequestUser since we will need to make some calls that require it
+     * Obo tenant and user come from task, jwt tenant and user are files@<site admin tenant>
+     */
+    private static ResourceRequestUser simulateResourceRequestUser(TransferTaskChild taskChild) {
+        String oboUser = taskChild.getUsername();
+        String oboTenant = taskChild.getTenantId();
+        String jwtUser = TapisConstants.SERVICE_NAME_FILES;
+        String jwtTenant = TransfersApp.getSiteAdminTenantId();
+        return new ResourceRequestUser(new AuthenticatedUser(jwtUser, jwtTenant,
+                TapisThreadContext.AccountType.service.name(), null, oboUser, oboTenant, null, null, null));
     }
 }

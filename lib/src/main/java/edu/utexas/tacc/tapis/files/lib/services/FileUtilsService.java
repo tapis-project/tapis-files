@@ -9,7 +9,12 @@ import javax.ws.rs.WebApplicationException;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
+import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
+import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
+import edu.utexas.tacc.tapis.shared.utils.AuditUtils.AUDIT_ACTION;
+import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jetbrains.annotations.NotNull;
@@ -40,6 +45,7 @@ import static edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory.S
 public class FileUtilsService
 {
   private static final Logger log = LoggerFactory.getLogger(FileUtilsService.class);
+  private static final Logger audit = LoggerFactory.getLogger(AuditUtils.LOGGER_NAME);
   private final FilePermsService permsService;
 
   public enum NativeLinuxOperation {CHMOD, CHOWN, CHGRP}
@@ -47,10 +53,18 @@ public class FileUtilsService
   public enum NativeLinuxFaclOperation {ADD, REMOVE, REMOVE_ALL, REMOVE_DEFAULT}
   public enum NativeLinuxFaclRecursion {LOGICAL, PHYSICAL, NONE}
 
-  // Some methods do not support impersonationId or sharedAppCtxGrantor
+  // Define some nulls here for readability.
+  // Some methods do not support certain options, like impersonationId, sharedAppCtxGrantor and audit data.
   private static final String impersonationIdNull = null;
+  private static final TapisSystem sourceSystemNull = null;
+  private static final String sourcePathNull = null;
   private static final String sharedCtxGrantorNull = null;
   private static final boolean isSharedTrue = true;
+
+  // Wrapper for additional linuxOp audit data. Contains request body and query attributes.
+  private record LinuxOpAuditInfo(String operation, String argument, boolean recursive) {}
+  // Wrapper for additional linuxOpSetFacl audit data. Contains request body and query attributes.
+  private record LinuxOpSetFaclAuditInfo(String operation, String recursionMethod, String aclString) {}
 
   @Inject
   FileShareService shareService;
@@ -126,7 +140,7 @@ public class FileUtilsService
   public NativeLinuxOpResult runLinuxOp(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
                                         @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String sysId,
                                         @NotNull String pathStr, @NotNull NativeLinuxOperation nativeOp, String natvieOpArg,
-                                        boolean recursive)
+                                        boolean recursive, String reqTrackingId)
           throws WebApplicationException {
     String opName = "runLinuxOp";
     String oboTenant = rUser.getOboTenantId();
@@ -140,11 +154,12 @@ public class FileUtilsService
                                                            impersonationIdNull, sharedCtxGrantorNull);
     // Construct the remote data client
     IRemoteDataClient client;
+    NativeLinuxOpResult retVal;
     try
     {
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
-      return linuxOp(client, relPathStr, nativeOp, natvieOpArg, recursive, isSharedTrue);
+      retVal = linuxOp(client, relPathStr, nativeOp, natvieOpArg, recursive, isSharedTrue);
     }
     catch (TapisException | ServiceException | IOException e)
     {
@@ -152,6 +167,26 @@ public class FileUtilsService
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
+    // If audit enabled log a message. This method is only called by the api, so component=filesapi
+    if (RuntimeSettings.get().isAuditingEnabled()) {
+      // Build additional data as json. This contains original request body data
+      String auditData = TapisGsonUtils.getGson().toJson(new LinuxOpAuditInfo(nativeOp.name(), natvieOpArg, recursive));
+      // Attempt to convert native linux op into an audit action.
+      // If it fails log an error, but continue. We do not want audit to interrupt normal flow.
+      // Default to generic linux op
+      AUDIT_ACTION auditAction = AUDIT_ACTION.LINUXOP;
+      try {
+        auditAction = AUDIT_ACTION.valueOf(nativeOp.name().toUpperCase());
+      }
+      catch (IllegalArgumentException e) {
+        log.error(LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, opName, sysId, relPathStr, e.getMessage()));
+      }
+      String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, auditAction, sys, dstAbsPathStr,
+                                       sourceSystemNull, sourcePathNull, reqTrackingId, impersonationIdNull, auditData);
+      audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+    }
+    return retVal;
   }
 
   /*
@@ -194,7 +229,7 @@ public class FileUtilsService
   public NativeLinuxOpResult runSetfacl(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
                                        @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String sysId,
                                        @NotNull String pathStr, @NotNull NativeLinuxFaclOperation nativeOp,
-                                       NativeLinuxFaclRecursion recursionMethod, String aclString)
+                                       NativeLinuxFaclRecursion recursionMethod, String aclString, String reqTrackingId)
           throws WebApplicationException {
     String opName = "runSetfacl";
     String oboTenant = rUser.getOboTenantId();
@@ -208,11 +243,12 @@ public class FileUtilsService
                                                            impersonationIdNull, sharedCtxGrantorNull);
     // Construct the remote data client
     IRemoteDataClient client;
+    NativeLinuxOpResult retVal;
     try
     {
 
       client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
-      return setfacl(client, relPathStr, nativeOp, recursionMethod, aclString);
+      retVal = setfacl(client, relPathStr, nativeOp, recursionMethod, aclString);
     }
     catch (TapisException | ServiceException | IOException e)
     {
@@ -220,6 +256,17 @@ public class FileUtilsService
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
+    // If audit enabled log a message. This method is only called by the api, so component=filesapi
+    if (RuntimeSettings.get().isAuditingEnabled()) {
+      // Build additional data as json. This contains original request body data
+      String rMethodStr = (recursionMethod==null) ? NativeLinuxFaclRecursion.NONE.name() : recursionMethod.name();
+      String auditData = TapisGsonUtils.getGson().toJson(new LinuxOpSetFaclAuditInfo(nativeOp.name(), rMethodStr, aclString));
+      String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AUDIT_ACTION.SETFACL, sys, dstAbsPathStr,
+                                       sourceSystemNull, sourcePathNull, reqTrackingId, impersonationIdNull, auditData);
+      audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+    }
+    return retVal;
   }
 
   // ************************************************************************

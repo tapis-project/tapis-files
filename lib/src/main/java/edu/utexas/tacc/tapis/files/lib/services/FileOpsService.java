@@ -376,9 +376,8 @@ public class FileOpsService
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
       String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
-      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.UPLOAD,
-              sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
-              impersonationIdNull, auditDataNull);
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_UPLOAD,
+              sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId, impersonationIdNull, auditDataNull);
       audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
   }
@@ -476,7 +475,7 @@ public class FileOpsService
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
       String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
-      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.MKDIR,
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_MKDIR,
                                        sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
                                        impersonationIdNull, auditDataNull);
       audit.info(AuditUtils.auditMsg(ar.getAuditData()));
@@ -575,10 +574,10 @@ public class FileOpsService
       // If audit enabled log a message. This method is only called by the api, so component=filesapi
       if (RuntimeSettings.get().isAuditingEnabled()) {
         // Build additional data as json. This contains original request body data
-        var auditData = TapisGsonUtils.getGson().toJson(new MoveCopyAuditInfo(op.name(), dstPathStr));
+        String auditData = TapisGsonUtils.getGson().toJson(new MoveCopyAuditInfo(op.name(), dstPathStr));
         String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), dstRelPathStr).toString();
         String srcAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), srcRelPathStr).toString();
-        AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.UPLOAD,
+        AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_UPLOAD,
                 sys, dstAbsPathStr, sys, srcAbsPathStr, reqTrackingId, impersonationIdNull, auditData);
         audit.info(AuditUtils.auditMsg(ar.getAuditData()));
       }
@@ -678,7 +677,7 @@ public class FileOpsService
         // If audit enabled log a message. This method is only called by the api, so component=filesapi
         if (RuntimeSettings.get().isAuditingEnabled()) {
           String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
-          AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.DELETE,
+          AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_DELETE,
                   sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
                   impersonationIdNull, auditDataNull);
           audit.info(AuditUtils.auditMsg(ar.getAuditData()));
