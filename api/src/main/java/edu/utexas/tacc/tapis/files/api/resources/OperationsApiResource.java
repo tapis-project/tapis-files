@@ -266,7 +266,7 @@ public class OperationsApiResource
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
-    fileOpsService.moveOrCopy(rUser, mvCpReq.getOperation(), systemId, path, mvCpReq.getNewPath());
+    fileOpsService.moveOrCopy(rUser, mvCpReq.getOperation(), systemId, path, mvCpReq.getNewPath(), threadContext.getTrackingId());
     String msg = ApiUtils.getMsgAuth("FAPI_MVCP_COMPLETE", rUser, mvCpReq.getOperation(), systemId, path, mvCpReq.getNewPath());
     TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
     return Response.ok(resp).build();

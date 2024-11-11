@@ -24,6 +24,7 @@ import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
+import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -115,6 +116,9 @@ public class FileOpsService
   public static String getSiteId() {return siteId;}
   public static String getServiceTenantId() {return siteAdminTenantId;}
   public static String getServiceUserId() {return SERVICE_NAME;}
+
+  // Wrapper for additional MoveCopy audit data. Contains request body attributes.
+  private record MoveCopyAuditInfo(String operation, String newPath) {}
 
   /**
    * Initialize the service:
@@ -522,7 +526,7 @@ public class FileOpsService
    * @throws ForbiddenException - user not authorized
    */
     public void moveOrCopy(@NotNull ResourceRequestUser rUser, @NotNull MoveCopyOperation op, @NotNull String systemId,
-                           String srcPathStr, String dstPathStr)
+                           String srcPathStr, String dstPathStr, String reqTrackingId)
             throws WebApplicationException
     {
       String opName = op.name().toLowerCase();
@@ -567,6 +571,16 @@ public class FileOpsService
         String msg = LibUtils.getMsg("FILES_OPSC_ERR", oboTenant, oboUser, opName, systemId, srcRelPathStr, ex.getMessage());
         log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
+      }
+      // If audit enabled log a message. This method is only called by the api, so component=filesapi
+      if (RuntimeSettings.get().isAuditingEnabled()) {
+        // Build additional data as json. This contains original request body data
+        var auditData = TapisGsonUtils.getGson().toJson(new MoveCopyAuditInfo(op.name(), dstPathStr));
+        String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), dstRelPathStr).toString();
+        String srcAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), srcRelPathStr).toString();
+        AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.UPLOAD,
+                sys, dstAbsPathStr, sys, srcAbsPathStr, reqTrackingId, impersonationIdNull, auditData);
+        audit.info(AuditUtils.auditMsg(ar.getAuditData()));
       }
     }
 

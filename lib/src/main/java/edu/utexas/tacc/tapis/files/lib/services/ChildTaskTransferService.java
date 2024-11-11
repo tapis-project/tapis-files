@@ -991,13 +991,13 @@ public class ChildTaskTransferService {
         // If audit enabled log a message. This method is only called by a worker, so component=filesworker
         if (RuntimeSettings.get().isAuditingEnabled()) {
             // TODO build additional data as json
-            var auditData = null;
+//TODO            var auditData = null;
             // TODO For convenience, construct a ResourceRequestUser
             ResourceRequestUser rUser = null;
             // TODO Are the paths already absolute paths?
             AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.TRANSFER,
-                    dstClient.getSystem(), dstPath, srcClient.getSystem(), srcPath, reqTrackingId,
-                    IMPERSONATION_ID_NULL, auditData);
+                    dstClient.getSystem(), dstPath, srcClient.getSystem(), srcPath, taskChild.getReqTrackingId(),
+                    IMPERSONATION_ID_NULL, null);
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
     }
@@ -1074,7 +1074,6 @@ public class ChildTaskTransferService {
 
             // Update child task with external task id.
             taskChild.setExternalTaskId(externalTaskId);
-            taskChild.setReqTrackingId(reqTrackingId);
             taskChild = dao.updateTransferTaskChild(taskChild);
             // Monitor the status of the transfer until it is in a final state.
             // Loop forever waiting for task to finish or be cancelled.

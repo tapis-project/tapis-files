@@ -823,12 +823,12 @@ public class FileOpsServiceTests {
         // Perform the tests
         FilePermsService permsServiceMock = locator.getService(FilePermsService.class);
         when(permsServiceMock.isPermitted(any(), any(), any(), any(), any())).thenReturn(false);
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/1new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/a/1new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/a/2.txt","/b/2new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/1new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/a/1new.txt"); });
-        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(),"/a/2.txt","/b/2new.txt"); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/1new.txt", null); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/a/1new.txt", null); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/a/2.txt","/b/2new.txt", null); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/1new.txt", null); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(), "/1.txt","/a/1new.txt", null); });
+        Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.moveOrCopy(TestUtils.getRRUser(devTenant, testuser), MOVE, testSystem.getId(),"/a/2.txt","/b/2new.txt", null); });
         Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/1.txt"); });
         Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a/1.txt"); });
         Assert.assertThrows(ForbiddenException.class, ()-> { fileOpsService.delete(client,"/a"); });
