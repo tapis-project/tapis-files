@@ -128,7 +128,7 @@ public class UtilsLinuxApiResource
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
     NativeLinuxOpResult opResult = fileUtilsService.runLinuxOp(rUser, systemsCache, systemsCacheNoAuth, systemId, path,
-                                                               linuxOp, linuxOpArg, recursive, threadContext.getTrackingId());
+                                                               linuxOp, linuxOpArg, recursive);
 
     String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, linuxOp.name(), systemId, path);
     TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, opResult);
@@ -200,7 +200,7 @@ public class UtilsLinuxApiResource
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
     //   to responses (ApiExceptionMapper).
     NativeLinuxOpResult opResult = fileUtilsService.runSetfacl(rUser, systemsCache, systemsCacheNoAuth, systemId, path,
-                                                               faclOp, recursionMethod, aclString, threadContext.getTrackingId());
+                                                               faclOp, recursionMethod, aclString);
 
     String msg = ApiUtils.getMsgAuth("FAPI_LINUX_OP_DONE", rUser, opName, systemId, path);
     TapisResponse<NativeLinuxOpResult> resp = TapisResponse.createSuccessResponse(msg, opResult);

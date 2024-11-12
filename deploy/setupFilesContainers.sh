@@ -98,7 +98,7 @@ announce "running docker compose up"
 docker compose -f ${SCRIPT_DIR}/docker-compose.yml up --wait
 
 announce "pausing for startup"
-sleep 5
+sleep 15
 
 announce "setting up rabbitmq"
 RABBITMQCTL_CMDS=$(

@@ -56,11 +56,6 @@
         </encoder>
     </appender>
 
-    <!-- additivity=false ensures audit data only goes to the audit log -->
-    <logger name="audit" level="INFO" additivity="false">
-        <appender-ref ref="AUDIT-FILE"/>
-    </logger>
-
     <appender name="SSH_POOL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${tapis.log.directory:-${user.home}}/tapis-files-api-sshpool.log</file>
         <rollingPolicy
@@ -99,5 +94,10 @@
     <!-- ssh session pooling logging.  set to "TRACE" for debugging message (very verbose) -->
     <logger name="edu.utexas.tacc.tapis.shared.ssh" level="INFO" additivity="false">
         <appender-ref ref="SSH_POOL_FILE"/>
+    </logger>
+
+    <!-- additivity=false ensures audit data only goes to the audit log -->
+    <logger name="audit" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT-FILE"/>
     </logger>
 </configuration>

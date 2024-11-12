@@ -12,6 +12,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils.AUDIT_ACTION;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
@@ -140,7 +141,7 @@ public class FileUtilsService
   public NativeLinuxOpResult runLinuxOp(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
                                         @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String sysId,
                                         @NotNull String pathStr, @NotNull NativeLinuxOperation nativeOp, String natvieOpArg,
-                                        boolean recursive, String reqTrackingId)
+                                        boolean recursive)
           throws WebApplicationException {
     String opName = "runLinuxOp";
     String oboTenant = rUser.getOboTenantId();
@@ -169,6 +170,7 @@ public class FileUtilsService
     }
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
+      String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
       // Build additional data as json. This contains original request body data
       String auditData = TapisGsonUtils.getGson().toJson(new LinuxOpAuditInfo(nativeOp.name(), natvieOpArg, recursive));
       // Attempt to convert native linux op into an audit action.
@@ -229,7 +231,7 @@ public class FileUtilsService
   public NativeLinuxOpResult runSetfacl(@NotNull ResourceRequestUser rUser, @NotNull SystemsCache systemsCache,
                                        @NotNull SystemsCacheNoAuth systemsCacheNoAuth, @NotNull String sysId,
                                        @NotNull String pathStr, @NotNull NativeLinuxFaclOperation nativeOp,
-                                       NativeLinuxFaclRecursion recursionMethod, String aclString, String reqTrackingId)
+                                       NativeLinuxFaclRecursion recursionMethod, String aclString)
           throws WebApplicationException {
     String opName = "runSetfacl";
     String oboTenant = rUser.getOboTenantId();
@@ -258,6 +260,7 @@ public class FileUtilsService
     }
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
+      String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
       // Build additional data as json. This contains original request body data
       String rMethodStr = (recursionMethod==null) ? NativeLinuxFaclRecursion.NONE.name() : recursionMethod.name();
       String auditData = TapisGsonUtils.getGson().toJson(new LinuxOpSetFaclAuditInfo(nativeOp.name(), rMethodStr, aclString));

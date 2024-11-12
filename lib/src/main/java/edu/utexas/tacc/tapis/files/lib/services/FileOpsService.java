@@ -23,6 +23,8 @@ import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -348,7 +350,7 @@ public class FileOpsService
    * @throws ForbiddenException - user not authorized
    */
   public void upload(@NotNull ResourceRequestUser rUser, @NotNull String systemId, @NotNull String pathStr,
-                     @NotNull InputStream inStrm, String reqTrackingId)
+                     @NotNull InputStream inStrm)
           throws WebApplicationException
   {
     String opName = "upload";
@@ -360,6 +362,7 @@ public class FileOpsService
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, systemId, relPathStr, Permission.MODIFY,
                                                            IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
+
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
     try
@@ -375,6 +378,7 @@ public class FileOpsService
     }
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
+      String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
       String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
       AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_UPLOAD,
               sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId, impersonationIdNull, auditDataNull);
@@ -438,11 +442,10 @@ public class FileOpsService
    * @param sysId - System
    * @param pathStr - path on system relative to system rootDir
    * @param sharedCtxGrantor - Share grantor for the case of a shared context.
-   * @param reqTrackingId - Audit tracking Id received as part of the request.
    * @throws ForbiddenException - user not authorized
    */
   public void mkdir(@NotNull ResourceRequestUser rUser, @NotNull String sysId, @NotNull String pathStr,
-                    String sharedCtxGrantor, String reqTrackingId)
+                    String sharedCtxGrantor)
           throws WebApplicationException
   {
     // Trace the call
@@ -474,6 +477,7 @@ public class FileOpsService
     }
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
+      String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
       String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
       AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_MKDIR,
                                        sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
@@ -525,7 +529,7 @@ public class FileOpsService
    * @throws ForbiddenException - user not authorized
    */
     public void moveOrCopy(@NotNull ResourceRequestUser rUser, @NotNull MoveCopyOperation op, @NotNull String systemId,
-                           String srcPathStr, String dstPathStr, String reqTrackingId)
+                           String srcPathStr, String dstPathStr)
             throws WebApplicationException
     {
       String opName = op.name().toLowerCase();
@@ -573,6 +577,7 @@ public class FileOpsService
       }
       // If audit enabled log a message. This method is only called by the api, so component=filesapi
       if (RuntimeSettings.get().isAuditingEnabled()) {
+        String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
         // Build additional data as json. This contains original request body data
         String auditData = TapisGsonUtils.getGson().toJson(new MoveCopyAuditInfo(op.name(), dstPathStr));
         String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), dstRelPathStr).toString();
@@ -653,7 +658,7 @@ public class FileOpsService
    * @throws NotFoundException - requested path not found
    * @throws ForbiddenException - user not authorized
    */
-    public void delete(@NotNull ResourceRequestUser rUser, @NotNull String systemId, @NotNull String pathStr, String reqTrackingId)
+    public void delete(@NotNull ResourceRequestUser rUser, @NotNull String systemId, @NotNull String pathStr)
             throws WebApplicationException
     {
       String opName = "delete";
@@ -676,6 +681,7 @@ public class FileOpsService
         delete(client, relPathStr);
         // If audit enabled log a message. This method is only called by the api, so component=filesapi
         if (RuntimeSettings.get().isAuditingEnabled()) {
+          String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
           String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
           AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_DELETE,
                   sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
