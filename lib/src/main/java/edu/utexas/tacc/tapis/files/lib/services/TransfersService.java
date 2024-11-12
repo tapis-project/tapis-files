@@ -305,10 +305,10 @@ public class TransfersService
       task.setTag(tag);
       task.setReqTrackingId(reqTrackingId);
 
-      // Persist the transfer task
+      // Persist the transfer task and associated parent tasks
       try
       {
-        // Persist the transfer task to the DB
+        // Persist the transfer task and associated parent tasks to the DB
         log.trace(LibUtils.getMsgAuthR("FILES_TXFR_PERSIST_TASK", rUser, tag, elements.size()));
         TransferTask newTask = dao.createTransferTask(task, elements);
         return newTask;

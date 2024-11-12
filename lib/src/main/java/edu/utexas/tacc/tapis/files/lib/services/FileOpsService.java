@@ -578,12 +578,15 @@ public class FileOpsService
       // If audit enabled log a message. This method is only called by the api, so component=filesapi
       if (RuntimeSettings.get().isAuditingEnabled()) {
         String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
+        // Determine the action
+        AuditUtils.AUDIT_ACTION auditAction =
+                (op.name().equals(MoveCopyOperation.COPY.name())) ? AuditUtils.AUDIT_ACTION.ACTION_COPY : AuditUtils.AUDIT_ACTION.ACTION_MOVE;
         // Build additional data as json. This contains original request body data
         String auditData = TapisGsonUtils.getGson().toJson(new MoveCopyAuditInfo(op.name(), dstPathStr));
         String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), dstRelPathStr).toString();
         String srcAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), srcRelPathStr).toString();
-        AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_UPLOAD,
-                sys, dstAbsPathStr, sys, srcAbsPathStr, reqTrackingId, impersonationIdNull, auditData);
+        AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, auditAction, sys, dstAbsPathStr,
+                                         sys, srcAbsPathStr, reqTrackingId, impersonationIdNull, auditData);
         audit.info(AuditUtils.auditMsg(ar.getAuditData()));
       }
     }

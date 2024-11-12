@@ -171,12 +171,18 @@ public class FileUtilsService
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
       String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
+      // Determine the action
+      AUDIT_ACTION auditAction = AUDIT_ACTION.LINUXOP;
+      switch (nativeOp) {
+        case CHMOD -> auditAction = AUDIT_ACTION.ACTION_CHMOD;
+        case CHOWN -> auditAction = AUDIT_ACTION.ACTION_CHOWN;
+        case CHGRP -> auditAction = AUDIT_ACTION.ACTION_CHGRP;
+      }
       // Build additional data as json. This contains original request body data
       String auditData = TapisGsonUtils.getGson().toJson(new LinuxOpAuditInfo(nativeOp.name(), natvieOpArg, recursive));
       // Attempt to convert native linux op into an audit action.
       // If it fails log an error, but continue. We do not want audit to interrupt normal flow.
       // Default to generic linux op
-      AUDIT_ACTION auditAction = AUDIT_ACTION.LINUXOP;
       try {
         auditAction = AUDIT_ACTION.valueOf(nativeOp.name().toUpperCase());
       }
@@ -265,7 +271,7 @@ public class FileUtilsService
       String rMethodStr = (recursionMethod==null) ? NativeLinuxFaclRecursion.NONE.name() : recursionMethod.name();
       String auditData = TapisGsonUtils.getGson().toJson(new LinuxOpSetFaclAuditInfo(nativeOp.name(), rMethodStr, aclString));
       String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
-      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AUDIT_ACTION.SETFACL, sys, dstAbsPathStr,
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AUDIT_ACTION.ACTION_SETFACL, sys, dstAbsPathStr,
                                        sourceSystemNull, sourcePathNull, reqTrackingId, impersonationIdNull, auditData);
       audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
