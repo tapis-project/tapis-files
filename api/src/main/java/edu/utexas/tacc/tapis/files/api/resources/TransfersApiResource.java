@@ -298,8 +298,7 @@ public class  TransfersApiResource
     try
     {
       // Create the txfr task
-      task = transfersService.createTransfer(rUser, transferTaskRequest.getTag(), transferTaskRequest.getElements(),
-                                             threadContext.getTrackingId());
+      task = transfersService.createTransfer(rUser, transferTaskRequest.getTag(), transferTaskRequest.getElements());
     }
     catch (ServiceException ex)
     {
