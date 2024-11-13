@@ -88,6 +88,7 @@ public class FileOpsService
   private static final String auditDataNull = null;
   private static final TapisSystem sourceSystemNull = null;
   private static final String sourcePathNull = null;
+  private static final String trackingIdNull = null;
 
   private static final String SYSTEMS_SERVICE = TapisConstants.SERVICE_NAME_SYSTEMS;
   private static final String APPS_SERVICE = TapisConstants.SERVICE_NAME_APPS;
@@ -477,10 +478,10 @@ public class FileOpsService
     }
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
-      String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
+      String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
       String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
       AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_MKDIR,
-                                       sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
+                                       sys, absPathStr, sourceSystemNull, sourcePathNull, parentTrackingId,
                                        impersonationIdNull, auditDataNull);
       audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
@@ -577,7 +578,7 @@ public class FileOpsService
       }
       // If audit enabled log a message. This method is only called by the api, so component=filesapi
       if (RuntimeSettings.get().isAuditingEnabled()) {
-        String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
+        String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
         // Determine the action
         AuditUtils.AUDIT_ACTION auditAction =
                 (op.name().equals(MoveCopyOperation.COPY.name())) ? AuditUtils.AUDIT_ACTION.ACTION_COPY : AuditUtils.AUDIT_ACTION.ACTION_MOVE;
@@ -586,7 +587,7 @@ public class FileOpsService
         String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), dstRelPathStr).toString();
         String srcAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), srcRelPathStr).toString();
         AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, auditAction, sys, dstAbsPathStr,
-                                         sys, srcAbsPathStr, reqTrackingId, impersonationIdNull, auditData);
+                                         sys, srcAbsPathStr, parentTrackingId, impersonationIdNull, auditData);
         audit.info(AuditUtils.auditMsg(ar.getAuditData()));
       }
     }
@@ -684,10 +685,10 @@ public class FileOpsService
         delete(client, relPathStr);
         // If audit enabled log a message. This method is only called by the api, so component=filesapi
         if (RuntimeSettings.get().isAuditingEnabled()) {
-          String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
+          String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
           String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
           AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_DELETE,
-                  sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId,
+                  sys, absPathStr, sourceSystemNull, sourcePathNull, parentTrackingId,
                   impersonationIdNull, auditDataNull);
           audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }

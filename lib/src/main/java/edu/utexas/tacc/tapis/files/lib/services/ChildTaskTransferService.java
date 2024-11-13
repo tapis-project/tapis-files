@@ -40,7 +40,15 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.*;
+import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
+import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
+import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.DefaultSchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
@@ -479,7 +487,7 @@ public class ChildTaskTransferService {
 
             // For some reason taskChild does not have the tag set at this point.
             taskChild.setTag(parentTask.getTag());
-            taskChild.setReqTrackingId(parentTask.getReqTrackingId());
+            taskChild.setParentTrackingId(parentTask.getParentTrackingId());
         } catch (DAOException ex) {
             String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                     "ChildStepTwoA", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
@@ -593,7 +601,7 @@ public class ChildTaskTransferService {
             updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, chmodArg, isDestShared);
             // If audit enabled log a message. This method is only called by the api, so component=filesapi
             if (RuntimeSettings.get().isAuditingEnabled()) {
-                String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
+                String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
                 // Determine the action
                 AuditUtils.AUDIT_ACTION auditAction = AuditUtils.AUDIT_ACTION.ACTION_CHMOD;
                 // Build additional data as json. This contains original request body data
@@ -601,7 +609,7 @@ public class ChildTaskTransferService {
                 String auditData = TapisGsonUtils.getGson().toJson(d);
                 String dstAbsPathStr = PathUtils.getAbsolutePath(destSystem.getRootDir(), destPath).toString();
                 AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, auditAction, destSystem,
-                        dstAbsPathStr, null, null, reqTrackingId, null, auditData);
+                        dstAbsPathStr, null, null, parentTrackingId, null, auditData);
                 audit.info(AuditUtils.auditMsg(ar.getAuditData()));
             }
         }
@@ -1019,7 +1027,7 @@ public class ChildTaskTransferService {
             String srcAbsPathStr = PathUtils.getAbsolutePath(srcSystem.getRootDir(), srcPath).toString();
             AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.ACTION_TRANSFER,
                                              dstSystem, dstAbsPathStr, srcSystem, srcAbsPathStr,
-                                             taskChild.getReqTrackingId(), IMPERSONATION_ID_NULL, auditData);
+                                             taskChild.getParentTrackingId(), IMPERSONATION_ID_NULL, auditData);
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
     }
@@ -1182,7 +1190,7 @@ public class ChildTaskTransferService {
             String srcAbsPathStr = PathUtils.getAbsolutePath(srcSystem.getRootDir(), srcRelPath).toString();
             AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.ACTION_TRANSFER,
                                              dstSystem, dstAbsPathStr, srcSystem, srcAbsPathStr,
-                                             taskChild.getReqTrackingId(), IMPERSONATION_ID_NULL, auditData);
+                                             taskChild.getParentTrackingId(), IMPERSONATION_ID_NULL, auditData);
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
     }

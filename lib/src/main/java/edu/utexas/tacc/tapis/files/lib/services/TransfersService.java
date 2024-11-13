@@ -304,7 +304,7 @@ public class TransfersService
       task.setUsername(rUser.getOboUserId());
       task.setStatus(TransferTaskStatus.ACCEPTED);
       task.setTag(tag);
-      task.setReqTrackingId(TapisThreadLocal.tapisThreadContext.get().getTrackingId());
+      task.setParentTrackingId(TapisThreadLocal.tapisThreadContext.get().getTrackingId());
 
       // Persist the transfer task and associated parent tasks
       try

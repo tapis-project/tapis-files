@@ -31,7 +31,7 @@ class TransferTaskChildRowProcessor extends BasicRowProcessor {
         task.setBytesTransferred(rs.getLong("bytes_transferred"));
         task.setErrorMessage(rs.getString("error_message"));
         task.setExternalTaskId(rs.getString("external_task_id"));
-        task.setReqTrackingId(rs.getString("req_tracking_id"));
+        task.setParentTrackingId(rs.getString("parent_tracking_id"));
         task.setAssignedTo(rs.getObject("assigned_to", UUID.class));
         Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts -> task.setStartTime(ts.toInstant()));
         Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts -> task.setEndTime(ts.toInstant()));

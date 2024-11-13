@@ -15,7 +15,7 @@ public class TransferTask
     protected String username;
     protected String tenantId;
     protected String tag;
-    protected String reqTrackingId;
+    protected String parentTrackingId;
     protected UUID uuid;
     protected Instant created;
     protected Instant startTime;
@@ -55,8 +55,8 @@ public class TransferTask
     public String getTag() { return tag; }
     public void setTag(String s) { tag = s; }
 
-    public String getReqTrackingId() { return reqTrackingId; }
-    public void setReqTrackingId(String s) { reqTrackingId = s; }
+    public String getParentTrackingId() { return parentTrackingId; }
+    public void setParentTrackingId(String s) { parentTrackingId = s; }
 
     public Instant getCreated() { return created;}
     public void setCreated(Instant c1) { created = c1; }

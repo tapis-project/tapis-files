@@ -14,7 +14,6 @@ public class TransferTaskChild extends TransferTaskParent
   private int retries;
   private boolean isDir;
   private String externalTaskId = ""; // Id for an external async txfr, such as Globus
-  private String reqTrackingId = ""; // Id for tracking of incoming request. Used for audit.
 
   /* *********************************************************************** */
   /*            Constructors                                                 */
@@ -23,7 +22,7 @@ public class TransferTaskChild extends TransferTaskParent
   public TransferTaskChild() {}
 
   public TransferTaskChild(String tenantId1, String username1, TransferURI srcUri1, TransferURI dstUri1, int parentId1,
-                           String tag1, String externalTaskId1, String reqTrackingId1)
+                           String tag1, String externalTaskId1, String parentTrackingId1)
   {
     tenantId = tenantId1;
     username = username1;
@@ -34,7 +33,7 @@ public class TransferTaskChild extends TransferTaskParent
     parentTaskId = parentId1;
     tag = tag1;
     externalTaskId = (externalTaskId1==null) ? "" : externalTaskId1;
-    reqTrackingId = (reqTrackingId1==null) ? "" : reqTrackingId1;
+    parentTrackingId = (parentTrackingId1==null) ? "" : parentTrackingId1;
   }
 
   /**
@@ -62,7 +61,7 @@ public class TransferTaskChild extends TransferTaskParent
     // Set attributes for child we are constructing.
     externalTaskId = "";
     setTag(transferTaskParent.getTag());
-    setReqTrackingId(transferTaskParent.getReqTrackingId());
+    setParentTrackingId(transferTaskParent.getParentTrackingId());
     setParentTaskId(transferTaskParent.getId());
     setTaskId(transferTaskParent.getTaskId());
     setSourceURI(newSourceUri.toString());
@@ -97,7 +96,7 @@ public class TransferTaskChild extends TransferTaskParent
             .add("parentTaskId=" + parentTaskId)
             .add("taskId=" + taskId)
             .add("externalTaskId=" + externalTaskId)
-            .add("reqTrackingId=" +  reqTrackingId)
+            .add("parentTrackingId=" +  parentTrackingId)
             .add("retries=" + retries)
             .add("tenantId='" + tenantId + "'")
             .add("username='" + username + "'")
@@ -121,6 +120,4 @@ public class TransferTaskChild extends TransferTaskParent
   public void setDir(boolean b) { isDir = b; }
   public String getExternalTaskId() { return (externalTaskId==null) ? "" : externalTaskId; }
   public void setExternalTaskId(String s) { externalTaskId = (s==null) ? "" : s; }
-  public String getReqTrackingId() { return (reqTrackingId==null) ? "" : reqTrackingId; }
-  public void setReqTrackingId(String s) { reqTrackingId = (s==null) ? "" : s; }
 }

@@ -611,7 +611,7 @@ public class ParentTaskTransferService {
       // Create a single child task and update parent task status
       TransferTaskChild task = new TransferTaskChild();
       task.setTag(parentTask.getTag());
-      task.setReqTrackingId(parentTask.getReqTrackingId());
+      task.setParentTrackingId(parentTask.getParentTrackingId());
       task.setSourceURI(parentTask.getSourceURI());
       task.setParentTaskId(parentTask.getId());
       task.setTaskId(parentTask.getTaskId());
