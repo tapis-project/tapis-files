@@ -63,7 +63,7 @@ public class FileUtilsService
   private static final boolean isSharedTrue = true;
 
   // Wrapper for additional linuxOp audit data. Contains request body and query attributes.
-  private record LinuxOpAuditInfo(String operation, String argument, boolean recursive) {}
+  record LinuxOpAuditInfo(String operation, String argument, boolean recursive) {}
   // Wrapper for additional linuxOpSetFacl audit data. Contains request body and query attributes.
   private record LinuxOpSetFaclAuditInfo(String operation, String recursionMethod, String aclString) {}
 
@@ -180,15 +180,6 @@ public class FileUtilsService
       }
       // Build additional data as json. This contains original request body data
       String auditData = TapisGsonUtils.getGson().toJson(new LinuxOpAuditInfo(nativeOp.name(), natvieOpArg, recursive));
-      // Attempt to convert native linux op into an audit action.
-      // If it fails log an error, but continue. We do not want audit to interrupt normal flow.
-      // Default to generic linux op
-      try {
-        auditAction = AUDIT_ACTION.valueOf(nativeOp.name().toUpperCase());
-      }
-      catch (IllegalArgumentException e) {
-        log.error(LibUtils.getMsgAuthR("FILES_OPS_ERR", rUser, opName, sysId, relPathStr, e.getMessage()));
-      }
       String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
       AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, auditAction, sys, dstAbsPathStr,
                                        sourceSystemNull, sourcePathNull, reqTrackingId, impersonationIdNull, auditData);
