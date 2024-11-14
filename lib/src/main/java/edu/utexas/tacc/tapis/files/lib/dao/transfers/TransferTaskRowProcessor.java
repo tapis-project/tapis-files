@@ -22,6 +22,7 @@ class TransferTaskRowProcessor extends BasicRowProcessor {
         task.setUuid(UUID.fromString(rs.getString("uuid")));
         task.setStatus(rs.getString("status"));
         task.setTag(rs.getString("tag"));
+        task.setParentTrackingId(rs.getString("parent_tracking_id"));
         task.setErrorMessage(rs.getString("error_message"));
         Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts -> task.setStartTime(ts.toInstant()));
         Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts -> task.setEndTime(ts.toInstant()));

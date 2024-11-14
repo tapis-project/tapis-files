@@ -20,7 +20,12 @@ import javax.ws.rs.core.StreamingOutput;
 
 import edu.utexas.tacc.tapis.files.lib.clients.ISSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
+import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
+import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
+import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -69,11 +74,20 @@ public class FileOpsService
   public enum MoveCopyOperation {MOVE, COPY, SERVICE_MOVE_DIRECTORY_CONTENTS, SERVICE_MOVE_FILE_OR_DIRECTORY}
 
   private static final Logger log = LoggerFactory.getLogger(FileOpsService.class);
+  private static final Logger audit = LoggerFactory.getLogger(AuditUtils.LOGGER_NAME);
 
   private static final String SERVICE_NAME = TapisConstants.SERVICE_NAME_FILES;
 
   // 0=systemId, 1=path, 2=tenant
   private final String TAPIS_FILES_URL_FORMAT = String.format("%s{0}/{1}?tenant={2}", TAPIS_PROTOCOL_PREFIX);
+
+  // Define some nulls here for readability.
+  // Some methods do not support certain options, like impersonationId and audit data.
+  private static final String impersonationIdNull = null;
+  private static final String auditDataNull = null;
+  private static final TapisSystem sourceSystemNull = null;
+  private static final String sourcePathNull = null;
+  private static final String trackingIdNull = null;
 
   private static final String SYSTEMS_SERVICE = TapisConstants.SERVICE_NAME_SYSTEMS;
   private static final String APPS_SERVICE = TapisConstants.SERVICE_NAME_APPS;
@@ -104,6 +118,9 @@ public class FileOpsService
   public static String getSiteId() {return siteId;}
   public static String getServiceTenantId() {return siteAdminTenantId;}
   public static String getServiceUserId() {return SERVICE_NAME;}
+
+  // Wrapper for additional MoveCopy audit data. Contains request body attributes.
+  private record MoveCopyAuditInfo(String operation, String newPath) {}
 
   /**
    * Initialize the service:
@@ -345,6 +362,7 @@ public class FileOpsService
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, systemId, relPathStr, Permission.MODIFY,
                                                            IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
+
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
     try
@@ -357,6 +375,13 @@ public class FileOpsService
       String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, relPathStr, ex.getMessage());
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
+    }
+    // If audit enabled log a message. This method is only called by the api, so component=filesapi
+    if (RuntimeSettings.get().isAuditingEnabled()) {
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_UPLOAD,
+                                       sys, pathStr, sourceSystemNull, sourcePathNull, auditDataNull,
+                                       impersonationIdNull, trackingIdNull);
+      audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
   }
 
@@ -449,6 +474,13 @@ public class FileOpsService
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
     }
+    // If audit enabled log a message. This method is only called by the api, so component=filesapi
+    if (RuntimeSettings.get().isAuditingEnabled()) {
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_MKDIR,
+                                       sys, pathStr, sourceSystemNull, sourcePathNull, auditDataNull,
+                                       impersonationIdNull, trackingIdNull);
+      audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+    }
   }
 
   /**
@@ -540,6 +572,17 @@ public class FileOpsService
         log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
       }
+      // If audit enabled log a message. This method is only called by the api, so component=filesapi
+      if (RuntimeSettings.get().isAuditingEnabled()) {
+        // Determine the action
+        AuditUtils.AUDIT_ACTION auditAction =
+                (op.name().equals(MoveCopyOperation.COPY.name())) ? AuditUtils.AUDIT_ACTION.ACTION_COPY : AuditUtils.AUDIT_ACTION.ACTION_MOVE;
+        // Build additional data as json. This contains original request body data
+        String auditData = TapisGsonUtils.getGson().toJson(new MoveCopyAuditInfo(op.name(), dstPathStr));
+        AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, auditAction, sys, dstPathStr, sys,
+                                         srcPathStr, auditData, impersonationIdNull, trackingIdNull);
+        audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+      }
     }
 
   /**
@@ -619,11 +662,11 @@ public class FileOpsService
       String oboTenant = rUser.getOboTenantId();
       String oboUser = rUser.getOboUserId();
       // Get normalized path relative to system rootDir and protect against ../..
-      String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
+      String relPathStr = PathUtils.getRelativePath(pathStr).toString();
 
       // Fetch system with credentials including auth checks for system and path
       TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
-                                                             opName, systemId, relativePathStr, Permission.MODIFY,
+                                                             opName, systemId, relPathStr, Permission.MODIFY,
                                                              IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
 
       // Reserve a client connection, use it to perform the operation and then release it
@@ -632,13 +675,22 @@ public class FileOpsService
       {
         client = remoteDataClientFactory.getRemoteDataClient(oboTenant, oboUser, sys, IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
         // Delete files and permissions
-        delete(client, relativePathStr);
+        delete(client, relPathStr);
+        // If audit enabled log a message. This method is only called by the api, so component=filesapi
+        if (RuntimeSettings.get().isAuditingEnabled()) {
+          String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
+          String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
+          AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_DELETE,
+                                           sys, absPathStr, sourceSystemNull, sourcePathNull, auditDataNull,
+                                           impersonationIdNull, trackingIdNull);
+          audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+        }
         // Remove shares with recurse=true
-        shareService.removeAllSharesForPathWithoutAuth(oboTenant, systemId, relativePathStr, true);
+        shareService.removeAllSharesForPathWithoutAuth(oboTenant, systemId, relPathStr, true);
       }
       catch (IOException | ServiceException ex)
       {
-        String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "delete", systemId, relativePathStr, ex.getMessage());
+        String msg = LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, "delete", systemId, relPathStr, ex.getMessage());
         log.error(msg, ex);
         throw new WebApplicationException(msg, ex);
       }

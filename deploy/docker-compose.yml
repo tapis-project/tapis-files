@@ -21,7 +21,7 @@ services:
       - POSTGRES_PASSWORD=dev
       - POSTGRES_DATABASE=dev
     ports:
-      - 5432:5432
+      - $PG_PORT:5432
     volumes:
       - files-postgres-16-data:/var/lib/postgresql/data
 

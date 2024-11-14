@@ -40,6 +40,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
@@ -57,6 +58,9 @@ import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
+import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
+import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
@@ -98,6 +102,12 @@ public class ChildTaskTransferService {
     // 5 items in the queue
     private static final int MAX_THREADS = RuntimeSettings.get().getChildThreadPoolSize();
 
+    private static final String impersonationIdNull = null;
+    private static final String auditDataNull = null;
+    private static final TapisSystem sourceSystemNull = null;
+    private static final String sourcePathNull = null;
+    private static final String trackingIdNull = null;
+
     // this parameter is slightly confusing.  For each combination of tenant/user we will get a maximum of
     // this many items.  For example if there are 3 users (2 in one tenant and 1 in another), and the each have
     // exactly 3 tasks, and MAX_WORK_ITEM_DEPTH is set to 2 we will get back a max of 2 per user, so 6 items.  If
@@ -116,6 +126,7 @@ public class ChildTaskTransferService {
     private final SystemsCacheNoAuth systemsCacheNoAuth;
     private final FileUtilsService fileUtilsService;
     private static final Logger log = LoggerFactory.getLogger(ChildTaskTransferService.class);
+    private static final Logger audit = LoggerFactory.getLogger(AuditUtils.LOGGER_NAME);
     private Connection connection;
     private List<Channel> channels = new ArrayList<Channel>();
     private ExecutorService connectionThreadPool = null;
@@ -129,6 +140,13 @@ public class ChildTaskTransferService {
             return th;
         }
     });
+
+    // Thread local variables for top task UUID and the audit parentTrackingId
+    ThreadLocal<String> topTaskUuid = ThreadLocal.withInitial(() -> AuditUtils.AUDIT_EMPTY);
+    ThreadLocal<String> topTaskParentTrackingId = ThreadLocal.withInitial(() -> AuditUtils.AUDIT_EMPTY);
+
+    // Wrapper for additional file transfer audit data.
+    private record FileTransferAuditInfo(String uuid, String tenant, String username, String externalTaskId, String elapsedTime) {}
 
     /* *********************************************************************** */
     /*            Constructors                                                 */
@@ -427,6 +445,7 @@ public class ChildTaskTransferService {
         String stepLabel = "Two";
         log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
         boolean srcIsLinux = false, dstIsLinux = false; // Used for properly handling update of exec perm
+        String oboUser = taskChild.getUsername();
 
         TapisSystem sourceSystem = null;
         TapisSystem destSystem = null;
@@ -450,8 +469,16 @@ public class ChildTaskTransferService {
             }
         }
 
+        TransferTask topTask;
         TransferTaskParent parentTask;
         try {
+            // Get top task uuid and audit parentTrackingId
+            topTask = dao.getTransferTaskByID(taskChild.getTaskId());
+            topTaskUuid.set(topTask.getUuid().toString());
+            topTaskParentTrackingId.set(topTask.getParentTrackingId());
+            // TODO Do we even need to ThreadLocal parentTrackingId? Or jus set it in tapisThreadContext and we are done?
+            TapisThreadLocal.tapisThreadContext.get().setTrackingId(topTaskParentTrackingId.get());
+
             // Get the parent task. We will need it for shared ctx grantors.
             parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             // child task does not have the shared context info.  We have to get it from the parent.
@@ -491,13 +518,7 @@ public class ChildTaskTransferService {
 
         // Simulate a ResourceRequestUser since we will need to make some calls that require it
         // Obo tenant and user come from task, jwt tenant and user are files@<site admin tenant>
-        String oboUser = taskChild.getUsername();
-        String oboTenant = taskChild.getTenantId();
-        String jwtUser = TapisConstants.SERVICE_NAME_FILES;
-        String jwtTenant = TransfersApp.getSiteAdminTenantId();
-        ResourceRequestUser rUser =
-                new ResourceRequestUser(new AuthenticatedUser(jwtUser, jwtTenant, TapisThreadContext.AccountType.service.name(),
-                        null, oboUser, oboTenant, null, null, null));
+        ResourceRequestUser rUser = simulateResourceRequestUser(taskChild);
 
         // Initialize source path and client
         if (taskChild.getSourceURI().toString().startsWith("https://") || taskChild.getSourceURI().toString().startsWith("http://")) {
@@ -582,7 +603,8 @@ public class ChildTaskTransferService {
         // If it is an executable file on a posix system going to a posix system, chmod it to be +x.
         // Note: sourceSystem will be null and srcIsLinux will be false if source is http/s.
         if (sourceSystem != null && srcIsLinux && dstIsLinux) {
-            // Figure out if dest system is shared. We need to know if we should turn of perm checking.
+            String chmodArg = "u+x";
+            // Figure out if dest system is shared. We need to know if we should turn off perm checking.
             // First check to see if we are in a sharedCtx
             boolean isDestShared = !StringUtils.isBlank(parentTask.getDestSharedCtxGrantor());
             // Even if not in a sharedCtx the dest system may be shared publicly or directly with the user.
@@ -592,7 +614,19 @@ public class ChildTaskTransferService {
                 boolean isSharedDirect = (sharedWithUsers != null && sharedWithUsers.contains(oboUser));
                 isDestShared = (isSharedPublic || isSharedDirect);
             }
-            updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, isDestShared);
+            updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, chmodArg, isDestShared);
+            // If audit enabled log a message. This method is only called by the api, so component=filesapi
+            if (RuntimeSettings.get().isAuditingEnabled()) {
+                // Determine the action
+                AuditUtils.AUDIT_ACTION auditAction = AuditUtils.AUDIT_ACTION.ACTION_CHMOD;
+                // Build additional data as json. This contains original request body data
+                var d = new FileUtilsService.LinuxOpAuditInfo(FileUtilsService.NativeLinuxOperation.CHMOD.name(), chmodArg, false);
+                String auditData = TapisGsonUtils.getGson().toJson(d);
+                AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, auditAction, destSystem, destPath,
+                                                 sourceSystemNull, sourcePathNull, auditData,
+                                                 impersonationIdNull, topTaskUuid.get());
+                audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+            }
         }
 
         // The ChildTransferTask may have been updated by calling thread, e.g. cancelled, so we look it up again
@@ -917,17 +951,19 @@ public class ChildTaskTransferService {
     }
 
     /**
-     * Update perm on LINUX exe file
+     * Update linux perm on LINUX exe file using chmod
      *
      * @param taskChild task we are processing
      * @param srcClient Remote data client for source system
      * @param srcUri    source path as URI
      * @param dstClient Remote data client for destination system
+     * @param chmodArg Permissions argument for chmod operation
      * @param dstUri    Destination path as URI
      */
     private void updateLinuxExeFile(TransferTaskChild taskChild,
                                     IRemoteDataClient srcClient, TransferURI srcUri,
                                     IRemoteDataClient dstClient, TransferURI dstUri,
+                                    String chmodArg,
                                     boolean isDestShared)
             throws IOException, ServiceException {
 
@@ -945,7 +981,7 @@ public class ChildTaskTransferService {
                 // If in a sharedAppCtx, tell linuxOp to skip the perms check.
                 // so the linuxOp will skip the perm check
                 boolean recurseFalse = false;
-                fileUtilsService.linuxOp(dstClient, dstPath, FileUtilsService.NativeLinuxOperation.CHMOD, "u+x",
+                fileUtilsService.linuxOp(dstClient, dstPath, FileUtilsService.NativeLinuxOperation.CHMOD, chmodArg,
                         recurseFalse, isDestShared);
             } catch (TapisException ex) {
                 String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
@@ -977,6 +1013,9 @@ public class ChildTaskTransferService {
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
         log.trace(msg);
+        TapisSystem srcSystem = srcClient.getSystem();
+        TapisSystem dstSystem = dstClient.getSystem();
+
         // Stream the file contents to destination. While the InputStream is open,
         // we put a tap on it and send events that get grouped into 100 ms intervals. Progress
         // on the child tasks are updated during the reading of the source input stream.
@@ -989,7 +1028,21 @@ public class ChildTaskTransferService {
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
                 srcUri.getSystemId(), srcPath, dstUri.getSystemId(), dstPath);
         log.trace(msg);
-        log.trace("CHILD TRANSFER TIMING: performSynchFileTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+        String elapsedTimeStr = String.format("%d", sw.elapsed(TimeUnit.MILLISECONDS));
+        log.trace("CHILD TRANSFER TIMING: performSynchFileTransfer: " + taskChild.getId() + " time: " + elapsedTimeStr);
+        // If audit enabled log a message. This method is only called by a worker, so component=filesworker
+        if (RuntimeSettings.get().isAuditingEnabled()) {
+            // For convenience, construct a ResourceRequestUser
+            ResourceRequestUser rUser = simulateResourceRequestUser(taskChild);
+            // Build additional data as json.
+            var auditInfo = new FileTransferAuditInfo(taskChild.getUuid().toString(), taskChild.getTenantId(),
+                    taskChild.getUsername(), taskChild.getExternalTaskId(), elapsedTimeStr);
+            String auditData = TapisGsonUtils.getGson().toJson(auditInfo);
+            AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.ACTION_TRANSFER,
+                                             dstSystem, dstPath, srcSystem, srcPath, auditData,
+                                             impersonationIdNull, topTaskUuid.get());
+            audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+        }
     }
 
     /**
@@ -1024,6 +1077,7 @@ public class ChildTaskTransferService {
         String dstRootDir = dstSys.getRootDir();
         String dstSysId = dstSys.getId();
 
+        Stopwatch sw = Stopwatch.createStarted();
         String msg = LibUtils.getMsg("FILES_TXFR_CHILD_ASYNCH_BEGIN", taskChild.getTenantId(), taskChild.getUsername(),
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(),
                 srcUri.getSystemId(), srcRelPath, dstUri.getSystemId(), dstRelPath);
@@ -1133,5 +1187,35 @@ public class ChildTaskTransferService {
                 taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), externalTaskId,
                 srcUri.getSystemId(), srcRelPath, dstUri.getSystemId(), dstRelPath);
         log.trace(msg);
+        String elapsedTimeStr = String.format("%d", sw.elapsed(TimeUnit.MILLISECONDS));
+        log.trace("CHILD TRANSFER TIMING: performASynchFileTransfer: " + taskChild.getId() + " time: " + elapsedTimeStr);
+        // If audit enabled log a message. This method is only called by a worker, so component=filesworker
+        if (RuntimeSettings.get().isAuditingEnabled()) {
+            TapisSystem dstSystem = dstClient.getSystem();
+            TapisSystem srcSystem = srcClient.getSystem();
+            // For convenience, construct a ResourceRequestUser
+            ResourceRequestUser rUser = simulateResourceRequestUser(taskChild);
+            // Build additional data as json.
+            var auditInfo = new FileTransferAuditInfo(taskChild.getUuid().toString(), taskChild.getTenantId(),
+                                                      taskChild.getUsername(), taskChild.getExternalTaskId(), elapsedTimeStr);
+            String auditData = TapisGsonUtils.getGson().toJson(auditInfo);
+            AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.ACTION_TRANSFER,
+                                             dstSystem, dstRelPath, srcSystem, srcRelPath, auditData,
+                                             impersonationIdNull, topTaskUuid.get());
+            audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+        }
+    }
+
+    /*
+     * Simulate a ResourceRequestUser since we will need to make some calls that require it
+     * Obo tenant and user come from task, jwt tenant and user are files@<site admin tenant>
+     */
+    private static ResourceRequestUser simulateResourceRequestUser(TransferTaskChild taskChild) {
+        String oboUser = taskChild.getUsername();
+        String oboTenant = taskChild.getTenantId();
+        String jwtUser = TapisConstants.SERVICE_NAME_FILES;
+        String jwtTenant = TransfersApp.getSiteAdminTenantId();
+        return new ResourceRequestUser(new AuthenticatedUser(jwtUser, jwtTenant,
+                TapisThreadContext.AccountType.service.name(), null, oboUser, oboTenant, null, null, null));
     }
 }

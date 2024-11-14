@@ -15,10 +15,15 @@
         </encoder>
     </appender>
 
+    <!-- Rollover to a new log file on a monthly basis, set a limit to manage sizes, 
+         default output to the user's home directory. Each job JVM is expected to have
+         its own dedicated logfile (Multiple processes cannot write to the same log).  
+         This constraint removes the need to run in prudent mode and deal with attendant 
+         scalability issues. -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${tapis.log.directory:-${user.home}}/tapis-files-worker.log</file>
         <rollingPolicy
-                class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- Rollover monthly, incorporate size-triggered sequence number. -->
             <fileNamePattern>${tapis.log.directory:-${user.home}}/tapis-files-worker.%d{yyyy-MM}.%i.log</fileNamePattern>
             <!-- Each file should be at most 500MB, keep 6 months worth of history,
@@ -33,12 +38,30 @@
         </encoder>
     </appender>
 
+    <appender name="AUDIT-FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${tapis.log.directory:-${user.home}}/tapis-files-worker-audit.log</file>
+        <rollingPolicy
+            class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Rollover monthly, incorporate size-triggered sequence number. -->
+            <fileNamePattern>${tapis.log.directory:-${user.home}}/tapis-files-worker-audit.%d{yyyy-MM}.%i.log</fileNamePattern>
+            <!-- Each file should be at most 500MB, keep 2 months worth of history, 
+                 but at most a total of 1GB across all log files. -->
+            <maxFileSize>500MB</maxFileSize>
+            <maxHistory>2</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <!-- See console pattern for description. -->
+            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} AUDIT %-5level [%X{UNIQUE_ID}] %class{0}:%line - %msg%n</Pattern>
+        </encoder>
+    </appender>
+
     <appender name="SSH_POOL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${tapis.log.directory:-${user.home}}/tapis-files-worker-sshpool.log</file>
         <rollingPolicy
                 class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- Rollover monthly, incorporate size-triggered sequence number. -->
-            <fileNamePattern>${tapis.log.directory:-${user.home}}/tapis-filesapi-sshpool.%d{yyyy-MM}.%i.log</fileNamePattern>
+            <fileNamePattern>${tapis.log.directory:-${user.home}}/tapis-files-worker-sshpool.%d{yyyy-MM}.%i.log</fileNamePattern>
             <!-- Each file should be at most 500MB, keep 6 months worth of history,
                  but at most a total of 10GB across all log files. -->
             <maxFileSize>10MB</maxFileSize>
@@ -79,5 +102,10 @@
     <!-- ssh session pooling logging.  logs to a separate file -->
     <logger name="edu.utexas.tacc.tapis.shared.ssh" level="INFO" additivity="false">
         <appender-ref ref="SSH_POOL_FILE"/>
+    </logger>
+
+    <!-- additivity=false ensures audit data only goes to the audit log -->
+    <logger name="audit" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT-FILE"/>
     </logger>
 </configuration>

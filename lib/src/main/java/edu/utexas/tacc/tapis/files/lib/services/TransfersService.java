@@ -16,6 +16,7 @@ import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
@@ -303,11 +304,12 @@ public class TransfersService
       task.setUsername(rUser.getOboUserId());
       task.setStatus(TransferTaskStatus.ACCEPTED);
       task.setTag(tag);
+      task.setParentTrackingId(TapisThreadLocal.tapisThreadContext.get().getTrackingId());
 
-      // Persist the transfer task
+      // Persist the transfer task and associated parent tasks
       try
       {
-        // Persist the transfer task to the DB
+        // Persist the transfer task and associated parent tasks to the DB
         log.trace(LibUtils.getMsgAuthR("FILES_TXFR_PERSIST_TASK", rUser, tag, elements.size()));
         TransferTask newTask = dao.createTransferTask(task, elements);
         return newTask;

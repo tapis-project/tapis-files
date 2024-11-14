@@ -42,6 +42,7 @@ public class RuntimeSettings {
         protected final String tapisDebugSystemServicePath = settings.get("TAPIS_DEBUG_SYSTEM_SERVICE_PATH", null);
         protected final int maxTransferCount = getIntSetting("MAX_TRANSFER_COUNT", 10000);
         protected final int maxAssignmentWaitMultiplier = getIntSetting("MAX_ASSIGNMENT_WAIT_MULTIPLIER", 5);
+        protected final boolean auditingEnabled = getBoolSetting("TAPIS_AUDITING_ENABLED", false);
         protected final long requiredPostgresVersion = 160003;
 
         public long getRequiredPostgresVersion() {
@@ -166,12 +167,19 @@ public class RuntimeSettings {
             return maxAssignmentWaitMultiplier;
         }
 
+        public boolean isAuditingEnabled() { return auditingEnabled; }
+
         public static int getIntSetting(String settingName, int defaultValue) {
             String settingValue = settings.get(settingName);
             if(StringUtils.isBlank(settingValue)) {
                 return defaultValue;
             }
             return Integer.parseInt(settingValue);
+        }
+        public static boolean getBoolSetting(String settingName, boolean defaultValue) {
+            String settingValue = settings.get(settingName);
+            if (StringUtils.isBlank(settingValue)) return defaultValue;
+            return Boolean.parseBoolean(settingValue);
         }
     }
 

@@ -32,6 +32,7 @@ public interface IRuntimeConfig {
     int getSshPoolWorkerMaxSessionLifetimeMillis();
     int getMaxTransferCount();
     int getMaxAssignmentWaitMultiplier();
+    boolean isAuditingEnabled();
     public int getGrizzlyPoolCoreSize();
     public int getGrizzlyPoolMaxSize();
     public String getTapisDebugSystemServicePath();
