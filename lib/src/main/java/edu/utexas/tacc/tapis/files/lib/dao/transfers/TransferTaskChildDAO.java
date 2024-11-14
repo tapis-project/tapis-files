@@ -150,8 +150,7 @@ public class TransferTaskChildDAO {
                     child.getTotalBytes(),
                     child.isDir(),
                     child.getTag(),
-                    child.getExternalTaskId(),
-                    child.getParentTrackingId()
+                    child.getExternalTaskId()
             });
         });
         Object[][] t = new Object[params.size()][];
@@ -184,8 +183,7 @@ public class TransferTaskChildDAO {
                     task.getTotalBytes(),
                     task.isDir(),
                     task.getTag(),
-                    task.getExternalTaskId(),
-                    task.getParentTrackingId()
+                    task.getExternalTaskId()
             );
 
             return child;

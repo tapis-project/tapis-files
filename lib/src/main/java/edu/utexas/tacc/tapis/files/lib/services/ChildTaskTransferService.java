@@ -504,7 +504,6 @@ public class ChildTaskTransferService {
 
             // For some reason taskChild does not have the tag set at this point.
             taskChild.setTag(parentTask.getTag());
-            taskChild.setParentTrackingId(parentTask.getParentTrackingId());
         } catch (DAOException ex) {
             String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                     "ChildStepTwoA", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());

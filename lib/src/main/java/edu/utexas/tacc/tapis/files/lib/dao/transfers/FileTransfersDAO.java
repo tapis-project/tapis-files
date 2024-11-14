@@ -55,7 +55,6 @@ public class FileTransfersDAO {
           insertTaskStmnt.setString(2, task.getUsername());
           insertTaskStmnt.setString(3, TransferTaskStatus.ACCEPTED.name());
           insertTaskStmnt.setString(4, task.getTag());
-          insertTaskStmnt.setString(5, task.getParentTrackingId());
           insertTaskStmnt.execute();
 
           ResultSet rs = insertTaskStmnt.getGeneratedKeys();
@@ -75,7 +74,6 @@ public class FileTransfersDAO {
             insertParentTaskStmnt.setString(9, element.getDestSharedCtx());
             insertParentTaskStmnt.setString(10, element.getTag());
             insertParentTaskStmnt.setString(11, element.getTransferType() == null ? TransferTaskRequestElement.TransferType.TRANSFER.name() : element.getTransferType().name());
-            insertParentTaskStmnt.setString(12, task.getParentTrackingId());
             insertParentTaskStmnt.addBatch();
           }
           insertParentTaskStmnt.executeBatch();
@@ -363,8 +361,7 @@ public class FileTransfersDAO {
                 task.getSrcSharedCtxGrantor(),
                 task.getDestSharedCtxGrantor(),
                 task.getTag(),
-                task.getTransferType() == null ? null : task.getTransferType().name(),
-                task.getParentTrackingId()
+                task.getTransferType() == null ? null : task.getTransferType().name()
                 );
             return insertedTask;
         } catch (SQLException ex) {

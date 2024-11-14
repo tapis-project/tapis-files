@@ -22,7 +22,7 @@ public class TransferTaskChild extends TransferTaskParent
   public TransferTaskChild() {}
 
   public TransferTaskChild(String tenantId1, String username1, TransferURI srcUri1, TransferURI dstUri1, int parentId1,
-                           String tag1, String externalTaskId1, String parentTrackingId1)
+                           String tag1, String externalTaskId1)
   {
     tenantId = tenantId1;
     username = username1;
@@ -33,7 +33,6 @@ public class TransferTaskChild extends TransferTaskParent
     parentTaskId = parentId1;
     tag = tag1;
     externalTaskId = (externalTaskId1==null) ? "" : externalTaskId1;
-    parentTrackingId = (parentTrackingId1==null) ? "" : parentTrackingId1;
   }
 
   /**
@@ -61,7 +60,6 @@ public class TransferTaskChild extends TransferTaskParent
     // Set attributes for child we are constructing.
     externalTaskId = "";
     setTag(transferTaskParent.getTag());
-    setParentTrackingId(transferTaskParent.getParentTrackingId());
     setParentTaskId(transferTaskParent.getId());
     setTaskId(transferTaskParent.getTaskId());
     setSourceURI(newSourceUri.toString());
@@ -96,7 +94,6 @@ public class TransferTaskChild extends TransferTaskParent
             .add("parentTaskId=" + parentTaskId)
             .add("taskId=" + taskId)
             .add("externalTaskId=" + externalTaskId)
-            .add("parentTrackingId=" +  parentTrackingId)
             .add("retries=" + retries)
             .add("tenantId='" + tenantId + "'")
             .add("username='" + username + "'")
