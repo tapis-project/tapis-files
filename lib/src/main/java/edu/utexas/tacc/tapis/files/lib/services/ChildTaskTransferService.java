@@ -141,6 +141,10 @@ public class ChildTaskTransferService {
         }
     });
 
+    // Thread local variables for top task UUID and the audit parentTrackingId
+    ThreadLocal<String> topTaskUuid = ThreadLocal.withInitial(() -> AuditUtils.AUDIT_EMPTY);
+    ThreadLocal<String> topTaskParentTrackingId = ThreadLocal.withInitial(() -> AuditUtils.AUDIT_EMPTY);
+
     // Wrapper for additional file transfer audit data.
     private record FileTransferAuditInfo(String uuid, String tenant, String username, String externalTaskId, String elapsedTime) {}
 
@@ -465,8 +469,16 @@ public class ChildTaskTransferService {
             }
         }
 
+        TransferTask topTask;
         TransferTaskParent parentTask;
         try {
+            // Get top task uuid and audit parentTrackingId
+            topTask = dao.getTransferTaskByID(taskChild.getTaskId());
+            topTaskUuid.set(topTask.getUuid().toString());
+            topTaskParentTrackingId.set(topTask.getParentTrackingId());
+            // TODO Do we even need to ThreadLocal parentTrackingId? Or jus set it in tapisThreadContext and we are done?
+            TapisThreadLocal.tapisThreadContext.get().setTrackingId(topTaskParentTrackingId.get());
+
             // Get the parent task. We will need it for shared ctx grantors.
             parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
             // child task does not have the shared context info.  We have to get it from the parent.
@@ -606,16 +618,14 @@ public class ChildTaskTransferService {
             updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, chmodArg, isDestShared);
             // If audit enabled log a message. This method is only called by the api, so component=filesapi
             if (RuntimeSettings.get().isAuditingEnabled()) {
-                TapisThreadLocal.tapisThreadContext.get().setTrackingId(taskChild.getParentTrackingId());
                 // Determine the action
                 AuditUtils.AUDIT_ACTION auditAction = AuditUtils.AUDIT_ACTION.ACTION_CHMOD;
                 // Build additional data as json. This contains original request body data
                 var d = new FileUtilsService.LinuxOpAuditInfo(FileUtilsService.NativeLinuxOperation.CHMOD.name(), chmodArg, false);
                 String auditData = TapisGsonUtils.getGson().toJson(d);
-                // TODO Are we passing in the correct UUID for the trackingId?
                 AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, auditAction, destSystem, destPath,
                                                  sourceSystemNull, sourcePathNull, auditData,
-                                                 impersonationIdNull, auditDataNull); /* taskChild.getUuid().toString());*/
+                                                 impersonationIdNull, topTaskUuid.get());
                 audit.info(AuditUtils.auditMsg(ar.getAuditData()));
             }
         }
@@ -1029,10 +1039,9 @@ public class ChildTaskTransferService {
             var auditInfo = new FileTransferAuditInfo(taskChild.getUuid().toString(), taskChild.getTenantId(),
                     taskChild.getUsername(), taskChild.getExternalTaskId(), elapsedTimeStr);
             String auditData = TapisGsonUtils.getGson().toJson(auditInfo);
-            // TODO Are we passing in the correct UUID for the trackingId?
             AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.ACTION_TRANSFER,
                                              dstSystem, dstPath, srcSystem, srcPath, auditData,
-                                             impersonationIdNull, auditDataNull); /* taskChild.getUuid().toString());*/
+                                             impersonationIdNull, topTaskUuid.get());
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
     }
@@ -1191,10 +1200,9 @@ public class ChildTaskTransferService {
             var auditInfo = new FileTransferAuditInfo(taskChild.getUuid().toString(), taskChild.getTenantId(),
                                                       taskChild.getUsername(), taskChild.getExternalTaskId(), elapsedTimeStr);
             String auditData = TapisGsonUtils.getGson().toJson(auditInfo);
-            // TODO Are we passing in the correct UUID for the trackingId?
             AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.ACTION_TRANSFER,
                                              dstSystem, dstRelPath, srcSystem, srcRelPath, auditData,
-                                             impersonationIdNull, auditDataNull); /* taskChild.getUuid().toString());*/
+                                             impersonationIdNull, topTaskUuid.get());
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
     }
