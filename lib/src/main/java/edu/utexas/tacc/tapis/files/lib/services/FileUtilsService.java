@@ -12,7 +12,6 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
-import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils.AUDIT_ACTION;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
@@ -57,6 +56,7 @@ public class FileUtilsService
   // Define some nulls here for readability.
   // Some methods do not support certain options, like impersonationId, sharedAppCtxGrantor and audit data.
   private static final String impersonationIdNull = null;
+  private static final String trackingIdNull = null;
   private static final TapisSystem sourceSystemNull = null;
   private static final String sourcePathNull = null;
   private static final String sharedCtxGrantorNull = null;
@@ -170,7 +170,6 @@ public class FileUtilsService
     }
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
-      String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
       // Determine the action
       AUDIT_ACTION auditAction = AUDIT_ACTION.LINUXOP;
       switch (nativeOp) {
@@ -180,9 +179,8 @@ public class FileUtilsService
       }
       // Build additional data as json. This contains original request body data
       String auditData = TapisGsonUtils.getGson().toJson(new LinuxOpAuditInfo(nativeOp.name(), natvieOpArg, recursive));
-      String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
-      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, auditAction, sys, dstAbsPathStr,
-                                       sourceSystemNull, sourcePathNull, parentTrackingId, impersonationIdNull, auditData);
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, auditAction, sys, pathStr, sourceSystemNull,
+                                       sourcePathNull, auditData, impersonationIdNull, trackingIdNull);
       audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
     return retVal;
@@ -257,13 +255,11 @@ public class FileUtilsService
     }
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
-      String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
       // Build additional data as json. This contains original request body data
       String rMethodStr = (recursionMethod==null) ? NativeLinuxFaclRecursion.NONE.name() : recursionMethod.name();
       String auditData = TapisGsonUtils.getGson().toJson(new LinuxOpSetFaclAuditInfo(nativeOp.name(), rMethodStr, aclString));
-      String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
-      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AUDIT_ACTION.ACTION_SETFACL, sys, dstAbsPathStr,
-                                       sourceSystemNull, sourcePathNull, parentTrackingId, impersonationIdNull, auditData);
+      AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AUDIT_ACTION.ACTION_SETFACL, sys, pathStr,
+                                       sourceSystemNull, sourcePathNull, auditData, impersonationIdNull, trackingIdNull);
       audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
     return retVal;

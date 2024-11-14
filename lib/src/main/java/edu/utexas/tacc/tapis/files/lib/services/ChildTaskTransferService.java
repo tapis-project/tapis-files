@@ -60,7 +60,6 @@ import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
-import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -102,6 +101,12 @@ public class ChildTaskTransferService {
     // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
     // 5 items in the queue
     private static final int MAX_THREADS = RuntimeSettings.get().getChildThreadPoolSize();
+
+    private static final String impersonationIdNull = null;
+    private static final String auditDataNull = null;
+    private static final TapisSystem sourceSystemNull = null;
+    private static final String sourcePathNull = null;
+    private static final String trackingIdNull = null;
 
     // this parameter is slightly confusing.  For each combination of tenant/user we will get a maximum of
     // this many items.  For example if there are 3 users (2 in one tenant and 1 in another), and the each have
@@ -601,15 +606,16 @@ public class ChildTaskTransferService {
             updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, chmodArg, isDestShared);
             // If audit enabled log a message. This method is only called by the api, so component=filesapi
             if (RuntimeSettings.get().isAuditingEnabled()) {
-                String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
+                TapisThreadLocal.tapisThreadContext.get().setTrackingId(taskChild.getParentTrackingId());
                 // Determine the action
                 AuditUtils.AUDIT_ACTION auditAction = AuditUtils.AUDIT_ACTION.ACTION_CHMOD;
                 // Build additional data as json. This contains original request body data
                 var d = new FileUtilsService.LinuxOpAuditInfo(FileUtilsService.NativeLinuxOperation.CHMOD.name(), chmodArg, false);
                 String auditData = TapisGsonUtils.getGson().toJson(d);
-                String dstAbsPathStr = PathUtils.getAbsolutePath(destSystem.getRootDir(), destPath).toString();
-                AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, auditAction, destSystem,
-                        dstAbsPathStr, null, null, parentTrackingId, null, auditData);
+                // TODO Are we passing in the correct UUID for the trackingId?
+                AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, auditAction, destSystem, destPath,
+                                                 sourceSystemNull, sourcePathNull, auditData,
+                                                 impersonationIdNull, auditDataNull); /* taskChild.getUuid().toString());*/
                 audit.info(AuditUtils.auditMsg(ar.getAuditData()));
             }
         }
@@ -1023,11 +1029,10 @@ public class ChildTaskTransferService {
             var auditInfo = new FileTransferAuditInfo(taskChild.getUuid().toString(), taskChild.getTenantId(),
                     taskChild.getUsername(), taskChild.getExternalTaskId(), elapsedTimeStr);
             String auditData = TapisGsonUtils.getGson().toJson(auditInfo);
-            String dstAbsPathStr = PathUtils.getAbsolutePath(dstSystem.getRootDir(), dstPath).toString();
-            String srcAbsPathStr = PathUtils.getAbsolutePath(srcSystem.getRootDir(), srcPath).toString();
+            // TODO Are we passing in the correct UUID for the trackingId?
             AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.ACTION_TRANSFER,
-                                             dstSystem, dstAbsPathStr, srcSystem, srcAbsPathStr,
-                                             taskChild.getParentTrackingId(), IMPERSONATION_ID_NULL, auditData);
+                                             dstSystem, dstPath, srcSystem, srcPath, auditData,
+                                             impersonationIdNull, auditDataNull); /* taskChild.getUuid().toString());*/
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
     }
@@ -1186,11 +1191,10 @@ public class ChildTaskTransferService {
             var auditInfo = new FileTransferAuditInfo(taskChild.getUuid().toString(), taskChild.getTenantId(),
                                                       taskChild.getUsername(), taskChild.getExternalTaskId(), elapsedTimeStr);
             String auditData = TapisGsonUtils.getGson().toJson(auditInfo);
-            String dstAbsPathStr = PathUtils.getAbsolutePath(dstSystem.getRootDir(), dstRelPath).toString();
-            String srcAbsPathStr = PathUtils.getAbsolutePath(srcSystem.getRootDir(), srcRelPath).toString();
+            // TODO Are we passing in the correct UUID for the trackingId?
             AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, AuditUtils.AUDIT_ACTION.ACTION_TRANSFER,
-                                             dstSystem, dstAbsPathStr, srcSystem, srcAbsPathStr,
-                                             taskChild.getParentTrackingId(), IMPERSONATION_ID_NULL, auditData);
+                                             dstSystem, dstRelPath, srcSystem, srcRelPath, auditData,
+                                             impersonationIdNull, auditDataNull); /* taskChild.getUuid().toString());*/
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
     }

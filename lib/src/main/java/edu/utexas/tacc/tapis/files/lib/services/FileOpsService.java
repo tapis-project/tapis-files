@@ -23,7 +23,6 @@ import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
-import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
@@ -379,10 +378,9 @@ public class FileOpsService
     }
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
-      String reqTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
-      String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
       AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_UPLOAD,
-              sys, absPathStr, sourceSystemNull, sourcePathNull, reqTrackingId, impersonationIdNull, auditDataNull);
+                                       sys, pathStr, sourceSystemNull, sourcePathNull, auditDataNull,
+                                       impersonationIdNull, trackingIdNull);
       audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
   }
@@ -478,11 +476,9 @@ public class FileOpsService
     }
     // If audit enabled log a message. This method is only called by the api, so component=filesapi
     if (RuntimeSettings.get().isAuditingEnabled()) {
-      String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
-      String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
       AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_MKDIR,
-                                       sys, absPathStr, sourceSystemNull, sourcePathNull, parentTrackingId,
-                                       impersonationIdNull, auditDataNull);
+                                       sys, pathStr, sourceSystemNull, sourcePathNull, auditDataNull,
+                                       impersonationIdNull, trackingIdNull);
       audit.info(AuditUtils.auditMsg(ar.getAuditData()));
     }
   }
@@ -578,16 +574,13 @@ public class FileOpsService
       }
       // If audit enabled log a message. This method is only called by the api, so component=filesapi
       if (RuntimeSettings.get().isAuditingEnabled()) {
-        String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
         // Determine the action
         AuditUtils.AUDIT_ACTION auditAction =
                 (op.name().equals(MoveCopyOperation.COPY.name())) ? AuditUtils.AUDIT_ACTION.ACTION_COPY : AuditUtils.AUDIT_ACTION.ACTION_MOVE;
         // Build additional data as json. This contains original request body data
         String auditData = TapisGsonUtils.getGson().toJson(new MoveCopyAuditInfo(op.name(), dstPathStr));
-        String dstAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), dstRelPathStr).toString();
-        String srcAbsPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), srcRelPathStr).toString();
-        AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, auditAction, sys, dstAbsPathStr,
-                                         sys, srcAbsPathStr, parentTrackingId, impersonationIdNull, auditData);
+        AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, auditAction, sys, dstPathStr, sys,
+                                         srcPathStr, auditData, impersonationIdNull, trackingIdNull);
         audit.info(AuditUtils.auditMsg(ar.getAuditData()));
       }
     }
@@ -688,8 +681,8 @@ public class FileOpsService
           String parentTrackingId = TapisThreadLocal.tapisThreadContext.get().getTrackingId();
           String absPathStr = PathUtils.getAbsolutePath(sys.getRootDir(), relPathStr).toString();
           AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESAPI, AuditUtils.AUDIT_ACTION.ACTION_DELETE,
-                  sys, absPathStr, sourceSystemNull, sourcePathNull, parentTrackingId,
-                  impersonationIdNull, auditDataNull);
+                                           sys, absPathStr, sourceSystemNull, sourcePathNull, auditDataNull,
+                                           impersonationIdNull, trackingIdNull);
           audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
         // Remove shares with recurse=true
