@@ -141,9 +141,8 @@ public class ChildTaskTransferService {
         }
     });
 
-    // Thread local variables for top task UUID and the audit parentTrackingId
+    // Thread local variable for top task UUID to be used for audit during processTransfer
     ThreadLocal<String> topTaskUuid = ThreadLocal.withInitial(() -> AuditUtils.AUDIT_EMPTY);
-    ThreadLocal<String> topTaskParentTrackingId = ThreadLocal.withInitial(() -> AuditUtils.AUDIT_EMPTY);
 
     // Wrapper for additional file transfer audit data.
     private record FileTransferAuditInfo(String uuid, String tenant, String username, String externalTaskId, String elapsedTime) {}
@@ -276,6 +275,7 @@ public class ChildTaskTransferService {
         int id = taskChild.getId();
         String tag = taskChild.getTag();
         UUID uuid = taskChild.getUuid();
+        int parentTaskId = taskChild.getParentTaskId();
 
         // this parent is just used to populate the shared context information and remember that we've done
         // that.  For any other purpose it's stale, and shouldn't be used.
@@ -286,7 +286,7 @@ public class ChildTaskTransferService {
             try {
                 if (parentTask == null) {
                     Stopwatch sw = Stopwatch.createStarted();
-                    parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
+                    parentTask = dao.getTransferTaskParentById(parentTaskId);
                     srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
                     log.trace("CHILD TRANSFER TIMING: Get parent task info: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
@@ -472,12 +472,10 @@ public class ChildTaskTransferService {
         TransferTask topTask;
         TransferTaskParent parentTask;
         try {
-            // Get top task uuid and audit parentTrackingId
+            // Get top task uuid and audit parentTrackingId. Place parentTrackingId in thread local context.
             topTask = dao.getTransferTaskByID(taskChild.getTaskId());
             topTaskUuid.set(topTask.getUuid().toString());
-            topTaskParentTrackingId.set(topTask.getParentTrackingId());
-            // TODO Do we even need to ThreadLocal parentTrackingId? Or jus set it in tapisThreadContext and we are done?
-            TapisThreadLocal.tapisThreadContext.get().setTrackingId(topTaskParentTrackingId.get());
+            TapisThreadLocal.tapisThreadContext.get().setTrackingId(topTask.getParentTrackingId());
 
             // Get the parent task. We will need it for shared ctx grantors.
             parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
