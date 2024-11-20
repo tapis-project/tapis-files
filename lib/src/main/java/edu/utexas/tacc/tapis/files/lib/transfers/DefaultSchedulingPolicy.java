@@ -41,7 +41,8 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
             List<Integer> tasksToAssign = new ArrayList<>();
             for(int i=0;i<amountPerWorker;i++) {
                 if(i < queuedTaskIds.size()) {
-                    tasksToAssign.add(queuedTaskIds.remove(i));
+                    // always remove the first item in the list
+                    tasksToAssign.add(queuedTaskIds.remove(0));
                 } else {
                     break;
                 }
