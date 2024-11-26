@@ -9,7 +9,21 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.7.1 - 2024-10-30
+## 1.8.0 - 2024-11-26
+
+Incremental improvements and new features.  
+
+### New features:
+Enhanced handling of transfers so that transfers are fair between tenants.
+
+### Bug fixes:
+- None
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
+## 1.8.0 - 2024-10-30
 
 Bug fix for setting destination shared context for transfers.
 
