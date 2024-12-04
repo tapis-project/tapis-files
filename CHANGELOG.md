@@ -47,7 +47,7 @@ Enhanced handling of transfers so that transfers are fair between tenants.
 
 
 ---------------------------------------------------------------------------
-## 1.8.0 - 2024-10-30
+## 1.7.1 - 2024-10-30
 
 Bug fix for setting destination shared context for transfers.
 
