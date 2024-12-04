@@ -20,7 +20,31 @@ Enhanced handling of transfers so that transfers are fair between tenants.
 - None
 
 ### Breaking Changes
-- None
+- The files postgres data must be migrated to the new postgres 16 container.
+  The new version will have a burnup script for a files-postgres-16 container, and
+  it uses a new (empty) pvc.  Before bringing all files services up, you must 
+  bring up the new files-postgres-16 container, and migrate the postgres data
+  from the files-postgres container to the files-postgres-16 container.  The best
+  place to get information about this is the postgres docs.  This could be done 
+  manually (using dbdump/dbdumpall).  One thing to note is that passwords for
+  postgres users will not be migrated and must be reset due to changes in the
+  way that postgres hashes the passwords, so be sure to find the db user passwords
+  before you get started.  This could be scripted and an example of how that might 
+  be done is included.  Here is the information on the examples:
+  
+  -  Backup your current database in case something goes wrong.
+  -  After deployment, burn down all files pods EXCEPT files-postgres. 
+  -  Verify that the scripts look correct for your environment.  Check the variables 
+     are defined in files-migrate-pg-11-to-16-vars-configmap.yml
+  -  In postgres_16 directory, cd into migrate, and run migrate.sh.
+  -  Check table counts after the job completes (these will be located in stdout for 
+     the script).  Check for errors, etc.
+  -  cd into the files/postgres directory (postgres - not postgres_16), and burndown 
+     the old postgres.
+  -  Once the data is successfully migrated and verified, burndown any files services 
+     that are currently running and restart.  To do this, cd into the files directory 
+     and run the burndown and burnup scripts.
+
 
 ---------------------------------------------------------------------------
 ## 1.8.0 - 2024-10-30
