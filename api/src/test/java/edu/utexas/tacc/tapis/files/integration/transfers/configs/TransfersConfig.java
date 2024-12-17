@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.integration.transfers.configs;
 
-import org.junit.Assert;
+
+import org.testng.Assert;
 
 import java.nio.file.Path;
 

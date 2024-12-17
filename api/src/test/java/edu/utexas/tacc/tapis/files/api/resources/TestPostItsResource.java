@@ -35,7 +35,6 @@ import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.TestProperties;
-import org.junit.Assert;
 import org.mockito.Mockito;
 
 import static edu.utexas.tacc.tapis.files.integration.transfers.IntegrationTestUtils.getJwtForUser;
@@ -45,6 +44,7 @@ import static org.mockito.Mockito.when;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -252,7 +252,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertEquals(getResponse.getResult().getTimesUsed(), Integer.valueOf(0));
 
         byte[] recievedFileBytes = doRedeem(getResponse.getResult().getRedeemUrl(), 200);
-        Assert.assertArrayEquals(fileBytes, recievedFileBytes);
+        Assert.assertEquals(fileBytes, recievedFileBytes);
 
         // now check that use count has increased;
         getResponse = doGet(getResponse.getResult().getId(), TEST_USR1);
@@ -452,9 +452,9 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         Assert.assertNotNull(postResponse.getResult());
 
         PostItDTO newPostIt = postResponse.getResult();
-        Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
-        Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
-        Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
+        Assert.assertEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
+        Assert.assertEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
+        Assert.assertEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
 
         byte[] bytes = doRedeem(newPostIt.getRedeemUrl(), 400);
         // redeem should fail - no more allowedUsesk
@@ -492,7 +492,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
 
         Assert.assertEquals(-1, ze.getSize());
         byte[] unzippedBytes = zis.readAllBytes();
-        Assert.assertArrayEquals(fileInRootBytes, unzippedBytes);
+        Assert.assertEquals(fileInRootBytes, unzippedBytes);
 
         // create and redeem a file in a directory off the root directory
         postResponse = doPost(request, TEST_USR1, testSystem.getId(), fileInDir);
@@ -508,7 +508,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
 
         Assert.assertEquals(-1, ze.getSize());
         unzippedBytes = zis.readAllBytes();
-        Assert.assertArrayEquals(fileInDirBytes, unzippedBytes);
+        Assert.assertEquals(fileInDirBytes, unzippedBytes);
     }
 
     class FakeFileInfo {
@@ -561,7 +561,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
                 for(FakeFileInfo ffi : ffis) {
                     String zipAdjustedPath = ze.getName().replace("zipRoot/", "");
                     if(ffi.name.equals(ze.getName())) {
-                        Assert.assertArrayEquals(ffi.content, zis.readAllBytes());
+                        Assert.assertEquals(ffi.content, zis.readAllBytes());
                         ffis.remove(ffi);
                         break;
                     }
@@ -612,7 +612,7 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
             if(!ze.isDirectory()) {
                 for(FakeFileInfo ffi : ffis) {
                     if(ffi.name.equals(ze.getName())) {
-                        Assert.assertArrayEquals(ffi.content, zis.readAllBytes());
+                        Assert.assertEquals(ffi.content, zis.readAllBytes());
                         ffis.remove(ffi);
                         break;
                     }
@@ -645,10 +645,10 @@ public class TestPostItsResource extends BaseDatabaseIntegrationTest {
         PostItDTO newPostIt = postResponse.getResult();
 
         // can't really test unlimited, but we can test a few
-        Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
-        Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
-        Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
-        Assert.assertArrayEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
+        Assert.assertEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
+        Assert.assertEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
+        Assert.assertEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
+        Assert.assertEquals(fileBytes, doRedeem(newPostIt.getRedeemUrl(), 200));
     }
 
     @Test(dataProvider = "testSystemsProvider")
