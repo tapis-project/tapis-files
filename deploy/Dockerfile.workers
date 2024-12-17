@@ -6,7 +6,7 @@
 #   $TAG            the tag for image identification
 #
 ##########################################################################
-FROM eclipse-temurin:17-jdk-jammy
+FROM eclipse-temurin:21-jdk-jammy
 
 MAINTAINER CIC Support <cicsupport@tacc.utexas.edu>
 
