@@ -13,6 +13,7 @@ public class TransferTaskChild extends TransferTaskParent
   private int parentTaskId;
   private int retries;
   private boolean isDir;
+  private boolean isExecutable;
   private String externalTaskId = ""; // Id for an external async txfr, such as Globus
 
   /* *********************************************************************** */
@@ -70,6 +71,7 @@ public class TransferTaskChild extends TransferTaskParent
     setBytesTransferred(0L);
     setTotalBytes(fileInfo.getSize());
     setDir(fileInfo.isDir());
+    setExecutable((!fileInfo.isDir()) && fileInfo.getNativePermissions().contains("x"));
   }
 
   @Override
@@ -115,6 +117,8 @@ public class TransferTaskChild extends TransferTaskParent
   public void setRetries(int i) { retries = i; }
   public boolean isDir() { return isDir; }
   public void setDir(boolean b) { isDir = b; }
+  public boolean setIsExecutable() { return isExecutable; }
+  public void setExecutable(boolean b) { isExecutable = b; }
   public String getExternalTaskId() { return (externalTaskId==null) ? "" : externalTaskId; }
   public void setExternalTaskId(String s) { externalTaskId = (s==null) ? "" : s; }
 }
