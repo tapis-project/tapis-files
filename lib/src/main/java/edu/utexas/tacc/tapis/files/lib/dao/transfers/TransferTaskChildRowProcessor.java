@@ -27,6 +27,7 @@ class TransferTaskChildRowProcessor extends BasicRowProcessor {
         task.setUuid(rs.getObject("uuid", UUID.class));
         task.setStatus(rs.getString("status"));
         task.setDir(rs.getBoolean("is_dir"));
+        task.setExecutable(rs.getBoolean("is_executable"));
         task.setTotalBytes(rs.getLong("total_bytes"));
         task.setBytesTransferred(rs.getLong("bytes_transferred"));
         task.setErrorMessage(rs.getString("error_message"));

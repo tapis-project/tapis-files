@@ -612,18 +612,27 @@ public class ChildTaskTransferService {
                 boolean isSharedDirect = (sharedWithUsers != null && sharedWithUsers.contains(oboUser));
                 isDestShared = (isSharedPublic || isSharedDirect);
             }
-            updateLinuxExeFile(taskChild, sourceClient, sourceURL, destClient, destURL, chmodArg, isDestShared);
-            // If audit enabled log a message. This method is only called by the api, so component=filesapi
-            if (RuntimeSettings.get().isAuditingEnabled()) {
-                // Determine the action
-                AuditUtils.AUDIT_ACTION auditAction = AuditUtils.AUDIT_ACTION.ACTION_CHMOD;
-                // Build additional data as json. This contains original request body data
-                var d = new FileUtilsService.LinuxOpAuditInfo(FileUtilsService.NativeLinuxOperation.CHMOD.name(), chmodArg, false);
-                String auditData = TapisGsonUtils.getGson().toJson(d);
-                AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, auditAction, destSystem, destPath,
-                                                 sourceSystemNull, sourcePathNull, auditData,
-                                                 impersonationIdNull, topTaskUuid.get());
-                audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+
+            if(taskChild.setIsExecutable()) {
+                try {
+                    updateLinuxExeFile(taskChild, destClient, destURL, chmodArg, isDestShared);
+
+                    // If audit enabled log a message. This method is only called by the api, so component=filesapi
+                    if (RuntimeSettings.get().isAuditingEnabled()) {
+                        // Determine the action
+                        AuditUtils.AUDIT_ACTION auditAction = AuditUtils.AUDIT_ACTION.ACTION_CHMOD;
+                        // Build additional data as json. This contains original request body data
+                        var d = new FileUtilsService.LinuxOpAuditInfo(FileUtilsService.NativeLinuxOperation.CHMOD.name(), chmodArg, false);
+                        String auditData = TapisGsonUtils.getGson().toJson(d);
+                        AuditRecord ar = new AuditRecord(rUser, AuditUtils.AUDIT_FILESWORKER, auditAction, destSystem, destPath,
+                                sourceSystemNull, sourcePathNull, auditData,
+                                impersonationIdNull, topTaskUuid.get());
+                        audit.info(AuditUtils.auditMsg(ar.getAuditData()));
+                    }
+                } catch (ServiceException ex) {
+                    // don't fail the whole transfer just because we couldn't set the executable bit.
+                    log.warn(ex.getMessage());
+                }
             }
         }
 
@@ -959,35 +968,25 @@ public class ChildTaskTransferService {
      * @param dstUri    Destination path as URI
      */
     private void updateLinuxExeFile(TransferTaskChild taskChild,
-                                    IRemoteDataClient srcClient, TransferURI srcUri,
                                     IRemoteDataClient dstClient, TransferURI dstUri,
                                     String chmodArg,
                                     boolean isDestShared)
             throws IOException, ServiceException {
 
-        String srcPath = srcUri.getPath();
         String dstPath = dstUri.getPath();
-        FileInfo item = srcClient.getFileInfo(srcPath, true);
-        if (item == null) {
-            throw new NotFoundException(LibUtils.getMsg("FILES_TXFR_CHILD_PATH_NOTFOUND", taskChild.getTenantId(),
-                    taskChild.getUsername(), taskChild.getId(),
-                    taskChild.getUuid(), srcPath, taskChild.getTag()));
-        }
 
-        if (!item.isDir() && item.getNativePermissions().contains("x")) {
-            try {
-                // If in a sharedAppCtx, tell linuxOp to skip the perms check.
-                // so the linuxOp will skip the perm check
-                boolean recurseFalse = false;
-                fileUtilsService.linuxOp(dstClient, dstPath, FileUtilsService.NativeLinuxOperation.CHMOD, chmodArg,
-                        recurseFalse, isDestShared);
-            } catch (TapisException ex) {
-                String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                        "chmod", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
-                log.error(msg, ex);
-                throw new ServiceException(msg, ex);
-            }
-        }
+       try {
+           // If in a sharedAppCtx, tell linuxOp to skip the perms check.
+           // so the linuxOp will skip the perm check
+           boolean recurseFalse = false;
+           fileUtilsService.linuxOp(dstClient, dstPath, FileUtilsService.NativeLinuxOperation.CHMOD, chmodArg,
+                   recurseFalse, isDestShared);
+       } catch (TapisException ex) {
+           String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
+                   "chmod", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
+           log.error(msg, ex);
+           throw new ServiceException(msg, ex);
+       }
     }
 
     /**

@@ -94,7 +94,7 @@ public class TransfersAssigner
                         loopsWithNoWork++;
                     }
                     int sleepTime = 500 << loopsWithNoWork;
-                    log.warn("Sleeping for " + sleepTime + " milliseconds");
+                    log.trace("Sleeping for " + sleepTime + " milliseconds");
                     Thread.sleep(sleepTime);
                 } else {
                     loopsWithNoWork = 0;

@@ -149,6 +149,7 @@ public class TransferTaskChildDAO {
                     child.getBytesTransferred(),
                     child.getTotalBytes(),
                     child.isDir(),
+                    child.setIsExecutable(),
                     child.getTag(),
                     child.getExternalTaskId()
             });
@@ -182,6 +183,7 @@ public class TransferTaskChildDAO {
                     task.getBytesTransferred(),
                     task.getTotalBytes(),
                     task.isDir(),
+                    task.setIsExecutable(),
                     task.getTag(),
                     task.getExternalTaskId()
             );
