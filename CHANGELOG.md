@@ -9,6 +9,21 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.8.1 - 2025-01-10
+
+Incremental improvements and new features.  
+
+### New features:
+- Improved handling of linux executables during file transfers
+- Updated docker files to Java 21
+
+### Bug fixes:
+- None
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.8.0 - 2024-11-26
 
 Incremental improvements and new features.  
