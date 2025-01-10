@@ -71,7 +71,12 @@ public class TransferTaskChild extends TransferTaskParent
     setBytesTransferred(0L);
     setTotalBytes(fileInfo.getSize());
     setDir(fileInfo.isDir());
-    setExecutable((!fileInfo.isDir()) && fileInfo.getNativePermissions().contains("x"));
+    String nativePermissions = fileInfo.getNativePermissions();
+    boolean isExecutable  = false;
+    if(nativePermissions != null) {
+      isExecutable = (!fileInfo.isDir()) && nativePermissions.contains("x");
+    }
+    setExecutable(isExecutable);
   }
 
   @Override
