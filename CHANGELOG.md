@@ -9,6 +9,20 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.8.2 - 2025-0?-??
+
+Incremental improvements and new features.  
+
+### New features:
+- Added support for TMS authentication
+
+### Bug fixes:
+- None
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.8.1 - 2025-01-10
 
 Incremental improvements and new features.  
