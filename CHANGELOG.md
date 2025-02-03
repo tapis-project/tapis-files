@@ -9,12 +9,14 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
-## 1.8.2 - 2025-0?-??
+## 1.8.2 - 2025-02-03
 
 Incremental improvements and new features.  
 
 ### New features:
 - Added support for TMS authentication
+- For systems of type IRODS with userProxy set to true,
+  treat them as having a dynamic effectiveUserId.
 
 ### Bug fixes:
 - None

@@ -30,6 +30,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_IMPERSONATE;
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SHAREDCTX;
@@ -274,8 +275,17 @@ public class LibUtils
     // If system is shared and perm request is READ then allow.
     if (isShared && isRead) return sys;
 
+    // Determine if system should be treated as having a dynamic effectiveUserId
+    // Two cases 1 - isDynamic is explicitly set
+    //           2 - System is of type IRODS and useProxy is set. For this case oboUser is being used so
+    //               we consider the system to have a dynamic effectiveUserId
+    boolean systemIsDynamic = false;
+    if (sys.getIsDynamicEffectiveUser() != null) systemIsDynamic = sys.getIsDynamicEffectiveUser();
+    if (SystemTypeEnum.IRODS.equals(sys.getSystemType()) && Boolean.TRUE.equals(sys.getUseProxy())) {
+      systemIsDynamic = true;
+    }
+
     // If system is shared and perm request is MODIFY and effectiveUserId is dynamic then allow.
-    boolean systemIsDynamic = sys.getIsDynamicEffectiveUser() == null ? false : sys.getIsDynamicEffectiveUser();
     if (isShared && systemIsDynamic && isModify) return sys;
 
     // Check for file path sharing
