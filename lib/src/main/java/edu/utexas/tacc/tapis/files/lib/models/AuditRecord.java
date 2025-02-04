@@ -62,7 +62,7 @@ public class AuditRecord {
     }
 
     /*
-     * Method to log and audit record
+     * Method to log an audit record
      */
     public static void log(Logger log, AuditRecord ar) {
         if (!RuntimeSettings.get().isAuditingEnabled()) return;

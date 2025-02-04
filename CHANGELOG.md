@@ -15,8 +15,9 @@ Incremental improvements and new features.
 
 ### New features:
 - Added support for TMS authentication
-- For systems of type IRODS with userProxy set to true,
-  treat them as having a dynamic effectiveUserId.
+- Treat systemType=IRODS + useProxy=true as having a dynamic effectiveUserId.
+- Add GUID to audit log record.
+- Reject service JWTs from OSP authenticator service.
 
 ### Bug fixes:
 - None
