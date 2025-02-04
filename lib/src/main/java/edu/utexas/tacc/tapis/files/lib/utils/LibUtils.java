@@ -294,6 +294,8 @@ public class LibUtils
     boolean pathIsShared = isPathShared(rUser, shareService, sys, relPathStr, impersonationId, sharedCtxGrantor);
     // If file path shared and READ is requested then allow
     if (pathIsShared && isRead) return sys;
+    // If file path is shared and perm request is MODIFY and effectiveUserId is dynamic then allow.
+    if (pathIsShared && isModify && systemIsDynamic) return sys;
 
     // If file path shared, MODIFY requested and in shared context then allow
     // This allows a shared path to be used when running a job in a shared context.
