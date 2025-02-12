@@ -20,7 +20,7 @@ Incremental improvements and new features.
 - Reject service JWTs from OSP authenticator service.
 
 ### Bug fixes:
-- None
+- Fixed slow directory listings in IRODS
 
 ### Breaking Changes
 - None
