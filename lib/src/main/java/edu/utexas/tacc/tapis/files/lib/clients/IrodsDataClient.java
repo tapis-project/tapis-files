@@ -27,6 +27,7 @@ import org.irods.jargon.core.packinstr.TransferOptions;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.pub.io.IRODSFileOutputStream;
 import org.irods.jargon.core.pub.io.PackingIrodsInputStream;
+import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry;
 import org.irods.jargon.core.transfer.DefaultTransferControlBlock;
 import org.irods.jargon.core.transfer.TransferControlBlock;
 import org.jetbrains.annotations.NotNull;
@@ -101,8 +102,6 @@ public class IrodsDataClient implements IRemoteDataClient
   @Override
   public List<FileInfo> ls(@NotNull String path, long limit, long offset) throws IOException, NotFoundException
   {
-    long count = Math.min(limit, MAX_LISTING_SIZE);
-    long startIdx = Math.max(offset, 0);
     String cleanedPath = FilenameUtils.normalize(path);
     String fullPath = Paths.get("/", rootDir, cleanedPath).toString();
     Path rootDirPath = Paths.get(rootDir);
@@ -122,34 +121,36 @@ public class IrodsDataClient implements IRemoteDataClient
         outListing.add(fileInfo);
         return outListing;
       }
-      List<File> listing = Arrays.asList(collection.listFiles());
       collection.close();
-      List<FileInfo> outListing = new ArrayList<>();
-      listing.forEach((file) -> {
-        Path tmpPath = Paths.get(file.getPath());
-        Path relPath = rootDirPath.relativize(tmpPath);
-        FileInfo fileInfo = new FileInfo();
-        fileInfo.setPath(relPath.toString());
-        fileInfo.setName(file.getName());
-        fileInfo.setType(getFileInfoType(collection));
-        if(file.isDirectory()) {
-            fileInfo.setType(FileInfo.FileType.DIR);
-        } else if (file.isFile()) {
-            fileInfo.setType(FileInfo.FileType.FILE);
-        } else {
-            fileInfo.setType(FileInfo.FileType.UNKNOWN);
-        }
-        fileInfo.setSize(file.length());
-        try {
-          fileInfo.setMimeType(Files.probeContentType(tmpPath));
-        } catch (IOException ignored) {
-        }
 
-        fileInfo.setLastModified(Instant.ofEpochMilli(file.lastModified()));
-        outListing.add(fileInfo);
+      List<FileInfo> outListing = new ArrayList<>();
+      List<CollectionAndDataObjectListingEntry> searchResults =
+              connection.getCollectionAndDataObjectListAndSearchAO().listDataObjectsAndCollectionsUnderPath(fullPath);
+
+      searchResults.stream().skip(offset).limit(limit).forEach((result) -> {
+          Path tmpPath = Paths.get(result.getFormattedAbsolutePath());
+          Path relPath = rootDirPath.relativize(tmpPath);
+          FileInfo fileInfo = new FileInfo();
+          fileInfo.setPath(relPath.toString());
+          fileInfo.setName(result.getNodeLabelDisplayValue());
+          if(result.isCollection()) {
+            fileInfo.setType(FileInfo.FileType.DIR);
+          } else if (result.isDataObject()) {
+            fileInfo.setType(FileInfo.FileType.FILE);
+          } else {
+            fileInfo.setType(FileInfo.FileType.UNKNOWN);
+          }
+          fileInfo.setSize(result.getDataSize());
+          try {
+              fileInfo.setMimeType(Files.probeContentType(tmpPath));
+          } catch (IOException ignored) {
+          }
+          fileInfo.setLastModified(Instant.ofEpochMilli(result.getModifiedAt().getTime()));
+          outListing.add(fileInfo);
       });
+
       outListing.sort(Comparator.comparing(FileInfo::getName));
-      return outListing.stream().skip(startIdx).limit(count).collect(Collectors.toList());
+      return outListing.stream().collect(Collectors.toList());
     } catch (JargonException ex) {
       String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenant, "", oboTenant, oboUser);
       throw new IOException(msg, ex);

@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.irods.jargon.core.connection.AuthScheme;
 import org.irods.jargon.core.connection.IRODSAccount;
 import org.irods.jargon.core.exception.JargonException;
+import org.irods.jargon.core.pub.CollectionAndDataObjectListAndSearchAO;
 import org.irods.jargon.core.pub.DataTransferOperations;
 import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
 import org.irods.jargon.core.pub.IRODSFileSystem;
@@ -86,6 +87,15 @@ class IrodsConnection implements AutoCloseable {
         }
 
         return accessObjectFactory;
+    }
+
+    protected CollectionAndDataObjectListAndSearchAO getCollectionAndDataObjectListAndSearchAO() throws IOException {
+        try {
+            return accessObjectFactory.getCollectionAndDataObjectListAndSearchAO(getIrodsAccount());
+        } catch (JargonException ex) {
+            String msg = LibUtils.getMsg("FILES_IRODS_ERROR", oboTenant, "", oboTenant, oboUser);
+            throw new IOException(msg, ex);
+        }
     }
 
     private IRODSAccount getIrodsAccount() throws JargonException {
