@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.integration.transfers.configs;
 
+import java.util.Collections;
 import java.util.List;
 
 public class BaseTransfersIntegrationConfig {
@@ -7,10 +8,10 @@ public class BaseTransfersIntegrationConfig {
     List<CleanupConfig> cleanup;
 
     public List<UploadFilesConfig> getUploadFiles() {
-        return uploadFiles;
+        return uploadFiles == null ? Collections.<UploadFilesConfig>emptyList() : uploadFiles;
     }
 
     public List<CleanupConfig> getCleanup() {
-        return cleanup;
+        return cleanup == null ? Collections.<CleanupConfig>emptyList() : cleanup;
     }
 }

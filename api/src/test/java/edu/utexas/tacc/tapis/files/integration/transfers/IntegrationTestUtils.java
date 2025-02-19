@@ -1,17 +1,23 @@
 package edu.utexas.tacc.tapis.files.integration.transfers;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
-import edu.utexas.tacc.tapis.files.test.RandomByteInputStream;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.jersey.client.ClientProperties;
@@ -33,11 +39,10 @@ import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
-import java.security.DigestInputStream;
 import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -53,6 +58,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class IntegrationTestUtils {
     private Logger log = LoggerFactory.getLogger(IntegrationTestUtils.class);
@@ -60,7 +67,7 @@ public class IntegrationTestUtils {
     private static final String TAPIS_TOKEN_HEADER = "X-Tapis-Token";
     public static final IntegrationTestUtils instance = new IntegrationTestUtils();
     public final Set<TransferTaskStatus> terminalStates;
-    private String SHA256 = "SHA-256";
+    public static String SHA256 = "SHA-256";
 
     public static class TransferDefinition {
         private String sourcePath;
@@ -82,54 +89,6 @@ public class IntegrationTestUtils {
             this.destinationPath = destinationPath;
         }
     }
-
-    private class RandomStreamWriter implements Runnable {
-        boolean completedSuccessfully = false;
-        String digest = null;
-
-        private final int bytesToWrite;
-        private final boolean alhapNumericOnly;
-        private PipedOutputStream outputStream;
-
-        public RandomStreamWriter(int bytesToWrite, boolean alhapNumericOnly) {
-            this.bytesToWrite = bytesToWrite;
-            this.alhapNumericOnly = alhapNumericOnly;
-        }
-
-        public InputStream initInputStream() throws IOException {
-            outputStream = new PipedOutputStream();
-            return new PipedInputStream(outputStream);
-        }
-
-        @Override
-        public void run() {
-            try {
-                RandomByteInputStream randomInputStream = new RandomByteInputStream(bytesToWrite,
-                        RandomByteInputStream.SizeUnit.BYTES, alhapNumericOnly);
-                DigestInputStream digestInputStream = new DigestInputStream(randomInputStream, MessageDigest.getInstance(SHA256));
-                digestInputStream.transferTo(outputStream);
-                digest = TestUtils.hashAsHex(digestInputStream.getMessageDigest().digest());
-                completedSuccessfully = true;
-            } catch (Throwable th) {
-                throw new RuntimeException(th);
-            } finally {
-                try {
-                    outputStream.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-
-        public String getDigest() {
-            return digest;
-        }
-
-        public boolean isCompletedSuccessfully() {
-            return completedSuccessfully;
-        }
-    };
-
 
     IntegrationTestUtils() {
         terminalStates = new HashSet<>();
@@ -169,7 +128,7 @@ public class IntegrationTestUtils {
         WebTarget target = client.target(baseUrl);
         Invocation.Builder invocationBuilder = target.path(getUrlPath("ops", systemId, destinationPath)).request(MediaType.APPLICATION_JSON);
 
-        RandomStreamWriter writer = new RandomStreamWriter(size, alphaNumericOnly);
+        RandomStreamWriter writer = new RandomStreamWriter(size, alphaNumericOnly, SHA256);
         try {
             StreamDataBodyPart filePart = new StreamDataBodyPart("file", writer.initInputStream(), destinationPath.getFileName().toString());
 
@@ -314,6 +273,9 @@ public class IntegrationTestUtils {
     }
 
     public List<FileInfo> getListing(String baseUrl, String token, String systemId, Path path) {
+        return getListing(baseUrl, token, systemId, path, null);
+    }
+    public List<FileInfo> getListing(String baseUrl, String token, String systemId, Path path, String pattern) {
         Client client = ClientBuilder.newClient().register(MultiPartFeature.class);
         boolean moreFiles = true;
         List<FileInfo> fileInfos = new ArrayList<>();
@@ -323,7 +285,8 @@ public class IntegrationTestUtils {
             Response response = client.target(baseUrl)
                     .queryParam("limit", limit)
                     .queryParam("offset", String.valueOf(offset))
-                    .path(getUrlPath("ops", systemId, path)).request(MediaType.APPLICATION_JSON)
+                    .path(getUrlPath("ops", systemId, path))
+                    .request(MediaType.APPLICATION_JSON)
                     .header(TAPIS_TOKEN_HEADER, token)
                     .get();
             Assert.assertEquals(response.getStatus(), 200);
@@ -339,10 +302,60 @@ public class IntegrationTestUtils {
                 fileInfos.add(TapisGsonUtils.getGson().fromJson(resultArray.get(i), FileInfo.class));
             }
         }
-        return fileInfos;
+
+        // only Linux systems support the "pattern", so we have to apply that here
+        final boolean isRegEx = (StringUtils.startsWithIgnoreCase(pattern, IRemoteDataClient.REGEX_PREFIX)) ? true : false;
+        final String patternOnly = isRegEx ? pattern.replaceFirst("(?i)regex:", "") : pattern;
+        final Pattern compiledPattern = isRegEx ? Pattern.compile(patternOnly) : null;
+
+        if(StringUtils.isEmpty(pattern)) {
+            return fileInfos;
+        } else {
+            return fileInfos.stream().filter((fileInfo) -> {
+                if (isRegEx) {
+                    return compiledPattern.matcher(fileInfo.getName()).find();
+                } else {
+                    return FilenameUtils.wildcardMatch(fileInfo.getName(), patternOnly);
+                }
+
+            }).collect(Collectors.toList());
+        }
     }
 
-    public void deletePath(String baseUrl, String token, String systemId, Path path) {
+    public void deletePath(String baseUrl, String token, String systemId, Path path, String pattern) {
+        if(StringUtils.isEmpty(pattern)) {
+            deletePath(baseUrl, token, systemId, path);
+        } else {
+            // if pattern is specified, we must find all the files an delete them.
+            // For safety, the pattern MUST start with integration_test, and the item must be a file
+            // (this could change I guess if need be - I'm just being cautious)
+            List<FileInfo> fileInfosToDelete = new ArrayList<>();
+            if(pattern.startsWith("integration_test_")) {
+                List<FileInfo> fileInfos = getListing(baseUrl, token, systemId, path, pattern);
+                for(FileInfo fileInfo : fileInfos) {
+                    if (fileInfo.getName().startsWith("integration_test_")) {
+                        if (fileInfo.isFile()) {
+                            fileInfosToDelete.add(fileInfo);
+                        } else {
+                            System.out.println("SKIPPING deletePath: pattern matched non-file path: " + fileInfo.getPath()
+                                    + " name: " + fileInfo.getName() + " type:" + fileInfo.getType());
+                        }
+                    } else {
+                        System.out.println("SKIPPING deletePath: pattern matched file not starting with integration_test_ path: " + fileInfo.getPath()
+                                + " name: " + fileInfo.getName() + " type:" + fileInfo.getType());
+                    }
+                }
+            } else {
+                System.out.println("SKIPPING deletePath: delete pattern does not start with 'integration_test_'");
+            }
+            if(!fileInfosToDelete.isEmpty()) {
+               for(var fileInfo : fileInfosToDelete) {
+                   deletePath(baseUrl, token, systemId, Path.of(fileInfo.getPath()));
+               }
+            }
+        }
+    }
+    private void deletePath(String baseUrl, String token, String systemId, Path path) {
         if((path == null) || (path.equals(Path.of("/"))
                 || StringUtils.isBlank(path.toString())
                 || StringUtils.equals(path.toString(), "/"))) {
@@ -422,5 +435,31 @@ public class IntegrationTestUtils {
                 .setClaims(claims)
                 .signWith(keyPair.getPrivate()).compact();
         return serviceJwt;
+    }
+
+    public <T> T readTestConfig(String fileName, Class<T> cls) throws Exception {
+        InputStream configStream = this.getClass().getClassLoader().getResourceAsStream(fileName);
+
+        try(Reader reader = new InputStreamReader(configStream)) {
+            return getGson().fromJson(reader, cls);
+        }
+    }
+
+    protected Gson getGson() {
+        GsonBuilder gBuilder = new GsonBuilder();
+        gBuilder.registerTypeAdapter(Path.class, new TypeAdapter<Path>() {
+            @Override
+            public void write(JsonWriter jsonWriter, Path path) throws IOException {
+                jsonWriter.value(path.toString());
+            }
+
+            @Override
+            public Path read(JsonReader jsonReader) throws IOException {
+                String pathString = jsonReader.nextString();
+                return Path.of(pathString);
+            }
+        });
+
+        return gBuilder.create();
     }
 }

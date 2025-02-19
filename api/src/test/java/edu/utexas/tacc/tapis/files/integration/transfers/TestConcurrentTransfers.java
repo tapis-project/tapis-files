@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFileTransfersConfig> {
     private static final String TEST_CONFIG = "TestConcurrentTransfersConfig.json";
@@ -100,6 +101,12 @@ public class TestConcurrentTransfers extends BaseTransfersIntegrationTest<TestFi
         // request all of the transfers
         for(TransfersConfig transfersConfig : transfersConfigs) {
             List<FileInfo> filesToTransfer = IntegrationTestUtils.instance.getListing(getBaseFilesUrl(), getToken(), transfersConfig.getSourceSystem(), transfersConfig.getSourcePath());
+            // crappy workaround for the fact that irods can't handle a ton of files concurrently for some reason
+            // If irods has issues - set a maxFiles in the transfer config
+            Integer maxFiles = transfersConfig.getMaxFiles();
+            if((maxFiles != null) && (maxFiles > 0)) {
+                filesToTransfer = filesToTransfer.stream().limit(transfersConfig.getMaxFiles()).collect(Collectors.toList());
+            }
             for(FileInfo fileInfo : filesToTransfer) {
                 Future<TransferInfo> transferFuture = getThreadPool().submit(new TransferCallable(transfersConfig, Path.of(fileInfo.getPath()).getFileName()));
                 transferFutures.add(transferFuture);

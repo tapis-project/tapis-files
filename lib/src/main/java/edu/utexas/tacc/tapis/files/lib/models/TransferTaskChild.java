@@ -51,7 +51,6 @@ public class TransferTaskChild extends TransferTaskParent
     // Build the destination path
     String destPathStr;
     // To support proper creation of directories at target we need to relativize the paths.
-    // TODO: E.g. if file1, file2 are on source at absolute path /a/b, and we are transferring to /c/b
     destPathStr = PathUtils.relativizePaths(sourceUri.getPath(), fileInfo.getPath(), destUri.getPath()).toString();
 
     // Create source and destination URIs

@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.integration.transfers.configs;
 
+import java.util.Collections;
 import java.util.List;
 
 public class TestFileTransfersConfig extends BaseTransfersIntegrationConfig {
@@ -15,7 +16,7 @@ public class TestFileTransfersConfig extends BaseTransfersIntegrationConfig {
     List<TransfersConfig> transfers;
 
     public List<TransfersConfig> getTransfers() {
-        return transfers;
+        return transfers == null ? Collections.<TransfersConfig>emptyList() : transfers;
     }
 
     public int getMaxThreads() {
@@ -29,5 +30,4 @@ public class TestFileTransfersConfig extends BaseTransfersIntegrationConfig {
     public int getPollingIntervalMillis() {
         return pollingIntervalMillis;
     }
-
 }

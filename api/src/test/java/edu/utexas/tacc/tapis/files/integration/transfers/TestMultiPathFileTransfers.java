@@ -10,6 +10,7 @@ import org.testng.annotations.Test;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Test(groups = {"integration"})
 public class TestMultiPathFileTransfers extends BaseTransfersIntegrationTest<TestFileTransfersConfig> {
@@ -29,6 +30,12 @@ public class TestMultiPathFileTransfers extends BaseTransfersIntegrationTest<Tes
         List<TransfersConfig> transfersConfigs = getTransfersConfig();
         for(TransfersConfig transfersConfig : transfersConfigs) {
             List<FileInfo> filesToTransfer = IntegrationTestUtils.instance.getListing(getBaseFilesUrl(), getToken(), transfersConfig.getSourceSystem(), transfersConfig.getSourcePath());
+            // crappy workaround for the fact that irods can't handle a ton of files concurrently for some reason
+            // If irods has issues - set a maxFiles in the transfer config
+            Integer maxFiles = transfersConfig.getMaxFiles();
+            if((maxFiles != null) && (maxFiles > 0)) {
+                filesToTransfer = filesToTransfer.stream().limit(transfersConfig.getMaxFiles()).collect(Collectors.toList());
+            }
             List<String> transferTasks = null;
             transferTasks = doBatchTransfer(transfersConfig, filesToTransfer);
             IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, getTestConfig().getTimeout());

@@ -7,6 +7,7 @@ public class UploadFilesConfig {
     private Path uploadPath;
     private int count;
     private int size;
+    private String filePrefix;
 
     public String getUploadSystem() {
         return uploadSystem;
@@ -22,5 +23,9 @@ public class UploadFilesConfig {
 
     public int getSize() {
         return size;
+    }
+
+    public String getFilePrefix() {
+        return filePrefix;
     }
 }

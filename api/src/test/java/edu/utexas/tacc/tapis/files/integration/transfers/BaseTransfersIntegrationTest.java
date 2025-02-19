@@ -1,23 +1,15 @@
 package edu.utexas.tacc.tapis.files.integration.transfers;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
 import edu.utexas.tacc.tapis.files.integration.transfers.configs.BaseTransfersIntegrationConfig;
 import edu.utexas.tacc.tapis.files.integration.transfers.configs.CleanupConfig;
 import edu.utexas.tacc.tapis.files.integration.transfers.configs.TransfersIntegrationTestConfig;
 import edu.utexas.tacc.tapis.files.integration.transfers.configs.UploadFilesConfig;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.BeforeClass;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -32,7 +24,7 @@ import java.util.concurrent.Future;
 
 abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersIntegrationConfig> {
     Logger log = LoggerFactory.getLogger(BaseTransfersIntegrationTest.class);
-    private static final String TRANSFERS_INTEGRATION_TEST_CONFIG = "IntegrationTestCommonConfig.json";
+    public static final String TRANSFERS_INTEGRATION_TEST_CONFIG = "IntegrationTestCommonConfig.json";
     private static final String SHA_PREFIX = "sha256:";
     private TransfersIntegrationTestConfig integrationConfig;
     private final String testConfigFileName;
@@ -48,8 +40,10 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
     private String token;
 
     Map<Path, String> testFiles;
+    private final IntegrationTestUtils testUtils;
 
     protected BaseTransfersIntegrationTest(Class<T> testConfigClass, String testConfigFileName) {
+        testUtils = IntegrationTestUtils.instance;
         runId = UUID.randomUUID().toString();
         this.testConfigClass = testConfigClass;
         testFiles = new ConcurrentHashMap();
@@ -72,11 +66,11 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
         return testFiles;
     }
 
-    @BeforeTest
+    @BeforeClass
     public void beforeClass() throws Exception {
-        integrationConfig = readTestConfig(TRANSFERS_INTEGRATION_TEST_CONFIG, TransfersIntegrationTestConfig.class);
-        JsonObject testConfigs = readTestConfig(testConfigFileName, JsonObject.class);
-        testConfig = (T)getGson().fromJson(testConfigs, testConfigClass);
+        integrationConfig = testUtils.readTestConfig(TRANSFERS_INTEGRATION_TEST_CONFIG, TransfersIntegrationTestConfig.class);
+        JsonObject testConfigs = testUtils.readTestConfig(testConfigFileName, JsonObject.class);
+        testConfig = (T)testUtils.getGson().fromJson(testConfigs, testConfigClass);
 
         token = IntegrationTestUtils.instance.getToken(integrationConfig.getTokenUrl(), integrationConfig.getUsername(), integrationConfig.getPassword());
         cleanup();
@@ -84,7 +78,7 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
         if(uploadFilesConfigs != null) {
             for (UploadFilesConfig uploadFilesConfig : uploadFilesConfigs) {
                 log.info("Uploading files.  System: " + uploadFilesConfig.getUploadSystem() + " Path: " + uploadFilesConfig.getUploadPath());
-                uploadFiles(uploadFilesConfig);
+                uploadFiles(uploadFilesConfig.getFilePrefix(), uploadFilesConfig);
             }
         }
     }
@@ -97,27 +91,21 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
         List<CleanupConfig> cleanupConfigs = testConfig.getCleanup();
         if(cleanupConfigs != null) {
             for (CleanupConfig cleanupConfig : cleanupConfigs) {
-                IntegrationTestUtils.instance.deletePath(integrationConfig.getBaseFilesUrl(), token, cleanupConfig.getSystem(), cleanupConfig.getPath());
+                IntegrationTestUtils.instance.deletePath(integrationConfig.getBaseFilesUrl(), token, cleanupConfig.getSystem(),
+                        cleanupConfig.getPath(), cleanupConfig.getPattern());
             }
         }
     }
 
-    private <T> T readTestConfig(String fileName, Class<T> cls) throws Exception {
-        InputStream configStream = this.getClass().getClassLoader().getResourceAsStream(fileName);
-
-        try(Reader reader = new InputStreamReader(configStream)) {
-            return getGson().fromJson(reader, cls);
-        }
-    }
-
-    private void uploadFiles(UploadFilesConfig uploadFilesConfig) throws Exception {
+    private void uploadFiles(String filePrefix, UploadFilesConfig uploadFilesConfig) throws Exception {
+        final String filePrefixToUse = (StringUtils.isEmpty(filePrefix)) ? "integration_test_file_" : filePrefix;
         List<Future<String>> uploadFutures = new ArrayList<>();
         IntegrationTestUtils.instance.mkdir(integrationConfig.getBaseFilesUrl(), token, uploadFilesConfig.getUploadSystem(), uploadFilesConfig.getUploadPath());
         for(int i = 0; i < uploadFilesConfig.getCount(); i++) {
             Future<String> uploadFuture = getThreadPool().submit(new Callable<String>() {
                 @Override
                 public String call() throws Exception {
-                    Path destinationPath = Path.of("integration_test_file" + UUID.randomUUID());
+                    Path destinationPath = Path.of(filePrefixToUse + UUID.randomUUID());
                     String digest = IntegrationTestUtils.instance.uploadRandomFile(integrationConfig.getBaseFilesUrl(), token,
                             uploadFilesConfig.getUploadSystem(), Paths.get(uploadFilesConfig.getUploadPath().toString(),
                                     destinationPath.toString()), uploadFilesConfig.getSize(), true);
@@ -134,21 +122,4 @@ abstract public class BaseTransfersIntegrationTest <T extends BaseTransfersInteg
         }
     }
 
-    protected Gson getGson() {
-        GsonBuilder gBuilder = new GsonBuilder();
-        gBuilder.registerTypeAdapter(Path.class, new TypeAdapter<Path>() {
-            @Override
-            public void write(JsonWriter jsonWriter, Path path) throws IOException {
-                jsonWriter.value(path.toString());
-            }
-
-            @Override
-            public Path read(JsonReader jsonReader) throws IOException {
-                String pathString = jsonReader.nextString();
-                return Path.of(pathString);
-            }
-        });
-
-        return gBuilder.create();
-    }
 }

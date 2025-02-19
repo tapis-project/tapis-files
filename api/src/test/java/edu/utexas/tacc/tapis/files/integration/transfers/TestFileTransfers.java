@@ -11,6 +11,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Test(groups = {"integration"})
 public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTransfersConfig> {
@@ -29,9 +32,15 @@ public class TestFileTransfers extends BaseTransfersIntegrationTest<TestFileTran
         List<TransfersConfig> transfersConfigs = getTransfersConfig();
         for(TransfersConfig transfersConfig : transfersConfigs) {
             List<FileInfo> filesToTransfer = IntegrationTestUtils.instance.getListing(getBaseFilesUrl(), getToken(), transfersConfig.getSourceSystem(), transfersConfig.getSourcePath());
+            // crappy workaround for the fact that irods can't handle a ton of files concurrently for some reason
+            // If irods has issues - set a maxFiles in the transfer config
+            Integer maxFiles = transfersConfig.getMaxFiles();
+            if((maxFiles != null) && (maxFiles > 0)) {
+                filesToTransfer = filesToTransfer.stream().limit(transfersConfig.getMaxFiles()).collect(Collectors.toList());
+            }
             List<String> transferTasks = null;
             transferTasks = doIndividualTransfer(transfersConfig, filesToTransfer);
-            IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, getTestConfig().getTimeout());
+            IntegrationTestUtils.instance.waitForTransfers(getBaseFilesUrl(), getToken(), transferTasks, getTestConfig().getTimeout(), Executors.newSingleThreadExecutor(), getTestConfig().getPollingIntervalMillis(), TimeUnit.MILLISECONDS);
             transferTasks.clear();
             for(FileInfo fileInfo : filesToTransfer) {
                 Path fileName = Path.of(fileInfo.getPath()).getFileName();

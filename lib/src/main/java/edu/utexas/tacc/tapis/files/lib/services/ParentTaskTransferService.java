@@ -605,8 +605,12 @@ public class ParentTaskTransferService {
     });
   }
 
-  private void handleNonTapisTransfer(TransferTaskParent parentTask) throws DAOException {
+  private void handleNonTapisTransfer(TransferTaskParent parentTask) throws DAOException, ServiceException, TapisException, IOException {
     DAOTransactionContext.doInTransaction((context -> {
+      TransferURI sourceUri = parentTask.getSourceURI();
+      TransferURI dstUri = parentTask.getDestinationURI();
+      String srcPath = sourceUri.getPath();
+
       // Handle all non-tapis protocols. These are http:// and https://
       // Create a single child task and update parent task status
       TransferTaskChild task = new TransferTaskChild();
@@ -614,7 +618,15 @@ public class ParentTaskTransferService {
       task.setSourceURI(parentTask.getSourceURI());
       task.setParentTaskId(parentTask.getId());
       task.setTaskId(parentTask.getTaskId());
-      task.setDestinationURI(parentTask.getDestinationURI());
+
+      // compute the relative dest file path (this also takes into account that the source is a file, and the destination
+      // is a directory, and we need to append a filename.  This also handles the case of "." which is stripped off at a
+      // higer level.  This is the same code found in the TransferTaskChile constructor used by 'handleTapisTransfer', however
+      // That can't be used here without changes - it expects fileinfo from the source file (which we may not have e.g. http files).
+      String destPathStr = PathUtils.relativizePaths(sourceUri.getPath(), srcPath, dstUri.getPath()).toString();
+      TransferURI newDestUri = new TransferURI(parentTask.getDestinationURI(), destPathStr);
+      task.setDestinationURI(newDestUri);
+
       task.setStatus(TransferTaskStatus.ACCEPTED);
       task.setTenantId(parentTask.getTenantId());
       task.setUsername(parentTask.getUsername());

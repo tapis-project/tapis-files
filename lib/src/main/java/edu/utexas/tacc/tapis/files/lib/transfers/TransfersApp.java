@@ -178,9 +178,10 @@ public class TransfersApp
             } else {
               log.error(LibUtils.getMsg("FILES_TXFR_APP_NO_ID"));
             }
-          } catch (DAOException ex) {
-            // TODO:  Log something? If this fails maybe we should exit?
-            log.error(LibUtils.getMsg("FILES_TXFR_APP_UPDATE_EXCEPTION", ex.getMessage()), ex);
+          } catch (Throwable th) {
+            // TODO:  Log something.  Don't exit this thread.  Perhaps we can update our status at
+            // a later date
+            log.error(LibUtils.getMsg("FILES_TXFR_APP_UPDATE_EXCEPTION", th.getMessage()), th);
           }
         }
       }, 0, 5, TimeUnit.MINUTES);
