@@ -1,5 +1,5 @@
 {
-  "timeout": 200000,
+  "timeout": 600000,
   "pollingIntervalMillis" : 10000,
   "uploadFiles": [
     {

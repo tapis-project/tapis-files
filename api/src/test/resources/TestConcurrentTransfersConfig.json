@@ -1,6 +1,6 @@
 {
   "maxThreads": 100,
-  "timeout": 3000000,
+  "timeout": 600000,
   "pollingIntervalMillis" : 15000,
   "uploadFiles": [
     {

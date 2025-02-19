@@ -9,6 +9,21 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.8.3 - 2025-02-04
+
+Incremental improvements and new features.  
+
+### New features:
+- None
+
+### Bug fixes:
+- Fixed issue with transfers from http(s) sources
+- Fixed issue where files worker heartbeat thread can exit during network outages
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.8.2 - 2025-02-04
 
 Incremental improvements and new features.  
