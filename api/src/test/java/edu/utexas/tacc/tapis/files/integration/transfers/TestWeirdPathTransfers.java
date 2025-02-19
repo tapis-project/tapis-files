@@ -65,18 +65,13 @@ public class TestWeirdPathTransfers extends BaseTransfersIntegrationTest<TestFil
     }
 
     private String transferSingleFile(TransfersConfig transfersConfig) {
-        System.out.println("Not implemented yet");
-        String transferTask = null;
-
         // transfer file from source to destination
         IntegrationTestUtils.TransferDefinition transferDefinition = new IntegrationTestUtils.TransferDefinition();
         Path fileName = transfersConfig.getSourceFileName().getFileName();
         transferDefinition.setSourcePath(transfersConfig.getTapisSourcePath(fileName));
         transferDefinition.setDestinationPath(transfersConfig.getTapisDestinationPath(fileName));
         JsonObject tapisResult = IntegrationTestUtils.instance.transferFiles(getBaseFilesUrl(), getToken(), "integrationTestTransfer", transferDefinition);
-        transferTask = getIdFromTransferResult(tapisResult);
-
-        return transferTask;
+        return getIdFromTransferResult(tapisResult);
     }
     private List<String> doIndividualTransfer(TransfersConfig transfersConfig, List<FileInfo> filesToTransfer) {
         List<String> transferTasks = new ArrayList<>();
