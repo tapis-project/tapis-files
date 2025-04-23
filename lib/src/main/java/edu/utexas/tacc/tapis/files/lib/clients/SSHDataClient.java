@@ -676,7 +676,9 @@ public class SSHDataClient implements ISSHDataClient
       String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "insertOrAppend", systemId, effectiveUserId, host, path, ex.getMessage());
       throw new IOException(msg, ex);
     } finally {
-      outputStream.close();
+      if(outputStream != null) {
+        outputStream.close();
+      }
       sessionHolder.close();
     }
   }
