@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.integration.transfers;
 
+import com.auth0.jwt.algorithms.Algorithm;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -14,9 +15,6 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.test.TestUtils;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.Method;
@@ -43,9 +41,17 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAKey;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -60,6 +66,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import com.auth0.jwt.JWT;
 
 public class IntegrationTestUtils {
     private Logger log = LoggerFactory.getLogger(IntegrationTestUtils.class);
@@ -403,38 +410,53 @@ public class IntegrationTestUtils {
     }
 
     public static String getJwtForUser(String tenantId, String username) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("tapis/tenant_id", tenantId);
-        claims.put("tapis/token_type", "access");
-        claims.put("tapis/delegation", false);
-        claims.put("tapis/delegation_sub", null);
-        claims.put("tapis/username", username);
-        claims.put("tapis/account_type", "user");
+        KeyPair keypair;
 
-        KeyPair keyPair = Keys.keyPairFor(SignatureAlgorithm.RS256);
-        String jwt = Jwts.builder()
-                .setSubject(username + "@" + tenantId)
-                .setClaims(claims)
-                .signWith(keyPair.getPrivate()).compact();
+        try {
+            var keygen = KeyPairGenerator.getInstance("RSA");
+            RSAKeyGenParameterSpec spec = new RSAKeyGenParameterSpec(256, RSAKeyGenParameterSpec.F4); //What does F4 mean vs F0?
+            keygen.initialize(spec);
+            keypair = keygen.generateKeyPair();
+        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException ex) {
+            throw new RuntimeException("Error generating key", ex);
+        }
+
+
+        var jwt = JWT.create()
+                .withClaim("tapis/tenant_id", tenantId)
+                .withClaim("tapis/token_type", "access")
+                .withClaim("tapis/delegation", false)
+                .withClaim("tapis/delegation_sub", (String)null)
+                .withClaim("tapis/username", username)
+                .withClaim("tapis/account_type", "user")
+                .withSubject(username + "@" + tenantId)
+                .sign(Algorithm.RSA256((RSAPublicKey)keypair.getPublic(), (RSAPrivateKey) keypair.getPrivate()));
         return jwt;
     }
 
     public static String getServiceJwt() {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("tapis/tenant_id", "dev");
-        claims.put("tapis/token_type", "access");
-        claims.put("tapis/delegation", false);
-        claims.put("tapis/delegation_sub", null);
-        claims.put("tapis/username", "service1");
-        claims.put("tapis/account_type", "service");
-        claims.put("tapis/target_site", "tacc");
+        KeyPair keypair;
 
-        KeyPair keyPair = Keys.keyPairFor(SignatureAlgorithm.RS256);
-        String serviceJwt = Jwts.builder()
-                .setSubject("jobs@dev")
-                .setClaims(claims)
-                .signWith(keyPair.getPrivate()).compact();
-        return serviceJwt;
+        try {
+            var keygen = KeyPairGenerator.getInstance("RSA");
+            RSAKeyGenParameterSpec spec = new RSAKeyGenParameterSpec(256, RSAKeyGenParameterSpec.F4); //What does F4 mean vs F0?
+            keygen.initialize(spec);
+            keypair = keygen.generateKeyPair();
+        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException ex) {
+            throw new RuntimeException("Error generating key", ex);
+        }
+
+        var jwt = JWT.create()
+                .withClaim("tapis/tenant_id", "dev")
+                .withClaim("tapis/token_type", "access")
+                .withClaim("tapis/delegation", false)
+                .withClaim("tapis/delegation_sub", (String)null)
+                .withClaim("tapis/username", "service1")
+                .withClaim("tapis/account_type", "service")
+                .withClaim("tapis/target_site", "tacc")
+                .withSubject("jobs@dev")
+                .sign(Algorithm.RSA256((RSAPublicKey)keypair.getPublic(), (RSAPrivateKey) keypair.getPrivate()));
+        return jwt;
     }
 
     public <T> T readTestConfig(String fileName, Class<T> cls) throws Exception {

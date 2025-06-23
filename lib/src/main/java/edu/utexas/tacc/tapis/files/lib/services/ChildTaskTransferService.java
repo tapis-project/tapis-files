@@ -65,7 +65,6 @@ import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import io.jsonwebtoken.lang.Collections;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sshd.common.io.WritePendingException;
 import org.jetbrains.annotations.NotNull;
@@ -233,7 +232,7 @@ public class ChildTaskTransferService {
                             break;
                         }
 
-                        if (Collections.isEmpty(futures)) {
+                        if (futures.isEmpty()) {
                             shouldExit = true;
                         }
                     }

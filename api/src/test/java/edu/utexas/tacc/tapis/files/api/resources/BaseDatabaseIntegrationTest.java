@@ -1,9 +1,5 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
-import io.jsonwebtoken.Jwt;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.test.JerseyTestNg;
 import org.testng.annotations.BeforeMethod;
@@ -19,10 +15,6 @@ import software.amazon.awssdk.services.s3.model.CreateBucketConfiguration;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 
 import java.net.URI;
-import java.security.Key;
-import java.security.KeyPair;
-import java.util.HashMap;
-import java.util.Map;
 
 
 @Test(groups={"integration"})

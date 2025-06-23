@@ -9,6 +9,21 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 1.9.0 - 2025-06-23
+
+Incremental improvements and new features.  
+
+### New features:
+- None
+
+### Bug fixes:
+- Fixing a minor issue that could cause problems during any SSH/SFTP operations
+  under certain conditions.
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.8.3 - 2025-02-04
 
 Incremental improvements and new features.  

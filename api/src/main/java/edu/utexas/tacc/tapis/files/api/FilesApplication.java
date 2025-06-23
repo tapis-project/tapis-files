@@ -61,6 +61,7 @@ import javax.ws.rs.ApplicationPath;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -93,6 +94,7 @@ public class FilesApplication extends ResourceConfig
   // We must be running on a specific site and this will never change
   private static String siteId;
   public static String getSiteId() {return siteId;}
+  public static List<String> getTrustedServices() {return List.of(TapisConstants.SERVICE_NAME_JOBS);}
   private static String siteAdminTenantId;
   public static String getSiteAdminTenantId() {return siteAdminTenantId;}
 

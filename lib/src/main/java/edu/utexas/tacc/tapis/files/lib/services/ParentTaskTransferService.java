@@ -191,7 +191,7 @@ public class ParentTaskTransferService {
               break;
             }
 
-            if (io.jsonwebtoken.lang.Collections.isEmpty(futures)) {
+            if (futures.isEmpty()) {
               shouldExit = true;
             }
             Thread.yield();
