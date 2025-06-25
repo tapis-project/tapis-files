@@ -104,6 +104,8 @@ public class ShareResource
                                @Context SecurityContext securityContext)
   {
     String opName = "getShareInfo";
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside getShares
     return getShares(opName, systemId, path, securityContext);
   }
 
@@ -114,6 +116,8 @@ public class ShareResource
                                    @Context SecurityContext securityContext)
   {
     String opName = "getShareInfoRoot";
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside getShares
     return getShares(opName, systemId, "", securityContext);
   }
 
@@ -135,6 +139,7 @@ public class ShareResource
                             @PathParam("path") String path,
                             @Context SecurityContext securityContext)
   {
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
     return postUpdateUserShares(OP_SHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
   }
 
@@ -145,6 +150,7 @@ public class ShareResource
                                 @PathParam("systemId") String systemId,
                                 @Context SecurityContext securityContext)
   {
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
     return postUpdateUserShares(OP_SHARE_PATH_USERS, systemId, "", payloadStream, securityContext);
   }
 
@@ -164,6 +170,8 @@ public class ShareResource
                                   @PathParam("path") String path,
                                   @Context SecurityContext securityContext)
   {
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
     return postUpdatePublicShare(OP_SHARE_PATH_PUBLIC, systemId, path, securityContext);
   }
 
@@ -173,6 +181,8 @@ public class ShareResource
   public Response sharePathPublicRoot(@PathParam("systemId") String systemId,
                                       @Context SecurityContext securityContext)
   {
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
     return postUpdatePublicShare(OP_SHARE_PATH_PUBLIC, systemId, "", securityContext);
   }
 
@@ -193,6 +203,8 @@ public class ShareResource
                               @PathParam("path") String path,
                               @Context SecurityContext securityContext)
   {
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
     return postUpdateUserShares(OP_UNSHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
   }
 
@@ -203,6 +215,8 @@ public class ShareResource
                                   @PathParam("systemId") String systemId,
                                   @Context SecurityContext securityContext)
   {
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
     return postUpdateUserShares(OP_UNSHARE_PATH_USERS, systemId, "", payloadStream, securityContext);
   }
 
@@ -221,6 +235,8 @@ public class ShareResource
                                     @PathParam("path") String path,
                                     @Context SecurityContext securityContext)
   {
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
     return postUpdatePublicShare(OP_UNSHARE_PATH_PUBLIC, systemId, path, securityContext);
   }
 
@@ -230,6 +246,8 @@ public class ShareResource
   public Response unSharePathPublicRoot(@PathParam("systemId") String systemId,
                                         @Context SecurityContext securityContext)
   {
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
     return postUpdatePublicShare(OP_UNSHARE_PATH_PUBLIC, systemId, "", securityContext);
   }
 
@@ -332,8 +350,11 @@ public class ShareResource
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId, "path=" + path);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     // Read the payload into a string.
     String json, msg;
@@ -424,8 +445,11 @@ public class ShareResource
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId, "path=" + path);
+    }
+    ApiUtils.checkServiceRestrictions(securityContext);
+
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either

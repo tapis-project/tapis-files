@@ -118,6 +118,8 @@ public class OperationsApiResource
             .setItemOffset(offset)
             .setRecurse(recurse)
             .setPattern(pattern);
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside getListing
     return getListing(opName, systemId, path, listOptsBuilder.build(), impersonationId, sharedCtx, securityContext);
   }
 
@@ -139,6 +141,8 @@ public class OperationsApiResource
             .setItemOffset(offset)
             .setRecurse(recurse)
             .setPattern(pattern);
+
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside getListing
     return getListing(opName, systemId, "", listOptsBuilder.build(), impersonationId, sharedCtx, securityContext);
   }
 
@@ -170,8 +174,11 @@ public class OperationsApiResource
     if (resp1 != null) return resp1;
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId, "path=" + path);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -212,9 +219,12 @@ public class OperationsApiResource
     if (resp1 != null) return resp1;
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-                          "sharedCtx="+sharedCtx, "path="+mkdirRequest.getPath());
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId,
+              "sharedCtx=" + sharedCtx, "path=" + mkdirRequest.getPath());
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     Instant start = Instant.now();
     // ---------------------------- Make service call -------------------------------
@@ -297,8 +307,11 @@ public class OperationsApiResource
     if (resp1 != null) return resp1;
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,"path="+path);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId, "path=" + path);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -332,10 +345,14 @@ public class OperationsApiResource
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId, "path="+path,
-              "pageLimit="+fileListingOpts.getPattern(), "itemOffset="+fileListingOpts.getItemOffset(), "recurse="+fileListingOpts.isRecurse(),"impersonationId="+impersonationId,
-              "sharedCtx="+sharedCtx);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId, "path=" + path,
+              "pageLimit=" + fileListingOpts.getPattern(), "itemOffset=" + fileListingOpts.getItemOffset(), "recurse=" + fileListingOpts.isRecurse(), "impersonationId=" + impersonationId,
+              "sharedCtx=" + sharedCtx);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
+
     Instant start = Instant.now();
     List<FileInfo> listing;
     // ---------------------------- Make service call -------------------------------
@@ -351,4 +368,5 @@ public class OperationsApiResource
     TapisResponse<List<FileInfo>> resp = TapisResponse.createSuccessResponse(msg, listing);
     return Response.status(Status.OK).entity(resp).build();
   }
+
 }

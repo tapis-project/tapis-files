@@ -69,6 +69,9 @@ public class PermissionsApiResource
     path = StringUtils.isBlank(path) ? "/" : path;
     // Create a user that collects together tenant, user and request information needed by the service call
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    ApiUtils.checkServiceRestrictions(securityContext);
+
     try
     {
       permsService.revokePermission(rUser.getOboTenantId(), username, systemId, path);
@@ -94,6 +97,9 @@ public class PermissionsApiResource
   {
     path = StringUtils.isBlank(path) ? "/" : path;
     String opName = "getPermissions";
+
+    ApiUtils.checkServiceRestrictions(securityContext);
+
     // Create a user that collects together tenant, user and request information needed by the service call
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
     String oboTenant = rUser.getOboTenantId();
@@ -145,6 +151,9 @@ public class PermissionsApiResource
   {
     path = StringUtils.isBlank(path) ? "/" : path;
     String opName = "grantPermissions";
+
+    ApiUtils.checkServiceRestrictions(securityContext);
+
     // Create a user that collects together tenant, user and request information needed by the service call
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
     Permission perm = createPermissionRequest.getPermission();

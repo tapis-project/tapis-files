@@ -3,7 +3,16 @@ package edu.utexas.tacc.tapis.files.api.utils;
 import java.text.MessageFormat;
 import java.util.Locale;
 import java.util.ResourceBundle;
+import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.InternalServerErrorException;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
+
+import edu.utexas.tacc.tapis.files.api.FilesApplication;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
+import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
+import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.google.gson.JsonElement;
@@ -154,4 +163,27 @@ public class ApiUtils
     String msg = ApiUtils.getMsgAuth("FAPI_TRACE_REQUEST", rUser, className, opName, reqUrl, argListStr);
     log.trace(msg);
   }
+
+  public static void checkServiceRestrictions(SecurityContext securityContext) {
+    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
+    checkServiceRestrictions(user.getAccountType(), user.getName(), user.getOboTenantId(), user.getOboUser());
+  }
+
+  public static void checkServiceRestrictions(String tokenType, String restrictedServiceName, String oboTenant, String oboUser) {
+    if(TapisThreadContext.AccountType.service.name().equals(tokenType)) {
+      if(FilesApplication.getTrustedServices().contains(restrictedServiceName)) {
+        return;
+      }
+
+      try {
+        if (!TapisUtils.isServicePermitted(TapisConstants.SERVICE_NAME_FILES, restrictedServiceName, oboTenant, oboUser)) {
+          throw new ForbiddenException("RestrictedService " + restrictedServiceName + " not allowed for user " + oboUser + " in " + oboTenant + " tenant.");
+        }
+      } catch (TapisException ex) {
+        log.error(ex.getMessage(), ex);
+        throw new InternalServerErrorException(ex.getMessage(), ex);
+      }
+    }
+  }
+
 }

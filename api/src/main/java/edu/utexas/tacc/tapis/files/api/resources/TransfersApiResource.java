@@ -114,8 +114,11 @@ public class  TransfersApiResource
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "limit="+limit, "offset="+offset);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "limit=" + limit, "offset=" + offset);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     List<TransferTask> tasks;
     try
@@ -166,9 +169,12 @@ public class  TransfersApiResource
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId="+taskUuid,
-                          "includeSummary="+includeSummary, "impersonationId="+impersonationId);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId=" + taskUuid,
+              "includeSummary=" + includeSummary, "impersonationId=" + impersonationId);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     TransferTask task;
     try
@@ -215,9 +221,12 @@ public class  TransfersApiResource
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId="+taskUuid,
-                          "impersonationId="+impersonationId);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId=" + taskUuid,
+              "impersonationId=" + impersonationId);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     TransferTask task;
     try
@@ -253,8 +262,11 @@ public class  TransfersApiResource
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId="+ taskUuid);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId=" + taskUuid);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     try
     {
@@ -289,9 +301,12 @@ public class  TransfersApiResource
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
-    if (log.isTraceEnabled())
+    if (log.isTraceEnabled()) {
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
-                          "Tag="+transferTaskRequest.getTag(), "transferTaskRequest="+transferTaskRequest);
+              "Tag=" + transferTaskRequest.getTag(), "transferTaskRequest=" + transferTaskRequest);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     // ---------------------------- Make service call -------------------------------
     TransferTask task;
