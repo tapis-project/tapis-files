@@ -95,6 +95,7 @@ public class ContentApiResource
                           @Suspended final AsyncResponse asyncResponse)
   {
     String opName = "getContents";
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside downloadPath
     downloadPath(opName, systemId, path, range, zip, startPage, impersonationId, sharedCtx, securityContext, asyncResponse);
   }
 
@@ -111,6 +112,7 @@ public class ContentApiResource
                               @Suspended final AsyncResponse asyncResponse)
   {
     String opName = "getContents";
+    // ApiUtils.checkServiceRestrictions(securityContext) is called inside downloadPath
     downloadPath(opName, systemId, "", range, zip, startPage, impersonationId, sharedCtx, securityContext, asyncResponse);
   }
 
@@ -136,10 +138,13 @@ public class ContentApiResource
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
-              "path="+path, "range="+range, "zip="+zip, "more="+startPage, "impersonationId="+impersonationId,
-              "sharedCtx="+sharedCtx);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId,
+              "path=" + path, "range=" + range, "zip=" + zip, "more=" + startPage, "impersonationId=" + impersonationId,
+              "sharedCtx=" + sharedCtx);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     // ---------------------------- Make service calls to start data streaming -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either

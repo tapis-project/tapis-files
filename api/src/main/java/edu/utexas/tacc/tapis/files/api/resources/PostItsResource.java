@@ -110,6 +110,8 @@ public class PostItsResource {
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "SystemId: ", systemId, "Path: ", path, jsonString);
 
+        ApiUtils.checkServiceRestrictions(securityContext);
+
         PostItCreateRequest createRequest = new PostItCreateRequest();
         if(!StringUtils.isBlank(jsonString)) {
             createRequest = getJsonObjectFromString(jsonString,
@@ -144,6 +146,9 @@ public class PostItsResource {
                 new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "PostItId: ", postItId);
+
+        ApiUtils.checkServiceRestrictions(securityContext);
+
         try {
             PostIt retrievedPostIt = service.getPostIt(rUser, postItId);
             postItDto = new PostItDTO(retrievedPostIt);
@@ -170,6 +175,8 @@ public class PostItsResource {
                 new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString());
+
+        ApiUtils.checkServiceRestrictions(securityContext);
 
         TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
         Response response = ApiUtils.checkContext(threadContext, true);
@@ -219,6 +226,7 @@ public class PostItsResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response postUpdatePostIt(@PathParam("postItId") String postItId,
                                  InputStream payloadStream) {
+        // ApiUtils.checkServiceRestrictions(securityContext) is called in updatePostit
         return updatePostit(postItId, payloadStream);
     }
 
@@ -228,6 +236,7 @@ public class PostItsResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response patchUpdatePostIt(@PathParam("postItId") String postItId,
                                  InputStream payloadStream) {
+        // ApiUtils.checkServiceRestrictions(securityContext) is called in updatePostit
         return updatePostit(postItId, payloadStream);
     }
 
@@ -237,6 +246,8 @@ public class PostItsResource {
         String jsonString = getJsonString(payloadStream, opName);
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "PostItId: ", postItId, jsonString);
+
+        ApiUtils.checkServiceRestrictions(securityContext);
 
         PostItUpdateRequest updateRequest = getJsonObjectFromString(jsonString,
                 opName, POSTIT_UPDATE_REQUEST, PostItUpdateRequest.class);
@@ -319,6 +330,9 @@ public class PostItsResource {
                 new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "PostItId: ", postItId);
+
+        ApiUtils.checkServiceRestrictions(securityContext);
+
         try {
             deleteCount = service.deletePostIt(rUser, postItId);
         } catch (TapisException | ServiceException ex) {

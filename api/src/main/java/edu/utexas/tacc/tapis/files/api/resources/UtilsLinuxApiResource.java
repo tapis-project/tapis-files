@@ -82,9 +82,12 @@ public class UtilsLinuxApiResource
     if (resp1 != null) return resp1;
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),
-                          "systemId="+systemId,"path="+path,"followLinks="+followLinks);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
+              "systemId=" + systemId, "path=" + path, "followLinks=" + followLinks);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -123,6 +126,8 @@ public class UtilsLinuxApiResource
     ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
                         "linuxOp="+linuxOp,"argument="+linuxOpArg,"path="+path,"recursive="+recursive);
 
+    ApiUtils.checkServiceRestrictions(securityContext);
+
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
     //   a WebApplicationException or some other exception handled by the mapper that converts exceptions
@@ -153,9 +158,12 @@ public class UtilsLinuxApiResource
     if (resp1 != null) return resp1;
 
     // Trace this request.
-    if (log.isTraceEnabled())
+    if (log.isTraceEnabled()) {
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
-                          "systemId="+systemId, "path="+path);
+              "systemId=" + systemId, "path=" + path);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -191,9 +199,12 @@ public class UtilsLinuxApiResource
     if (resp1 != null) return resp1;
 
     // Trace this request.
-    if (log.isTraceEnabled())
-      ApiUtils.logRequest(rUser,className,opName,_request.getRequestURL().toString(),"systemId="+systemId,
-                          "path="+path, "faclOp="+faclOp, "aclString="+aclString, "recursionMethod="+recursionMethod);
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId,
+              "path=" + path, "faclOp=" + faclOp, "aclString=" + aclString, "recursionMethod=" + recursionMethod);
+    }
+
+    ApiUtils.checkServiceRestrictions(securityContext);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
