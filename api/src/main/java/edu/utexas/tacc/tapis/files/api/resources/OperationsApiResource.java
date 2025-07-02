@@ -28,7 +28,10 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
+import edu.utexas.tacc.tapis.files.api.FilesApplication;
 import edu.utexas.tacc.tapis.files.lib.services.FileListingOpts;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.slf4j.Logger;
@@ -119,7 +122,7 @@ public class OperationsApiResource
             .setRecurse(recurse)
             .setPattern(pattern);
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside getListing
+    // TapisRestUtils.checkServiceRestrictions() is called inside getListing
     return getListing(opName, systemId, path, listOptsBuilder.build(), impersonationId, sharedCtx, securityContext);
   }
 
@@ -142,7 +145,7 @@ public class OperationsApiResource
             .setRecurse(recurse)
             .setPattern(pattern);
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside getListing
+    // TapisRestUtils.checkServiceRestrictions() is called inside getListing
     return getListing(opName, systemId, "", listOptsBuilder.build(), impersonationId, sharedCtx, securityContext);
   }
 
@@ -178,7 +181,7 @@ public class OperationsApiResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId, "path=" + path);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -224,7 +227,7 @@ public class OperationsApiResource
               "sharedCtx=" + sharedCtx, "path=" + mkdirRequest.getPath());
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     Instant start = Instant.now();
     // ---------------------------- Make service call -------------------------------
@@ -311,7 +314,7 @@ public class OperationsApiResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId, "path=" + path);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -351,7 +354,7 @@ public class OperationsApiResource
               "sharedCtx=" + sharedCtx);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     Instant start = Instant.now();
     List<FileInfo> listing;

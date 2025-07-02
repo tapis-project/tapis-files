@@ -17,6 +17,10 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+
+import edu.utexas.tacc.tapis.files.api.FilesApplication;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +74,7 @@ public class PermissionsApiResource
     // Create a user that collects together tenant, user and request information needed by the service call
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     try
     {
@@ -98,13 +102,14 @@ public class PermissionsApiResource
     path = StringUtils.isBlank(path) ? "/" : path;
     String opName = "getPermissions";
 
-    ApiUtils.checkServiceRestrictions(securityContext);
-
     // Create a user that collects together tenant, user and request information needed by the service call
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
+
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
     TapisSystem system;
+
     try
     {
       system = systemsCache.getSystem(oboTenant, systemId, oboUser);
@@ -152,10 +157,10 @@ public class PermissionsApiResource
     path = StringUtils.isBlank(path) ? "/" : path;
     String opName = "grantPermissions";
 
-    ApiUtils.checkServiceRestrictions(securityContext);
-
     // Create a user that collects together tenant, user and request information needed by the service call
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
+
     Permission perm = createPermissionRequest.getPermission();
     String user = createPermissionRequest.getUsername();
     String tenant = rUser.getOboTenantId();

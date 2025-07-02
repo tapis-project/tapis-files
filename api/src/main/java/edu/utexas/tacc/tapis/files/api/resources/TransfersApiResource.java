@@ -26,6 +26,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+
+import edu.utexas.tacc.tapis.files.api.FilesApplication;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
 import org.slf4j.Logger;
@@ -118,7 +121,7 @@ public class  TransfersApiResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "limit=" + limit, "offset=" + offset);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     List<TransferTask> tasks;
     try
@@ -174,7 +177,7 @@ public class  TransfersApiResource
               "includeSummary=" + includeSummary, "impersonationId=" + impersonationId);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     TransferTask task;
     try
@@ -226,7 +229,7 @@ public class  TransfersApiResource
               "impersonationId=" + impersonationId);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     TransferTask task;
     try
@@ -266,7 +269,7 @@ public class  TransfersApiResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "transferTaskId=" + taskUuid);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     try
     {
@@ -306,7 +309,7 @@ public class  TransfersApiResource
               "Tag=" + transferTaskRequest.getTag(), "transferTaskRequest=" + transferTaskRequest);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     // ---------------------------- Make service call -------------------------------
     TransferTask task;
