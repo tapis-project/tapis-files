@@ -7,6 +7,12 @@ public class TransferWorkerDAOStatements {
                 RETURNING *;
         """;
 
+    public static final String REINSERT_TRANSFER_WORKER =
+            """
+                INSERT INTO transfer_worker (uuid) VALUES (?)
+                    RETURNING *;
+            """;
+
     public static final String SELECT_TRANSFER_WORKER_BY_UUID =
             """
                 SELECT * from transfer_worker WHERE UUID = ?;

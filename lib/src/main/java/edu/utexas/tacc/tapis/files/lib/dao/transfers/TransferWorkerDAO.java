@@ -28,6 +28,20 @@ public class TransferWorkerDAO {
         return retrievedWorkers;
     }
 
+    public TransferWorker reInsertTransferWorker(DAOTransactionContext context, UUID uuid) throws DAOException {
+        TransferWorker transferWorker = null;
+        try {
+            RowProcessor rowProcessor = new TransferWorkersRowProcessor();
+            BeanHandler<TransferWorker> handler = new BeanHandler<>(TransferWorker.class, rowProcessor);
+            QueryRunner runner = new QueryRunner();
+            transferWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.REINSERT_TRANSFER_WORKER, handler, uuid);
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertTransferWorker", ex.getMessage()), ex);
+        }
+
+        return transferWorker;
+    }
+
     public TransferWorker insertTransferWorker(DAOTransactionContext context) throws DAOException {
         TransferWorker transferWorker = null;
         try {

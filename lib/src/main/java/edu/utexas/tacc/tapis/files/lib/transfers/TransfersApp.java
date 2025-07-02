@@ -172,7 +172,12 @@ public class TransfersApp
           try {
             if(TransfersApp.myUuid != null) {
               DAOTransactionContext.doInTransaction((context) -> {
-                new TransferWorkerDAO().updateTransferWorker(context, TransfersApp.myUuid);
+                TransferWorkerDAO dao = new TransferWorkerDAO();
+                if(dao.getTransferWorkerById(context, TransfersApp.myUuid) == null) {
+                  dao.reInsertTransferWorker(context, TransfersApp.myUuid);
+                } else {
+                  dao.updateTransferWorker(context, TransfersApp.myUuid);
+                }
                 return null;
               });
             } else {
