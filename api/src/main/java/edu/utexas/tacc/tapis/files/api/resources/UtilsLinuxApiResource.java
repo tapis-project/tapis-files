@@ -15,6 +15,10 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+
+import edu.utexas.tacc.tapis.files.api.FilesApplication;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import org.glassfish.grizzly.http.server.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +91,7 @@ public class UtilsLinuxApiResource
               "systemId=" + systemId, "path=" + path, "followLinks=" + followLinks);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -126,7 +130,7 @@ public class UtilsLinuxApiResource
     ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId="+systemId,
                         "linuxOp="+linuxOp,"argument="+linuxOpArg,"path="+path,"recursive="+recursive);
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -163,7 +167,7 @@ public class UtilsLinuxApiResource
               "systemId=" + systemId, "path=" + path);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either
@@ -204,7 +208,7 @@ public class UtilsLinuxApiResource
               "path=" + path, "faclOp=" + faclOp, "aclString=" + aclString, "recursionMethod=" + recursionMethod);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     // ---------------------------- Make service call -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either

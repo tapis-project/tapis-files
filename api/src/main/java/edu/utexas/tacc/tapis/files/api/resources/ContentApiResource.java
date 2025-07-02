@@ -23,6 +23,10 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
+
+import edu.utexas.tacc.tapis.files.api.FilesApplication;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
@@ -95,7 +99,7 @@ public class ContentApiResource
                           @Suspended final AsyncResponse asyncResponse)
   {
     String opName = "getContents";
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside downloadPath
+    // TapisRestUtils.checkServiceRestrictions() is called inside downloadPath
     downloadPath(opName, systemId, path, range, zip, startPage, impersonationId, sharedCtx, securityContext, asyncResponse);
   }
 
@@ -112,7 +116,7 @@ public class ContentApiResource
                               @Suspended final AsyncResponse asyncResponse)
   {
     String opName = "getContents";
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside downloadPath
+    // TapisRestUtils.checkServiceRestrictions() is called inside downloadPath
     downloadPath(opName, systemId, "", range, zip, startPage, impersonationId, sharedCtx, securityContext, asyncResponse);
   }
 
@@ -144,7 +148,7 @@ public class ContentApiResource
               "sharedCtx=" + sharedCtx);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     // ---------------------------- Make service calls to start data streaming -------------------------------
     // Note that we do not use try/catch around service calls because exceptions are already either

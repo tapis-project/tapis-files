@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.resources;
 
 import com.google.gson.JsonSyntaxException;
+import edu.utexas.tacc.tapis.files.api.FilesApplication;
 import edu.utexas.tacc.tapis.files.api.models.PostItCreateRequest;
 import edu.utexas.tacc.tapis.files.api.models.PostItUpdateRequest;
 import edu.utexas.tacc.tapis.files.api.responses.DTOResponseBuilder;
@@ -26,6 +27,7 @@ import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import edu.utexas.tacc.tapis.sharedapi.responses.TapisResponse;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
+import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import edu.utexas.tacc.tapis.tenants.client.gen.model.Tenant;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.EnumUtils;
@@ -110,7 +112,7 @@ public class PostItsResource {
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "SystemId: ", systemId, "Path: ", path, jsonString);
 
-        ApiUtils.checkServiceRestrictions(securityContext);
+        TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
         PostItCreateRequest createRequest = new PostItCreateRequest();
         if(!StringUtils.isBlank(jsonString)) {
@@ -147,7 +149,7 @@ public class PostItsResource {
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "PostItId: ", postItId);
 
-        ApiUtils.checkServiceRestrictions(securityContext);
+        TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
         try {
             PostIt retrievedPostIt = service.getPostIt(rUser, postItId);
@@ -176,7 +178,7 @@ public class PostItsResource {
 
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString());
 
-        ApiUtils.checkServiceRestrictions(securityContext);
+        TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
         TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
         Response response = ApiUtils.checkContext(threadContext, true);
@@ -226,7 +228,7 @@ public class PostItsResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response postUpdatePostIt(@PathParam("postItId") String postItId,
                                  InputStream payloadStream) {
-        // ApiUtils.checkServiceRestrictions(securityContext) is called in updatePostit
+        //  TapisRestUtils.checkServiceRestrictions() called in updatePostit
         return updatePostit(postItId, payloadStream);
     }
 
@@ -236,7 +238,7 @@ public class PostItsResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response patchUpdatePostIt(@PathParam("postItId") String postItId,
                                  InputStream payloadStream) {
-        // ApiUtils.checkServiceRestrictions(securityContext) is called in updatePostit
+        //  TapisRestUtils.checkServiceRestrictions() called in updatePostit
         return updatePostit(postItId, payloadStream);
     }
 
@@ -247,7 +249,7 @@ public class PostItsResource {
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "PostItId: ", postItId, jsonString);
 
-        ApiUtils.checkServiceRestrictions(securityContext);
+        TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
         PostItUpdateRequest updateRequest = getJsonObjectFromString(jsonString,
                 opName, POSTIT_UPDATE_REQUEST, PostItUpdateRequest.class);
@@ -331,7 +333,7 @@ public class PostItsResource {
         ApiUtils.logRequest(rUser, className, opName, request.getRequestURL().toString(),
                 "PostItId: ", postItId);
 
-        ApiUtils.checkServiceRestrictions(securityContext);
+        TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
         try {
             deleteCount = service.deletePostIt(rUser, postItId);

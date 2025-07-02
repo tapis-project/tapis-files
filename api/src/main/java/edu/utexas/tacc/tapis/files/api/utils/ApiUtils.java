@@ -163,27 +163,4 @@ public class ApiUtils
     String msg = ApiUtils.getMsgAuth("FAPI_TRACE_REQUEST", rUser, className, opName, reqUrl, argListStr);
     log.trace(msg);
   }
-
-  public static void checkServiceRestrictions(SecurityContext securityContext) {
-    AuthenticatedUser user = (AuthenticatedUser) securityContext.getUserPrincipal();
-    checkServiceRestrictions(user.getAccountType(), user.getName(), user.getOboTenantId(), user.getOboUser());
-  }
-
-  public static void checkServiceRestrictions(String tokenType, String restrictedServiceName, String oboTenant, String oboUser) {
-    if(TapisThreadContext.AccountType.service.name().equals(tokenType)) {
-      if(FilesApplication.getTrustedServices().contains(restrictedServiceName)) {
-        return;
-      }
-
-      try {
-        if (!TapisUtils.isServicePermitted(TapisConstants.SERVICE_NAME_FILES, restrictedServiceName, oboTenant, oboUser)) {
-          throw new ForbiddenException("RestrictedService " + restrictedServiceName + " not allowed for user " + oboUser + " in " + oboTenant + " tenant.");
-        }
-      } catch (TapisException ex) {
-        log.error(ex.getMessage(), ex);
-        throw new InternalServerErrorException(ex.getMessage(), ex);
-      }
-    }
-  }
-
 }

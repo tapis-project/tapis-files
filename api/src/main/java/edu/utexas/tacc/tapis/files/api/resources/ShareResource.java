@@ -11,6 +11,8 @@ import javax.ws.rs.core.*;
 import javax.ws.rs.core.Response.Status;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import edu.utexas.tacc.tapis.files.api.FilesApplication;
+import edu.utexas.tacc.tapis.shared.TapisConstants;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,7 +107,7 @@ public class ShareResource
   {
     String opName = "getShareInfo";
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside getShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return getShares(opName, systemId, path, securityContext);
   }
 
@@ -117,7 +119,7 @@ public class ShareResource
   {
     String opName = "getShareInfoRoot";
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside getShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return getShares(opName, systemId, "", securityContext);
   }
 
@@ -139,7 +141,7 @@ public class ShareResource
                             @PathParam("path") String path,
                             @Context SecurityContext securityContext)
   {
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return postUpdateUserShares(OP_SHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
   }
 
@@ -150,7 +152,7 @@ public class ShareResource
                                 @PathParam("systemId") String systemId,
                                 @Context SecurityContext securityContext)
   {
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return postUpdateUserShares(OP_SHARE_PATH_USERS, systemId, "", payloadStream, securityContext);
   }
 
@@ -171,7 +173,7 @@ public class ShareResource
                                   @Context SecurityContext securityContext)
   {
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return postUpdatePublicShare(OP_SHARE_PATH_PUBLIC, systemId, path, securityContext);
   }
 
@@ -182,7 +184,7 @@ public class ShareResource
                                       @Context SecurityContext securityContext)
   {
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return postUpdatePublicShare(OP_SHARE_PATH_PUBLIC, systemId, "", securityContext);
   }
 
@@ -204,7 +206,7 @@ public class ShareResource
                               @Context SecurityContext securityContext)
   {
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return postUpdateUserShares(OP_UNSHARE_PATH_USERS, systemId, path, payloadStream, securityContext);
   }
 
@@ -216,7 +218,7 @@ public class ShareResource
                                   @Context SecurityContext securityContext)
   {
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return postUpdateUserShares(OP_UNSHARE_PATH_USERS, systemId, "", payloadStream, securityContext);
   }
 
@@ -236,7 +238,7 @@ public class ShareResource
                                     @Context SecurityContext securityContext)
   {
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return postUpdatePublicShare(OP_UNSHARE_PATH_PUBLIC, systemId, path, securityContext);
   }
 
@@ -247,7 +249,7 @@ public class ShareResource
                                         @Context SecurityContext securityContext)
   {
 
-    // ApiUtils.checkServiceRestrictions(securityContext) is called inside postUpdateUserShares
+    // TapisRestUtils.checkServiceRestrictions() is called inside getShares
     return postUpdatePublicShare(OP_UNSHARE_PATH_PUBLIC, systemId, "", securityContext);
   }
 
@@ -354,7 +356,7 @@ public class ShareResource
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId, "path=" + path);
     }
 
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
     // Read the payload into a string.
     String json, msg;
@@ -448,7 +450,7 @@ public class ShareResource
     if (log.isTraceEnabled()) {
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "systemId=" + systemId, "path=" + path);
     }
-    ApiUtils.checkServiceRestrictions(securityContext);
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
 
     // ---------------------------- Make service call -------------------------------
