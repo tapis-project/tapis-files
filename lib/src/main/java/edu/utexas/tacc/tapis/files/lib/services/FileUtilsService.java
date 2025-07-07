@@ -295,7 +295,9 @@ public class FileUtilsService
     }
     ISSHDataClient sshClient = (ISSHDataClient) client;
     boolean isOwner = false;
-    if (client.getSystem().getOwner() != null) isOwner = client.getSystem().getOwner().equals(client.getOboTenant());
+    if (client.getSystem().getOwner() != null) {
+      isOwner = client.getSystem().getOwner().equals(client.getOboUser());
+    }
 
     // Get normalized path relative to system rootDir and protect against ../..
     String relativePathStr = PathUtils.getRelativePath(pathStr).toString();
