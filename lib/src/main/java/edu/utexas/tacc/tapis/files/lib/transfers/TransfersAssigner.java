@@ -52,7 +52,7 @@ public class TransfersAssigner
     private static final Logger log = LoggerFactory.getLogger(TransfersApp.class);
     private static int WORKER_BACKLOG_THRESHOLD = 100;
     private static int ROW_NUMBER_CUTOFF = 300;
-    private static long EXPECT_HEARTBEAT_BEFORE_MILLIS = 600000;
+    private static long EXPECT_HEARTBEAT_BEFORE_MILLIS = 180000;
     private static int MAX_WAIT_MULTIPLIER = RuntimeSettings.get().getMaxAssignmentWaitMultiplier();
     private SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(ROW_NUMBER_CUTOFF);
 

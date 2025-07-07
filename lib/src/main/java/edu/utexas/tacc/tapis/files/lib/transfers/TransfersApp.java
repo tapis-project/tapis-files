@@ -189,7 +189,7 @@ public class TransfersApp
             log.error(LibUtils.getMsg("FILES_TXFR_APP_UPDATE_EXCEPTION", th.getMessage()), th);
           }
         }
-      }, 0, 5, TimeUnit.MINUTES);
+      }, 0, 2, TimeUnit.MINUTES);
 
       log.info("Getting parentTxfrSvc.");
       ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
