@@ -19,6 +19,7 @@ public interface IRuntimeConfig {
     String getGlobusClientId();
     int getChildThreadPoolSize();
     int getParentThreadPoolSize();
+    int getArchiveTransferThreadPoolSize();
     int getAsyncTransferPollSeconds();
     int getPostItsReaperIntervalMinutes();
     int getDbConnectionPoolCoreSize();

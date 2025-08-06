@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.PostgresDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
+import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransfersService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
@@ -192,6 +193,7 @@ public class FilesApplication extends ResourceConfig
           bindAsContract(FileUtilsService.class).in(Singleton.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
+          bindAsContract(ArchiveTransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);
           bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
           bindAsContract(FilePermsService.class).in(Singleton.class);

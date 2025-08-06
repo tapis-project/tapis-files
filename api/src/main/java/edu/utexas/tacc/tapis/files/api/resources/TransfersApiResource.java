@@ -28,6 +28,11 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
 import edu.utexas.tacc.tapis.files.api.FilesApplication;
+import edu.utexas.tacc.tapis.files.api.models.ArchiveTransferRequest;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
+import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransferResponse;
+import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransfersService;
+import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
@@ -92,6 +97,8 @@ public class  TransfersApiResource
   @Inject
   TransfersService transfersService;
 
+  @Inject
+  ArchiveTransfersService archiveTransfersService;
   @Inject
   SystemsCache systemsCache;
 
@@ -331,6 +338,68 @@ public class  TransfersApiResource
     // Trace details of the created txfr task.
     if (log.isTraceEnabled()) log.trace(task.toString());
     return Response.ok(resp).build();
+  }
+  @POST
+  @Path("archiveTransfer")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response createArchiveTransfer(@Valid ArchiveTransferRequest archiveTransferRequest,
+                                     @Context SecurityContext securityContext)
+  {
+    String opName = "createArchiveTransfer";
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
+              "transferTaskRequest=" + archiveTransferRequest);
+    }
+
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
+
+    // ---------------------------- Make service call -------------------------------
+    ArchiveTransferResponse archiveTransferResponse;
+    try
+    {
+      // Create the txfr task
+      ArchiveTransfer archiveTransfer = getArchiveTransferFromRequest(rUser, archiveTransferRequest);
+      // TODO AXFER: Do some validation/null checking on reqeust
+      archiveTransferResponse = archiveTransfersService.createArchiveTransfer(rUser, archiveTransfer);
+    }
+    catch (ServiceException ex)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
+    }
+    // TODO AXFER: fix messages
+    String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CREATED", rUser, archiveTransferResponse.getUuid());
+
+    TapisResponse<ArchiveTransferResponse> resp = TapisResponse.createSuccessResponse(msg, archiveTransferResponse);
+
+    // Trace details of the created txfr task.
+    if (log.isTraceEnabled()) log.trace(archiveTransferResponse.toString());
+    return Response.ok(resp).build();
+  }
+
+  private ArchiveTransfer getArchiveTransferFromRequest(ResourceRequestUser rUser, ArchiveTransferRequest archiveTransferRequest) {
+    ArchiveTransfer archiveTransfer = new ArchiveTransfer();
+    archiveTransfer.setUsername(rUser.getOboUserId());
+    archiveTransfer.setTenantId(rUser.getOboTenantId());
+    archiveTransfer.setSourceBaseUrl(archiveTransferRequest.getSourceBaseUrl());
+    archiveTransfer.setDestinationBaseUrl(archiveTransferRequest.getDestinationBaseUrl());
+    archiveTransfer.setSrcSharedCtxGrantor(archiveTransferRequest.getSrcSharedCtxGrantor());
+    archiveTransfer.setDestSharedCtxGrantor(archiveTransferRequest.getDestSharedCtxGrantor());
+    archiveTransfer.setRelativePaths(archiveTransferRequest.getRelativePaths());
+    return archiveTransfer;
   }
 
   // ************************************************************************
