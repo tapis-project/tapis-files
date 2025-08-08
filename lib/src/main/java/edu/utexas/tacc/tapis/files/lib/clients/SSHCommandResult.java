@@ -39,7 +39,12 @@ public class SSHCommandResult {
         sb.append("Result: ");
         sb.append(commandResult);
         sb.append(" Message: ");
-        sb.append((commandError == null) ? null : sb.append(new String(commandError)));
+        if(commandError == null) {
+            sb.append("<null>");
+        } else {
+            String error = new String(commandError);
+            sb.append(error);
+        }
         sb.append(System.lineSeparator());
         sb.append("Output: ");
         sb.append((commandOutput == null) ? null : sb.append(new String(commandOutput)));

@@ -1,9 +1,9 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import java.io.PipedOutputStream;
+import java.io.PipedInputStream;
 import java.util.concurrent.Future;
 
-public class TapisArchiveOutputStream extends PipedOutputStream {
+public class TapisArchiveInputStream extends PipedInputStream {
     private Future<SSHCommandResult> sourceResultFuture;
 
     public void setSourceResult(Future<SSHCommandResult> sourceResultFuture) {

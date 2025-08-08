@@ -7,5 +7,5 @@ import java.io.PipedInputStream;
 import java.util.concurrent.Future;
 
 public interface ArchiveTransferDestination {
-    ArchiveTransferResult writeArchive(@NotNull String basePath, @NotNull TapisArchiveOutputStream outputStream) throws IOException;
+    ArchiveTransferResult writeArchive(@NotNull String basePath, @NotNull TapisArchiveInputStream archiveInputStream) throws IOException;
 }

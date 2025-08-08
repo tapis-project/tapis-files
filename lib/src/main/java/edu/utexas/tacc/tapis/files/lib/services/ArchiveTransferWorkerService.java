@@ -8,7 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.clients.TapisArchiveOutputStream;
+import edu.utexas.tacc.tapis.files.lib.clients.TapisArchiveInputStream;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
@@ -266,11 +266,10 @@ public class ArchiveTransferWorkerService {
            dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
             TransferURI srcBaseURI = new TransferURI(archiveTransfer.getSourceBaseUrl());
             TransferURI dstBaseURI = new TransferURI(archiveTransfer.getDestinationBaseUrl());
-            TapisArchiveOutputStream archiveOutputStream =
+            TapisArchiveInputStream archiveInputStream =
                     srcArchiveXFer.getArchiveStream(srcBaseURI.getPath(), archiveTransfer.getRelativePaths());
-            ArchiveTransferResult archiveTransferResult = dstArchiveXFer.writeArchive(dstBaseURI.getPath(), archiveOutputStream);
+            ArchiveTransferResult archiveTransferResult = dstArchiveXFer.writeArchive(dstBaseURI.getPath(), archiveInputStream);
             try {
-                Thread.sleep(20000);
                 if(archiveTransferResult.isSuccess()) {
                     System.out.println("Successful");
                 } else {

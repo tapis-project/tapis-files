@@ -564,7 +564,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
   }
 
   @Override
-  public TapisArchiveOutputStream getArchiveStream(@NotNull String srcBasePath,
+  public TapisArchiveInputStream getArchiveStream(@NotNull String srcBasePath,
                                             @NotNull Set<String> relativePaths) throws IOException {
     StringBuilder inputBuilder = new StringBuilder();
     for (String relativePath : relativePaths) {
@@ -577,47 +577,55 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     InputStream inputStream = null;
     final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
             borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
-    TapisArchiveOutputStream outputStream = new TapisArchiveOutputStream();
-//    PipedInputStream outputAsInput = new PipedInputStream(outputStream);
+    PipedOutputStream outputStream = new PipedOutputStream();
+    TapisArchiveInputStream archiveInputStream = new TapisArchiveInputStream();
+    archiveInputStream.connect(outputStream);
     PipedOutputStream errorStream = new PipedOutputStream();
     PipedInputStream errorAsInput = new PipedInputStream(errorStream);
-//      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-//      ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
     StringBuilder commandBuilder = new StringBuilder();
     commandBuilder.append("tar -C '");
     commandBuilder.append(absBasePath);
     commandBuilder.append("' -cvT- ");
-
 
     Future<SSHCommandResult> sourceResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
       public SSHCommandResult call() throws Exception {
         SSHCommandResult sourceCommandResult = new SSHCommandResult();
         int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
-        outputStream.flush();
-        outputStream.close();
+//        int returnValue = sshHolder.getSession().execute("cat - ", new ByteArrayInputStream("foo".getBytes()), outputStream, errorStream);
+//        int returnValue = sshHolder.getSession().execute("echo hello world", pos, errorStream);
         sourceCommandResult.setCommandResult(returnValue);
         byte[] errorBytes = errorAsInput.readNBytes(MAX_ERROR_BYTES);
         sourceCommandResult.setCommandError(errorBytes);
         return sourceCommandResult;
       }
     });
-    outputStream.setSourceResult(sourceResultFuture);
-
-    return outputStream;
+/*
+    try {
+      SSHCommandResult result = sourceResultFuture.get();
+      System.out.println(result);
+      int available = pis.available();
+      System.out.println(new String(pis.readNBytes(available)));
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    } catch (ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+*/
+    archiveInputStream.setSourceResult(sourceResultFuture);
+    return archiveInputStream;
   }
 
   @Override
-  public ArchiveTransferResult writeArchive(@NotNull String basePath, TapisArchiveOutputStream archiveOutputStream) throws IOException {
+  public ArchiveTransferResult writeArchive(@NotNull String basePath, TapisArchiveInputStream archiveInputStream) throws IOException {
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
     final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
             borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
 
     PipedOutputStream outputStream = new PipedOutputStream();
-//    OutputStream outputStream = new ByteArrayOutputStream();
-    PipedInputStream archiveInputStream = new PipedInputStream(archiveOutputStream);
+    InputStream outputInputStream = new PipedInputStream(outputStream);
     PipedOutputStream errorStream = new PipedOutputStream();
-//    PipedInputStream errorAsInput = new PipedInputStream(errorStream);
+    InputStream errorInputStream = new PipedInputStream(errorStream);
 
     StringBuilder commandBuilder = new StringBuilder();
     commandBuilder.append("tar -C '");
@@ -628,17 +636,15 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
       @Override
       public SSHCommandResult call() throws Exception {
         SSHCommandResult destinationCommandResult = new SSHCommandResult();
-//        int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), outputAsInput, outputStream, errorStream);
-        int returnValue = sshHolder.getSession().execute("cat -", archiveInputStream, outputStream, errorStream);
+        int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), archiveInputStream, outputStream, errorStream);
+//        int returnValue = sshHolder.getSession().execute("cat -", archiveInputStream, outputStream, errorStream);
         destinationCommandResult.setCommandResult(returnValue);
-        InputStream errorInputStream = new PipedInputStream(errorStream);
         byte[] errorBytes = null;
         int availableErrorBytes = errorInputStream.available();
         if(availableErrorBytes > 0) {
           errorBytes = errorInputStream.readNBytes(Math.min(MAX_ERROR_BYTES, availableErrorBytes));
         }
         destinationCommandResult.setCommandError(errorBytes);
-        InputStream outputInputStream = new PipedInputStream(outputStream);
         byte[] outputBytes = null;
         int availableOutputBytes = errorInputStream.available();
         if(availableOutputBytes > 0) {
@@ -649,7 +655,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
       }
     });
 
-    ArchiveTransferResult archiveTransferResult = new ArchiveTransferResult(archiveOutputStream.getSourceResultFuture(), destinationResultFuture);
+    ArchiveTransferResult archiveTransferResult = new ArchiveTransferResult(archiveInputStream.getSourceResultFuture(), destinationResultFuture);
     return archiveTransferResult;
   }
 

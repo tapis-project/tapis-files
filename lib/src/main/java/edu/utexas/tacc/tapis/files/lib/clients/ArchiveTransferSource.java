@@ -7,6 +7,6 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 public interface ArchiveTransferSource {
-    TapisArchiveOutputStream getArchiveStream(@NotNull String srcBasePath,
+    TapisArchiveInputStream getArchiveStream(@NotNull String srcBasePath,
                                               @NotNull Set<String> relativePaths) throws IOException;
 }
