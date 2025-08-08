@@ -12,7 +12,7 @@ public class ArchiveTransfer {
     private String username;
     private String tenantId;
     private Instant created;
-    private String status;
+    private ArchiveTransferStatus status;
     private String sourceBaseUrl;
     private String destinationBaseUrl;
     Set<String> relativePaths;
@@ -64,11 +64,11 @@ public class ArchiveTransfer {
         this.created = created;
     }
 
-    public String getStatus() {
+    public ArchiveTransferStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(ArchiveTransferStatus status) {
         this.status = status;
     }
     public String getSourceBaseUrl() {

@@ -40,7 +40,7 @@ public class ArchiveTransfersDAO {
             insertedArchiveTransfer = runner.query(context.getConnection(), ArchiveTransferDAOStatements.INSERT_ARCHIVE_TRANSFER, handler,
                     archiveTransfer.getUsername(),
                     archiveTransfer.getTenantId(),
-                    archiveTransfer.getStatus(),
+                    archiveTransfer.getStatus().name(),
                     archiveTransfer.getSourceBaseUrl(),
                     archiveTransfer.getDestinationBaseUrl(),
                     archiveTransfer.getBytesTransferred(),

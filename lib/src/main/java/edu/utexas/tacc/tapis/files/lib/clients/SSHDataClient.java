@@ -1,17 +1,27 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
@@ -23,6 +33,7 @@ import javax.ws.rs.NotSupportedException;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisRecoverableException;
@@ -55,10 +66,12 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
  * All path parameters as inputs to methods are assumed to be relative to the rootDir
  * of the system unless otherwise specified.
  */
-public class SSHDataClient implements ISSHDataClient
+public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, ArchiveTransferDestination
 {
   private static final int MAX_PERMS_INT = Integer.parseInt("777", 8);
   public static final long MAX_LISTING_VALUE = Long.MAX_VALUE;
+  public static final int MAX_ERROR_BYTES = 10000000;
+  public static final int MAX_OUTPUT_BYTES = 10000000;
 
   // SFTP client throws IOException containing this string if a path does not exist.
   private static final String NO_SUCH_FILE = "no such file";
@@ -522,6 +535,122 @@ public class SSHDataClient implements ISSHDataClient
       // rethrow - wrap in runtime exception to preserve stack trace in the throwable.
       throw new RuntimeException(th);
     }
+  }
+
+  private Path getParent(FileInfo fileInfo) {
+    Path path = Path.of(fileInfo.getPath());
+    if(path != null){
+      Path parentPath = path.getParent();
+      if(parentPath == null) {
+        parentPath = Path.of("");
+        return parentPath;
+      }
+    }
+
+    // TODO:  Fix this;
+    throw new RuntimeException("Unable to get path");
+  }
+
+  private Path getFileName(FileInfo fileInfo) {
+    if(fileInfo.isFile()) {
+      Path path = Path.of(fileInfo.getPath());
+      if (path != null) {
+        return path.getFileName();
+      }
+    }
+
+    // TODO:  Fix this;
+    throw new RuntimeException("Unable to get path");
+  }
+
+  @Override
+  public TapisArchiveOutputStream getArchiveStream(@NotNull String srcBasePath,
+                                            @NotNull Set<String> relativePaths) throws IOException {
+    StringBuilder inputBuilder = new StringBuilder();
+    for (String relativePath : relativePaths) {
+      inputBuilder.append(relativePath);
+      inputBuilder.append(System.lineSeparator());
+    }
+
+    Path absBasePath = PathUtils.getAbsolutePath(rootDir, srcBasePath);
+
+    InputStream inputStream = null;
+    final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
+            borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
+    TapisArchiveOutputStream outputStream = new TapisArchiveOutputStream();
+//    PipedInputStream outputAsInput = new PipedInputStream(outputStream);
+    PipedOutputStream errorStream = new PipedOutputStream();
+    PipedInputStream errorAsInput = new PipedInputStream(errorStream);
+//      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+//      ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
+    StringBuilder commandBuilder = new StringBuilder();
+    commandBuilder.append("tar -C '");
+    commandBuilder.append(absBasePath);
+    commandBuilder.append("' -cvT- ");
+
+
+    Future<SSHCommandResult> sourceResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
+      @Override
+      public SSHCommandResult call() throws Exception {
+        SSHCommandResult sourceCommandResult = new SSHCommandResult();
+        int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
+        outputStream.flush();
+        outputStream.close();
+        sourceCommandResult.setCommandResult(returnValue);
+        byte[] errorBytes = errorAsInput.readNBytes(MAX_ERROR_BYTES);
+        sourceCommandResult.setCommandError(errorBytes);
+        return sourceCommandResult;
+      }
+    });
+    outputStream.setSourceResult(sourceResultFuture);
+
+    return outputStream;
+  }
+
+  @Override
+  public ArchiveTransferResult writeArchive(@NotNull String basePath, TapisArchiveOutputStream archiveOutputStream) throws IOException {
+    Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
+    final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
+            borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
+
+    PipedOutputStream outputStream = new PipedOutputStream();
+//    OutputStream outputStream = new ByteArrayOutputStream();
+    PipedInputStream archiveInputStream = new PipedInputStream(archiveOutputStream);
+    PipedOutputStream errorStream = new PipedOutputStream();
+//    PipedInputStream errorAsInput = new PipedInputStream(errorStream);
+
+    StringBuilder commandBuilder = new StringBuilder();
+    commandBuilder.append("tar -C '");
+    commandBuilder.append(absBasePath);
+    commandBuilder.append("' -xv");
+
+    Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
+      @Override
+      public SSHCommandResult call() throws Exception {
+        SSHCommandResult destinationCommandResult = new SSHCommandResult();
+//        int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), outputAsInput, outputStream, errorStream);
+        int returnValue = sshHolder.getSession().execute("cat -", archiveInputStream, outputStream, errorStream);
+        destinationCommandResult.setCommandResult(returnValue);
+        InputStream errorInputStream = new PipedInputStream(errorStream);
+        byte[] errorBytes = null;
+        int availableErrorBytes = errorInputStream.available();
+        if(availableErrorBytes > 0) {
+          errorBytes = errorInputStream.readNBytes(Math.min(MAX_ERROR_BYTES, availableErrorBytes));
+        }
+        destinationCommandResult.setCommandError(errorBytes);
+        InputStream outputInputStream = new PipedInputStream(outputStream);
+        byte[] outputBytes = null;
+        int availableOutputBytes = errorInputStream.available();
+        if(availableOutputBytes > 0) {
+          outputBytes = outputInputStream.readNBytes(Math.min(MAX_ERROR_BYTES, availableOutputBytes));
+        }
+        destinationCommandResult.setCommandOutput(outputBytes);
+        return destinationCommandResult;
+      }
+    });
+
+    ArchiveTransferResult archiveTransferResult = new ArchiveTransferResult(archiveOutputStream.getSourceResultFuture(), destinationResultFuture);
+    return archiveTransferResult;
   }
 
   @Override

@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import org.apache.commons.dbutils.BasicRowProcessor;
 
 import java.sql.ResultSet;
@@ -21,7 +22,7 @@ public class ArchiveTransferRowProcessor extends BasicRowProcessor {
         archiveTransfer.setDestinationBaseUrl(resultSet.getString("destination_base_url"));
         archiveTransfer.setCreated(resultSet.getTimestamp("created").toInstant());
         archiveTransfer.setUuid(resultSet.getObject("uuid", UUID.class));
-        archiveTransfer.setStatus(resultSet.getString("status"));
+        archiveTransfer.setStatus(ArchiveTransferStatus.valueOf(resultSet.getString("status")));
         archiveTransfer.setSrcSharedCtxGrantor(resultSet.getString("src_shared_ctx"));
         archiveTransfer.setDestSharedCtxGrantor(resultSet.getString("dst_shared_ctx"));
         archiveTransfer.setBytesTransferred(resultSet.getLong("bytes_transferred"));

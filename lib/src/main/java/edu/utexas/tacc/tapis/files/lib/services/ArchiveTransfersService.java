@@ -5,6 +5,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -25,7 +26,7 @@ public class ArchiveTransfersService {
 
         // set initialize fields
         // TODO AXFER: Make a status object for this.
-        archiveTransfer.setStatus(TransferTaskStatus.ACCEPTED.toString());
+        archiveTransfer.setStatus(ArchiveTransferStatus.ACCEPTED);
         // Validate the request. Check that all Tapis systems exist and are enabled.
         // Check that transfer between system types is supported.
         validateRequest(rUser, archiveTransfer);
@@ -56,7 +57,7 @@ public class ArchiveTransfersService {
         archiveTransferResponse.setUsername(archiveTransfer.getUsername());
         archiveTransferResponse.setTenantId(archiveTransfer.getTenantId());
         archiveTransferResponse.setCreated(archiveTransfer.getCreated());
-        archiveTransferResponse.setStatus(archiveTransfer.getStatus());
+        archiveTransferResponse.setStatus(archiveTransfer.getStatus().name());
         archiveTransferResponse.setSourceBaseUrl(archiveTransferResponse.getSourceBaseUrl());
         archiveTransferResponse.setDestinationBaseUrl(archiveTransferResponse.getDestinationBaseUrl());
         archiveTransferResponse.setRelativePaths(archiveTransfer.getRelativePaths());
