@@ -12,6 +12,7 @@ import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ColumnListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
+import org.postgresql.core.ResultHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,8 +20,6 @@ import java.sql.Array;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -87,6 +86,29 @@ public class ArchiveTransfersDAO {
 
         return insertedPaths;
     }
+
+    public ArchiveTransfer getArchiveTransferForUpdate(DAOTransactionContext context, int archiveTransferId, boolean includeRelativePaths) throws DAOException {
+        RowProcessor rowProcessor = new ArchiveTransferRowProcessor();
+        BeanHandler<ArchiveTransfer> handler = new BeanHandler<>(ArchiveTransfer.class, rowProcessor);
+
+        try {
+            QueryRunner runner = new QueryRunner();
+            ArchiveTransfer archiveTransfer = runner.query(
+                    context.getConnection(),
+                    ArchiveTransferDAOStatements.GET_ARCHIVE_TRANSFER_FOR_UPDATE,
+                    handler,
+                    archiveTransferId);
+
+            if(includeRelativePaths) {
+                archiveTransfer.setRelativePaths(getRelativePaths(context, archiveTransfer.getId()));
+            }
+
+            return archiveTransfer;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAssignedForWorker", ex.getMessage()), ex);
+        }
+    }
+
 
     public List<PrioritizedObject<ArchiveTransfer>> getAssignedWorkForWorker(DAOTransactionContext context, int maxTasksPerTenantAndUser, UUID workerUuid) throws DAOException {
         RowProcessor rowProcessor = new PrioritizedObjectRowProcessor(new ArchiveTransferRowProcessor(), ArchiveTransfer.class);

@@ -11,9 +11,12 @@ import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.clients.TapisArchiveInputStream;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
+import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
@@ -22,6 +25,7 @@ import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -79,6 +83,7 @@ public class ArchiveTransferWorkerService {
         public Thread newThread(@NotNull Runnable runnable) {
             Thread th = defaultFactory.newThread(runnable);
             th.setDaemon(true);
+            th.setName("ArchiveTransferThread: " + th.getName());
             return th;
         }
     });
@@ -86,7 +91,7 @@ public class ArchiveTransferWorkerService {
 
 
     public void start(UUID myUuid) {
-        Map<UUID, Future<ArchiveTransfer>> futures = new ConcurrentHashMap<UUID, Future<ArchiveTransfer>>();
+        Map<UUID, Future<ArchiveTransferResult>> futures = new ConcurrentHashMap<UUID, Future<ArchiveTransferResult>>();
 
         // max number of futures to store in the futures map
         int maxFutures = MAX_THREADS * 5;
@@ -110,6 +115,8 @@ public class ArchiveTransferWorkerService {
                                 UUID archiveTransferUuid = prioritizedArchiveTransfer.getObject().getUuid();
                                 if (futures.containsKey(archiveTransferUuid)) {
                                     if (futures.get(archiveTransferUuid).isDone()) {
+                                        // TODO AXFER: Need to handle exception in db update here
+                                        updateArchiveTransfer(archiveTransferUuid, futures.get(archiveTransferUuid));
                                         futures.remove(archiveTransferUuid);
                                     }
                                 } else {
@@ -117,12 +124,12 @@ public class ArchiveTransferWorkerService {
                                             prioritizedArchiveTransfer.getObject().getTenantId() +
                                             " user:" + prioritizedArchiveTransfer.getObject().getUsername());
                                     try {
-                                        Future<ArchiveTransfer> future = archiveTransferWorkers.submit(new Callable<ArchiveTransfer>() {
+                                        Future<ArchiveTransferResult> future = archiveTransferWorkers.submit(new Callable<ArchiveTransferResult>() {
                                             @Override
-                                            public ArchiveTransfer call() throws Exception {
+                                            public ArchiveTransferResult call() throws Exception {
                                                 Stopwatch sw = Stopwatch.createStarted();
                                                 try {
-                                                    return handleTask(prioritizedArchiveTransfer.getObject());
+                                                    return doTransfer(prioritizedArchiveTransfer.getObject());
                                                 } catch (Throwable th) {
                                                     log.error("Caught exception while handling transfer task", th);
                                                 }
@@ -146,45 +153,6 @@ public class ArchiveTransferWorkerService {
                             log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
                             break;
                         }
-                            /*
-                        try {
-                            List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getChildTasksForWorker(myUuid);
-                            for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
-                                UUID childUuid = ttc.getObject().getUuid();
-                                if (futures.containsKey(childUuid)) {
-                                    if (futures.get(childUuid).isDone()) {
-                                        futures.remove(childUuid);
-                                    }
-                                } else {
-                                    log.debug("Priority: " + ttc.getPriority() + " tenant: " + ttc.getObject().getTenantId() + " user:" + ttc.getObject().getUsername());
-                                    try {
-                                        Future<TransferTaskChild> future = archiveTransferWorkers.submit(new Callable<TransferTaskChild>() {
-                                            @Override
-                                            public TransferTaskChild call() throws Exception {
-                                                Stopwatch sw = Stopwatch.createStarted();
-                                                try {
-                                                    return handleTask(ttc.getObject());
-                                                } catch (Throwable th) {
-                                                    log.error("Caught exception while handling transfer task", th);
-                                                }
-                                                log.trace("CHILD TRANSFER TIMING: TransferTaskChild callable childId: " + ttc.getObject().getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
-                                                return null;
-                                            }
-                                        });
-                                        futures.put(childUuid, future);
-                                    } catch (Throwable th) {
-                                        TransferTaskChild childTask = dao.getChildTaskByUUID(childUuid);
-                                        childTask.setStatus(childTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
-                                        dao.updateTransferTaskChild(childTask);
-                                    }
-                                }
-                            }
-                        } catch (DAOException | SchedulingPolicyException ex) {
-                            log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
-                            break;
-                        }
-                             */
-
                         if (futures.isEmpty()) {
                             shouldExit = true;
                         }
@@ -199,7 +167,7 @@ public class ArchiveTransferWorkerService {
         }, 5, 5, TimeUnit.SECONDS);
     }
 
-    private boolean canCreateNewFutures(Map<UUID, Future<ArchiveTransfer>> futures, int capacity) {
+    private boolean canCreateNewFutures(Map<UUID, Future<ArchiveTransferResult>> futures, int capacity) {
         if(futures.size() >= capacity) {
             for (UUID key : futures.keySet()) {
                 if (futures.get(key).isDone()) {
@@ -211,78 +179,84 @@ public class ArchiveTransferWorkerService {
         return futures.size() < capacity;
     }
 
-    private ArchiveTransfer handleTask(ArchiveTransfer archiveTransfer) throws IOException {
-        //We are going to run the meat of the transfer, step2 in a separate Future which we can cancel.
-        //This just sets up the future, we first subscribe to the control messages and then start the future
-        //which is a blocking call.
-        ExecutorService executorService = Executors.newSingleThreadExecutor();
-        Future<ArchiveTransfer> future = executorService.submit(new Callable<ArchiveTransfer>() {
-            @Override
-            public ArchiveTransfer call() throws IOException, ServiceException {
-                try {
-                    return processTransfer(archiveTransfer);
-                } catch (WritePendingException ex) {
-                    throw new IOException(ex.getMessage(), ex);
-                }
-            }
-        });
+    private ArchiveTransferResult doTransfer(ArchiveTransfer archiveTransfer) throws IOException, DAOException {
+        // TODO AXFER:  I think this should be passed in - not the whole archiveTransfer
+        int archiveTransferId = archiveTransfer.getId();
 
-        //TODO AXFER: handle exception properly
-        ArchiveTransfer completedTransfer = null;
-        try {
-            completedTransfer = future.get();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-        return completedTransfer;
+        // get the resourceRequestUser
+        ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
+        archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
+            return dao.getArchiveTransferForUpdate(context, archiveTransferId, true);
+        });
+        ResourceRequestUser rUser = simulateResourceRequestUser(archiveTransfer);
+        ArchiveTransferParams params = getArchiveTransferParams(rUser, archiveTransfer);
+        validateParams(params);
+        return handleTransfer(rUser, params);
     }
 
-    private ArchiveTransfer processTransfer(ArchiveTransfer archiveTransfer) throws IOException {
-        final String opName = "processTransfer";
-
-        ResourceRequestUser rUser = simulateResourceRequestUser(archiveTransfer);
-
-        //TODO AXFER: need to check the protocol in the url, and system type and stuff like that.
+    private ArchiveTransferParams getArchiveTransferParams(ResourceRequestUser rUser, ArchiveTransfer archiveTransfer) {
+        ArchiveTransferParams params = new ArchiveTransferParams();
         TransferURI srcUri = new TransferURI(archiveTransfer.getSourceBaseUrl());
+        params.setSrcUri(srcUri);
         TapisSystem srcSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache,
-                systemsCacheNoAuth, permsService, opName, srcUri.getSystemId(), srcUri.getPath(),
+                systemsCacheNoAuth, permsService, "archiveTransfer", srcUri.getSystemId(), srcUri.getPath(),
                 FileInfo.Permission.READ, IMPERSONATION_ID_NULL, archiveTransfer.getSrcSharedCtxGrantor());
-
-        IRemoteDataClient srcClient = remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(),
-                srcSystem, IMPERSONATION_ID_NULL, archiveTransfer.getSrcSharedCtxGrantor());
+        params.setSrcSystem(srcSystem);
+        params.setSrcSharedCtxGrantor(archiveTransfer.getSrcSharedCtxGrantor());
 
         TransferURI dstUri = new TransferURI(archiveTransfer.getDestinationBaseUrl());
+        params.setDstUri(dstUri);
         TapisSystem dstSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache,
-                systemsCacheNoAuth, permsService, opName, dstUri.getSystemId(), dstUri.getPath(),
+                systemsCacheNoAuth, permsService, "archiveTransfer", dstUri.getSystemId(), dstUri.getPath(),
                 FileInfo.Permission.READ, IMPERSONATION_ID_NULL, archiveTransfer.getSrcSharedCtxGrantor());
+        params.setDstSystem(srcSystem);
+        params.setDstSharedCtxGrantor(archiveTransfer.getDestSharedCtxGrantor());
+
+        params.setRelativePaths(archiveTransfer.getRelativePaths());
+
+        return params;
+    }
+
+    private void validateParams(ArchiveTransferParams params) {
+        if((!params.getSrcUri().isTapisProtocol()) || (!params.getDstUri().isTapisProtocol()))  {
+            // TODO AXFER: think about exceptiosn a bit!! - not just here but everywehere in AXFER
+            throw new RuntimeException("Error - must be tapis protocol");
+        }
+    }
+
+    private ArchiveTransferResult handleTransfer(ResourceRequestUser rUser, ArchiveTransferParams params) throws IOException {
+        final String opName = "processTransfer";
+
+        IRemoteDataClient srcClient = remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(),
+                params.getSrcSystem(), IMPERSONATION_ID_NULL, params.getSrcSharedCtxGrantor());
 
         IRemoteDataClient dstClient = remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(),
-                dstSystem, IMPERSONATION_ID_NULL, archiveTransfer.getSrcSharedCtxGrantor());
+                params.getDstSystem(), IMPERSONATION_ID_NULL, params.getSrcSharedCtxGrantor());
 
+        ArchiveTransferResult result = null;
         //TODO AXFER: handle case of not FastXFER client
+        ArchiveTransferResult archiveTransferResult = null;
+
         if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
            dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
-            TransferURI srcBaseURI = new TransferURI(archiveTransfer.getSourceBaseUrl());
-            TransferURI dstBaseURI = new TransferURI(archiveTransfer.getDestinationBaseUrl());
             TapisArchiveInputStream archiveInputStream =
-                    srcArchiveXFer.getArchiveStream(srcBaseURI.getPath(), archiveTransfer.getRelativePaths());
-            ArchiveTransferResult archiveTransferResult = dstArchiveXFer.writeArchive(dstBaseURI.getPath(), archiveInputStream);
-            try {
-                if(archiveTransferResult.isSuccess()) {
-                    System.out.println("Successful");
-                } else {
-                    System.out.println("Failure");
-                    System.out.println(archiveTransferResult);
-                }
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e);
-            }
+                    srcArchiveXFer.getArchiveStream(params.getSrcUri().getPath(), params.getRelativePaths());
+            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), archiveInputStream);
         }
-        return null;
+
+        return archiveTransferResult;
+    }
+
+    private void updateArchiveTransfer(UUID threadUUID, Future<ArchiveTransferResult> resultFuture) {
+        ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
+        ArchiveTransferResult result = null;
+        try {
+            result = resultFuture.get();
+
+            //TODO AXFER: update the task with success/fail include message if failed
+        } catch (Throwable th) {
+            //TODO AXFER: update the task with fail - include exception text
+        }
     }
 
     private static ResourceRequestUser simulateResourceRequestUser(ArchiveTransfer archiveTransfer) {

@@ -98,5 +98,13 @@ public class ArchiveTransferDAOStatements {
               ) AND
                   archive_transfers.status != ANY(?);
             """ ;
+    public static final String GET_ARCHIVE_TRANSFER_FOR_UPDATE =
+            """
+              SELECT
+                  *
+              FROM
+                  archive_transfers
+              WHERE id = ?
+            """ ;
 
 }
