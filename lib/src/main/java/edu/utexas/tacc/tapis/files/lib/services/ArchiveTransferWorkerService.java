@@ -8,13 +8,14 @@ import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.clients.TapisArchiveInputStream;
+import edu.utexas.tacc.tapis.files.lib.clients.SSHCommandResult;
+import edu.utexas.tacc.tapis.files.lib.clients.ObservableTapisArchiveInputStream;
+import edu.utexas.tacc.tapis.files.lib.clients.TapisArchivePipe;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
-import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -25,20 +26,22 @@ import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
-import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.apache.sshd.common.io.WritePendingException;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.Channels;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -213,7 +216,7 @@ public class ArchiveTransferWorkerService {
         TapisSystem dstSystem = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache,
                 systemsCacheNoAuth, permsService, "archiveTransfer", dstUri.getSystemId(), dstUri.getPath(),
                 FileInfo.Permission.READ, IMPERSONATION_ID_NULL, archiveTransfer.getSrcSharedCtxGrantor());
-        params.setDstSystem(srcSystem);
+        params.setDstSystem(dstSystem);
         params.setDstSharedCtxGrantor(archiveTransfer.getDestSharedCtxGrantor());
 
         params.setRelativePaths(archiveTransfer.getRelativePaths());
@@ -241,11 +244,23 @@ public class ArchiveTransferWorkerService {
         //TODO AXFER: handle case of not FastXFER client
         ArchiveTransferResult archiveTransferResult = null;
 
+        MessageDigest md = null;
+        try {
+            md = MessageDigest.getInstance("SHA256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
         if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
            dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
-            TapisArchiveInputStream archiveInputStream =
+            TapisArchivePipe tapisArchivePipe =
                     srcArchiveXFer.getArchiveStream(params.getSrcUri().getPath(), params.getRelativePaths());
-            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), archiveInputStream);
+// with observeable stream
+    //            ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(tapisArchivePipe.source(), md);
+    //            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableTapisArchiveInputStream, tapisArchivePipe.getSourceResultFuture());
+
+// without observeable stream
+            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), Channels.newInputStream(tapisArchivePipe.source()), tapisArchivePipe.getSourceResultFuture());
         }
 
         return archiveTransferResult;

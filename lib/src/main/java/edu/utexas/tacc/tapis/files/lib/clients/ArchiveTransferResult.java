@@ -31,7 +31,7 @@ public class ArchiveTransferResult {
         String sourceOutputMessage = (srcCommandOutput == null) ? "" : new String(srcCommandOutput);
         byte[] srcCommandError = getSourceCommandResult().get().getCommandError();
         String sourceErrorMessage = (srcCommandError == null) ? "" : new String(srcCommandError);
-        byte[] dstCommandOutput = getSourceCommandResult().get().getCommandOutput();
+        byte[] dstCommandOutput = getDestinationCommandResult().get().getCommandOutput();
         String destinationOutputMessage = (dstCommandOutput == null) ? "" : new String(dstCommandOutput);
         byte[] dstCommandError = getDestinationCommandResult().get().getCommandError();
         String destinationErrorMessage = (dstCommandError == null) ? "" : new String(dstCommandError);

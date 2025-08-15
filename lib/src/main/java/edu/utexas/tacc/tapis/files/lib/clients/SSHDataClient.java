@@ -3,11 +3,14 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.Pipe;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -564,7 +567,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
   }
 
   @Override
-  public TapisArchiveInputStream getArchiveStream(@NotNull String srcBasePath,
+  public TapisArchivePipe getArchiveStream(@NotNull String srcBasePath,
                                             @NotNull Set<String> relativePaths) throws IOException {
     StringBuilder inputBuilder = new StringBuilder();
     for (String relativePath : relativePaths) {
@@ -574,14 +577,14 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
 
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, srcBasePath);
 
-    InputStream inputStream = null;
     final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
             borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
-    PipedOutputStream outputStream = new PipedOutputStream();
-    TapisArchiveInputStream archiveInputStream = new TapisArchiveInputStream();
-    archiveInputStream.connect(outputStream);
-    PipedOutputStream errorStream = new PipedOutputStream();
-    PipedInputStream errorAsInput = new PipedInputStream(errorStream);
+    TapisArchivePipe tapisArchivePipe = TapisArchivePipe.open();
+    OutputStream outputStream = Channels.newOutputStream(tapisArchivePipe.sink());
+    Pipe errorPipe = Pipe.open();
+    OutputStream errorStream = Channels.newOutputStream(errorPipe.sink());
+    InputStream readableErrorStream = Channels.newInputStream(errorPipe.source());
+
     StringBuilder commandBuilder = new StringBuilder();
     commandBuilder.append("tar -C '");
     commandBuilder.append(absBasePath);
@@ -593,24 +596,26 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
         SSHCommandResult sourceCommandResult = new SSHCommandResult();
         int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
         sourceCommandResult.setCommandResult(returnValue);
-        byte[] errorBytes = errorAsInput.readNBytes(MAX_ERROR_BYTES);
+        byte[] errorBytes = readableErrorStream.readNBytes(MAX_ERROR_BYTES);
         sourceCommandResult.setCommandError(errorBytes);
         return sourceCommandResult;
       }
     });
 
-    archiveInputStream.setSourceResult(sourceResultFuture);
-    return archiveInputStream;
+    tapisArchivePipe.setSourceResult(sourceResultFuture);
+    return tapisArchivePipe;
   }
 
   @Override
-  public ArchiveTransferResult writeArchive(@NotNull String basePath, TapisArchiveInputStream archiveInputStream) throws IOException {
+  public ArchiveTransferResult writeArchive(@NotNull String basePath, InputStream archiveInputStream, Future<SSHCommandResult> sourceResultFuture) throws IOException {
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
+    Pipe errorPipe = Pipe.open();
+    OutputStream errorStream = Channels.newOutputStream(errorPipe.sink());
+    InputStream readableErrorStream = Channels.newInputStream(errorPipe.source());
 
-    PipedOutputStream outputStream = new PipedOutputStream();
-    InputStream outputInputStream = new PipedInputStream(outputStream);
-    PipedOutputStream errorStream = new PipedOutputStream();
-    InputStream errorInputStream = new PipedInputStream(errorStream);
+    Pipe outputPipe = Pipe.open();
+    OutputStream outputStream = Channels.newOutputStream(outputPipe.sink());
+    InputStream readableOutputStream = Channels.newInputStream(outputPipe.source());
 
     StringBuilder commandBuilder = new StringBuilder();
     commandBuilder.append("tar -C '");
@@ -624,26 +629,19 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
                 borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
           SSHCommandResult destinationCommandResult = new SSHCommandResult();
           int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), archiveInputStream, outputStream, errorStream);
-//        int returnValue = sshHolder.getSession().execute("cat -", archiveInputStream, outputStream, errorStream);
           destinationCommandResult.setCommandResult(returnValue);
           byte[] errorBytes = null;
-          int availableErrorBytes = errorInputStream.available();
-          if (availableErrorBytes > 0) {
-            errorBytes = errorInputStream.readNBytes(Math.min(MAX_ERROR_BYTES, availableErrorBytes));
-          }
+          errorBytes = readableErrorStream.readNBytes(MAX_ERROR_BYTES);
           destinationCommandResult.setCommandError(errorBytes);
           byte[] outputBytes = null;
-          int availableOutputBytes = errorInputStream.available();
-          if (availableOutputBytes > 0) {
-            outputBytes = outputInputStream.readNBytes(Math.min(MAX_ERROR_BYTES, availableOutputBytes));
-          }
+          outputBytes = readableOutputStream.readNBytes(MAX_ERROR_BYTES);
           destinationCommandResult.setCommandOutput(outputBytes);
           return destinationCommandResult;
         }
       }
     });
 
-    ArchiveTransferResult archiveTransferResult = new ArchiveTransferResult(archiveInputStream.getSourceResultFuture(), destinationResultFuture);
+    ArchiveTransferResult archiveTransferResult = new ArchiveTransferResult(sourceResultFuture, destinationResultFuture);
     return archiveTransferResult;
   }
 
