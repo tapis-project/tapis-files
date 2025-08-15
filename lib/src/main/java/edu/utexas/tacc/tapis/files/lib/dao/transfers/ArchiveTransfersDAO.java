@@ -87,23 +87,54 @@ public class ArchiveTransfersDAO {
         return insertedPaths;
     }
 
-    public ArchiveTransfer getArchiveTransferForUpdate(DAOTransactionContext context, int archiveTransferId, boolean includeRelativePaths) throws DAOException {
+    public ArchiveTransfer getArchiveTransfer(DAOTransactionContext context, UUID archiveTransferUuid, boolean forUpdate, boolean includeRelativePaths) throws DAOException {
         RowProcessor rowProcessor = new ArchiveTransferRowProcessor();
         BeanHandler<ArchiveTransfer> handler = new BeanHandler<>(ArchiveTransfer.class, rowProcessor);
 
         try {
+            String sqlString = forUpdate ?
+                    ArchiveTransferDAOStatements.GET_ARCHIVE_TRANSFER_FOR_UPDATE :
+                    ArchiveTransferDAOStatements.GET_ARCHIVE_TRANSFER;
             QueryRunner runner = new QueryRunner();
             ArchiveTransfer archiveTransfer = runner.query(
                     context.getConnection(),
-                    ArchiveTransferDAOStatements.GET_ARCHIVE_TRANSFER_FOR_UPDATE,
+                    sqlString,
                     handler,
-                    archiveTransferId);
+                    archiveTransferUuid);
 
             if(includeRelativePaths) {
                 archiveTransfer.setRelativePaths(getRelativePaths(context, archiveTransfer.getId()));
             }
 
             return archiveTransfer;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAssignedForWorker", ex.getMessage()), ex);
+        }
+    }
+
+    public ArchiveTransfer updateArchiveTransfer(DAOTransactionContext context, ArchiveTransfer archiveTransfer, boolean includeRelativePaths) throws DAOException {
+        RowProcessor rowProcessor = new ArchiveTransferRowProcessor();
+        BeanHandler<ArchiveTransfer> handler = new BeanHandler<>(ArchiveTransfer.class, rowProcessor);
+
+        try {
+            QueryRunner runner = new QueryRunner();
+            ArchiveTransfer updatedArchiveTransfer = runner.query(
+                    context.getConnection(),
+                    ArchiveTransferDAOStatements.UPDATE_ARCHIVE_TRANSFER,
+                    handler,
+                    archiveTransfer.getStatus().name(),
+                    archiveTransfer.getErrorMessage(),
+                    archiveTransfer.getBytesTransferred(),
+                    archiveTransfer.getEndTime(),
+                    archiveTransfer.getAssignedTo(),
+                    archiveTransfer.getUuid()
+                    );
+
+            if(includeRelativePaths) {
+                updatedArchiveTransfer.setRelativePaths(getRelativePaths(context, archiveTransfer.getId()));
+            }
+
+            return updatedArchiveTransfer;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAssignedForWorker", ex.getMessage()), ex);
         }

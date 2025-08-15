@@ -4,10 +4,10 @@ public enum ArchiveTransferStatus {
     ACCEPTED,
 //    STAGING,
 //    STAGED,
-//    IN_PROGRESS,
+    IN_PROGRESS,
     COMPLETED,
 //    CANCELLED,
-//    FAILED,
+    FAILED,
 //    FAILED_OPT,
 //    PAUSED,
 //    UNKNOWN

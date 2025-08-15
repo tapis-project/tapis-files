@@ -96,7 +96,7 @@ public class ArchiveTransferDAOStatements {
                   WHERE
                       at.assigned_to is not null and tw."uuid" is null
               ) AND
-                  archive_transfers.status != ANY(?);
+                  archive_transfers.status != ANY(?)
             """ ;
     public static final String GET_ARCHIVE_TRANSFER_FOR_UPDATE =
             """
@@ -104,7 +104,31 @@ public class ArchiveTransferDAOStatements {
                   *
               FROM
                   archive_transfers
-              WHERE id = ?
+              WHERE uuid = ?
+              FOR update
+            """ ;
+    public static final String GET_ARCHIVE_TRANSFER =
+            """
+              SELECT
+                  *
+              FROM
+                  archive_transfers
+              WHERE uuid = ?
+            """ ;
+    public static final String UPDATE_ARCHIVE_TRANSFER =
+            """
+              UPDATE
+                  archive_transfers 
+              SET
+                  status = ?,
+                  error_message = ?,
+                  bytes_transferred = ?,
+                  end_time = ?,
+                  assigned_to = ?
+              WHERE
+                  uuid = ?
+              RETURNING 
+                  *         
             """ ;
 
 }

@@ -115,8 +115,6 @@ public class ArchiveTransferWorkerService {
                                 UUID archiveTransferUuid = prioritizedArchiveTransfer.getObject().getUuid();
                                 if (futures.containsKey(archiveTransferUuid)) {
                                     if (futures.get(archiveTransferUuid).isDone()) {
-                                        // TODO AXFER: Need to handle exception in db update here
-                                        updateArchiveTransfer(archiveTransferUuid, futures.get(archiveTransferUuid));
                                         futures.remove(archiveTransferUuid);
                                     }
                                 } else {
@@ -160,6 +158,7 @@ public class ArchiveTransferWorkerService {
                 } catch (Throwable th) {
                     // if this method throws, it will not get rescheduled.  We would have a zombie worker.  I think the
                     // best thing to do here is exit - we have caught some completely unexpected exception
+                    System.out.println(th);
                     System.exit(0);
                 }
                 Thread.yield();
@@ -167,27 +166,32 @@ public class ArchiveTransferWorkerService {
         }, 5, 5, TimeUnit.SECONDS);
     }
 
-    private boolean canCreateNewFutures(Map<UUID, Future<ArchiveTransferResult>> futures, int capacity) {
-        if(futures.size() >= capacity) {
+    private boolean canCreateNewFutures(Map<UUID, Future<ArchiveTransferResult>> futures, int capacity) throws DAOException {
+//        if(futures.size() >= capacity) {
             for (UUID key : futures.keySet()) {
-                if (futures.get(key).isDone()) {
+                Future<ArchiveTransferResult> resultFuture = futures.get(key);
+                if (resultFuture.isDone()) {
+                    updateArchiveTransfer(key, resultFuture);
                     futures.remove(key);
                 }
             }
-        }
+//        }
 
         return futures.size() < capacity;
     }
 
     private ArchiveTransferResult doTransfer(ArchiveTransfer archiveTransfer) throws IOException, DAOException {
         // TODO AXFER:  I think this should be passed in - not the whole archiveTransfer
-        int archiveTransferId = archiveTransfer.getId();
+        UUID archiveTransferUuid = archiveTransfer.getUuid();
 
         // get the resourceRequestUser
         ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
         archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
-            return dao.getArchiveTransferForUpdate(context, archiveTransferId, true);
+            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
+            currentTransfer.setStatus(ArchiveTransferStatus.IN_PROGRESS);
+            return dao.updateArchiveTransfer(context, currentTransfer, true);
         });
+
         ResourceRequestUser rUser = simulateResourceRequestUser(archiveTransfer);
         ArchiveTransferParams params = getArchiveTransferParams(rUser, archiveTransfer);
         validateParams(params);
@@ -247,16 +251,37 @@ public class ArchiveTransferWorkerService {
         return archiveTransferResult;
     }
 
-    private void updateArchiveTransfer(UUID threadUUID, Future<ArchiveTransferResult> resultFuture) {
-        ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
+    private void updateArchiveTransfer(UUID archiveTransferUuid, Future<ArchiveTransferResult> resultFuture) throws DAOException {
         ArchiveTransferResult result = null;
+        String errorMessage = null;
+        ArchiveTransferStatus status = null;
+
         try {
             result = resultFuture.get();
+            result.waitForCompletion();
 
+            if((result != null) && (result.isSuccess())) {
+                status = ArchiveTransferStatus.COMPLETED;
+            } else {
+                status = ArchiveTransferStatus.FAILED;
+            }
+            errorMessage = result.getMessages();
             //TODO AXFER: update the task with success/fail include message if failed
         } catch (Throwable th) {
             //TODO AXFER: update the task with fail - include exception text
+            errorMessage = th.getMessage();
+            status = ArchiveTransferStatus.FAILED;
         }
+
+        final String updateErrorMessage = errorMessage;
+        ArchiveTransferStatus updateStatus = status;
+        ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
+        ArchiveTransfer archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
+            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
+            currentTransfer.setErrorMessage(updateErrorMessage);
+            currentTransfer.setStatus(updateStatus);
+            return dao.updateArchiveTransfer(context, currentTransfer, false);
+        });
     }
 
     private static ResourceRequestUser simulateResourceRequestUser(ArchiveTransfer archiveTransfer) {

@@ -592,26 +592,13 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
       public SSHCommandResult call() throws Exception {
         SSHCommandResult sourceCommandResult = new SSHCommandResult();
         int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
-//        int returnValue = sshHolder.getSession().execute("cat - ", new ByteArrayInputStream("foo".getBytes()), outputStream, errorStream);
-//        int returnValue = sshHolder.getSession().execute("echo hello world", pos, errorStream);
         sourceCommandResult.setCommandResult(returnValue);
         byte[] errorBytes = errorAsInput.readNBytes(MAX_ERROR_BYTES);
         sourceCommandResult.setCommandError(errorBytes);
         return sourceCommandResult;
       }
     });
-/*
-    try {
-      SSHCommandResult result = sourceResultFuture.get();
-      System.out.println(result);
-      int available = pis.available();
-      System.out.println(new String(pis.readNBytes(available)));
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    } catch (ExecutionException e) {
-      throw new RuntimeException(e);
-    }
-*/
+
     archiveInputStream.setSourceResult(sourceResultFuture);
     return archiveInputStream;
   }
@@ -619,8 +606,6 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
   @Override
   public ArchiveTransferResult writeArchive(@NotNull String basePath, TapisArchiveInputStream archiveInputStream) throws IOException {
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
-    final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
-            borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
 
     PipedOutputStream outputStream = new PipedOutputStream();
     InputStream outputInputStream = new PipedInputStream(outputStream);
@@ -635,23 +620,26 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
       public SSHCommandResult call() throws Exception {
-        SSHCommandResult destinationCommandResult = new SSHCommandResult();
-        int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), archiveInputStream, outputStream, errorStream);
+        try(final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
+                borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
+          SSHCommandResult destinationCommandResult = new SSHCommandResult();
+          int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), archiveInputStream, outputStream, errorStream);
 //        int returnValue = sshHolder.getSession().execute("cat -", archiveInputStream, outputStream, errorStream);
-        destinationCommandResult.setCommandResult(returnValue);
-        byte[] errorBytes = null;
-        int availableErrorBytes = errorInputStream.available();
-        if(availableErrorBytes > 0) {
-          errorBytes = errorInputStream.readNBytes(Math.min(MAX_ERROR_BYTES, availableErrorBytes));
+          destinationCommandResult.setCommandResult(returnValue);
+          byte[] errorBytes = null;
+          int availableErrorBytes = errorInputStream.available();
+          if (availableErrorBytes > 0) {
+            errorBytes = errorInputStream.readNBytes(Math.min(MAX_ERROR_BYTES, availableErrorBytes));
+          }
+          destinationCommandResult.setCommandError(errorBytes);
+          byte[] outputBytes = null;
+          int availableOutputBytes = errorInputStream.available();
+          if (availableOutputBytes > 0) {
+            outputBytes = outputInputStream.readNBytes(Math.min(MAX_ERROR_BYTES, availableOutputBytes));
+          }
+          destinationCommandResult.setCommandOutput(outputBytes);
+          return destinationCommandResult;
         }
-        destinationCommandResult.setCommandError(errorBytes);
-        byte[] outputBytes = null;
-        int availableOutputBytes = errorInputStream.available();
-        if(availableOutputBytes > 0) {
-          outputBytes = outputInputStream.readNBytes(Math.min(MAX_ERROR_BYTES, availableOutputBytes));
-        }
-        destinationCommandResult.setCommandOutput(outputBytes);
-        return destinationCommandResult;
       }
     });
 
