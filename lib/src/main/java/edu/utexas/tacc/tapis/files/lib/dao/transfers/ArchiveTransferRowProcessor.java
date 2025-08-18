@@ -25,7 +25,8 @@ public class ArchiveTransferRowProcessor extends BasicRowProcessor {
         archiveTransfer.setStatus(ArchiveTransferStatus.valueOf(resultSet.getString("status")));
         archiveTransfer.setSrcSharedCtxGrantor(resultSet.getString("src_shared_ctx"));
         archiveTransfer.setDestSharedCtxGrantor(resultSet.getString("dst_shared_ctx"));
-        archiveTransfer.setBytesTransferred(resultSet.getLong("bytes_transferred"));
+        archiveTransfer.setArchiveBytesRead(resultSet.getLong("archive_bytes_read"));
+        archiveTransfer.setFileBytesRead(resultSet.getLong("file_bytes_read"));
         archiveTransfer.setErrorMessage(resultSet.getString("error_message"));
         archiveTransfer.setAssignedTo(resultSet.getObject("assigned_to", UUID.class));
         Optional.ofNullable(resultSet.getTimestamp("start_time")).ifPresent(ts -> archiveTransfer.setStartTime(ts.toInstant()));

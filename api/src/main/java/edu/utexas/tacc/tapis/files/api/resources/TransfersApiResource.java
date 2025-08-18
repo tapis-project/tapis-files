@@ -3,6 +3,7 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import javax.servlet.ServletContext;
@@ -29,6 +30,7 @@ import javax.ws.rs.core.UriInfo;
 
 import edu.utexas.tacc.tapis.files.api.FilesApplication;
 import edu.utexas.tacc.tapis.files.api.models.ArchiveTransferRequest;
+import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransferResponse;
 import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransfersService;
@@ -339,6 +341,53 @@ public class  TransfersApiResource
     if (log.isTraceEnabled()) log.trace(task.toString());
     return Response.ok(resp).build();
   }
+  @GET
+  @Path("archiveTransfer/{archiveTransferUuid}")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response getArchiveTransfer(@PathParam("archiveTransferUuid") @ValidUUID String archiveTransferUuid,
+                                  @QueryParam("includePaths") @DefaultValue("false") boolean includePaths,
+                                  @QueryParam("impersonationId") String impersonationId,
+                                  @Context SecurityContext securityContext)
+  {
+    String opName = "getArchiveTransfer";
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext);
+    // If there is a problem return error response
+    if (resp1 != null) {
+      return resp1;
+    }
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "archiveTransferId=" + archiveTransferUuid,
+              "includePaths=" + includePaths, "impersonationId=" + impersonationId);
+    }
+
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
+
+    ArchiveTransferResponse archiveTransferResponse;
+    try
+    {
+      archiveTransferResponse = archiveTransfersService.getArchiveTransfer(rUser, UUID.fromString(archiveTransferUuid), includePaths, impersonationId);
+    }
+    catch (ServiceException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+    String msg = MsgUtils.getMsg(TAPIS_FOUND, "TransferTask", archiveTransferUuid);
+    TapisResponse<ArchiveTransferResponse> resp = TapisResponse.createSuccessResponse(msg, archiveTransferResponse);
+    return Response.ok(resp).build();
+
+  }
+
   @POST
   @Path("archiveTransfer")
   @Produces(MediaType.APPLICATION_JSON)

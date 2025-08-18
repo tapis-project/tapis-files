@@ -16,7 +16,8 @@ public class ArchiveTransferResponse {
     Set<String> relativePaths;
     private Instant startTime;
     private Instant endTime;
-    private Long bytesTransferred;
+    private Long archiveBytesRead;
+    private Long fileBytesRead;
     private String errorMessage;
     private String srcSharedCtxGrantor;
     private String destSharedCtxGrantor;
@@ -107,12 +108,20 @@ public class ArchiveTransferResponse {
         this.endTime = endTime;
     }
 
-    public Long getBytesTransferred() {
-        return bytesTransferred;
+    public Long getArchiveBytesRead() {
+        return archiveBytesRead;
     }
 
-    public void setBytesTransferred(Long bytesTransferred) {
-        this.bytesTransferred = bytesTransferred;
+    public void setArchiveBytesRead(Long archiveBytesRead) {
+        this.archiveBytesRead = archiveBytesRead;
+    }
+
+    public Long getFileBytesRead() {
+        return fileBytesRead;
+    }
+
+    public void setFileBytesRead(Long fileBytesRead) {
+        this.fileBytesRead = fileBytesRead;
     }
 
     public String getErrorMessage() {

@@ -4,6 +4,7 @@ import com.google.common.base.Stopwatch;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferDestination;
+import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferLog;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -256,11 +257,14 @@ public class ArchiveTransferWorkerService {
             TapisArchivePipe tapisArchivePipe =
                     srcArchiveXFer.getArchiveStream(params.getSrcUri().getPath(), params.getRelativePaths());
 // with observeable stream
-    //            ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(tapisArchivePipe.source(), md);
-    //            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableTapisArchiveInputStream, tapisArchivePipe.getSourceResultFuture());
+                ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(tapisArchivePipe.source(), md);
+                ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
+                observableTapisArchiveInputStream.addObserver(archiveTransferLog);
+                archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableTapisArchiveInputStream, tapisArchivePipe.getSourceResultFuture());
+                archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
 
 // without observeable stream
-            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), Channels.newInputStream(tapisArchivePipe.source()), tapisArchivePipe.getSourceResultFuture());
+//            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), Channels.newInputStream(tapisArchivePipe.source()), tapisArchivePipe.getSourceResultFuture());
         }
 
         return archiveTransferResult;
@@ -288,6 +292,10 @@ public class ArchiveTransferWorkerService {
             status = ArchiveTransferStatus.FAILED;
         }
 
+        ArchiveTransferLog archiveTransferLog = result.getArchiveTransferLog();
+        final long fileBytesRead = archiveTransferLog.getFileBytesRead();
+        final long archiveBytesRead = archiveTransferLog.getArchiveBytesRead();
+
         final String updateErrorMessage = errorMessage;
         ArchiveTransferStatus updateStatus = status;
         ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
@@ -295,6 +303,9 @@ public class ArchiveTransferWorkerService {
             ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
             currentTransfer.setErrorMessage(updateErrorMessage);
             currentTransfer.setStatus(updateStatus);
+            currentTransfer.setArchiveBytesRead(archiveBytesRead);
+            currentTransfer.setFileBytesRead(fileBytesRead);
+            currentTransfer.setFileBytesRead(fileBytesRead);
             return dao.updateArchiveTransfer(context, currentTransfer, false);
         });
     }

@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.Pipe;
 import java.nio.file.Files;
@@ -17,6 +18,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.DoubleSummaryStatistics;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,6 +51,7 @@ import org.apache.sshd.sftp.client.SftpClient.Attributes;
 import org.apache.sshd.sftp.client.SftpClient.DirEntry;
 import org.apache.sshd.sftp.common.SftpConstants;
 import org.apache.sshd.sftp.common.SftpException;
+import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -588,7 +591,13 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     StringBuilder commandBuilder = new StringBuilder();
     commandBuilder.append("tar -C '");
     commandBuilder.append(absBasePath);
-    commandBuilder.append("' -cvT- ");
+    commandBuilder.append("' -cT- ");
+
+    // possibly add ignore failed for optional? could mask other errors though
+    // commandBuilder.append("' --ignore-failed-read -cT- ");
+
+    // add -h to follow links
+    // commandBuilder.append("' -hcT- ");
 
     Future<SSHCommandResult> sourceResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
@@ -596,8 +605,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
         SSHCommandResult sourceCommandResult = new SSHCommandResult();
         int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
         sourceCommandResult.setCommandResult(returnValue);
-        byte[] errorBytes = readableErrorStream.readNBytes(MAX_ERROR_BYTES);
-        sourceCommandResult.setCommandError(errorBytes);
+        sourceCommandResult.setCommandError(getBytesFromPipe(errorPipe.source()));
+
         return sourceCommandResult;
       }
     });
@@ -606,7 +615,20 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     return tapisArchivePipe;
   }
 
-  @Override
+  private byte[] getBytesFromPipe(Pipe.SourceChannel pipeSource) throws IOException {
+    ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_OUTPUT_BYTES);
+    int bytesRead = 0;
+    if((bytesRead = pipeSource.read(byteBuffer)) > 0) {
+      byteBuffer.flip();
+      byte[] bytes = bytes = new byte[bytesRead];
+      byteBuffer.get(bytes, 0, bytesRead);
+      return bytes;
+    }
+
+    return null;
+  }
+
+                                  @Override
   public ArchiveTransferResult writeArchive(@NotNull String basePath, InputStream archiveInputStream, Future<SSHCommandResult> sourceResultFuture) throws IOException {
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
     Pipe errorPipe = Pipe.open();
@@ -620,7 +642,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     StringBuilder commandBuilder = new StringBuilder();
     commandBuilder.append("tar -C '");
     commandBuilder.append(absBasePath);
-    commandBuilder.append("' -xv");
+    commandBuilder.append("' -x");
 
     Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
@@ -630,12 +652,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
           SSHCommandResult destinationCommandResult = new SSHCommandResult();
           int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), archiveInputStream, outputStream, errorStream);
           destinationCommandResult.setCommandResult(returnValue);
-          byte[] errorBytes = null;
-          errorBytes = readableErrorStream.readNBytes(MAX_ERROR_BYTES);
-          destinationCommandResult.setCommandError(errorBytes);
-          byte[] outputBytes = null;
-          outputBytes = readableOutputStream.readNBytes(MAX_ERROR_BYTES);
-          destinationCommandResult.setCommandOutput(outputBytes);
+          destinationCommandResult.setCommandError(getBytesFromPipe(errorPipe.source()));
+          destinationCommandResult.setCommandOutput(getBytesFromPipe(outputPipe.source()));
           return destinationCommandResult;
         }
       }

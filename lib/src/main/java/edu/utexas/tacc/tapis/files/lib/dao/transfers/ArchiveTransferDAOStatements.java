@@ -5,9 +5,9 @@ public class ArchiveTransferDAOStatements {
             """
                 INSERT INTO archive_transfers (username, tenant_id, 
                     status, source_base_url, destination_base_url,
-                    bytes_transferred, error_message,
+                    archive_bytes_read, file_bytes_read, error_message,
                     src_shared_ctx, dst_shared_ctx) VALUES 
-                    (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     RETURNING *;
             """;
 
@@ -122,7 +122,8 @@ public class ArchiveTransferDAOStatements {
               SET
                   status = ?,
                   error_message = ?,
-                  bytes_transferred = ?,
+                  archive_bytes_read = ?,
+                  file_bytes_read = ?,
                   end_time = ?,
                   assigned_to = ?
               WHERE

@@ -18,11 +18,12 @@ public class ArchiveTransfer {
     Set<String> relativePaths;
     private Instant startTime;
     private Instant endTime;
-    private long bytesTransferred;
     private String errorMessage;
     private String srcSharedCtxGrantor;
     private String destSharedCtxGrantor;
     private UUID assignedTo;
+    private long fileBytesRead;
+    private long archiveBytesRead;
 
     public int getId() {
         return id;
@@ -110,12 +111,20 @@ public class ArchiveTransfer {
         this.endTime = endTime;
     }
 
-    public long getBytesTransferred() {
-        return bytesTransferred;
+    public long getFileBytesRead() {
+        return fileBytesRead;
     }
 
-    public void setBytesTransferred(long bytesTransferred) {
-        this.bytesTransferred = bytesTransferred;
+    public void setFileBytesRead(long fileBytesRead) {
+        this.fileBytesRead = fileBytesRead;
+    }
+
+    public long getArchiveBytesRead() {
+        return archiveBytesRead;
+    }
+
+    public void setArchiveBytesRead(long archiveBytesRead) {
+        this.archiveBytesRead = archiveBytesRead;
     }
 
     public String getErrorMessage() {

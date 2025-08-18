@@ -2,16 +2,26 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 public class ArchiveTransferResult {
     private final Future<SSHCommandResult> sourceCommandResult;
     private final Future<SSHCommandResult> destinationCommandResult;
-
+    private ArchiveTransferLog archiveTransferLog;
     ArchiveTransferResult(Future<SSHCommandResult> sourceCommandResult, Future<SSHCommandResult> destinationCommandResult) {
         this.sourceCommandResult = sourceCommandResult;
         this.destinationCommandResult = destinationCommandResult;
+    }
+
+    public void setArchiveTransferLog(ArchiveTransferLog archiveTransferLog) {
+        this.archiveTransferLog = archiveTransferLog;
+    }
+
+    public ArchiveTransferLog getArchiveTransferLog() {
+        return archiveTransferLog;
     }
 
     public Future<SSHCommandResult> getSourceCommandResult() {
@@ -27,16 +37,23 @@ public class ArchiveTransferResult {
         destinationCommandResult.get();
     }
     public String getMessages() throws ExecutionException, InterruptedException {
-        byte[] srcCommandOutput = getSourceCommandResult().get().getCommandOutput();
+        SSHCommandResult srcCommandResult = getSourceCommandResult().get();
+        byte[] srcCommandOutput = srcCommandResult.getCommandOutput();
         String sourceOutputMessage = (srcCommandOutput == null) ? "" : new String(srcCommandOutput);
-        byte[] srcCommandError = getSourceCommandResult().get().getCommandError();
+        byte[] srcCommandError = srcCommandResult.getCommandError();
         String sourceErrorMessage = (srcCommandError == null) ? "" : new String(srcCommandError);
-        byte[] dstCommandOutput = getDestinationCommandResult().get().getCommandOutput();
+        SSHCommandResult dstCommandResult = getDestinationCommandResult().get();
+        byte[] dstCommandOutput = dstCommandResult.getCommandOutput();
         String destinationOutputMessage = (dstCommandOutput == null) ? "" : new String(dstCommandOutput);
-        byte[] dstCommandError = getDestinationCommandResult().get().getCommandError();
+        byte[] dstCommandError = dstCommandResult.getCommandError();
         String destinationErrorMessage = (dstCommandError == null) ? "" : new String(dstCommandError);
 
         StringBuilder builder = new StringBuilder();
+        if(srcCommandResult.getCommandResult() != 0) {
+            builder.append("SrcResult: ");
+            builder.append(srcCommandResult.getCommandResult());
+            builder.append(System.lineSeparator());
+        }
         if(!StringUtils.isBlank(sourceOutputMessage)) {
             builder.append("SrcOutput: ");
             builder.append(sourceOutputMessage);
@@ -45,6 +62,11 @@ public class ArchiveTransferResult {
         if(!StringUtils.isBlank(sourceErrorMessage)) {
             builder.append("SrcError: ");
             builder.append(sourceErrorMessage);
+            builder.append(System.lineSeparator());
+        }
+        if(dstCommandResult.getCommandResult() != 0) {
+            builder.append("DstResult: ");
+            builder.append(dstCommandResult.getCommandResult());
             builder.append(System.lineSeparator());
         }
         if(!StringUtils.isBlank(destinationOutputMessage)) {
@@ -56,6 +78,13 @@ public class ArchiveTransferResult {
             builder.append("DstError: ");
             builder.append(destinationErrorMessage);
             builder.append(System.lineSeparator());
+        }
+        if(archiveTransferLog != null) {
+            builder.append("Files Read:");
+            builder.append(System.lineSeparator());
+            for (String info : archiveTransferLog.getTransferInfo()) {
+                builder.append(info);
+            }
         }
         return builder.toString();
     }

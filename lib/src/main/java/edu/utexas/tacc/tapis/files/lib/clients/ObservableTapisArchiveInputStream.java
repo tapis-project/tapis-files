@@ -14,9 +14,15 @@ import java.nio.channels.Pipe;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class ObservableTapisArchiveInputStream extends FilterInputStream {
+    public static interface Observer {
+        void file(String path, String name, long size, String digest);
+        void total(long archiveBytesRead, long fileBytesRead);
+    }
 
     private final static int BUFFER_SIZE = 10000;
     private final static int FILE_BYTES_MAX = 10000;
@@ -26,6 +32,9 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
     private final Pipe pipe;
     private final MessageDigest md;
     private boolean finished = false;
+    private long archiveBytesRead = 0;
+    private long fileBytesRead = 0;
+    private final List<Observer> observerList = new ArrayList<>();
 
     public ObservableTapisArchiveInputStream(ReadableByteChannel readableByteChannel) throws IOException {
         this(Channels.newInputStream(readableByteChannel), null);
@@ -147,6 +156,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
                 // end the stream;
                 tarArchiveOutputStream.finish();
                 finished = true;
+                notifyTotal();
                 return -1;
             }
         }
@@ -155,6 +165,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         int bytesRead = pipe.source().read(readBuffer);
         readBuffer.flip();
 
+        archiveBytesRead += bytesRead;
         return bytesRead;
     }
 
@@ -162,6 +173,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         tarArchiveOutputStream.putArchiveEntry(entry);
         writeFileBytes();
         tarArchiveOutputStream.closeArchiveEntry();
+        notifyFile(entry.getPath() == null ? "null" : entry.getPath().toString(), entry.getName(), entry.getSize(), getMd());
         System.out.println("NIO VERSION -- Name: " + entry.getName() +
                 " Size: " + entry.getSize() +
                 " SHA: " + getMd());
@@ -172,10 +184,11 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         WritableByteChannel outChannel = Channels.newChannel(tarArchiveOutputStream);
         ByteBuffer fileByteBuffer = ByteBuffer.allocate(FILE_BYTES_MAX);
         resetMd();
-        int fileBytesRead = 0;
-        while ((fileBytesRead = inChannel.read(fileByteBuffer)) != -1) {
+        int bytesRead = 0;
+        while ((bytesRead = inChannel.read(fileByteBuffer)) != -1) {
             fileByteBuffer.flip();
             updateMd(fileByteBuffer);
+            this.fileBytesRead += bytesRead;
             while (fileByteBuffer.hasRemaining()) {
                 outChannel.write(fileByteBuffer);
             }
@@ -216,4 +229,28 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         }
     }
 
+    private void notifyFile(String path, String name, long size, String digest) {
+        observerList.stream().forEach(observer -> {
+            observer.file(path, name, size, digest);
+        });
+    }
+
+    private void notifyTotal() {
+        observerList.stream().forEach(observer -> {
+            observer.total(archiveBytesRead, fileBytesRead);
+        });
+    }
+
+
+    public long getFileBytesRead() {
+        return fileBytesRead;
+    }
+
+    public long getArchiveBytesRead() {
+        return archiveBytesRead;
+    }
+
+    public void addObserver(Observer observer) {
+        observerList.add(observer);
+    }
 }

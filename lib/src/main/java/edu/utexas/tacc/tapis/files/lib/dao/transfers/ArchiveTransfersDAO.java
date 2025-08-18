@@ -42,7 +42,8 @@ public class ArchiveTransfersDAO {
                     archiveTransfer.getStatus().name(),
                     archiveTransfer.getSourceBaseUrl(),
                     archiveTransfer.getDestinationBaseUrl(),
-                    archiveTransfer.getBytesTransferred(),
+                    archiveTransfer.getArchiveBytesRead(),
+                    archiveTransfer.getFileBytesRead(),
                     archiveTransfer.getErrorMessage(),
                     archiveTransfer.getSrcSharedCtxGrantor(),
                     archiveTransfer.getDestSharedCtxGrantor());
@@ -124,7 +125,8 @@ public class ArchiveTransfersDAO {
                     handler,
                     archiveTransfer.getStatus().name(),
                     archiveTransfer.getErrorMessage(),
-                    archiveTransfer.getBytesTransferred(),
+                    archiveTransfer.getArchiveBytesRead(),
+                    archiveTransfer.getFileBytesRead(),
                     archiveTransfer.getEndTime(),
                     archiveTransfer.getAssignedTo(),
                     archiveTransfer.getUuid()
