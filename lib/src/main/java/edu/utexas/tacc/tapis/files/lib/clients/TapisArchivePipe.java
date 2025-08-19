@@ -1,30 +1,18 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
 import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.nio.channels.Pipe;
 import java.util.concurrent.Future;
 
-public class TapisArchivePipe extends Pipe {
-    private final Pipe pipe;
+public class TapisArchivePipe extends PipedInputStream {
     private Future<SSHCommandResult> sourceResultFuture;
-
-    public static TapisArchivePipe open() throws IOException {
-        Pipe pipe = Pipe.open();
-        return new TapisArchivePipe(pipe);
+    TapisArchivePipe(PipedOutputStream src) throws IOException {
+        super(src);
     }
-
-    TapisArchivePipe(Pipe pipe) {
-        this.pipe = pipe;
-    }
-
-    @Override
-    public SourceChannel source() {
-        return pipe.source();
-    }
-
-    @Override
-    public SinkChannel sink() {
-        return pipe.sink();
+    TapisArchivePipe(PipedOutputStream src, int pipeSize) throws IOException {
+        super(src, pipeSize);
     }
 
     public void setSourceResult(Future<SSHCommandResult> sourceResultFuture) {

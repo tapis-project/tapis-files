@@ -16,6 +16,7 @@ public class ArchiveTransferParams {
     String srcSharedCtxGrantor = null;
     String dstSharedCtxGrantor = null;
     Set<String> relativePaths = new HashSet<>();
+    boolean compress = true;
 
     public TransferURI getSrcUri() {
         return srcUri;
@@ -72,5 +73,13 @@ public class ArchiveTransferParams {
 
     public void setRelativePaths(Set<String> relativePaths) {
         this.relativePaths = relativePaths;
+    }
+
+    public void setCompress(boolean compress) {
+        this.compress = compress;
+    }
+
+    public boolean getCompress() {
+        return compress;
     }
 }

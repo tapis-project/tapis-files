@@ -9,11 +9,9 @@ public class ArchiveTransferLog implements ObservableTapisArchiveInputStream.Obs
     private List<String> transferInfo = new ArrayList<>();
 
     @Override
-    public void file(String path, String name, long bytesRead, String digest) {
+    public void file(String name, long bytesRead, String digest) {
         StringBuilder fileInfo = new StringBuilder();
-        fileInfo.append("Path : ");
-        fileInfo.append(path);
-        fileInfo.append(" Name : ");
+        fileInfo.append("Name : ");
         fileInfo.append(name);
         fileInfo.append(" Digest : ");
         fileInfo.append(digest);

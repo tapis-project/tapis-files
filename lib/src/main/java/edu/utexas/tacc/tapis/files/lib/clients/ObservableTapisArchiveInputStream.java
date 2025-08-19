@@ -5,44 +5,35 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.Pipe;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 
 public class ObservableTapisArchiveInputStream extends FilterInputStream {
     public static interface Observer {
-        void file(String path, String name, long size, String digest);
+        void file(String name, long size, String digest);
         void total(long archiveBytesRead, long fileBytesRead);
     }
 
     private final static int BUFFER_SIZE = 10000;
-    private final static int FILE_BYTES_MAX = 10000;
     private final TarArchiveInputStream tarArchiveInputStream;
     private final TarArchiveOutputStream tarArchiveOutputStream;
-    private final ByteBuffer readBuffer;
-    private final Pipe pipe;
+    private final ByteArrayOutputStream byteArrayOutputStream;
     private final MessageDigest md;
     private boolean finished = false;
     private long archiveBytesRead = 0;
     private long fileBytesRead = 0;
     private final List<Observer> observerList = new ArrayList<>();
+    TarArchiveEntry currentTarEntry = null;
+    private final ByteBuffer readBuffer;
 
-    public ObservableTapisArchiveInputStream(ReadableByteChannel readableByteChannel) throws IOException {
-        this(Channels.newInputStream(readableByteChannel), null);
-    }
-
-    public ObservableTapisArchiveInputStream(ReadableByteChannel readableByteChannel, MessageDigest md) throws IOException {
-        this(Channels.newInputStream(readableByteChannel), md);
-    }
 
     public ObservableTapisArchiveInputStream(InputStream in) throws IOException {
         this(in, null);
@@ -50,18 +41,9 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
 
     public ObservableTapisArchiveInputStream(InputStream in, MessageDigest md) throws IOException {
         super(in);
+        byteArrayOutputStream = new ByteArrayOutputStream();
         tarArchiveInputStream = new TarArchiveInputStream(in);
-
-
-        // setup the pipe that allows us to inspect contents of the tar archive.  The
-        // read side is connected to the input tar archive input stream wrapping the
-        // InputStream that gets passed in. The write side (sink) is connected to the
-        // read buffer.
-        pipe = Pipe.open();
-        pipe.source().configureBlocking(false);
-        tarArchiveOutputStream = new TarArchiveOutputStream(Channels.newOutputStream(pipe.sink()));
-
-        // setup the buffer used for read() calls
+        tarArchiveOutputStream = new TarArchiveOutputStream(byteArrayOutputStream);
         readBuffer = ByteBuffer.allocate(BUFFER_SIZE);
         readBuffer.flip();
 
@@ -137,63 +119,65 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
     }
 
     // returns bytes read, or -1 for EOF
-    private  int fillBuffer() throws IOException {
+    private long fillBuffer() throws IOException {
         if(finished) {
             return -1;
         }
 
-        TarArchiveEntry entry = tarArchiveInputStream.getNextTarEntry();
-        if (entry != null) {
-            processTarEntry(entry);
-        } else {
-            // I'm not sure if it's possible to not get a TarArchiveEntry,
-            // but still have bytes to read, but handle it just in case.
-            readBuffer.compact();
-            int bytesRead = pipe.source().read(readBuffer);
-            readBuffer.flip();
-            if((bytesRead == 0) && (!readBuffer.hasRemaining())) {
-                // no more archive entries, and nothing left in pipe, so
-                // end the stream;
+        // if we are not currently working on a tar entry, get the next one
+        if(currentTarEntry == null) {
+            currentTarEntry = tarArchiveInputStream.getNextTarEntry();
+            if(currentTarEntry != null) {
+                tarArchiveOutputStream.putArchiveEntry(currentTarEntry);
+                readBuffer.compact();
+                byte[] fileBytes = byteArrayOutputStream.toByteArray();
+                readBuffer.put(fileBytes);
+                readBuffer.flip();
+                byteArrayOutputStream.reset();
+            } else {
                 tarArchiveOutputStream.finish();
                 finished = true;
-                notifyTotal();
-                return -1;
             }
+            resetMd();
         }
 
-        readBuffer.compact();
-        int bytesRead = pipe.source().read(readBuffer);
-        readBuffer.flip();
+        // TODO read after no more entries?  Is that a thing?
 
-        archiveBytesRead += bytesRead;
+        int bytesRead = -1;
+
+        // if we find a new entry process it (or continue to process it), but if not we are at the end.
+        if (currentTarEntry != null) {
+            readBuffer.compact();
+            bytesRead = processTarEntry(readBuffer.limit() - readBuffer.position() );
+            if(bytesRead != -1) {
+                byte[] fileBytes = byteArrayOutputStream.toByteArray();
+                readBuffer.put(fileBytes);
+            } else {
+                notifyFile();
+                System.out.println("File Info -- Name: " + currentTarEntry.getName() +
+                        " Size: " + currentTarEntry.getSize() +
+                        " SHA: " + getMd());
+                tarArchiveOutputStream.closeArchiveEntry();
+                currentTarEntry = null;
+            }
+            readBuffer.flip();
+            byteArrayOutputStream.reset();
+        }
+
         return bytesRead;
     }
 
-    private void processTarEntry(TarArchiveEntry entry) throws IOException {
-        tarArchiveOutputStream.putArchiveEntry(entry);
-        writeFileBytes();
-        tarArchiveOutputStream.closeArchiveEntry();
-        notifyFile(entry.getPath() == null ? "null" : entry.getPath().toString(), entry.getName(), entry.getSize(), getMd());
-        System.out.println("File Info -- Name: " + entry.getName() +
-                " Size: " + entry.getSize() +
-                " SHA: " + getMd());
-    }
+    private int processTarEntry(int maxBytesToRead) throws IOException {
+        byte[] bytes = new byte[maxBytesToRead];
+        int bytesRead = tarArchiveInputStream.read(bytes);
+        byte[] returnedBytes = Arrays.copyOf(bytes, bytesRead);
 
-    private void writeFileBytes() throws IOException {
-        ReadableByteChannel inChannel = Channels.newChannel(tarArchiveInputStream);
-        WritableByteChannel outChannel = Channels.newChannel(tarArchiveOutputStream);
-        ByteBuffer fileByteBuffer = ByteBuffer.allocate(FILE_BYTES_MAX);
-        resetMd();
-        int bytesRead = 0;
-        while ((bytesRead = inChannel.read(fileByteBuffer)) != -1) {
-            fileByteBuffer.flip();
-            updateMd(fileByteBuffer);
-            this.fileBytesRead += bytesRead;
-            while (fileByteBuffer.hasRemaining()) {
-                outChannel.write(fileByteBuffer);
-            }
-            fileByteBuffer.flip();
+        if(bytesRead != -1) {
+            tarArchiveOutputStream.write(returnedBytes);
+            updateMd(returnedBytes);
         }
+
+        return bytesRead;
     }
 
     private String hashAsHex(byte[] hashBytes) {
@@ -214,11 +198,9 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         }
     }
 
-    private void updateMd(ByteBuffer mdByteBuffer) {
+    private void updateMd(byte[] bytes) {
         if(md != null) {
-            mdByteBuffer.mark();
-            md.update(mdByteBuffer);
-            mdByteBuffer.reset();
+            md.update(bytes);
         }
     }
     private String getMd() {
@@ -229,9 +211,17 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         }
     }
 
-    private void notifyFile(String path, String name, long size, String digest) {
+    private void notifyFile() {
+        String name = currentTarEntry.getName();
+        long size = currentTarEntry.getSize();
+        String digest = getMd();
         observerList.stream().forEach(observer -> {
-            observer.file(path, name, size, digest);
+            try {
+                observer.file(name, size, digest);
+            } catch (Throwable th) {
+                // TODO AXFER:  log this error - add longging etc remove println
+                th.printStackTrace();
+            }
         });
     }
 

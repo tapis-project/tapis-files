@@ -8,5 +8,8 @@ import java.io.PipedInputStream;
 import java.util.concurrent.Future;
 
 public interface ArchiveTransferDestination {
-    ArchiveTransferResult writeArchive(@NotNull String basePath, @NotNull InputStream archiveInputStream, Future<SSHCommandResult> sourceResultFuture) throws IOException;
+    ArchiveTransferResult writeArchive(@NotNull String basePath,
+                                       @NotNull InputStream archiveInputStream,
+                                       boolean isCompressed,
+                                       Future<SSHCommandResult> sourceResultFuture) throws IOException;
 }

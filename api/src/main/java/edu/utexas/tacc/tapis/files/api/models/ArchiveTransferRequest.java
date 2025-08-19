@@ -14,6 +14,7 @@ public class ArchiveTransferRequest {
     private Set<String> relativePaths;
     private String srcSharedCtxGrantor;
     private String destSharedCtxGrantor;
+    private boolean compress = true;
 
     public String getSourceBaseUrl() {
         return sourceBaseUrl;
@@ -58,6 +59,14 @@ public class ArchiveTransferRequest {
 
     public void setDestSharedCtxGrantor(String destSharedCtxGrantor) {
         this.destSharedCtxGrantor = destSharedCtxGrantor;
+    }
+
+    public boolean getCompress() {
+        return compress;
+    }
+
+    public void setCompress(boolean compress) {
+        this.compress = compress;
     }
 
     public String validateRequest() {

@@ -8,6 +8,7 @@
    status                   VARCHAR(128)                NOT NULL,
    source_base_url          VARCHAR(4096)               NOT NULL,
    destination_base_url     VARCHAR(4096)               NOT NULL,
+   compress                 BOOLEAN                     NOT NULL,
    start_time               TIMESTAMP WITH TIME ZONE    DEFAULT NULL,
    end_time                 TIMESTAMP WITH TIME ZONE    DEFAULT NULL,
    file_bytes_read          BIGINT                      NOT NULL,

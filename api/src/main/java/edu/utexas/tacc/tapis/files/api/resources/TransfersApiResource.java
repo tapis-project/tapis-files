@@ -450,6 +450,7 @@ public class  TransfersApiResource
     archiveTransfer.setSrcSharedCtxGrantor(archiveTransferRequest.getSrcSharedCtxGrantor());
     archiveTransfer.setDestSharedCtxGrantor(archiveTransferRequest.getDestSharedCtxGrantor());
     archiveTransfer.setRelativePaths(archiveTransferRequest.getRelativePaths());
+    archiveTransfer.setCompress(archiveTransferRequest.getCompress());
     return archiveTransfer;
   }
 

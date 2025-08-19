@@ -20,6 +20,7 @@ public class ArchiveTransferRowProcessor extends BasicRowProcessor {
         archiveTransfer.setTenantId(resultSet.getString("tenant_id"));
         archiveTransfer.setSourceBaseUrl(resultSet.getString("source_base_url"));
         archiveTransfer.setDestinationBaseUrl(resultSet.getString("destination_base_url"));
+        archiveTransfer.setCompress(resultSet.getBoolean("compress"));
         archiveTransfer.setCreated(resultSet.getTimestamp("created").toInstant());
         archiveTransfer.setUuid(resultSet.getObject("uuid", UUID.class));
         archiveTransfer.setStatus(ArchiveTransferStatus.valueOf(resultSet.getString("status")));

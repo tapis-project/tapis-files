@@ -8,5 +8,6 @@ import java.util.concurrent.Future;
 
 public interface ArchiveTransferSource {
     TapisArchivePipe getArchiveStream(@NotNull String srcBasePath,
-                                              @NotNull Set<String> relativePaths) throws IOException;
+                                      @NotNull Set<String> relativePaths,
+                                      boolean useCompression) throws IOException;
 }

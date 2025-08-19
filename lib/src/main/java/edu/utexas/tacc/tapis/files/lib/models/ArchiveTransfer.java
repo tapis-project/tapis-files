@@ -24,6 +24,7 @@ public class ArchiveTransfer {
     private UUID assignedTo;
     private long fileBytesRead;
     private long archiveBytesRead;
+    private boolean compress;
 
     public int getId() {
         return id;
@@ -158,4 +159,13 @@ public class ArchiveTransfer {
     public void setAssignedTo(UUID assignedTo) {
         this.assignedTo = assignedTo;
     }
+
+    public boolean getCompress() {
+        return compress;
+    }
+
+    public void setCompress(boolean compress) {
+        this.compress = compress;
+    }
+
 }
