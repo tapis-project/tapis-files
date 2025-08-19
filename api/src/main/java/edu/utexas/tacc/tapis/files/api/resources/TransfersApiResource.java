@@ -10,6 +10,7 @@ import javax.servlet.ServletContext;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -30,11 +31,9 @@ import javax.ws.rs.core.UriInfo;
 
 import edu.utexas.tacc.tapis.files.api.FilesApplication;
 import edu.utexas.tacc.tapis.files.api.models.ArchiveTransferRequest;
-import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransferResponse;
 import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransfersService;
-import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
@@ -342,15 +341,16 @@ public class  TransfersApiResource
     return Response.ok(resp).build();
   }
   @GET
-  @Path("archiveTransfer/{archiveTransferUuid}")
+  @Path("fastTransfer/{uuid}")
   @Produces(MediaType.APPLICATION_JSON)
   @Consumes(MediaType.APPLICATION_JSON)
-  public Response getArchiveTransfer(@PathParam("archiveTransferUuid") @ValidUUID String archiveTransferUuid,
+  public Response getArchiveTransfer(@PathParam("uuid") @ValidUUID String archiveTransferUuid,
                                   @QueryParam("includePaths") @DefaultValue("false") boolean includePaths,
                                   @QueryParam("impersonationId") String impersonationId,
                                   @Context SecurityContext securityContext)
   {
-    String opName = "getArchiveTransfer";
+    String opName = "getFastTransfer";
+
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
@@ -389,13 +389,13 @@ public class  TransfersApiResource
   }
 
   @POST
-  @Path("archiveTransfer")
+  @Path("fastTransfer")
   @Produces(MediaType.APPLICATION_JSON)
   @Consumes(MediaType.APPLICATION_JSON)
   public Response createArchiveTransfer(@Valid ArchiveTransferRequest archiveTransferRequest,
                                      @Context SecurityContext securityContext)
   {
-    String opName = "createArchiveTransfer";
+    String opName = "createFastTransfer";
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
@@ -420,7 +420,10 @@ public class  TransfersApiResource
     {
       // Create the txfr task
       ArchiveTransfer archiveTransfer = getArchiveTransferFromRequest(rUser, archiveTransferRequest);
-      // TODO AXFER: Do some validation/null checking on reqeust
+      String msg = archiveTransferRequest.validateRequest();
+      if(msg != null) {
+        throw new BadRequestException(msg);
+      }
       archiveTransferResponse = archiveTransfersService.createArchiveTransfer(rUser, archiveTransfer);
     }
     catch (ServiceException ex)
@@ -429,7 +432,6 @@ public class  TransfersApiResource
       log.error(msg, ex);
       throw new WebApplicationException(msg, ex);
     }
-    // TODO AXFER: fix messages
     String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CREATED", rUser, archiveTransferResponse.getUuid());
 
     TapisResponse<ArchiveTransferResponse> resp = TapisResponse.createSuccessResponse(msg, archiveTransferResponse);

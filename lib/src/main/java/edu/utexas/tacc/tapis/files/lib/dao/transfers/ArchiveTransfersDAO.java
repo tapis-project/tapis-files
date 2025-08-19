@@ -103,7 +103,7 @@ public class ArchiveTransfersDAO {
                     handler,
                     archiveTransferUuid);
 
-            if(includeRelativePaths) {
+            if((archiveTransfer != null) && (includeRelativePaths)) {
                 archiveTransfer.setRelativePaths(getRelativePaths(context, archiveTransfer.getId()));
             }
 

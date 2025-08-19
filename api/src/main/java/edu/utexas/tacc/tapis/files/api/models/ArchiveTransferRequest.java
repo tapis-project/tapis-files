@@ -1,5 +1,7 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
 
@@ -56,5 +58,21 @@ public class ArchiveTransferRequest {
 
     public void setDestSharedCtxGrantor(String destSharedCtxGrantor) {
         this.destSharedCtxGrantor = destSharedCtxGrantor;
+    }
+
+    public String validateRequest() {
+        if(sourceBaseUrl == null) {
+            return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "sourceBaseUrl");
+        }
+
+        if(destinationBaseUrl == null) {
+            return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "destinationBaseUrl");
+        }
+
+        if((relativePaths == null) || (relativePaths.isEmpty())) {
+            return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "relativePaths");
+        }
+
+        return null;
     }
 }

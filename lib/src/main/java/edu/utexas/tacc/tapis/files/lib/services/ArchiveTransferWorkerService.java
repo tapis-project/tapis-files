@@ -9,8 +9,6 @@ import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.clients.SSHCommandResult;
-import edu.utexas.tacc.tapis.files.lib.clients.ObservableTapisArchiveInputStream;
 import edu.utexas.tacc.tapis.files.lib.clients.TapisArchivePipe;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
@@ -37,9 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -48,7 +44,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -257,14 +252,17 @@ public class ArchiveTransferWorkerService {
             TapisArchivePipe tapisArchivePipe =
                     srcArchiveXFer.getArchiveStream(params.getSrcUri().getPath(), params.getRelativePaths());
 // with observeable stream
+            /*
                 ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(tapisArchivePipe.source(), md);
                 ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
                 observableTapisArchiveInputStream.addObserver(archiveTransferLog);
                 archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableTapisArchiveInputStream, tapisArchivePipe.getSourceResultFuture());
                 archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
 
+             */
+
 // without observeable stream
-//            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), Channels.newInputStream(tapisArchivePipe.source()), tapisArchivePipe.getSourceResultFuture());
+            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), Channels.newInputStream(tapisArchivePipe.source()), tapisArchivePipe.getSourceResultFuture());
         }
 
         return archiveTransferResult;
@@ -293,8 +291,8 @@ public class ArchiveTransferWorkerService {
         }
 
         ArchiveTransferLog archiveTransferLog = result.getArchiveTransferLog();
-        final long fileBytesRead = archiveTransferLog.getFileBytesRead();
-        final long archiveBytesRead = archiveTransferLog.getArchiveBytesRead();
+        final long fileBytesRead = (archiveTransferLog == null) ? 0 : archiveTransferLog.getFileBytesRead();
+        final long archiveBytesRead = (archiveTransferLog == null) ? 0 : archiveTransferLog.getArchiveBytesRead();
 
         final String updateErrorMessage = errorMessage;
         ArchiveTransferStatus updateStatus = status;

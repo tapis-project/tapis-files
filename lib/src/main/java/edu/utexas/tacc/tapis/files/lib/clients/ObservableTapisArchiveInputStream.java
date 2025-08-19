@@ -174,7 +174,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         writeFileBytes();
         tarArchiveOutputStream.closeArchiveEntry();
         notifyFile(entry.getPath() == null ? "null" : entry.getPath().toString(), entry.getName(), entry.getSize(), getMd());
-        System.out.println("NIO VERSION -- Name: " + entry.getName() +
+        System.out.println("File Info -- Name: " + entry.getName() +
                 " Size: " + entry.getSize() +
                 " SHA: " + getMd());
     }
