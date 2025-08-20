@@ -4,10 +4,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.Set;
-import java.util.concurrent.Future;
 
 public interface ArchiveTransferSource {
-    TapisArchivePipe getArchiveStream(@NotNull String srcBasePath,
+    ArchiveInputPipe getArchiveStream(@NotNull String srcBasePath,
                                       @NotNull Set<String> relativePaths,
                                       boolean useCompression) throws IOException;
 }

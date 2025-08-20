@@ -3,13 +3,13 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import com.google.common.base.Stopwatch;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.clients.ArchiveInputPipe;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferDestination;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferLog;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.clients.TapisArchivePipe;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
@@ -249,7 +249,7 @@ public class ArchiveTransferWorkerService {
 
         if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
            dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
-            TapisArchivePipe tapisArchivePipe = srcArchiveXFer.getArchiveStream(
+            ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
                     params.getSrcUri().getPath(), params.getRelativePaths(), params.getCompress());
 // with observeable stream
 //                ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(tapisArchivePipe, md);
@@ -261,7 +261,7 @@ public class ArchiveTransferWorkerService {
 
 // without observeable stream
             archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(),
-                    tapisArchivePipe, params.getCompress(), tapisArchivePipe.getSourceResultFuture());
+                    archiveInputPipe, params.getCompress(), archiveInputPipe.getSourceResultFuture());
         }
 
         return archiveTransferResult;

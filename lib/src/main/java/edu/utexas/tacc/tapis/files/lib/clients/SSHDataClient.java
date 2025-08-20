@@ -558,7 +558,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
   }
 
   @Override
-  public TapisArchivePipe getArchiveStream(@NotNull String srcBasePath,
+  public ArchiveInputPipe getArchiveStream(@NotNull String srcBasePath,
                                            @NotNull Set<String> relativePaths,
                                            boolean useCompression) throws IOException {
     StringBuilder inputBuilder = new StringBuilder();
@@ -572,7 +572,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
             borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
     PipedOutputStream outputStream = new PipedOutputStream();
-    TapisArchivePipe tapisArchivePipe = new TapisArchivePipe(outputStream);
+    ArchiveInputPipe archiveInputPipe = new ArchiveInputPipe(outputStream);
 
     ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
 
@@ -604,8 +604,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
       }
     });
 
-    tapisArchivePipe.setSourceResult(sourceResultFuture);
-    return tapisArchivePipe;
+    archiveInputPipe.setSourceResult(sourceResultFuture);
+    return archiveInputPipe;
   }
 
 
