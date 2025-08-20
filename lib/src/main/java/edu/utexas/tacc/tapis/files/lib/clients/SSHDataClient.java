@@ -580,9 +580,9 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     commandBuilder.append("tar -C '");
     commandBuilder.append(absBasePath);
     if(useCompression) {
-      commandBuilder.append("' -czT- ");
+      commandBuilder.append("' -cvzT- ");
     } else {
-      commandBuilder.append("' -cT- ");
+      commandBuilder.append("' -cvT- ");
     }
 
     // possibly add ignore failed for optional? could mask other errors though
@@ -623,17 +623,17 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     commandBuilder.append("tar -C '");
     commandBuilder.append(absBasePath);
     if(isCompressed) {
-      commandBuilder.append("' -xz");
+      commandBuilder.append("' -xvz");
     } else {
-      commandBuilder.append("' -x");
+      commandBuilder.append("' -xv");
     }
 
     Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
       public SSHCommandResult call() throws Exception {
+        SSHCommandResult destinationCommandResult = new SSHCommandResult();
         try(final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
                 borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
-          SSHCommandResult destinationCommandResult = new SSHCommandResult();
           int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), archiveInputStream, outputStream, errorStream);
           destinationCommandResult.setCommandResult(returnValue);
 
@@ -641,8 +641,10 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
           destinationCommandResult.setCommandError(errorInputStream.readNBytes(MAX_ERROR_BYTES));
           InputStream outputInputStream = new ByteArrayInputStream(outputStream.toByteArray());
           destinationCommandResult.setCommandOutput(outputInputStream.readNBytes(MAX_OUTPUT_BYTES));
-          return destinationCommandResult;
+        } catch (Throwable th) {
+          th.printStackTrace();
         }
+        return destinationCommandResult;
       }
     });
 

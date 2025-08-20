@@ -9,6 +9,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferLog;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
+import edu.utexas.tacc.tapis.files.lib.clients.ObservableTapisArchiveInputStream;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
@@ -252,16 +253,16 @@ public class ArchiveTransferWorkerService {
             ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
                     params.getSrcUri().getPath(), params.getRelativePaths(), params.getCompress());
 // with observeable stream
-//                ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(tapisArchivePipe, md);
-//                ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
-//                observableTapisArchiveInputStream.addObserver(archiveTransferLog);
-//                archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableTapisArchiveInputStream, params.getCompress(), tapisArchivePipe.getSourceResultFuture());
-//                archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
+                ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(archiveInputPipe, md);
+                ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
+                observableTapisArchiveInputStream.addObserver(archiveTransferLog);
+                archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableTapisArchiveInputStream, params.getCompress(), archiveInputPipe.getSourceResultFuture());
+                archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
 
 
 // without observeable stream
-            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(),
-                    archiveInputPipe, params.getCompress(), archiveInputPipe.getSourceResultFuture());
+//            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(),
+//                    archiveInputPipe, params.getCompress(), archiveInputPipe.getSourceResultFuture());
         }
 
         return archiveTransferResult;

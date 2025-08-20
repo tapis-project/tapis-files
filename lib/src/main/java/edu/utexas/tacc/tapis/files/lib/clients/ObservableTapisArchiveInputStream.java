@@ -4,37 +4,45 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 
 public class ObservableTapisArchiveInputStream extends FilterInputStream {
+
     public static interface Observer {
         void file(String name, long size, String digest);
         void total(long archiveBytesRead, long fileBytesRead);
     }
 
     private final static int BUFFER_SIZE = 10000;
+    private boolean finished = false;
+
+    private final static int READ_BUFFER_SIZE = 500;
     private final TarArchiveInputStream tarArchiveInputStream;
     private final TarArchiveOutputStream tarArchiveOutputStream;
     private final ByteArrayOutputStream byteArrayOutputStream;
-    private final MessageDigest md;
-    private boolean finished = false;
-    private long archiveBytesRead = 0;
-    private long fileBytesRead = 0;
-    private final List<Observer> observerList = new ArrayList<>();
     TarArchiveEntry currentTarEntry = null;
-    private final ByteBuffer readBuffer;
+    int readPosition = 0;
+    int totalRead = 0;
+    Logger log = LoggerFactory.getLogger(ObservableTapisArchiveInputStream.class);
+    private final List<Observer> observerList = new ArrayList<>();
+    private final MessageDigest md;
+    /*
+        private long archiveBytesRead = 0;
+        private long fileBytesRead = 0;
+        private final ByteBuffer readBuffer;
 
-
+    */
     public ObservableTapisArchiveInputStream(InputStream in) throws IOException {
         this(in, null);
     }
@@ -44,15 +52,19 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         byteArrayOutputStream = new ByteArrayOutputStream();
         tarArchiveInputStream = new TarArchiveInputStream(in);
         tarArchiveOutputStream = new TarArchiveOutputStream(byteArrayOutputStream);
+        // store the MessageDigest (may be null)
+        this.md = md;
+
+        /*
         readBuffer = ByteBuffer.allocate(BUFFER_SIZE);
         readBuffer.flip();
 
-        // store the MessageDigest (may be null)
-        this.md = md;
+         */
     }
 
     @Override
     public int read() throws IOException {
+        /*
         // if there are no bytes in the read buffer,
         // fill it.
         while(!readBuffer.hasRemaining()) {
@@ -63,10 +75,24 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
 
         // return the next byte in the read buffer.
         return readBuffer.get();
+         */
+
+        if(byteLeftInReadBuffer() <= 0) {
+            byteArrayOutputStream.reset();
+            readPosition = 0;
+            if(fillReadBuffer(READ_BUFFER_SIZE) == -1) {
+                return -1;
+            }
+        }
+
+        byte readByte =  byteArrayOutputStream.toByteArray()[readPosition];
+        readPosition++;
+        return readByte;
     }
 
     @Override
     public int read(@NotNull byte[] b) throws IOException {
+        /*
         while(!readBuffer.hasRemaining()) {
             if(fillBuffer() == -1) {
                 return -1;
@@ -76,10 +102,13 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         int currentPos = readBuffer.position();
         readBuffer.get(b);
         return readBuffer.position() - currentPos;
+         */
+        return read(b, 0, b.length);
     }
 
     @Override
     public int read(@NotNull byte[] b, int off, int len) throws IOException {
+        /*
         while(!readBuffer.hasRemaining()) {
             if(fillBuffer() == -1) {
                 return -1;
@@ -90,12 +119,46 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         int currentPos = readBuffer.position();
         readBuffer.get(b, off, bytesToRead);
         return readBuffer.position() - currentPos;
+         */
+        if(len == 0) {
+            return 0;
+        }
+
+        int bytesRead = 0;
+        for(bytesRead = 0;bytesRead < len;bytesRead++) {
+            int readResult  = read();
+            if(readResult == -1) {
+                // if we got a -1, and we have nothing buffered up, we must be at the end.
+                if(bytesRead == 0) {
+                    return -1;
+                }
+                break;
+            }
+            b[off + bytesRead] = (byte) readResult;
+        }
+
+        totalRead += bytesRead;
+        log.error("read with offset: " + "byte[] length: " + b.length + " off: " + off + "len: " + len + " read:" + bytesRead + " totalRead: " + totalRead);
+
+        return  bytesRead;
+    }
+
+    private int byteLeftInReadBuffer() {
+        return byteArrayOutputStream.size() - readPosition;
     }
 
     @Override
     public int available() throws IOException {
         // available is the bytes in the in stream plus whats in the buffer
-        return in.available() + (readBuffer.limit() - readBuffer.position());
+//        return in.available() + (readBuffer.limit() - readBuffer.position());
+        if((!finished) && (byteLeftInReadBuffer() == 0)) {
+            byteArrayOutputStream.reset();
+            readPosition = 0;
+            fillReadBuffer(BUFFER_SIZE);
+        }
+
+        int available = byteLeftInReadBuffer();
+        return available;
     }
 
     @Override
@@ -118,6 +181,45 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         return super.skip(n);
     }
 
+    public int fillReadBuffer(int bytesToRead) throws IOException {
+        if(finished) {
+            return -1;
+        }
+
+        goToNextTarArchiveEntry();
+
+        byte[] fileBytes = new byte[READ_BUFFER_SIZE];
+        while((byteArrayOutputStream.size() < bytesToRead) && (currentTarEntry != null)) {
+            int bytesRead = tarArchiveInputStream.read(fileBytes);
+            if(bytesRead == -1) {
+                tarArchiveOutputStream.closeArchiveEntry();
+                notifyFile();
+                currentTarEntry = null;
+                goToNextTarArchiveEntry();
+            } else {
+                tarArchiveOutputStream.write(fileBytes, 0, bytesRead);
+                updateMd(fileBytes, 0, bytesRead);
+            }
+        }
+
+        return byteLeftInReadBuffer();
+    }
+
+    public void goToNextTarArchiveEntry() throws IOException {
+        // see if we are in the middle of reading a tar entry
+        if (currentTarEntry == null) {
+            currentTarEntry = tarArchiveInputStream.getNextTarEntry();
+            if (currentTarEntry != null) {
+                tarArchiveOutputStream.putArchiveEntry(currentTarEntry);
+            } else {
+                // finish the archive, and get the remaining bytes
+                tarArchiveOutputStream.finish();
+                tarArchiveOutputStream.close();
+                finished = true;
+            }
+        }
+    }
+/*
     // returns bytes read, or -1 for EOF
     private long fillBuffer() throws IOException {
         if(finished) {
@@ -179,7 +281,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
 
         return bytesRead;
     }
-
+*/
     private String hashAsHex(byte[] hashBytes) {
         StringBuilder hexString = new StringBuilder(2 * hashBytes.length);
         for (int i = 0; i < hashBytes.length; i++) {
@@ -198,11 +300,12 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         }
     }
 
-    private void updateMd(byte[] bytes) {
+    private void updateMd(byte[] bytes, int off, int len) {
         if(md != null) {
-            md.update(bytes);
+            md.update(bytes, off, len);
         }
     }
+
     private String getMd() {
         if(md != null) {
             return hashAsHex(md.digest());
@@ -224,7 +327,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
             }
         });
     }
-
+/*
     private void notifyTotal() {
         observerList.stream().forEach(observer -> {
             observer.total(archiveBytesRead, fileBytesRead);
@@ -239,6 +342,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
     public long getArchiveBytesRead() {
         return archiveBytesRead;
     }
+   */
 
     public void addObserver(Observer observer) {
         observerList.add(observer);
