@@ -253,16 +253,16 @@ public class ArchiveTransferWorkerService {
             ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
                     params.getSrcUri().getPath(), params.getRelativePaths(), params.getCompress());
 // with observeable stream
-                ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(archiveInputPipe, md);
-                ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
-                observableTapisArchiveInputStream.addObserver(archiveTransferLog);
-                archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableTapisArchiveInputStream, params.getCompress(), archiveInputPipe.getSourceResultFuture());
-                archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
+                ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(archiveInputPipe, md, params.compress);
+//                ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
+//                observableTapisArchiveInputStream.addObserver(archiveTransferLog);
+//                archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableTapisArchiveInputStream, params.getCompress(), archiveInputPipe.getSourceResultFuture());
+//                archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
 
 
 // without observeable stream
-//            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(),
-//                    archiveInputPipe, params.getCompress(), archiveInputPipe.getSourceResultFuture());
+            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(),
+                    archiveInputPipe, params.getCompress(), archiveInputPipe.getSourceResultFuture());
         }
 
         return archiveTransferResult;

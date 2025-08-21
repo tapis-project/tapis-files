@@ -26,7 +26,7 @@ class TransferTaskParentRowProcessor extends BasicRowProcessor {
         task.setStatus(rs.getString("status"));
         task.setOptional(rs.getBoolean("optional"));
         task.setSrcSharedCtxGrantor(rs.getString("src_shared_ctx"));
-        task.setDestSharedCtxGrantor(rs.getString("dest_shared_ctx"));
+        task.setDestSharedCtxGrantor(rs.getString("dst_shared_ctx"));
         task.setTag(rs.getString("tag"));
         task.setTotalBytes(rs.getLong("total_bytes"));
         task.setBytesTransferred(rs.getLong("bytes_transferred"));

@@ -572,17 +572,19 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
             borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
     PipedOutputStream outputStream = new PipedOutputStream();
-    ArchiveInputPipe archiveInputPipe = new ArchiveInputPipe(outputStream);
+    ArchiveInputPipe archiveInputPipe = new ArchiveInputPipe(outputStream, 5000000);
 
-    ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream errorStream = new ByteArrayOutputStream(5000000);
 
     StringBuilder commandBuilder = new StringBuilder();
     commandBuilder.append("tar -C '");
     commandBuilder.append(absBasePath);
     if(useCompression) {
-      commandBuilder.append("' -cvzT- ");
+//      commandBuilder.append("' -cvzT- ");
+      commandBuilder.append("' -czT- ");
     } else {
-      commandBuilder.append("' -cvT- ");
+//      commandBuilder.append("' -cvT- ");
+      commandBuilder.append("' -cT- ");
     }
 
     // possibly add ignore failed for optional? could mask other errors though
@@ -595,10 +597,14 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
       @Override
       public SSHCommandResult call() throws Exception {
         SSHCommandResult sourceCommandResult = new SSHCommandResult();
-        int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
-        sourceCommandResult.setCommandResult(returnValue);
-        InputStream errorInputStream = new ByteArrayInputStream(errorStream.toByteArray());
-        sourceCommandResult.setCommandError(errorInputStream.readNBytes(MAX_ERROR_BYTES));
+        try {
+          int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
+          sourceCommandResult.setCommandResult(returnValue);
+          InputStream errorInputStream = new ByteArrayInputStream(errorStream.toByteArray());
+          sourceCommandResult.setCommandError(errorInputStream.readNBytes(MAX_ERROR_BYTES));
+        } catch (Throwable th) {
+          th.printStackTrace();
+        }
 
         return sourceCommandResult;
       }
@@ -623,9 +629,11 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     commandBuilder.append("tar -C '");
     commandBuilder.append(absBasePath);
     if(isCompressed) {
-      commandBuilder.append("' -xvz");
+//      commandBuilder.append("' -xvz");
+      commandBuilder.append("' -xz");
     } else {
-      commandBuilder.append("' -xv");
+//      commandBuilder.append("' -xv");
+      commandBuilder.append("' -x");
     }
 
     Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
