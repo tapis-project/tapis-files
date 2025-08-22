@@ -3,7 +3,7 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ArchiveTransferLog implements ObservableTapisArchiveInputStream.Observer {
+public class ArchiveTransferLog implements ObservableArchiveInputStream.Observer {
     private long fileBytesRead;
     private long archiveBytesRead;
     private List<String> transferInfo = new ArrayList<>();
@@ -19,11 +19,11 @@ public class ArchiveTransferLog implements ObservableTapisArchiveInputStream.Obs
         fileInfo.append(bytesRead);
         fileInfo.append(System.lineSeparator());
         transferInfo.add(fileInfo.toString());
+        this.fileBytesRead += bytesRead;
     }
 
-    public void total(long archiveBytesRead, long fileBytesRead) {
-        this.archiveBytesRead = archiveBytesRead;
-        this.fileBytesRead = fileBytesRead;
+    public void actualBytesRead(long actualBytesRead) {
+        this.archiveBytesRead = actualBytesRead;
     }
 
     public long getFileBytesRead() {

@@ -18,11 +18,11 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 
-public class ObservableTapisArchiveInputStream extends FilterInputStream {
+public class ObservableArchiveInputStream extends FilterInputStream {
 
     public static interface Observer {
         void file(String name, long size, String digest);
-        void total(long archiveBytesRead, long fileBytesRead);
+        void actualBytesRead(long actualBytesRead);
     }
 
     private final static int BUFFER_SIZE = 50000;
@@ -35,14 +35,14 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
     TarArchiveEntry currentTarEntry = null;
     int readPosition = 0;
     int totalRead = 0;
-    Logger log = LoggerFactory.getLogger(ObservableTapisArchiveInputStream.class);
+    Logger log = LoggerFactory.getLogger(ObservableArchiveInputStream.class);
     private final List<Observer> observerList = new ArrayList<>();
     private final MessageDigest md;
-    public ObservableTapisArchiveInputStream(InputStream in, boolean useCompression) throws IOException {
+    public ObservableArchiveInputStream(InputStream in, boolean useCompression) throws IOException {
         this(in, null, useCompression);
     }
 
-    public ObservableTapisArchiveInputStream(InputStream in, MessageDigest md, boolean useCompression) throws IOException {
+    public ObservableArchiveInputStream(InputStream in, MessageDigest md, boolean useCompression) throws IOException {
         super(in);
         byteArrayOutputStream = new ByteArrayOutputStream();
         if(useCompression) {
@@ -60,6 +60,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
     public int read() throws IOException {
         try {
             if ((this.finished) && (bytesLeftInReadBuffer() == 0)) {
+                notifyArchiveSize();
                 return -1;
             }
 
@@ -67,6 +68,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
                 byteArrayOutputStream.reset();
                 readPosition = 0;
                 if (fillReadBuffer(READ_BUFFER_SIZE) == -1) {
+                    notifyArchiveSize();
                     return -1;
                 }
             }
@@ -99,6 +101,7 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
             }
 
             if ((this.finished) && (bytesLeftInReadBuffer() == 0)) {
+                notifyArchiveSize();
                 return -1;
             }
 
@@ -260,12 +263,6 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         return "sha256:" + hexString.toString();
     }
 
-    private void resetMd() {
-        if(md != null) {
-            md.reset();
-        }
-    }
-
     private void updateMd(byte[] bytes, int off, int len) {
         if(md != null) {
             md.update(bytes, off, len);
@@ -287,6 +284,17 @@ public class ObservableTapisArchiveInputStream extends FilterInputStream {
         observerList.stream().forEach(observer -> {
             try {
                 observer.file(name, size, digest);
+            } catch (Throwable th) {
+                // TODO AXFER:  log this error - add longging etc remove println
+                th.printStackTrace();
+            }
+        });
+    }
+
+    private void notifyArchiveSize() {
+        observerList.stream().forEach(observer -> {
+            try {
+                observer.actualBytesRead(totalRead);
             } catch (Throwable th) {
                 // TODO AXFER:  log this error - add longging etc remove println
                 th.printStackTrace();

@@ -156,8 +156,8 @@ public class ArchiveTransfersService {
         archiveTransferResponse.setTenantId(archiveTransfer.getTenantId());
         archiveTransferResponse.setCreated(archiveTransfer.getCreated());
         archiveTransferResponse.setStatus(archiveTransfer.getStatus().name());
-        archiveTransferResponse.setSourceBaseUrl(archiveTransferResponse.getSourceBaseUrl());
-        archiveTransferResponse.setDestinationBaseUrl(archiveTransferResponse.getDestinationBaseUrl());
+        archiveTransferResponse.setSourceBaseUrl(archiveTransfer.getSourceBaseUrl());
+        archiveTransferResponse.setDestinationBaseUrl(archiveTransfer.getDestinationBaseUrl());
         archiveTransferResponse.setRelativePaths(archiveTransfer.getRelativePaths());
         archiveTransferResponse.setStartTime(archiveTransfer.getStartTime());
         archiveTransferResponse.setEndTime(archiveTransfer.getEndTime());

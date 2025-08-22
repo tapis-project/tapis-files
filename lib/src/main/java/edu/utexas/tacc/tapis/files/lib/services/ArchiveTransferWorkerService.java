@@ -9,7 +9,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferLog;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.clients.ObservableTapisArchiveInputStream;
+import edu.utexas.tacc.tapis.files.lib.clients.ObservableArchiveInputStream;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
@@ -39,6 +39,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -188,6 +189,7 @@ public class ArchiveTransferWorkerService {
         archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
             ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
             currentTransfer.setStatus(ArchiveTransferStatus.IN_PROGRESS);
+            currentTransfer.setStartTime(Instant.now());
             return dao.updateArchiveTransfer(context, currentTransfer, true);
         });
 
@@ -253,10 +255,10 @@ public class ArchiveTransferWorkerService {
             ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
                     params.getSrcUri().getPath(), params.getRelativePaths(), params.getCompress());
 // with observeable stream
-                ObservableTapisArchiveInputStream observableTapisArchiveInputStream = new ObservableTapisArchiveInputStream(archiveInputPipe, md, params.compress);
+                ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, md, params.compress);
                 ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
-                observableTapisArchiveInputStream.addObserver(archiveTransferLog);
-                archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableTapisArchiveInputStream, params.getCompress(), archiveInputPipe.getSourceResultFuture());
+                observableArchiveInputStream.addObserver(archiveTransferLog);
+                archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, params.getCompress(), archiveInputPipe.getSourceResultFuture());
                 archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
 
 
@@ -302,7 +304,7 @@ public class ArchiveTransferWorkerService {
             currentTransfer.setErrorMessage(updateErrorMessage);
             currentTransfer.setStatus(updateStatus);
             currentTransfer.setArchiveBytesRead(archiveBytesRead);
-            currentTransfer.setFileBytesRead(fileBytesRead);
+            currentTransfer.setEndTime(Instant.now());
             currentTransfer.setFileBytesRead(fileBytesRead);
             return dao.updateArchiveTransfer(context, currentTransfer, false);
         });

@@ -124,6 +124,7 @@ public class ArchiveTransferDAOStatements {
                   error_message = ?,
                   archive_bytes_read = ?,
                   file_bytes_read = ?,
+                  start_time = ?,
                   end_time = ?,
                   assigned_to = ?
               WHERE

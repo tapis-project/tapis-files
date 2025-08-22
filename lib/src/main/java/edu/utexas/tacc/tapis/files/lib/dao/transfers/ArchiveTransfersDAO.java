@@ -12,7 +12,6 @@ import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ColumnListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
-import org.postgresql.core.ResultHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +19,7 @@ import java.sql.Array;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -128,7 +128,8 @@ public class ArchiveTransfersDAO {
                     archiveTransfer.getErrorMessage(),
                     archiveTransfer.getArchiveBytesRead(),
                     archiveTransfer.getFileBytesRead(),
-                    archiveTransfer.getEndTime(),
+                    (archiveTransfer.getStartTime() == null) ? null : Timestamp.from(archiveTransfer.getStartTime()),
+                    (archiveTransfer.getEndTime() == null) ? null : Timestamp.from(archiveTransfer.getEndTime()),
                     archiveTransfer.getAssignedTo(),
                     archiveTransfer.getUuid()
                     );
