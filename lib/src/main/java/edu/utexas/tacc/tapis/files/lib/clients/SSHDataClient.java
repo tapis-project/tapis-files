@@ -572,9 +572,9 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
     final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
             borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
     PipedOutputStream outputStream = new PipedOutputStream();
-    ArchiveInputPipe archiveInputPipe = new ArchiveInputPipe(outputStream, 5000000);
+    ArchiveInputPipe archiveInputPipe = new ArchiveInputPipe(outputStream );
 
-    ByteArrayOutputStream errorStream = new ByteArrayOutputStream(5000000);
+    ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
 
     StringBuilder commandBuilder = new StringBuilder();
     commandBuilder.append("tar -C '");
