@@ -1,6 +1,8 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveInputStream;
+import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.jetbrains.annotations.NotNull;
@@ -29,31 +31,31 @@ public class ObservableArchiveInputStream extends FilterInputStream {
     private boolean finished = false;
 
     private final static int READ_BUFFER_SIZE = 500;
-    private final TarArchiveInputStream tarArchiveInputStream;
-    private final TarArchiveOutputStream tarArchiveOutputStream;
+    private final ArchiveInputStream archiveInputStream;
+    private final ArchiveOutputStream archiveOutputStream;
     private final ByteArrayOutputStream byteArrayOutputStream;
-    TarArchiveEntry currentTarEntry = null;
+    ArchiveEntry currentTarEntry = null;
     int readPosition = 0;
     int totalRead = 0;
     Logger log = LoggerFactory.getLogger(ObservableArchiveInputStream.class);
     private final List<Observer> observerList = new ArrayList<>();
-    private final MessageDigest md;
-    public ObservableArchiveInputStream(InputStream in, boolean useCompression) throws IOException {
-        this(in, null, useCompression);
-    }
+    private final MessageDigest messageDigest;
 
-    public ObservableArchiveInputStream(InputStream in, MessageDigest md, boolean useCompression) throws IOException {
+    public ObservableArchiveInputStream(InputStream in, ArchiveTransferProvider archiveTransferProvider) throws IOException {
         super(in);
         byteArrayOutputStream = new ByteArrayOutputStream();
-        if(useCompression) {
-            tarArchiveInputStream = new TarArchiveInputStream(new GZIPInputStream(in));
-            tarArchiveOutputStream = new TarArchiveOutputStream(new GZIPOutputStream(byteArrayOutputStream));
-        } else {
-            tarArchiveInputStream = new TarArchiveInputStream(in);
-            tarArchiveOutputStream = new TarArchiveOutputStream(byteArrayOutputStream);
-        }
-        // store the MessageDigest (may be null)
-        this.md = md;
+        archiveInputStream = archiveTransferProvider.getArchiveInputStream(in);
+        archiveOutputStream = archiveTransferProvider.getArchiveOutputStream(byteArrayOutputStream);
+        this.messageDigest = archiveTransferProvider.getMessageDigest();
+//        if(useCompression) {
+//            archiveInputStream = new TarArchiveInputStream(new GZIPInputStream(in));
+//            archiveOutputStream = new TarArchiveOutputStream(new GZIPOutputStream(byteArrayOutputStream));
+//        } else {
+//            archiveInputStream = new TarArchiveInputStream(in);
+//            archiveOutputStream = new TarArchiveOutputStream(byteArrayOutputStream);
+//        }
+//        // store the MessageDigest (may be null)
+//        this.md = md;
     }
 
     @Override
@@ -82,9 +84,10 @@ public class ObservableArchiveInputStream extends FilterInputStream {
             throw new RuntimeException("Error in observableStream read: ", th);
         }
     }
-
+/*
     @Override
     public int read(@NotNull byte[] b) throws IOException {
+        return read(b, 0, b.length);
         try {
             return read(b, 0, b.length);
         } catch (Throwable th) {
@@ -92,7 +95,7 @@ public class ObservableArchiveInputStream extends FilterInputStream {
             throw new RuntimeException("Error in observableStream read: ", th);
         }
     }
-
+*/
     @Override
     public int read(@NotNull byte[] b, int off, int len) throws IOException {
         try {
@@ -221,14 +224,14 @@ public class ObservableArchiveInputStream extends FilterInputStream {
 
         byte[] fileBytes = new byte[READ_BUFFER_SIZE];
         while((byteArrayOutputStream.size() < bytesToRead) && (currentTarEntry != null)) {
-            int bytesRead = tarArchiveInputStream.read(fileBytes);
+            int bytesRead = archiveInputStream.read(fileBytes);
             if(bytesRead == -1) {
-                tarArchiveOutputStream.closeArchiveEntry();
+                archiveOutputStream.closeArchiveEntry();
                 notifyFile();
                 currentTarEntry = null;
                 goToNextTarArchiveEntry();
             } else {
-                tarArchiveOutputStream.write(fileBytes, 0, bytesRead);
+                archiveOutputStream.write(fileBytes, 0, bytesRead);
                 updateMd(fileBytes, 0, bytesRead);
             }
         }
@@ -239,14 +242,14 @@ public class ObservableArchiveInputStream extends FilterInputStream {
     public void goToNextTarArchiveEntry() throws IOException {
         // see if we are in the middle of reading a tar entry
         if (currentTarEntry == null) {
-            currentTarEntry = tarArchiveInputStream.getNextTarEntry();
+            currentTarEntry = archiveInputStream.getNextEntry();
             if (currentTarEntry != null) {
-                tarArchiveOutputStream.putArchiveEntry(currentTarEntry);
+                archiveOutputStream.putArchiveEntry(currentTarEntry);
             } else {
                 // finish the archive, and get the remaining bytes
-                tarArchiveOutputStream.finish();
-                tarArchiveOutputStream.flush();
-                tarArchiveOutputStream.close();
+                archiveOutputStream.finish();
+                archiveOutputStream.flush();
+                archiveOutputStream.close();
                 finished = true;
             }
         }
@@ -264,14 +267,14 @@ public class ObservableArchiveInputStream extends FilterInputStream {
     }
 
     private void updateMd(byte[] bytes, int off, int len) {
-        if(md != null) {
-            md.update(bytes, off, len);
+        if(messageDigest != null) {
+            messageDigest.update(bytes, off, len);
         }
     }
 
     private String getMd() {
-        if(md != null) {
-            return hashAsHex(md.digest());
+        if(messageDigest != null) {
+            return hashAsHex(messageDigest.digest());
         } else {
             return "Not Calculated";
         }

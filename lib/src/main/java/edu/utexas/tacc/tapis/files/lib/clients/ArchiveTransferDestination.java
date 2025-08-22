@@ -10,6 +10,6 @@ import java.util.concurrent.Future;
 public interface ArchiveTransferDestination {
     ArchiveTransferResult writeArchive(@NotNull String basePath,
                                        @NotNull InputStream archiveInputStream,
-                                       boolean isCompressed,
+                                       ArchiveTransferProvider archiveTransferProvider,
                                        Future<SSHCommandResult> sourceResultFuture) throws IOException;
 }

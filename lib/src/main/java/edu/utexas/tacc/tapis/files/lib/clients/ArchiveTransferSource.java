@@ -8,5 +8,5 @@ import java.util.Set;
 public interface ArchiveTransferSource {
     ArchiveInputPipe getArchiveStream(@NotNull String srcBasePath,
                                       @NotNull Set<String> relativePaths,
-                                      boolean useCompression) throws IOException;
+                                      ArchiveTransferProvider archiveTransferProvider) throws IOException;
 }

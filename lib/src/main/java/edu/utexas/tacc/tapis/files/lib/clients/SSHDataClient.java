@@ -40,6 +40,7 @@ import org.apache.sshd.sftp.client.SftpClient.Attributes;
 import org.apache.sshd.sftp.client.SftpClient.DirEntry;
 import org.apache.sshd.sftp.common.SftpConstants;
 import org.apache.sshd.sftp.common.SftpException;
+import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -560,7 +561,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
   @Override
   public ArchiveInputPipe getArchiveStream(@NotNull String srcBasePath,
                                            @NotNull Set<String> relativePaths,
-                                           boolean useCompression) throws IOException {
+                                           ArchiveTransferProvider archiveTransferProvider) throws IOException {
     StringBuilder inputBuilder = new StringBuilder();
     for (String relativePath : relativePaths) {
       inputBuilder.append(relativePath);
@@ -576,29 +577,30 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
 
     ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
 
-    StringBuilder commandBuilder = new StringBuilder();
-    commandBuilder.append("tar -C '");
-    commandBuilder.append(absBasePath);
-    if(useCompression) {
-//      commandBuilder.append("' -cvzT- ");
-      commandBuilder.append("' -czT- ");
-    } else {
-//      commandBuilder.append("' -cvT- ");
-      commandBuilder.append("' -cT- ");
-    }
-
-    // possibly add ignore failed for optional? could mask other errors though
-    // commandBuilder.append("' --ignore-failed-read -cT- ");
-
-    // add -h to follow links
-    // commandBuilder.append("' -hcT- ");
+//    StringBuilder commandBuilder = new StringBuilder();
+//    commandBuilder.append("tar -C '");
+//    commandBuilder.append(absBasePath);
+//    if(useCompression) {
+////      commandBuilder.append("' -cvzT- ");
+//      commandBuilder.append("' -czT- ");
+//    } else {
+////      commandBuilder.append("' -cvT- ");
+//      commandBuilder.append("' -cT- ");
+//    }
+//
+//    // possibly add ignore failed for optional? could mask other errors though
+//    // commandBuilder.append("' --ignore-failed-read -cT- ");
+//
+//    // add -h to follow links
+//    // commandBuilder.append("' -hcT- ");
 
     Future<SSHCommandResult> sourceResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
       public SSHCommandResult call() throws Exception {
         SSHCommandResult sourceCommandResult = new SSHCommandResult();
         try {
-          int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
+          String archiveCommand = archiveTransferProvider.getArchiveCommand(absBasePath.toString());
+          int returnValue = sshHolder.getSession().execute(archiveCommand, new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
           sourceCommandResult.setCommandResult(returnValue);
           InputStream errorInputStream = new ByteArrayInputStream(errorStream.toByteArray());
           sourceCommandResult.setCommandError(errorInputStream.readNBytes(MAX_ERROR_BYTES));
@@ -618,31 +620,32 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
   @Override
   public ArchiveTransferResult writeArchive(@NotNull String basePath,
                                             InputStream archiveInputStream,
-                                            boolean isCompressed,
+                                            ArchiveTransferProvider archiveTransferProvider,
                                             Future<SSHCommandResult> sourceResultFuture) throws IOException {
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
 
-    StringBuilder commandBuilder = new StringBuilder();
-    commandBuilder.append("tar -C '");
-    commandBuilder.append(absBasePath);
-    if(isCompressed) {
-//      commandBuilder.append("' -xvz");
-      commandBuilder.append("' -xz");
-    } else {
-//      commandBuilder.append("' -xv");
-      commandBuilder.append("' -x");
-    }
+//    StringBuilder commandBuilder = new StringBuilder();
+//    commandBuilder.append("tar -C '");
+//    commandBuilder.append(absBasePath);
+//    if(isCompressed) {
+////      commandBuilder.append("' -xvz");
+//      commandBuilder.append("' -xz");
+//    } else {
+////      commandBuilder.append("' -xv");
+//      commandBuilder.append("' -x");
+//    }
 
     Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
       public SSHCommandResult call() throws Exception {
+        String unarchiveCommand = archiveTransferProvider.getUnarchiveCommand(absBasePath.toString());
         SSHCommandResult destinationCommandResult = new SSHCommandResult();
         try(final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
                 borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
-          int returnValue = sshHolder.getSession().execute(commandBuilder.toString(), archiveInputStream, outputStream, errorStream);
+          int returnValue = sshHolder.getSession().execute(unarchiveCommand, archiveInputStream, outputStream, errorStream);
           destinationCommandResult.setCommandResult(returnValue);
 
           InputStream errorInputStream = new ByteArrayInputStream(errorStream.toByteArray());

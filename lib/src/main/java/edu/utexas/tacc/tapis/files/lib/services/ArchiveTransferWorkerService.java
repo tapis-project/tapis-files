@@ -6,6 +6,7 @@ import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveInputPipe;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferDestination;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferLog;
+import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferProvider;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
@@ -30,6 +31,7 @@ import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
+import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -167,15 +169,13 @@ public class ArchiveTransferWorkerService {
     }
 
     private boolean canCreateNewFutures(Map<UUID, Future<ArchiveTransferResult>> futures, int capacity) throws DAOException {
-//        if(futures.size() >= capacity) {
-            for (UUID key : futures.keySet()) {
-                Future<ArchiveTransferResult> resultFuture = futures.get(key);
-                if (resultFuture.isDone()) {
-                    updateArchiveTransfer(key, resultFuture);
-                    futures.remove(key);
-                }
+        for (UUID key : futures.keySet()) {
+            Future<ArchiveTransferResult> resultFuture = futures.get(key);
+            if (resultFuture.isDone()) {
+                updateArchiveTransfer(key, resultFuture);
+                futures.remove(key);
             }
-//        }
+        }
 
         return futures.size() < capacity;
     }
@@ -243,23 +243,24 @@ public class ArchiveTransferWorkerService {
         //TODO AXFER: handle case of not FastXFER client
         ArchiveTransferResult archiveTransferResult = null;
 
-        MessageDigest md = null;
+        MessageDigest sha256Digest = null;
         try {
-            md = MessageDigest.getInstance("SHA256");
+            sha256Digest = MessageDigest.getInstance("SHA256");
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
 
+        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(ArchiveTransferProvider.ArchiveTypes.TAR_GZIP, sha256Digest);
+
         if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
            dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
             ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
-                    params.getSrcUri().getPath(), params.getRelativePaths(), params.getCompress());
-// with observeable stream
-                ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, md, params.compress);
-                ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
-                observableArchiveInputStream.addObserver(archiveTransferLog);
-                archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, params.getCompress(), archiveInputPipe.getSourceResultFuture());
-                archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
+            params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
+            ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, archiveTransferProvider);
+            ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
+            observableArchiveInputStream.addObserver(archiveTransferLog);
+            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, archiveTransferProvider, archiveInputPipe.getSourceResultFuture());
+            archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
 
 
 // without observeable stream
