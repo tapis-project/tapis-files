@@ -47,15 +47,6 @@ public class ObservableArchiveInputStream extends FilterInputStream {
         archiveInputStream = archiveTransferProvider.getArchiveInputStream(in);
         archiveOutputStream = archiveTransferProvider.getArchiveOutputStream(byteArrayOutputStream);
         this.messageDigest = archiveTransferProvider.getMessageDigest();
-//        if(useCompression) {
-//            archiveInputStream = new TarArchiveInputStream(new GZIPInputStream(in));
-//            archiveOutputStream = new TarArchiveOutputStream(new GZIPOutputStream(byteArrayOutputStream));
-//        } else {
-//            archiveInputStream = new TarArchiveInputStream(in);
-//            archiveOutputStream = new TarArchiveOutputStream(byteArrayOutputStream);
-//        }
-//        // store the MessageDigest (may be null)
-//        this.md = md;
     }
 
     @Override
@@ -84,18 +75,7 @@ public class ObservableArchiveInputStream extends FilterInputStream {
             throw new RuntimeException("Error in observableStream read: ", th);
         }
     }
-/*
-    @Override
-    public int read(@NotNull byte[] b) throws IOException {
-        return read(b, 0, b.length);
-        try {
-            return read(b, 0, b.length);
-        } catch (Throwable th) {
-            log.error("Caught throwable in method read", th);
-            throw new RuntimeException("Error in observableStream read: ", th);
-        }
-    }
-*/
+
     @Override
     public int read(@NotNull byte[] b, int off, int len) throws IOException {
         try {
@@ -122,20 +102,9 @@ public class ObservableArchiveInputStream extends FilterInputStream {
                 int copyLength = Math.min(len - bytesRead, bytesLeftInReadBuffer());
 
                 System.arraycopy(byteArrayOutputStream.toByteArray(), readPosition, b, off + bytesRead, copyLength);
-//                int readByte = (0x000000FF) & byteArrayOutputStream.toByteArray()[readPosition];
                 totalRead += copyLength;
                 readPosition += copyLength;
                 bytesRead += copyLength;
-/*
-                if (readResult == -1) {
-                    // if we got a -1, and we have nothing buffered up, we must be at the end.
-                    if (bytesRead == 0) {
-                        return -1;
-                    }
-                    break;
-                }
-                b[off + bytesRead] = (byte) readResult;
- */
             }
 
             log.info("read with offset: " + "byte[] length: " + b.length + " off: " + off + "len: " + len + " read:" + bytesRead + " totalRead: " + totalRead);
@@ -147,37 +116,6 @@ public class ObservableArchiveInputStream extends FilterInputStream {
         }
     }
 
-    /*
-    @Override
-    public int read(@NotNull byte[] b, int off, int len) throws IOException {
-        try {
-            int bytesRead = 0;
-
-            if (len == 0) {
-                return 0;
-            }
-
-            for (bytesRead = 0; bytesRead < len; bytesRead++) {
-                int readResult = read();
-                if (readResult == -1) {
-                    // if we got a -1, and we have nothing buffered up, we must be at the end.
-                    if (bytesRead == 0) {
-                        return -1;
-                    }
-                    break;
-                }
-                b[off + bytesRead] = (byte) readResult;
-            }
-
-            log.info("read with offset: " + "byte[] length: " + b.length + " off: " + off + "len: " + len + " read:" + bytesRead + " totalRead: " + totalRead);
-
-            return bytesRead;
-        } catch (Throwable th) {
-            log.error("Caught throwable in method read", th);
-            throw new RuntimeException("Error in observableStream read: ", th);
-        }
-    }
-*/
     private int bytesLeftInReadBuffer() {
         return byteArrayOutputStream.size() - readPosition;
     }

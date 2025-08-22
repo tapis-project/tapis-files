@@ -21,6 +21,7 @@ public class ArchiveTransferResponse {
     private String errorMessage;
     private String srcSharedCtxGrantor;
     private String destSharedCtxGrantor;
+    private String archiveType;
 
     public int getId() {
         return id;
@@ -146,5 +147,13 @@ public class ArchiveTransferResponse {
 
     public void setDestSharedCtxGrantor(String destSharedCtxGrantor) {
         this.destSharedCtxGrantor = destSharedCtxGrantor;
+    }
+
+    public String getArchiveType() {
+        return archiveType;
+    }
+
+    public void setArchiveType(String archiveType) {
+        this.archiveType = archiveType;
     }
 }

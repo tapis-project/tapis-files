@@ -11,22 +11,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
-import java.util.Collection;
 
 public class ArchiveTransferProvider {
-    public enum ArchiveTypes {
+    public enum ArchiveType {
         TAR,
         TAR_GZIP
     }
 
-    private final ArchiveTypes archiveType;
+    private final ArchiveType archiveType;
     private final MessageDigest messageDigest;
 
-    public ArchiveTransferProvider(ArchiveTypes archiveType) {
+    public ArchiveTransferProvider(ArchiveType archiveType) {
         this(archiveType, null);
     }
 
-    public ArchiveTransferProvider(ArchiveTypes archiveType, MessageDigest messageDigest) {
+    public ArchiveTransferProvider(ArchiveType archiveType, MessageDigest messageDigest) {
         this.archiveType = archiveType;
         this.messageDigest = messageDigest;
     }

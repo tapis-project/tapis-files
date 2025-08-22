@@ -166,6 +166,7 @@ public class ArchiveTransfersService {
         archiveTransferResponse.setErrorMessage(archiveTransfer.getErrorMessage());
         archiveTransferResponse.setSrcSharedCtxGrantor(archiveTransfer.getSrcSharedCtxGrantor());
         archiveTransferResponse.setDestSharedCtxGrantor(archiveTransfer.getDestSharedCtxGrantor());
+        archiveTransferResponse.setArchiveType(archiveTransfer.getArchiveType());
         return archiveTransferResponse;
     }
 

@@ -24,7 +24,7 @@ public class ArchiveTransfer {
     private UUID assignedTo;
     private long fileBytesRead;
     private long archiveBytesRead;
-    private boolean compress;
+    private String archiveType;
 
     public int getId() {
         return id;
@@ -160,12 +160,11 @@ public class ArchiveTransfer {
         this.assignedTo = assignedTo;
     }
 
-    public boolean getCompress() {
-        return compress;
+    public String getArchiveType() {
+        return archiveType;
     }
 
-    public void setCompress(boolean compress) {
-        this.compress = compress;
+    public void setArchiveType(String archiveType) {
+        this.archiveType = archiveType;
     }
-
 }

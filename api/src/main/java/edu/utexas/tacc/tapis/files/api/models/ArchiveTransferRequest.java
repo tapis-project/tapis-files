@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
+import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferProvider;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
@@ -14,7 +15,7 @@ public class ArchiveTransferRequest {
     private Set<String> relativePaths;
     private String srcSharedCtxGrantor;
     private String destSharedCtxGrantor;
-    private boolean compress = true;
+    private String archiveType = "TAR_GZIP";
 
     public String getSourceBaseUrl() {
         return sourceBaseUrl;
@@ -61,12 +62,12 @@ public class ArchiveTransferRequest {
         this.destSharedCtxGrantor = destSharedCtxGrantor;
     }
 
-    public boolean getCompress() {
-        return compress;
+    public String getArchiveType() {
+        return archiveType;
     }
 
-    public void setCompress(boolean compress) {
-        this.compress = compress;
+    public void setArchiveType(String archiveType) {
+        this.archiveType = archiveType;
     }
 
     public String validateRequest() {
@@ -80,6 +81,17 @@ public class ArchiveTransferRequest {
 
         if((relativePaths == null) || (relativePaths.isEmpty())) {
             return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "relativePaths");
+        }
+
+        if((archiveType == null) || (archiveType.isEmpty())) {
+            return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "archiveType");
+        }
+
+        try {
+            // try to get the corresponding enum value - throws Illegal argument if it fails
+            ArchiveTransferProvider.ArchiveType.valueOf(archiveType);
+        } catch (IllegalArgumentException ex) {
+            return LibUtils.getMsg("FILES_XFER_INVALID_PARAMETER", "ArchiveTransferRequest", "archiveType", ex.getMessage());
         }
 
         return null;

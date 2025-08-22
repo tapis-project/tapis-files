@@ -42,7 +42,7 @@ public class ArchiveTransfersDAO {
                     archiveTransfer.getStatus().name(),
                     archiveTransfer.getSourceBaseUrl(),
                     archiveTransfer.getDestinationBaseUrl(),
-                    archiveTransfer.getCompress(),
+                    archiveTransfer.getArchiveType(),
                     archiveTransfer.getArchiveBytesRead(),
                     archiveTransfer.getFileBytesRead(),
                     archiveTransfer.getErrorMessage(),

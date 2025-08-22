@@ -31,7 +31,6 @@ import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
-import org.checkerframework.checker.units.qual.A;
 import org.jetbrains.annotations.NotNull;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
@@ -218,7 +217,7 @@ public class ArchiveTransferWorkerService {
         params.setDstSharedCtxGrantor(archiveTransfer.getDestSharedCtxGrantor());
 
         params.setRelativePaths(archiveTransfer.getRelativePaths());
-        params.setCompress(archiveTransfer.getCompress());
+        params.setArchiveType(ArchiveTransferProvider.ArchiveType.valueOf(archiveTransfer.getArchiveType()));
 
         return params;
     }
@@ -250,7 +249,7 @@ public class ArchiveTransferWorkerService {
             throw new RuntimeException(e);
         }
 
-        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(ArchiveTransferProvider.ArchiveTypes.TAR_GZIP, sha256Digest);
+        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), sha256Digest);
 
         if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
            dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {

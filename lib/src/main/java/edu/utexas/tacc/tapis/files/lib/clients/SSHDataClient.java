@@ -562,43 +562,25 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
   public ArchiveInputPipe getArchiveStream(@NotNull String srcBasePath,
                                            @NotNull Set<String> relativePaths,
                                            ArchiveTransferProvider archiveTransferProvider) throws IOException {
-    StringBuilder inputBuilder = new StringBuilder();
-    for (String relativePath : relativePaths) {
-      inputBuilder.append(relativePath);
-      inputBuilder.append(System.lineSeparator());
-    }
-
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, srcBasePath);
 
-    final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
-            borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
     PipedOutputStream outputStream = new PipedOutputStream();
     ArchiveInputPipe archiveInputPipe = new ArchiveInputPipe(outputStream );
 
-    ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
-
-//    StringBuilder commandBuilder = new StringBuilder();
-//    commandBuilder.append("tar -C '");
-//    commandBuilder.append(absBasePath);
-//    if(useCompression) {
-////      commandBuilder.append("' -cvzT- ");
-//      commandBuilder.append("' -czT- ");
-//    } else {
-////      commandBuilder.append("' -cvT- ");
-//      commandBuilder.append("' -cT- ");
-//    }
-//
-//    // possibly add ignore failed for optional? could mask other errors though
-//    // commandBuilder.append("' --ignore-failed-read -cT- ");
-//
-//    // add -h to follow links
-//    // commandBuilder.append("' -hcT- ");
 
     Future<SSHCommandResult> sourceResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
       public SSHCommandResult call() throws Exception {
         SSHCommandResult sourceCommandResult = new SSHCommandResult();
-        try {
+
+        StringBuilder inputBuilder = new StringBuilder();
+        for (String relativePath : relativePaths) {
+          inputBuilder.append(relativePath);
+          inputBuilder.append(System.lineSeparator());
+        }
+
+        ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
+        try (final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder = borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
           String archiveCommand = archiveTransferProvider.getArchiveCommand(absBasePath.toString());
           int returnValue = sshHolder.getSession().execute(archiveCommand, new ByteArrayInputStream(inputBuilder.toString().getBytes()), outputStream, errorStream);
           sourceCommandResult.setCommandResult(returnValue);
@@ -623,24 +605,11 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
                                             ArchiveTransferProvider archiveTransferProvider,
                                             Future<SSHCommandResult> sourceResultFuture) throws IOException {
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
-
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
-
-//    StringBuilder commandBuilder = new StringBuilder();
-//    commandBuilder.append("tar -C '");
-//    commandBuilder.append(absBasePath);
-//    if(isCompressed) {
-////      commandBuilder.append("' -xvz");
-//      commandBuilder.append("' -xz");
-//    } else {
-////      commandBuilder.append("' -xv");
-//      commandBuilder.append("' -x");
-//    }
-
     Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
       public SSHCommandResult call() throws Exception {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
         String unarchiveCommand = archiveTransferProvider.getUnarchiveCommand(absBasePath.toString());
         SSHCommandResult destinationCommandResult = new SSHCommandResult();
         try(final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
@@ -658,7 +627,6 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
         return destinationCommandResult;
       }
     });
-
     ArchiveTransferResult archiveTransferResult = new ArchiveTransferResult(sourceResultFuture, destinationResultFuture);
     return archiveTransferResult;
   }

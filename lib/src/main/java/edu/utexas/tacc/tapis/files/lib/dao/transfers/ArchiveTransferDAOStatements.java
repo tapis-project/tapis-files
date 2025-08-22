@@ -5,7 +5,7 @@ public class ArchiveTransferDAOStatements {
             """
                 INSERT INTO archive_transfers (username, tenant_id, 
                     status, source_base_url, destination_base_url,
-                    compress, archive_bytes_read, file_bytes_read, error_message,
+                    archive_type, archive_bytes_read, file_bytes_read, error_message,
                     src_shared_ctx, dst_shared_ctx) VALUES 
                     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     RETURNING *;
