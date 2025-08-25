@@ -17,6 +17,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
+import edu.utexas.tacc.tapis.files.lib.exceptions.UnrecoverableTransferException;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
@@ -40,12 +41,15 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.TemporalAmount;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -56,10 +60,11 @@ import java.util.concurrent.TimeUnit;
 import static edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory.IMPERSONATION_ID_NULL;
 
 @Service
-public class ArchiveTransferWorkerService {
+public class ArchiveTransferWorker {
     private ScheduledExecutorService archiveTransferScheduler = Executors.newSingleThreadScheduledExecutor();
     private static final int MAX_THREADS = RuntimeSettings.get().getArchiveTransferThreadPoolSize();
-    private static final Logger log = LoggerFactory.getLogger(ArchiveTransferWorkerService.class);
+    private static final TemporalAmount RETRY_WAIT = Duration.ofMinutes(10);
+    private static final Logger log = LoggerFactory.getLogger(ArchiveTransferWorker.class);
 
     @Inject
     private RemoteDataClientFactory remoteDataClientFactory;
@@ -122,30 +127,16 @@ public class ArchiveTransferWorkerService {
                                     log.debug("Priority: " + prioritizedArchiveTransfer.getPriority() + " tenant: " +
                                             prioritizedArchiveTransfer.getObject().getTenantId() +
                                             " user:" + prioritizedArchiveTransfer.getObject().getUsername());
-                                    try {
-                                        Future<ArchiveTransferResult> future = archiveTransferWorkers.submit(new Callable<ArchiveTransferResult>() {
-                                            @Override
-                                            public ArchiveTransferResult call() throws Exception {
-                                                Stopwatch sw = Stopwatch.createStarted();
-                                                try {
-                                                    return doTransfer(prioritizedArchiveTransfer.getObject());
-                                                } catch (Throwable th) {
-                                                    log.error("Caught exception while handling transfer task", th);
-                                                }
-                                                log.trace("ARCHIVE TRANSFER TIMING: ArchiveTransfer callable Id: " + prioritizedArchiveTransfer.getObject().getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
-                                                return null;
-                                            }
-                                        });
-                                        futures.put(archiveTransferUuid, future);
-                                    } catch (Throwable th) {
-                                        ArchiveTransfersDAO archiveTransfersDAO = new ArchiveTransfersDAO();
-                                        // TODO AXFER: Re-enable this code
-                                        /*
-                                        ArchiveTransfer archiveTransfer = archiveTransfersDAO.getArchiveTransferByUUID(archiveTransferUuid);
-                                        archiveTransfer.setStatus(archiveTransfer.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
-                                        archiveTransfersDAO.updateTransferTaskChild(archiveTransfer);
-                                         */
-                                    }
+                                    Future<ArchiveTransferResult> future = archiveTransferWorkers.submit(new Callable<ArchiveTransferResult>() {
+                                        @Override
+                                        public ArchiveTransferResult call() throws Exception {
+                                            Stopwatch sw = Stopwatch.createStarted();
+                                            ArchiveTransferResult archiveTransferResult = doTransfer(prioritizedArchiveTransfer.getObject());
+                                            log.trace("ARCHIVE TRANSFER TIMING: ArchiveTransfer callable Id: " + prioritizedArchiveTransfer.getObject().getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+                                            return archiveTransferResult;
+                                        }
+                                    });
+                                    futures.put(archiveTransferUuid, future);
                                 }
                             }
                         } catch (SchedulingPolicyException ex) {
@@ -168,6 +159,7 @@ public class ArchiveTransferWorkerService {
     }
 
     private boolean canCreateNewFutures(Map<UUID, Future<ArchiveTransferResult>> futures, int capacity) throws DAOException {
+        // remove all completed transfers before checking capacity
         for (UUID key : futures.keySet()) {
             Future<ArchiveTransferResult> resultFuture = futures.get(key);
             if (resultFuture.isDone()) {
@@ -195,7 +187,39 @@ public class ArchiveTransferWorkerService {
         ResourceRequestUser rUser = simulateResourceRequestUser(archiveTransfer);
         ArchiveTransferParams params = getArchiveTransferParams(rUser, archiveTransfer);
         validateParams(params);
-        return handleTransfer(rUser, params);
+
+        IRemoteDataClient srcClient = remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(),
+                params.getSrcSystem(), IMPERSONATION_ID_NULL, params.getSrcSharedCtxGrantor());
+
+        IRemoteDataClient dstClient = remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(),
+                params.getDstSystem(), IMPERSONATION_ID_NULL, params.getSrcSharedCtxGrantor());
+
+        ArchiveTransferResult result = null;
+        //TODO AXFER: handle case of not FastXFER client
+        ArchiveTransferResult archiveTransferResult = null;
+
+        MessageDigest sha256Digest = null;
+        try {
+            sha256Digest = MessageDigest.getInstance("SHA256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+
+        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), sha256Digest);
+
+        if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
+                dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
+            ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
+                    params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
+            ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, archiveTransferProvider);
+            ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
+            observableArchiveInputStream.addObserver(archiveTransferLog);
+            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, archiveTransferProvider, archiveInputPipe.getSourceResultFuture());
+            archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
+        }
+
+        return archiveTransferResult;
+
     }
 
     private ArchiveTransferParams getArchiveTransferParams(ResourceRequestUser rUser, ArchiveTransfer archiveTransfer) {
@@ -224,88 +248,95 @@ public class ArchiveTransferWorkerService {
 
     private void validateParams(ArchiveTransferParams params) {
         if((!params.getSrcUri().isTapisProtocol()) || (!params.getDstUri().isTapisProtocol()))  {
-            // TODO AXFER: think about exceptiosn a bit!! - not just here but everywehere in AXFER
-            throw new RuntimeException("Error - must be tapis protocol");
+            // TODO AXFER: error message
+            throw new UnrecoverableTransferException("Error - must be tapis protocol");
         }
-    }
-
-    private ArchiveTransferResult handleTransfer(ResourceRequestUser rUser, ArchiveTransferParams params) throws IOException {
-        final String opName = "processTransfer";
-
-        IRemoteDataClient srcClient = remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(),
-                params.getSrcSystem(), IMPERSONATION_ID_NULL, params.getSrcSharedCtxGrantor());
-
-        IRemoteDataClient dstClient = remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(),
-                params.getDstSystem(), IMPERSONATION_ID_NULL, params.getSrcSharedCtxGrantor());
-
-        ArchiveTransferResult result = null;
-        //TODO AXFER: handle case of not FastXFER client
-        ArchiveTransferResult archiveTransferResult = null;
-
-        MessageDigest sha256Digest = null;
-        try {
-            sha256Digest = MessageDigest.getInstance("SHA256");
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-
-        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), sha256Digest);
-
-        if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
-           dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
-            ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
-            params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
-            ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, archiveTransferProvider);
-            ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
-            observableArchiveInputStream.addObserver(archiveTransferLog);
-            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, archiveTransferProvider, archiveInputPipe.getSourceResultFuture());
-            archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
-
-
-// without observeable stream
-//            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(),
-//                    archiveInputPipe, params.getCompress(), archiveInputPipe.getSourceResultFuture());
-        }
-
-        return archiveTransferResult;
     }
 
     private void updateArchiveTransfer(UUID archiveTransferUuid, Future<ArchiveTransferResult> resultFuture) throws DAOException {
         ArchiveTransferResult result = null;
         String errorMessage = null;
-        ArchiveTransferStatus status = null;
 
         try {
             result = resultFuture.get();
             result.waitForCompletion();
 
-            if((result != null) && (result.isSuccess())) {
-                status = ArchiveTransferStatus.COMPLETED;
-            } else {
-                status = ArchiveTransferStatus.FAILED;
+            if((result != null) && (!result.isSuccess())) {
+                scheduleRetryOrFail(archiveTransferUuid, result.getMessages(), false);
+                return;
             }
-            errorMessage = result.getMessages();
-            //TODO AXFER: update the task with success/fail include message if failed
         } catch (Throwable th) {
-            //TODO AXFER: update the task with fail - include exception text
-            errorMessage = th.getMessage();
-            status = ArchiveTransferStatus.FAILED;
+            if(th instanceof ExecutionException executionException) {
+                Throwable cause = executionException.getCause();
+                while(cause != null) {
+                    if(cause instanceof UnrecoverableTransferException unrecoverableTransferException) {
+                        // force failure - this is unrecoverable
+                        scheduleRetryOrFail(archiveTransferUuid, cause.getMessage(), true);
+                        break;
+                    }
+                    cause = cause.getCause();
+                }
+
+            }
+            scheduleRetryOrFail(archiveTransferUuid, th.getMessage(), false);
+            return;
         }
 
+        // if we've gotten this far, the transfer was successfull, so mark it complete
         ArchiveTransferLog archiveTransferLog = result.getArchiveTransferLog();
         final long fileBytesRead = (archiveTransferLog == null) ? 0 : archiveTransferLog.getFileBytesRead();
         final long archiveBytesRead = (archiveTransferLog == null) ? 0 : archiveTransferLog.getArchiveBytesRead();
 
         final String updateErrorMessage = errorMessage;
-        ArchiveTransferStatus updateStatus = status;
         ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
-        ArchiveTransfer archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
+
+        DAOTransactionContext.doInTransaction(context -> {
             ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
+            currentTransfer.setStatus(ArchiveTransferStatus.COMPLETED);
             currentTransfer.setErrorMessage(updateErrorMessage);
-            currentTransfer.setStatus(updateStatus);
             currentTransfer.setArchiveBytesRead(archiveBytesRead);
             currentTransfer.setEndTime(Instant.now());
             currentTransfer.setFileBytesRead(fileBytesRead);
+            currentTransfer.setNextRetry(null);
+            currentTransfer.setRetriesRemaining(0);
+            return dao.updateArchiveTransfer(context, currentTransfer, false);
+        });
+    }
+
+    private ArchiveTransfer scheduleRetryOrFail(UUID archiveTransferUuid, String errorMessage, boolean forceFail) throws DAOException {
+        ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
+
+        return DAOTransactionContext.doInTransaction(context -> {
+            // read for update
+            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
+
+            // if it's already in a 'final' state, ignore this request and return.
+            if(currentTransfer.getStatus().isFinalState()) {
+                return currentTransfer;
+            }
+
+            int retriesRemaining = currentTransfer.getRetriesRemaining();
+            StringBuilder errorMessageBuilder = new StringBuilder();
+            if ((retriesRemaining > 0) && (!forceFail)) {
+                // if there are more retries, schedule the next one.
+                currentTransfer.setRetriesRemaining(retriesRemaining - 1);
+                currentTransfer.setStatus(ArchiveTransferStatus.AWAITING_RETRY);
+                currentTransfer.setNextRetry(Instant.now().plus(RETRY_WAIT));
+                errorMessageBuilder.append("Scheduling retry:  ");
+                errorMessageBuilder.append(System.lineSeparator());
+                errorMessageBuilder.append(errorMessage);
+            } else {
+                // if there are no more retries, fail the transfer
+                currentTransfer.setStatus(ArchiveTransferStatus.FAILED);
+                currentTransfer.setRetriesRemaining(0);
+                currentTransfer.setNextRetry(null);
+                errorMessageBuilder.append("No more retries available.  Last error:");
+                errorMessageBuilder.append(System.lineSeparator());
+                errorMessageBuilder.append(errorMessage);
+            }
+            currentTransfer.setErrorMessage(errorMessageBuilder.toString());
+            currentTransfer.setAssignedTo(null);
+
             return dao.updateArchiveTransfer(context, currentTransfer, false);
         });
     }

@@ -6,8 +6,8 @@ public class ArchiveTransferDAOStatements {
                 INSERT INTO archive_transfers (username, tenant_id, 
                     status, source_base_url, destination_base_url,
                     archive_type, archive_bytes_read, file_bytes_read, error_message,
-                    src_shared_ctx, dst_shared_ctx) VALUES 
-                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    src_shared_ctx, dst_shared_ctx, retries_remaining) VALUES 
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     RETURNING *;
             """;
 
@@ -17,7 +17,7 @@ public class ArchiveTransferDAOStatements {
                     RETURNING path;
             """;
 
-    public static final String GET_ACCEPTED_ARCHIVE_TRANSFERS_FOR_TENANTS_AND_USERS =
+    public static final String GET_ACCEPTED_AND_RETRY_ARCHIVE_TRANSFERS_FOR_TENANTS_AND_USERS =
             """
               SELECT * FROM (
                 select
@@ -31,8 +31,10 @@ public class ArchiveTransferDAOStatements {
                 from
                   archive_transfers
                 where
-                  status = 'ACCEPTED' AND
-                  assigned_to IS NULL
+                  assigned_to IS NULL  AND 
+                  ((status = 'ACCEPTED') OR 
+                    (status = 'AWAITING_RETRY' 
+                    AND next_retry <= NOW()))
               )
                 where
                   row_number <= ?
@@ -40,7 +42,7 @@ public class ArchiveTransferDAOStatements {
                   row_number;
             """ ;
 
-    public static final String GET_ACCEPTED_ARCHIVE_TRANSFERS_ASSIGNED_TO_WORKER =
+    public static final String GET_ACCEPTED_AND_RETRY_ARCHIVE_TRANSFERS_ASSIGNED_TO_WORKER =
             """
             SELECT * from (
               SELECT *, row_number() 
@@ -51,8 +53,11 @@ public class ArchiveTransferDAOStatements {
                 ORDER BY created) 
               FROM archive_transfers 
               WHERE 
-                status = 'ACCEPTED' AND 
-                assigned_to = ?) 
+                assigned_to = ? AND
+                ((status = 'ACCEPTED') OR 
+                (status = 'AWAITING_RETRY' 
+                AND next_retry <= NOW()))
+              )
             WHERE row_number <= ? ORDER BY row_number;
             """;
 
@@ -124,6 +129,8 @@ public class ArchiveTransferDAOStatements {
                   error_message = ?,
                   archive_bytes_read = ?,
                   file_bytes_read = ?,
+                  retries_remaining = ?,
+                  next_retry = ?,
                   start_time = ?,
                   end_time = ?,
                   assigned_to = ?

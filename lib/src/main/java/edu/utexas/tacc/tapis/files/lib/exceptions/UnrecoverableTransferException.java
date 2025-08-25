@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.exceptions;
 
-public class UnrecoverableTransferException extends Exception {
+public class UnrecoverableTransferException extends RuntimeException {
     public UnrecoverableTransferException() {
         super();
     }

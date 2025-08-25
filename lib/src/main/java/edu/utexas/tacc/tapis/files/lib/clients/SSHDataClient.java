@@ -586,8 +586,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
           sourceCommandResult.setCommandResult(returnValue);
           InputStream errorInputStream = new ByteArrayInputStream(errorStream.toByteArray());
           sourceCommandResult.setCommandError(errorInputStream.readNBytes(MAX_ERROR_BYTES));
-        } catch (Throwable th) {
-          th.printStackTrace();
+//        } catch (Throwable th) {
+//          th.printStackTrace();
         }
 
         return sourceCommandResult;
@@ -604,6 +604,10 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
                                             InputStream archiveInputStream,
                                             ArchiveTransferProvider archiveTransferProvider,
                                             Future<SSHCommandResult> sourceResultFuture) throws IOException {
+    if (0 == 0) {
+      throw new RuntimeException("Hello world - do you hear me?");
+    }
+
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
     Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
@@ -621,9 +625,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
           destinationCommandResult.setCommandError(errorInputStream.readNBytes(MAX_ERROR_BYTES));
           InputStream outputInputStream = new ByteArrayInputStream(outputStream.toByteArray());
           destinationCommandResult.setCommandOutput(outputInputStream.readNBytes(MAX_OUTPUT_BYTES));
-        } catch (Throwable th) {
-          th.printStackTrace();
         }
+
         return destinationCommandResult;
       }
     });

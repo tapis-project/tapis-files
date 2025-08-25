@@ -10,7 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.PostgresDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferWorkerDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
-import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransferWorkerService;
+import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransferWorker;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -108,7 +108,7 @@ public class TransfersApp
         bindAsContract(FileShareService.class).in(Singleton.class);
         bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
         bindAsContract(ParentTaskTransferService.class).in(Singleton.class);
-        bindAsContract(ArchiveTransferWorkerService.class).in(Singleton.class);
+        bindAsContract(ArchiveTransferWorker.class).in(Singleton.class);
         bindAsContract(FilePermsCache.class).in(Singleton.class);
         bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
         bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
@@ -210,11 +210,11 @@ public class TransfersApp
       log.info("Started child pipeline.");
 
       log.info("Getting archive transfer service.");
-      ArchiveTransferWorkerService archiveTransferWorkerService = locator.getService(ArchiveTransferWorkerService.class);
+      ArchiveTransferWorker archiveTransferWorker = locator.getService(ArchiveTransferWorker.class);
       log.info("Got parentTxfrSvc.");
 
       log.info("Starting archive transfer worker.");
-      archiveTransferWorkerService.start(myUuid);
+      archiveTransferWorker.start(myUuid);
       log.info("Started archive transfer worker.");
 
     } catch(Exception ex) {

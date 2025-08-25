@@ -11,6 +11,8 @@
    archive_type             VARCHAR(32)                 NOT NULL,
    start_time               TIMESTAMP WITH TIME ZONE    DEFAULT NULL,
    end_time                 TIMESTAMP WITH TIME ZONE    DEFAULT NULL,
+   next_retry               TIMESTAMP WITH TIME ZONE    DEFAULT NULL,
+   retries_remaining        SMALLINT                    DEFAULT NULL,
    file_bytes_read          BIGINT                      NOT NULL,
    archive_bytes_read       BIGINT                      NOT NULL,
    error_message            TEXT                        DEFAULT NULL,

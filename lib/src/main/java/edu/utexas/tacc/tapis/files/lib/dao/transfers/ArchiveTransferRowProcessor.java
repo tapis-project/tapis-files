@@ -6,6 +6,7 @@ import org.apache.commons.dbutils.BasicRowProcessor;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,11 @@ public class ArchiveTransferRowProcessor extends BasicRowProcessor {
         archiveTransfer.setDestinationBaseUrl(resultSet.getString("destination_base_url"));
         archiveTransfer.setArchiveType(resultSet.getString("archive_type"));
         archiveTransfer.setCreated(resultSet.getTimestamp("created").toInstant());
+        Timestamp nextRetryTimestamp = resultSet.getTimestamp("next_retry");
+        if(nextRetryTimestamp != null) {
+            archiveTransfer.setNextRetry(nextRetryTimestamp.toInstant());
+        }
+        archiveTransfer.setRetriesRemaining(resultSet.getInt("retries_remaining"));
         archiveTransfer.setUuid(resultSet.getObject("uuid", UUID.class));
         archiveTransfer.setStatus(ArchiveTransferStatus.valueOf(resultSet.getString("status")));
         archiveTransfer.setSrcSharedCtxGrantor(resultSet.getString("src_shared_ctx"));

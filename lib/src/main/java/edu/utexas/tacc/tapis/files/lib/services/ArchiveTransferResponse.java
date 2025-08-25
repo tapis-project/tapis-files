@@ -16,6 +16,8 @@ public class ArchiveTransferResponse {
     Set<String> relativePaths;
     private Instant startTime;
     private Instant endTime;
+    private int retriesRemaining;
+    private Instant nextRetry;
     private Long archiveBytesRead;
     private Long fileBytesRead;
     private String errorMessage;
@@ -155,5 +157,21 @@ public class ArchiveTransferResponse {
 
     public void setArchiveType(String archiveType) {
         this.archiveType = archiveType;
+    }
+
+    public int getRetriesRemaining() {
+        return retriesRemaining;
+    }
+
+    public void setRetriesRemaining(int retriesRemaining) {
+        this.retriesRemaining = retriesRemaining;
+    }
+
+    public Instant getNextRetry() {
+        return nextRetry;
+    }
+
+    public void setNextRetry(Instant nextRetry) {
+        this.nextRetry = nextRetry;
     }
 }

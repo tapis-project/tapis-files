@@ -47,7 +47,8 @@ public class ArchiveTransfersDAO {
                     archiveTransfer.getFileBytesRead(),
                     archiveTransfer.getErrorMessage(),
                     archiveTransfer.getSrcSharedCtxGrantor(),
-                    archiveTransfer.getDestSharedCtxGrantor());
+                    archiveTransfer.getDestSharedCtxGrantor(),
+                    archiveTransfer.getRetriesRemaining());
             insertedArchiveTransfer.setRelativePaths(insertRelativePaths(context, insertedArchiveTransfer.getId(), archiveTransfer.getRelativePaths()));
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertTransferWorker", ex.getMessage()), ex);
@@ -128,6 +129,8 @@ public class ArchiveTransfersDAO {
                     archiveTransfer.getErrorMessage(),
                     archiveTransfer.getArchiveBytesRead(),
                     archiveTransfer.getFileBytesRead(),
+                    archiveTransfer.getRetriesRemaining(),
+                    (archiveTransfer.getNextRetry() == null) ? null : Timestamp.from(archiveTransfer.getNextRetry()),
                     (archiveTransfer.getStartTime() == null) ? null : Timestamp.from(archiveTransfer.getStartTime()),
                     (archiveTransfer.getEndTime() == null) ? null : Timestamp.from(archiveTransfer.getEndTime()),
                     archiveTransfer.getAssignedTo(),
@@ -156,7 +159,7 @@ public class ArchiveTransfersDAO {
             List<PrioritizedObject> prioritizedArchiveTransfers;
             prioritizedArchiveTransfers = runner.query(
                     context.getConnection(),
-                    ArchiveTransferDAOStatements.GET_ACCEPTED_ARCHIVE_TRANSFERS_ASSIGNED_TO_WORKER,
+                    ArchiveTransferDAOStatements.GET_ACCEPTED_AND_RETRY_ARCHIVE_TRANSFERS_ASSIGNED_TO_WORKER,
                     handler,
                     workerUuid,
                     maxTasksPerTenantAndUser);
@@ -182,7 +185,7 @@ public class ArchiveTransfersDAO {
             QueryRunner runner = new QueryRunner();
             List<PrioritizedObject> prioritizedArchiveTransfers = runner.query(
                     context.getConnection(),
-                    ArchiveTransferDAOStatements.GET_ACCEPTED_ARCHIVE_TRANSFERS_FOR_TENANTS_AND_USERS,
+                    ArchiveTransferDAOStatements.GET_ACCEPTED_AND_RETRY_ARCHIVE_TRANSFERS_FOR_TENANTS_AND_USERS,
                     handler,
                     maxTasksPerTenantAndUser);
 

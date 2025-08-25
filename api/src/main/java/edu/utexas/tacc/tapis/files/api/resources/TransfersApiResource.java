@@ -355,6 +355,7 @@ public class  TransfersApiResource
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
     Response resp1 = ApiUtils.checkContext(threadContext);
+
     // If there is a problem return error response
     if (resp1 != null) {
       return resp1;
@@ -382,6 +383,7 @@ public class  TransfersApiResource
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
+
     String msg = MsgUtils.getMsg(TAPIS_FOUND, "TransferTask", archiveTransferUuid);
     TapisResponse<ArchiveTransferResponse> resp = TapisResponse.createSuccessResponse(msg, archiveTransferResponse);
     return Response.ok(resp).build();
@@ -396,12 +398,16 @@ public class  TransfersApiResource
                                      @Context SecurityContext securityContext)
   {
     String opName = "createFastTransfer";
+
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
     Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+
     // If there is a problem return error response
-    if (resp1 != null) return resp1;
+    if (resp1 != null) {
+      return resp1;
+    }
 
     // Create a user that collects together tenant, user and request information needed by service calls
     ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());

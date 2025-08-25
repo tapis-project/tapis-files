@@ -18,6 +18,8 @@ public class ArchiveTransfer {
     Set<String> relativePaths;
     private Instant startTime;
     private Instant endTime;
+    private Instant nextRetry;
+    private int retriesRemaining;
     private String errorMessage;
     private String srcSharedCtxGrantor;
     private String destSharedCtxGrantor;
@@ -166,5 +168,21 @@ public class ArchiveTransfer {
 
     public void setArchiveType(String archiveType) {
         this.archiveType = archiveType;
+    }
+
+    public Instant getNextRetry() {
+        return nextRetry;
+    }
+
+    public void setNextRetry(Instant nextRetry) {
+        this.nextRetry = nextRetry;
+    }
+
+    public int getRetriesRemaining() {
+        return retriesRemaining;
+    }
+
+    public void setRetriesRemaining(int retriesRemaining) {
+        this.retriesRemaining = retriesRemaining;
     }
 }

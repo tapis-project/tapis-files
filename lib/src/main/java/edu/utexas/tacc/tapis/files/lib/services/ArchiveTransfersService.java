@@ -33,6 +33,8 @@ import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_IM
 public class ArchiveTransfersService {
     private static final Logger log = LoggerFactory.getLogger(ArchiveTransfersService.class);
 
+    public static int MAXIMUM_RETRIES = 3;
+
     @Inject
     private FileShareService shareService;
     @Inject
@@ -49,6 +51,7 @@ public class ArchiveTransfersService {
 
         // set initialize fields
         archiveTransfer.setStatus(ArchiveTransferStatus.ACCEPTED);
+        archiveTransfer.setRetriesRemaining(MAXIMUM_RETRIES);
         // Validate the request. Check that all Tapis systems exist and are enabled.
         // Check that transfer between system types is supported.
         validateRequest(rUser, archiveTransfer);
@@ -167,6 +170,8 @@ public class ArchiveTransfersService {
         archiveTransferResponse.setSrcSharedCtxGrantor(archiveTransfer.getSrcSharedCtxGrantor());
         archiveTransferResponse.setDestSharedCtxGrantor(archiveTransfer.getDestSharedCtxGrantor());
         archiveTransferResponse.setArchiveType(archiveTransfer.getArchiveType());
+        archiveTransferResponse.setRetriesRemaining(archiveTransfer.getRetriesRemaining());
+        archiveTransferResponse.setNextRetry(archiveTransfer.getNextRetry());
         return archiveTransferResponse;
     }
 
