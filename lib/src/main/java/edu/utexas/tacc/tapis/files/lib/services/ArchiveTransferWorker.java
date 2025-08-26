@@ -61,7 +61,17 @@ import static edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClientFactory.I
 
 @Service
 public class ArchiveTransferWorker {
-    private ScheduledExecutorService archiveTransferScheduler = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledExecutorService archiveTransferScheduler = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+        ThreadFactory defaultFactory = Executors.defaultThreadFactory();
+        @Override
+        public Thread newThread(@NotNull Runnable runnable) {
+            Thread th = defaultFactory.newThread(runnable);
+            th.setDaemon(true);
+            th.setName("ArchiveTransferWorker - " + th.getName());
+            return th;
+        }
+    });
+
     private static final int MAX_THREADS = RuntimeSettings.get().getArchiveTransferThreadPoolSize();
     private static final TemporalAmount RETRY_WAIT = Duration.ofMinutes(10);
     private static final Logger log = LoggerFactory.getLogger(ArchiveTransferWorker.class);
@@ -131,7 +141,7 @@ public class ArchiveTransferWorker {
                                         @Override
                                         public ArchiveTransferResult call() throws Exception {
                                             Stopwatch sw = Stopwatch.createStarted();
-                                            ArchiveTransferResult archiveTransferResult = doTransfer(prioritizedArchiveTransfer.getObject());
+                                            ArchiveTransferResult archiveTransferResult = doTransfer(archiveTransferUuid);
                                             log.trace("ARCHIVE TRANSFER TIMING: ArchiveTransfer callable Id: " + prioritizedArchiveTransfer.getObject().getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                                             return archiveTransferResult;
                                         }
@@ -143,6 +153,7 @@ public class ArchiveTransferWorker {
                             log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERROR_GETTING_WORK", myUuid));
                             break;
                         }
+                        Thread.yield();
                         if (futures.isEmpty()) {
                             shouldExit = true;
                         }
@@ -171,13 +182,10 @@ public class ArchiveTransferWorker {
         return futures.size() < capacity;
     }
 
-    private ArchiveTransferResult doTransfer(ArchiveTransfer archiveTransfer) throws IOException, DAOException {
-        // TODO AXFER:  I think this should be passed in - not the whole archiveTransfer
-        UUID archiveTransferUuid = archiveTransfer.getUuid();
-
+    private ArchiveTransferResult doTransfer(UUID archiveTransferUuid) throws IOException, DAOException {
         // get the resourceRequestUser
         ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
-        archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
+        ArchiveTransfer archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
             ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
             currentTransfer.setStatus(ArchiveTransferStatus.IN_PROGRESS);
             currentTransfer.setStartTime(Instant.now());

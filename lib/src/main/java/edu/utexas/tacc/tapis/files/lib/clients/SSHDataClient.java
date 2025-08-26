@@ -604,10 +604,6 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
                                             InputStream archiveInputStream,
                                             ArchiveTransferProvider archiveTransferProvider,
                                             Future<SSHCommandResult> sourceResultFuture) throws IOException {
-    if (0 == 0) {
-      throw new RuntimeException("Hello world - do you hear me?");
-    }
-
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
     Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override

@@ -1,10 +1,9 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +15,6 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
-
 
 public class ObservableArchiveInputStream extends FilterInputStream {
 
@@ -51,69 +47,59 @@ public class ObservableArchiveInputStream extends FilterInputStream {
 
     @Override
     public int read() throws IOException {
-        try {
-            if ((this.finished) && (bytesLeftInReadBuffer() == 0)) {
+        if ((this.finished) && (bytesLeftInReadBuffer() == 0)) {
+            notifyArchiveSize();
+            return -1;
+        }
+
+        if (bytesLeftInReadBuffer() <= 0) {
+            byteArrayOutputStream.reset();
+            readPosition = 0;
+            if (fillReadBuffer(READ_BUFFER_SIZE) == -1) {
                 notifyArchiveSize();
                 return -1;
             }
-
-            if (bytesLeftInReadBuffer() <= 0) {
-                byteArrayOutputStream.reset();
-                readPosition = 0;
-                if (fillReadBuffer(READ_BUFFER_SIZE) == -1) {
-                    notifyArchiveSize();
-                    return -1;
-                }
-            }
-
-            int readByte = (0x000000FF) & byteArrayOutputStream.toByteArray()[readPosition];
-            totalRead++;
-            readPosition++;
-            return readByte;
-        } catch (Throwable th) {
-            log.error("Caught throwable in method read", th);
-            throw new RuntimeException("Error in observableStream read: ", th);
         }
+
+        int readByte = (0x000000FF) & byteArrayOutputStream.toByteArray()[readPosition];
+        totalRead++;
+        readPosition++;
+        return readByte;
     }
 
     @Override
     public int read(@NotNull byte[] b, int off, int len) throws IOException {
-        try {
-            if (len == 0) {
-                return 0;
-            }
-
-            if ((this.finished) && (bytesLeftInReadBuffer() == 0)) {
-                notifyArchiveSize();
-                return -1;
-            }
-
-            int bytesRead = 0;
-
-            while(bytesRead < len) {
-                if (bytesLeftInReadBuffer() <= 0) {
-                    byteArrayOutputStream.reset();
-                    readPosition = 0;
-                    if (fillReadBuffer(READ_BUFFER_SIZE) == -1) {
-                        return bytesRead;
-                    }
-                }
-
-                int copyLength = Math.min(len - bytesRead, bytesLeftInReadBuffer());
-
-                System.arraycopy(byteArrayOutputStream.toByteArray(), readPosition, b, off + bytesRead, copyLength);
-                totalRead += copyLength;
-                readPosition += copyLength;
-                bytesRead += copyLength;
-            }
-
-            log.info("read with offset: " + "byte[] length: " + b.length + " off: " + off + "len: " + len + " read:" + bytesRead + " totalRead: " + totalRead);
-
-            return bytesRead;
-        } catch (Throwable th) {
-            log.error("Caught throwable in method read", th);
-            throw new RuntimeException("Error in observableStream read: ", th);
+        if (len == 0) {
+            return 0;
         }
+
+        if ((this.finished) && (bytesLeftInReadBuffer() == 0)) {
+            notifyArchiveSize();
+            return -1;
+        }
+
+        int bytesRead = 0;
+
+        while (bytesRead < len) {
+            if (bytesLeftInReadBuffer() <= 0) {
+                byteArrayOutputStream.reset();
+                readPosition = 0;
+                if (fillReadBuffer(READ_BUFFER_SIZE) == -1) {
+                    return bytesRead;
+                }
+            }
+
+            int copyLength = Math.min(len - bytesRead, bytesLeftInReadBuffer());
+
+            System.arraycopy(byteArrayOutputStream.toByteArray(), readPosition, b, off + bytesRead, copyLength);
+            totalRead += copyLength;
+            readPosition += copyLength;
+            bytesRead += copyLength;
+        }
+
+        log.info("read with offset: " + "byte[] length: " + b.length + " off: " + off + "len: " + len + " read:" + bytesRead + " totalRead: " + totalRead);
+
+        return bytesRead;
     }
 
     private int bytesLeftInReadBuffer() {
@@ -226,8 +212,8 @@ public class ObservableArchiveInputStream extends FilterInputStream {
             try {
                 observer.file(name, size, digest);
             } catch (Throwable th) {
-                // TODO AXFER:  log this error - add longging etc remove println
-                th.printStackTrace();
+                String msg = LibUtils.getMsg("FILES_XFER_ERROR_NOTIFYING_OBSERVER", "notifyFile");
+                log.error(msg, th);
             }
         });
     }
@@ -237,8 +223,8 @@ public class ObservableArchiveInputStream extends FilterInputStream {
             try {
                 observer.actualBytesRead(totalRead);
             } catch (Throwable th) {
-                // TODO AXFER:  log this error - add longging etc remove println
-                th.printStackTrace();
+                String msg = LibUtils.getMsg("FILES_XFER_ERROR_NOTIFYING_OBSERVER", "notifyArchiveSize");
+                log.error(msg, th);
             }
         });
     }
