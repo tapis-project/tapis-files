@@ -15,7 +15,9 @@ import java.security.MessageDigest;
 public class ArchiveTransferProvider {
     public enum ArchiveType {
         TAR,
-        TAR_GZIP
+        TAR_GZIP,
+        TAR_ARCHIVE,
+        GZIP_ARCHIVE
     }
 
     private final ArchiveType archiveType;
@@ -32,9 +34,9 @@ public class ArchiveTransferProvider {
 
     public ArchiveInputStream getArchiveInputStream(InputStream in) throws IOException {
         ArchiveInputStream archiveInputStream = switch (archiveType) {
-            case TAR -> new TarArchiveInputStream(in);
+            case TAR, TAR_ARCHIVE -> new TarArchiveInputStream(in);
 
-            case TAR_GZIP -> new TarArchiveInputStream(new GzipCompressorInputStream(in));
+            case TAR_GZIP, GZIP_ARCHIVE -> new TarArchiveInputStream(new GzipCompressorInputStream(in));
         };
 
         return archiveInputStream;
@@ -42,9 +44,9 @@ public class ArchiveTransferProvider {
 
     public ArchiveOutputStream getArchiveOutputStream(OutputStream out) throws IOException {
         ArchiveOutputStream archiveOutputStream = switch (archiveType) {
-            case TAR -> new TarArchiveOutputStream(out);
+            case TAR, TAR_ARCHIVE -> new TarArchiveOutputStream(out);
 
-            case TAR_GZIP -> new TarArchiveOutputStream(new GzipCompressorOutputStream(out));
+            case TAR_GZIP, GZIP_ARCHIVE -> new TarArchiveOutputStream(new GzipCompressorOutputStream(out));
         };
 
         return archiveOutputStream;
@@ -53,7 +55,7 @@ public class ArchiveTransferProvider {
     public String getArchiveCommand(String srcAbsBasePath) {
 
         String command = switch (archiveType) {
-            case TAR -> {
+            case TAR, TAR_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(srcAbsBasePath);
@@ -61,7 +63,7 @@ public class ArchiveTransferProvider {
                 yield commandBuilder.toString();
             }
 
-            case TAR_GZIP -> {
+            case TAR_GZIP, GZIP_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(srcAbsBasePath);
@@ -81,7 +83,7 @@ public class ArchiveTransferProvider {
         // commandBuilder.append("' -hcT- ");
 
         String command = switch (archiveType) {
-            case TAR -> {
+            case TAR, TAR_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(dstAbsBasePath);
@@ -89,7 +91,7 @@ public class ArchiveTransferProvider {
                 yield commandBuilder.toString();
             }
 
-            case TAR_GZIP -> {
+            case TAR_GZIP, GZIP_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(dstAbsBasePath);

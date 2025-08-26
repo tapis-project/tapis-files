@@ -9,9 +9,11 @@ import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferLog;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferProvider;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
+import edu.utexas.tacc.tapis.files.lib.clients.FullArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.ObservableArchiveInputStream;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
+import edu.utexas.tacc.tapis.files.lib.clients.ToArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
@@ -202,9 +204,9 @@ public class ArchiveTransferWorker {
         IRemoteDataClient dstClient = remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(),
                 params.getDstSystem(), IMPERSONATION_ID_NULL, params.getSrcSharedCtxGrantor());
 
-        ArchiveTransferResult result = null;
-        //TODO AXFER: handle case of not FastXFER client
-        ArchiveTransferResult archiveTransferResult = null;
+//        ArchiveTransferResult result = null;
+//        //TODO AXFER: handle case of not FastXFER client
+//        ArchiveTransferResult archiveTransferResult = null;
 
         MessageDigest sha256Digest = null;
         try {
@@ -213,21 +215,76 @@ public class ArchiveTransferWorker {
             throw new RuntimeException(e);
         }
 
-        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), sha256Digest);
+//        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), sha256Digest);
+//
+//        if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
+//                dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
+//            ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
+//                    params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
+//            ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, archiveTransferProvider);
+//            ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
+//            observableArchiveInputStream.addObserver(archiveTransferLog);
+//            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, archiveTransferProvider, archiveInputPipe.getSourceResultFuture());
+//            archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
+//        }
+//        return archiveTransferResult;
 
-        if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
-                dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
-            ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
-                    params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
-            ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, archiveTransferProvider);
-            ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
-            observableArchiveInputStream.addObserver(archiveTransferLog);
-            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, archiveTransferProvider, archiveInputPipe.getSourceResultFuture());
-            archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
-        }
+        ArchiveTransferResult archiveTransferResult = switch (params.archiveType) {
+            case TAR, TAR_GZIP -> {
+                if (srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
+                        dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
+                    yield handleFullTransfer(srcArchiveXFer, dstArchiveXFer, params, sha256Digest);
+                }
+                // TODO AXFER: fix message
+                throw new UnrecoverableTransferException("Archive transfer must be supported for source and destination systems");
+            }
+
+            case TAR_ARCHIVE, GZIP_ARCHIVE -> {
+                if (srcClient instanceof ArchiveTransferSource srcArchiveXFer) {
+                    yield handleToArchiveTransfer(srcArchiveXFer, dstClient, params, sha256Digest);
+                }
+                // TODO AXFER: fix message
+                throw new UnrecoverableTransferException("Archive transfer must be supported for source and destination systems");
+            }
+        };
 
         return archiveTransferResult;
+    }
 
+    private ArchiveTransferResult handleFullTransfer(ArchiveTransferSource srcClient, ArchiveTransferDestination dstClient, ArchiveTransferParams params, MessageDigest md) throws IOException {
+        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), md);
+
+        ArchiveInputPipe archiveInputPipe = srcClient.getArchiveStream(
+                params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
+        ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, archiveTransferProvider);
+        ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
+        observableArchiveInputStream.addObserver(archiveTransferLog);
+        ArchiveTransferResult archiveTransferResult = dstClient.writeArchive(
+                params.getDstUri().getPath(), observableArchiveInputStream,
+                archiveTransferProvider, archiveInputPipe.getSourceResultFuture());
+        archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
+
+        return archiveTransferResult;
+    }
+
+    private ArchiveTransferResult handleToArchiveTransfer(ArchiveTransferSource srcClient, IRemoteDataClient dstClient, ArchiveTransferParams params, MessageDigest md) throws IOException {
+        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), md);
+
+        ArchiveInputPipe archiveInputPipe = srcClient.getArchiveStream(
+                params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
+        ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, archiveTransferProvider);
+        ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
+        observableArchiveInputStream.addObserver(archiveTransferLog);
+//        archiveTransferResult = dstClient.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, archiveTransferProvider, archiveInputPipe.getSourceResultFuture());
+        ArchiveTransferResult archiveTransferResult = new ToArchiveTransferResult(archiveInputPipe.getSourceResultFuture());
+        archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
+        dstClient.upload(params.dstUri.getPath(), observableArchiveInputStream);
+
+        return archiveTransferResult;
+    }
+
+    private ArchiveTransferResult handleFromArchiveTransfer() {
+        return null;
     }
 
     private ArchiveTransferParams getArchiveTransferParams(ResourceRequestUser rUser, ArchiveTransfer archiveTransfer) {
@@ -267,6 +324,10 @@ public class ArchiveTransferWorker {
 
         try {
             result = resultFuture.get();
+
+            // NOTE - "waitForCompletion" is the thing that waits for the futures contained
+            // inside of "resultFuture" to complete.  It has to be here - see waitForCompletion()
+            // for details.
             result.waitForCompletion();
 
             if((result != null) && (!result.isSuccess())) {
