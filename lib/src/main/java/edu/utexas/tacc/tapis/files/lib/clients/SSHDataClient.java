@@ -2,6 +2,8 @@ package edu.utexas.tacc.tapis.files.lib.clients;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -30,6 +32,12 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.AclEntry;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveInputPipe;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferProvider;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferResult;
+import edu.utexas.tacc.tapis.files.lib.transfers.FromArchiveTransferResult;
+import edu.utexas.tacc.tapis.files.lib.transfers.FullArchiveTransferResult;
+import edu.utexas.tacc.tapis.files.lib.models.SSHCommandResult;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisRecoverableException;
 import edu.utexas.tacc.tapis.shared.exceptions.recoverable.TapisSSHAuthException;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
@@ -613,8 +621,20 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
         String unarchiveCommand = archiveTransferProvider.getUnarchiveCommand(absBasePath.toString());
         SSHCommandResult destinationCommandResult = new SSHCommandResult();
         try(final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
-                borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
-          int returnValue = sshHolder.getSession().execute(unarchiveCommand, archiveInputStream, outputStream, errorStream);
+                borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
+            var delayedCloseInputStream = new FilterInputStream(archiveInputStream) {
+              @Override
+              public void close() throws IOException {
+                // ignore this - it's closed later
+              }
+
+              public void ensureClosed() throws IOException {
+                super.close();
+                this.close();
+              }
+            }) {
+          int returnValue = sshHolder.getSession().execute(unarchiveCommand, delayedCloseInputStream, outputStream, errorStream);
+          delayedCloseInputStream.ensureClosed();
           destinationCommandResult.setCommandResult(returnValue);
 
           InputStream errorInputStream = new ByteArrayInputStream(errorStream.toByteArray());
@@ -629,8 +649,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
         return destinationCommandResult;
       }
     });
-    ArchiveTransferResult archiveTransferResult = new FullArchiveTransferResult(sourceResultFuture, destinationResultFuture);
-    return archiveTransferResult;
+
+    return archiveTransferProvider.getArchiveTransferResult(sourceResultFuture, destinationResultFuture);
   }
 
   @Override

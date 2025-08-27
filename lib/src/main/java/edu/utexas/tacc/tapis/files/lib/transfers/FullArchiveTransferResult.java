@@ -1,5 +1,6 @@
-package edu.utexas.tacc.tapis.files.lib.clients;
+package edu.utexas.tacc.tapis.files.lib.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.models.SSHCommandResult;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.concurrent.ExecutionException;
@@ -8,19 +9,10 @@ import java.util.concurrent.Future;
 public class FullArchiveTransferResult extends ArchiveTransferResult {
     private final Future<SSHCommandResult> sourceCommandResult;
     private final Future<SSHCommandResult> destinationCommandResult;
-//    private ArchiveTransferLog archiveTransferLog;
-    FullArchiveTransferResult(Future<SSHCommandResult> sourceCommandResult, Future<SSHCommandResult> destinationCommandResult) {
+    public FullArchiveTransferResult(Future<SSHCommandResult> sourceCommandResult, Future<SSHCommandResult> destinationCommandResult) {
         this.sourceCommandResult = sourceCommandResult;
         this.destinationCommandResult = destinationCommandResult;
     }
-
-//    public void setArchiveTransferLog(ArchiveTransferLog archiveTransferLog) {
-//        this.archiveTransferLog = archiveTransferLog;
-//    }
-//
-//    public ArchiveTransferLog getArchiveTransferLog() {
-//        return archiveTransferLog;
-//    }
 
     public Future<SSHCommandResult> getSourceCommandResult() {
         return sourceCommandResult;
@@ -28,6 +20,11 @@ public class FullArchiveTransferResult extends ArchiveTransferResult {
 
     public Future<SSHCommandResult> getDestinationCommandResult() {
         return destinationCommandResult;
+    }
+
+    @Override
+    public boolean isComplete() throws ExecutionException, InterruptedException {
+        return(sourceCommandResult.isDone() && destinationCommandResult.isDone());
     }
 
     public void waitForCompletion() throws ExecutionException, InterruptedException {
@@ -93,19 +90,6 @@ public class FullArchiveTransferResult extends ArchiveTransferResult {
         return(getCommandResultFromFuture(sourceCommandResult).isSuccess() &&
                 getCommandResultFromFuture(destinationCommandResult).isSuccess());
     }
-
-//    SSHCommandResult getCommandResultFromFuture(Future<SSHCommandResult> future) {
-//        if(future.isDone()) {
-//            try {
-//                return future.get();
-//            } catch (Exception ex) {
-//                // I don't think this can happen since we know they are complete, but handle it anyway.
-//                throw new RuntimeException("Exception getting command result", ex);
-//            }
-//        } else {
-//            throw new RuntimeException("Command result is not complete.");
-//        }
-//    }
 
     @Override
     public String toString() {

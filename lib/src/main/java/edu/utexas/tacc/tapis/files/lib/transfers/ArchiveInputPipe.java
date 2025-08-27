@@ -1,4 +1,6 @@
-package edu.utexas.tacc.tapis.files.lib.clients;
+package edu.utexas.tacc.tapis.files.lib.transfers;
+
+import edu.utexas.tacc.tapis.files.lib.models.SSHCommandResult;
 
 import java.io.IOException;
 import java.io.PipedInputStream;
@@ -7,7 +9,7 @@ import java.util.concurrent.Future;
 
 public class ArchiveInputPipe extends PipedInputStream {
     private Future<SSHCommandResult> sourceResultFuture;
-    ArchiveInputPipe(PipedOutputStream src) throws IOException {
+    public ArchiveInputPipe(PipedOutputStream src) throws IOException {
         super(src);
     }
     ArchiveInputPipe(PipedOutputStream src, int pipeSize) throws IOException {

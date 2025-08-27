@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.lib.clients;
+package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import java.util.ArrayList;
 import java.util.List;

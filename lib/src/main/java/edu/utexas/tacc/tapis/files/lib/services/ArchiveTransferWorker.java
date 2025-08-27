@@ -3,17 +3,16 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import com.google.common.base.Stopwatch;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
-import edu.utexas.tacc.tapis.files.lib.clients.ArchiveInputPipe;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveInputPipe;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferDestination;
-import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferLog;
-import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferProvider;
-import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferResult;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferLog;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferProvider;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferSource;
-import edu.utexas.tacc.tapis.files.lib.clients.FullArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
-import edu.utexas.tacc.tapis.files.lib.clients.ObservableArchiveInputStream;
+import edu.utexas.tacc.tapis.files.lib.transfers.ObservableArchiveInputStream;
 import edu.utexas.tacc.tapis.files.lib.clients.RemoteDataClientFactory;
-import edu.utexas.tacc.tapis.files.lib.clients.ToArchiveTransferResult;
+import edu.utexas.tacc.tapis.files.lib.transfers.ToArchiveTransferResult;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
@@ -40,7 +39,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -175,8 +176,9 @@ public class ArchiveTransferWorker {
         // remove all completed transfers before checking capacity
         for (UUID key : futures.keySet()) {
             Future<ArchiveTransferResult> resultFuture = futures.get(key);
-            if (resultFuture.isDone()) {
-                updateArchiveTransfer(key, resultFuture);
+            // updateArchiveTransferIfComplete returns true if it was complete, or false if it's still in progress
+            if(updateArchiveTransferIfComplete(key, resultFuture)) {
+                // remove the future if its result's future(s) are complete
                 futures.remove(key);
             }
         }
@@ -204,30 +206,12 @@ public class ArchiveTransferWorker {
         IRemoteDataClient dstClient = remoteDataClientFactory.getRemoteDataClient(rUser.getOboTenantId(), rUser.getOboUserId(),
                 params.getDstSystem(), IMPERSONATION_ID_NULL, params.getSrcSharedCtxGrantor());
 
-//        ArchiveTransferResult result = null;
-//        //TODO AXFER: handle case of not FastXFER client
-//        ArchiveTransferResult archiveTransferResult = null;
-
         MessageDigest sha256Digest = null;
         try {
             sha256Digest = MessageDigest.getInstance("SHA256");
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
-
-//        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), sha256Digest);
-//
-//        if(srcClient instanceof ArchiveTransferSource srcArchiveXFer &&
-//                dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
-//            ArchiveInputPipe archiveInputPipe = srcArchiveXFer.getArchiveStream(
-//                    params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
-//            ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, archiveTransferProvider);
-//            ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
-//            observableArchiveInputStream.addObserver(archiveTransferLog);
-//            archiveTransferResult = dstArchiveXFer.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, archiveTransferProvider, archiveInputPipe.getSourceResultFuture());
-//            archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
-//        }
-//        return archiveTransferResult;
 
         ArchiveTransferResult archiveTransferResult = switch (params.archiveType) {
             case TAR, TAR_GZIP -> {
@@ -242,6 +226,14 @@ public class ArchiveTransferWorker {
             case TAR_ARCHIVE, GZIP_ARCHIVE -> {
                 if (srcClient instanceof ArchiveTransferSource srcArchiveXFer) {
                     yield handleToArchiveTransfer(srcArchiveXFer, dstClient, params, sha256Digest);
+                }
+                // TODO AXFER: fix message
+                throw new UnrecoverableTransferException("Archive transfer must be supported for source and destination systems");
+
+            }
+            case EXPAND_TAR_ARCHIVE, EXPAND_GZIP_ARCHIVE -> {
+                if (dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
+                    yield handleFromArchiveTransfer(srcClient, dstArchiveXFer, params, sha256Digest);
                 }
                 // TODO AXFER: fix message
                 throw new UnrecoverableTransferException("Archive transfer must be supported for source and destination systems");
@@ -275,13 +267,38 @@ public class ArchiveTransferWorker {
         ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(archiveInputPipe, archiveTransferProvider);
         ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
         observableArchiveInputStream.addObserver(archiveTransferLog);
-//        archiveTransferResult = dstClient.writeArchive(params.getDstUri().getPath(), observableArchiveInputStream, archiveTransferProvider, archiveInputPipe.getSourceResultFuture());
         ArchiveTransferResult archiveTransferResult = new ToArchiveTransferResult(archiveInputPipe.getSourceResultFuture());
         archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
         dstClient.upload(params.dstUri.getPath(), observableArchiveInputStream);
 
         return archiveTransferResult;
     }
+
+    private ArchiveTransferResult handleFromArchiveTransfer(IRemoteDataClient srcClient, ArchiveTransferDestination dstClient, ArchiveTransferParams params, MessageDigest md) throws IOException {
+        ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), md);
+
+        String srcPath = params.getSrcUri().getPath();
+        // for now, we will not expand symlink'ed archives ... but maybe that should change?
+        FileInfo info = srcClient.getFileInfo(srcPath, false);
+        if((info == null) || (!info.isFile())) {
+            throw new UnrecoverableTransferException("Transfer from archive requires source to be a file.");
+        }
+
+        InputStream inputStream = srcClient.getStream(srcPath);
+//        ArchiveInputPipe archiveInputPipe = srcClient.getArchiveStream(
+//                params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
+        ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(inputStream, archiveTransferProvider);
+        ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
+        observableArchiveInputStream.addObserver(archiveTransferLog);
+
+        // TODO  AXFER: check to see if there's a better way to handle last param that passing null in this case
+        ArchiveTransferResult archiveTransferResult = dstClient.writeArchive(params.getDstUri().getPath(),
+                observableArchiveInputStream, archiveTransferProvider, null);
+        archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
+
+        return archiveTransferResult;
+    }
+
 
     private ArchiveTransferResult handleFromArchiveTransfer() {
         return null;
@@ -318,12 +335,15 @@ public class ArchiveTransferWorker {
         }
     }
 
-    private void updateArchiveTransfer(UUID archiveTransferUuid, Future<ArchiveTransferResult> resultFuture) throws DAOException {
+    private boolean updateArchiveTransferIfComplete(UUID archiveTransferUuid, Future<ArchiveTransferResult> resultFuture) throws DAOException {
         ArchiveTransferResult result = null;
         String errorMessage = null;
 
         try {
             result = resultFuture.get();
+            if(!result.isComplete()) {
+                return false;
+            }
 
             // NOTE - "waitForCompletion" is the thing that waits for the futures contained
             // inside of "resultFuture" to complete.  It has to be here - see waitForCompletion()
@@ -332,7 +352,7 @@ public class ArchiveTransferWorker {
 
             if((result != null) && (!result.isSuccess())) {
                 scheduleRetryOrFail(archiveTransferUuid, result.getMessages(), false);
-                return;
+                return true;
             }
         } catch (Throwable th) {
             if(th instanceof ExecutionException executionException) {
@@ -348,7 +368,7 @@ public class ArchiveTransferWorker {
 
             }
             scheduleRetryOrFail(archiveTransferUuid, th.getMessage(), false);
-            return;
+            return true;
         }
 
         // if we've gotten this far, the transfer was successfull, so mark it complete
@@ -370,6 +390,8 @@ public class ArchiveTransferWorker {
             currentTransfer.setRetriesRemaining(0);
             return dao.updateArchiveTransfer(context, currentTransfer, false);
         });
+
+        return true;
     }
 
     private ArchiveTransfer scheduleRetryOrFail(UUID archiveTransferUuid, String errorMessage, boolean forceFail) throws DAOException {

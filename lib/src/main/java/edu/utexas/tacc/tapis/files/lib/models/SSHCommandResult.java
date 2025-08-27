@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.lib.clients;
+package edu.utexas.tacc.tapis.files.lib.models;
 
 public class SSHCommandResult {
     private int commandResult;

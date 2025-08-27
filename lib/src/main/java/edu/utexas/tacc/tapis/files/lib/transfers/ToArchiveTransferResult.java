@@ -1,5 +1,6 @@
-package edu.utexas.tacc.tapis.files.lib.clients;
+package edu.utexas.tacc.tapis.files.lib.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.models.SSHCommandResult;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.concurrent.ExecutionException;
@@ -10,6 +11,12 @@ public class ToArchiveTransferResult extends ArchiveTransferResult {
 
     public ToArchiveTransferResult(Future<SSHCommandResult> sourceCommandResult) {
         this.sourceCommandResult = sourceCommandResult;
+    }
+
+    @Override
+    public boolean isComplete() throws ExecutionException, InterruptedException {
+        return sourceCommandResult.isDone();
+
     }
 
     @Override

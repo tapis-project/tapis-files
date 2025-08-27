@@ -1,10 +1,12 @@
 package edu.utexas.tacc.tapis.files.lib.clients;
 
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferProvider;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferResult;
+import edu.utexas.tacc.tapis.files.lib.models.SSHCommandResult;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PipedInputStream;
 import java.util.concurrent.Future;
 
 public interface ArchiveTransferDestination {

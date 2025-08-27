@@ -1,4 +1,4 @@
-package edu.utexas.tacc.tapis.files.lib.clients;
+package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.compress.archivers.ArchiveEntry;
@@ -36,13 +36,27 @@ public class ObservableArchiveInputStream extends FilterInputStream {
     Logger log = LoggerFactory.getLogger(ObservableArchiveInputStream.class);
     private final List<Observer> observerList = new ArrayList<>();
     private final MessageDigest messageDigest;
-
+/*
     public ObservableArchiveInputStream(InputStream in, ArchiveTransferProvider archiveTransferProvider) throws IOException {
         super(in);
         byteArrayOutputStream = new ByteArrayOutputStream();
         archiveInputStream = archiveTransferProvider.getArchiveInputStream(in);
         archiveOutputStream = archiveTransferProvider.getArchiveOutputStream(byteArrayOutputStream);
         this.messageDigest = archiveTransferProvider.getMessageDigest();
+    }
+ */
+    public ObservableArchiveInputStream(InputStream in, ArchiveTransferProvider archiveTransferProvider) throws IOException {
+        this(archiveTransferProvider.getArchiveInputStream(in), archiveTransferProvider,
+                new ByteArrayOutputStream(), archiveTransferProvider.getMessageDigest());
+    }
+
+    private ObservableArchiveInputStream(ArchiveInputStream archiveInputStream, ArchiveTransferProvider archiveTransferProvider,
+                                         ByteArrayOutputStream byteArrayOutputStream, MessageDigest messageDigest) throws IOException {
+        super(archiveInputStream);
+        this.archiveInputStream = archiveInputStream;
+        this.archiveOutputStream = archiveTransferProvider.getArchiveOutputStream(byteArrayOutputStream);
+        this.byteArrayOutputStream = byteArrayOutputStream;
+        this.messageDigest = messageDigest;
     }
 
     @Override

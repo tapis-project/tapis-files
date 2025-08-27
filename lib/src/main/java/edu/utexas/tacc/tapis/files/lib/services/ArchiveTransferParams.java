@@ -1,6 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
-import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferProvider;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferProvider;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.jetbrains.annotations.UnmodifiableView;

@@ -1,12 +1,9 @@
 package edu.utexas.tacc.tapis.files.api.models;
 
-import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferProvider;
+import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferProvider;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
-import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
-import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
 import edu.utexas.tacc.tapis.shared.utils.TapisUtils;
 
-import java.util.HashSet;
 import java.util.Set;
 
 public class ArchiveTransferRequest {

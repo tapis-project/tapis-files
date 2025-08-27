@@ -1,5 +1,7 @@
-package edu.utexas.tacc.tapis.files.lib.clients;
+package edu.utexas.tacc.tapis.files.lib.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.exceptions.UnrecoverableTransferException;
+import edu.utexas.tacc.tapis.files.lib.models.SSHCommandResult;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -11,13 +13,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
+import java.util.concurrent.Future;
 
 public class ArchiveTransferProvider {
     public enum ArchiveType {
         TAR,
         TAR_GZIP,
         TAR_ARCHIVE,
-        GZIP_ARCHIVE
+        GZIP_ARCHIVE,
+        EXPAND_TAR_ARCHIVE,
+        EXPAND_GZIP_ARCHIVE
     }
 
     private final ArchiveType archiveType;
@@ -34,9 +39,9 @@ public class ArchiveTransferProvider {
 
     public ArchiveInputStream getArchiveInputStream(InputStream in) throws IOException {
         ArchiveInputStream archiveInputStream = switch (archiveType) {
-            case TAR, TAR_ARCHIVE -> new TarArchiveInputStream(in);
+            case TAR, TAR_ARCHIVE, EXPAND_TAR_ARCHIVE -> new TarArchiveInputStream(in);
 
-            case TAR_GZIP, GZIP_ARCHIVE -> new TarArchiveInputStream(new GzipCompressorInputStream(in));
+            case TAR_GZIP, GZIP_ARCHIVE, EXPAND_GZIP_ARCHIVE -> new TarArchiveInputStream(new GzipCompressorInputStream(in));
         };
 
         return archiveInputStream;
@@ -44,9 +49,9 @@ public class ArchiveTransferProvider {
 
     public ArchiveOutputStream getArchiveOutputStream(OutputStream out) throws IOException {
         ArchiveOutputStream archiveOutputStream = switch (archiveType) {
-            case TAR, TAR_ARCHIVE -> new TarArchiveOutputStream(out);
+            case TAR, TAR_ARCHIVE, EXPAND_TAR_ARCHIVE -> new TarArchiveOutputStream(out);
 
-            case TAR_GZIP, GZIP_ARCHIVE -> new TarArchiveOutputStream(new GzipCompressorOutputStream(out));
+            case TAR_GZIP, GZIP_ARCHIVE, EXPAND_GZIP_ARCHIVE -> new TarArchiveOutputStream(new GzipCompressorOutputStream(out));
         };
 
         return archiveOutputStream;
@@ -70,6 +75,9 @@ public class ArchiveTransferProvider {
                 commandBuilder.append("' -czT- ");
                 yield commandBuilder.toString();
             }
+
+            // TODO AXFER: this is the wrong message - not sure what it should say yet
+            default -> throw new UnrecoverableTransferException("Invalid configuration");
         };
 
         return command;
@@ -83,7 +91,7 @@ public class ArchiveTransferProvider {
         // commandBuilder.append("' -hcT- ");
 
         String command = switch (archiveType) {
-            case TAR, TAR_ARCHIVE -> {
+            case TAR, TAR_ARCHIVE, EXPAND_TAR_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(dstAbsBasePath);
@@ -91,7 +99,7 @@ public class ArchiveTransferProvider {
                 yield commandBuilder.toString();
             }
 
-            case TAR_GZIP, GZIP_ARCHIVE -> {
+            case TAR_GZIP, GZIP_ARCHIVE, EXPAND_GZIP_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(dstAbsBasePath);
@@ -105,5 +113,19 @@ public class ArchiveTransferProvider {
 
     public MessageDigest getMessageDigest() {
         return messageDigest;
+    }
+
+    public ArchiveTransferResult getArchiveTransferResult(Future<SSHCommandResult> sourceCommandResult,
+                                                          Future<SSHCommandResult> destinationCommandResult) {
+        ArchiveTransferResult result = switch (archiveType) {
+            case TAR, TAR_GZIP -> new FullArchiveTransferResult(sourceCommandResult, destinationCommandResult);
+//            case TAR_ARCHIVE, GZIP_ARCHIVE -> new ToArchiveTransferResult(sourceCommandResult);
+            case EXPAND_TAR_ARCHIVE, EXPAND_GZIP_ARCHIVE -> new FromArchiveTransferResult(destinationCommandResult);
+
+            // TODO AXFER: this is the wrong message - not sure what it should say yet
+            default -> throw new UnrecoverableTransferException("Invalid configuration");
+        };
+
+        return result;
     }
 }
