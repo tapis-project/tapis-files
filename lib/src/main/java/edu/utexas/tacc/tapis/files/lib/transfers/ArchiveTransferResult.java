@@ -34,7 +34,7 @@ public abstract class ArchiveTransferResult {
         }
     }
 
-    String getMessages(Future<SSHCommandResult> resultFuture, String resultLable) throws ExecutionException, InterruptedException {
+    String getMessages(Future<SSHCommandResult> resultFuture, String resultLabel) throws ExecutionException, InterruptedException {
         SSHCommandResult commandResult = resultFuture.get();
         byte[] commandOutput = commandResult.getCommandOutput();
         String outputMessage = (commandOutput == null) ? "" : new String(commandOutput);
@@ -44,17 +44,23 @@ public abstract class ArchiveTransferResult {
         StringBuilder builder = new StringBuilder();
 
         if(commandResult.getCommandResult() != 0) {
-            builder.append("SrcResult: ");
+            builder.append(resultLabel);
+            builder.append(" - Result :");
+            builder.append(System.lineSeparator());
             builder.append(commandResult.getCommandResult());
             builder.append(System.lineSeparator());
         }
         if(!StringUtils.isBlank(outputMessage)) {
-            builder.append("SrcOutput: ");
+            builder.append(resultLabel);
+            builder.append(" - Output :");
+            builder.append(System.lineSeparator());
             builder.append(outputMessage);
             builder.append(System.lineSeparator());
         }
         if(!StringUtils.isBlank(errorMessage)) {
-            builder.append("SrcError: ");
+            builder.append(resultLabel);
+            builder.append(" - Error :");
+            builder.append(System.lineSeparator());
             builder.append(errorMessage);
             builder.append(System.lineSeparator());
         }

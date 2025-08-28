@@ -39,7 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
@@ -349,9 +348,10 @@ public class ArchiveTransferWorker {
             // inside of "resultFuture" to complete.  It has to be here - see waitForCompletion()
             // for details.
             result.waitForCompletion();
+            errorMessage = result.getMessages();
 
             if((result != null) && (!result.isSuccess())) {
-                scheduleRetryOrFail(archiveTransferUuid, result.getMessages(), false);
+                scheduleRetryOrFail(archiveTransferUuid, errorMessage, false);
                 return true;
             }
         } catch (Throwable th) {

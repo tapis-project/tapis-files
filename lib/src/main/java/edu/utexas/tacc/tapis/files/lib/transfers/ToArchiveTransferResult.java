@@ -29,44 +29,6 @@ public class ToArchiveTransferResult extends ArchiveTransferResult {
         return getMessages(sourceCommandResult, "Source");
     }
 
-    /*
-        @Override
-        public String getMessages() throws ExecutionException, InterruptedException {
-            SSHCommandResult srcCommandResult = getSourceCommandResult().get();
-            byte[] srcCommandOutput = srcCommandResult.getCommandOutput();
-            String sourceOutputMessage = (srcCommandOutput == null) ? "" : new String(srcCommandOutput);
-            byte[] srcCommandError = srcCommandResult.getCommandError();
-            String sourceErrorMessage = (srcCommandError == null) ? "" : new String(srcCommandError);
-
-            StringBuilder builder = new StringBuilder();
-            if(srcCommandResult.getCommandResult() != 0) {
-                builder.append("SrcResult: ");
-                builder.append(srcCommandResult.getCommandResult());
-                builder.append(System.lineSeparator());
-            }
-            if(!StringUtils.isBlank(sourceOutputMessage)) {
-                builder.append("SrcOutput: ");
-                builder.append(sourceOutputMessage);
-                builder.append(System.lineSeparator());
-            }
-            if(!StringUtils.isBlank(sourceErrorMessage)) {
-                builder.append("SrcError: ");
-                builder.append(sourceErrorMessage);
-                builder.append(System.lineSeparator());
-            }
-
-            ArchiveTransferLog archiveTransferLog = getArchiveTransferLog();
-
-    //        if(archiveTransferLog != null) {
-    //            builder.append("Files Read:");
-    //            builder.append(System.lineSeparator());
-    //            for (String info : archiveTransferLog.getTransferInfo()) {
-    //                builder.append(info);
-    //            }
-    //        }
-            return builder.toString();
-        }
-    */
     @Override
     public boolean isSuccess() {
         return getCommandResultFromFuture(sourceCommandResult).isSuccess();

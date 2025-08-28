@@ -37,15 +37,6 @@ public class ObservableArchiveInputStream extends FilterInputStream {
     Logger log = LoggerFactory.getLogger(ObservableArchiveInputStream.class);
     private final List<Observer> observerList = new ArrayList<>();
     private final MessageDigest messageDigest;
-/*
-    public ObservableArchiveInputStream(InputStream in, ArchiveTransferProvider archiveTransferProvider) throws IOException {
-        super(in);
-        byteArrayOutputStream = new ByteArrayOutputStream();
-        archiveInputStream = archiveTransferProvider.getArchiveInputStream(in);
-        archiveOutputStream = archiveTransferProvider.getArchiveOutputStream(byteArrayOutputStream);
-        this.messageDigest = archiveTransferProvider.getMessageDigest();
-    }
- */
     public ObservableArchiveInputStream(InputStream in, ArchiveTransferProvider archiveTransferProvider) throws IOException {
         this(archiveTransferProvider.getArchiveInputStream(in), archiveTransferProvider,
                 new ByteArrayOutputStream(), archiveTransferProvider.getMessageDigest());
