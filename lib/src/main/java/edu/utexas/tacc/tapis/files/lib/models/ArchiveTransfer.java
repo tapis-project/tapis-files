@@ -1,8 +1,9 @@
 package edu.utexas.tacc.tapis.files.lib.models;
 
-import edu.utexas.tacc.tapis.shared.uri.TapisUrl;
+import com.google.gson.JsonObject;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -27,6 +28,7 @@ public class ArchiveTransfer {
     private long fileBytesRead;
     private long archiveBytesRead;
     private String archiveType;
+    private List<ArchiveTransferLogEntry> transferLogEntries;
 
     public int getId() {
         return id;
@@ -184,5 +186,13 @@ public class ArchiveTransfer {
 
     public void setRetriesRemaining(int retriesRemaining) {
         this.retriesRemaining = retriesRemaining;
+    }
+
+    public List<ArchiveTransferLogEntry> getTransferLogEntries() {
+        return transferLogEntries;
+    }
+
+    public void setTransferLogEntries(List<ArchiveTransferLogEntry> transferLogEntries) {
+        this.transferLogEntries = transferLogEntries;
     }
 }

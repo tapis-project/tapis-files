@@ -74,7 +74,7 @@ public class ArchiveTransfersService {
     }
 
     public ArchiveTransferResponse getArchiveTransfer(@NotNull ResourceRequestUser rUser, UUID uuid,
-                                              boolean includePaths, String impersonationId)
+                                              boolean includePaths, boolean includeArchiveTransferLog, String impersonationId)
             throws ServiceException, NotFoundException
     {
         String opName = "getTransferTaskByUuid";
@@ -89,7 +89,7 @@ public class ArchiveTransfersService {
             // Get the task, including summary info if requested.
             ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
             ArchiveTransfer archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
-                return dao.getArchiveTransfer(context, uuid, false, includePaths);
+                return dao.getArchiveTransfer(context, uuid, false, includePaths, includeArchiveTransferLog);
             });
 
             if (archiveTransfer == null)
@@ -172,6 +172,7 @@ public class ArchiveTransfersService {
         archiveTransferResponse.setArchiveType(archiveTransfer.getArchiveType());
         archiveTransferResponse.setRetriesRemaining(archiveTransfer.getRetriesRemaining());
         archiveTransferResponse.setNextRetry(archiveTransfer.getNextRetry());
+        archiveTransferResponse.setTransferLogEntries(archiveTransfer.getTransferLogEntries());
         return archiveTransferResponse;
     }
 

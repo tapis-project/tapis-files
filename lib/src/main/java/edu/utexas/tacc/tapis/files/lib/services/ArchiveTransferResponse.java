@@ -1,6 +1,10 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import com.google.gson.JsonObject;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferLogEntry;
+
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -24,6 +28,7 @@ public class ArchiveTransferResponse {
     private String srcSharedCtxGrantor;
     private String destSharedCtxGrantor;
     private String archiveType;
+    private List<ArchiveTransferLogEntry> transferLogEntries;
 
     public int getId() {
         return id;
@@ -173,5 +178,13 @@ public class ArchiveTransferResponse {
 
     public void setNextRetry(Instant nextRetry) {
         this.nextRetry = nextRetry;
+    }
+
+    public List<ArchiveTransferLogEntry> getTransferLogEntries() {
+        return transferLogEntries;
+    }
+
+    public void setTransferLogEntries(List<ArchiveTransferLogEntry> transferLogEntries) {
+        this.transferLogEntries = transferLogEntries;
     }
 }

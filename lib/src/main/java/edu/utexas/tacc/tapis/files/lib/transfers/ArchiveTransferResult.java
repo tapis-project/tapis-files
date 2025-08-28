@@ -7,7 +7,7 @@ import java.util.concurrent.Future;
 
 public abstract class ArchiveTransferResult {
     private ArchiveTransferLog archiveTransferLog;
-    public abstract boolean isComplete() throws ExecutionException, InterruptedException;
+    public abstract boolean isComplete();
     public abstract void waitForCompletion() throws Exception;
     public abstract String getMessages() throws ExecutionException, InterruptedException;
     public abstract boolean isSuccess();

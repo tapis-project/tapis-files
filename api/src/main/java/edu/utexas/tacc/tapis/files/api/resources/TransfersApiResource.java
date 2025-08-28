@@ -346,6 +346,7 @@ public class  TransfersApiResource
   @Consumes(MediaType.APPLICATION_JSON)
   public Response getArchiveTransfer(@PathParam("uuid") @ValidUUID String archiveTransferUuid,
                                   @QueryParam("includePaths") @DefaultValue("false") boolean includePaths,
+                                  @QueryParam("includeTransferLog") @DefaultValue("false") boolean includeArchiveTransferLog,
                                   @QueryParam("impersonationId") String impersonationId,
                                   @Context SecurityContext securityContext)
   {
@@ -367,7 +368,7 @@ public class  TransfersApiResource
     // Trace this request.
     if (log.isTraceEnabled()) {
       ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "archiveTransferId=" + archiveTransferUuid,
-              "includePaths=" + includePaths, "impersonationId=" + impersonationId);
+              "includePaths=" + includePaths, "includeTransferLog" + includeArchiveTransferLog, "impersonationId=" + impersonationId);
     }
 
     TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
@@ -375,7 +376,8 @@ public class  TransfersApiResource
     ArchiveTransferResponse archiveTransferResponse;
     try
     {
-      archiveTransferResponse = archiveTransfersService.getArchiveTransfer(rUser, UUID.fromString(archiveTransferUuid), includePaths, impersonationId);
+      archiveTransferResponse = archiveTransfersService.getArchiveTransfer(rUser,
+              UUID.fromString(archiveTransferUuid), includePaths, includeArchiveTransferLog, impersonationId);
     }
     catch (ServiceException e)
     {

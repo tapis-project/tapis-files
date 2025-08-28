@@ -23,7 +23,7 @@ public class FullArchiveTransferResult extends ArchiveTransferResult {
     }
 
     @Override
-    public boolean isComplete() throws ExecutionException, InterruptedException {
+    public boolean isComplete() {
         return(sourceCommandResult.isDone() && destinationCommandResult.isDone());
     }
 
@@ -76,13 +76,13 @@ public class FullArchiveTransferResult extends ArchiveTransferResult {
         }
         ArchiveTransferLog archiveTransferLog = getArchiveTransferLog();
 
-        if(archiveTransferLog != null) {
-            builder.append("Files Read:");
-            builder.append(System.lineSeparator());
-            for (String info : archiveTransferLog.getTransferInfo()) {
-                builder.append(info);
-            }
-        }
+//        if(archiveTransferLog != null) {
+//            builder.append("Files Read:");
+//            builder.append(System.lineSeparator());
+//            for (String info : archiveTransferLog.getTransferInfo()) {
+//                builder.append(info);
+//            }
+//        }
         return builder.toString();
     }
 

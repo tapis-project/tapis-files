@@ -9,22 +9,19 @@ import java.util.concurrent.Future;
 
 public class FromArchiveTransferResult extends ArchiveTransferResult {
     private final Future<SSHCommandResult> destinationCommandResult;
-//    private final Closeable closeable;
 
-    public FromArchiveTransferResult(Future<SSHCommandResult> destinationCommandResult/*, Closeable closeable*/) {
+    public FromArchiveTransferResult(Future<SSHCommandResult> destinationCommandResult) {
         this.destinationCommandResult = destinationCommandResult;
-//        this.closeable = closeable;
     }
 
     @Override
-    public boolean isComplete() throws ExecutionException, InterruptedException {
+    public boolean isComplete() {
         return destinationCommandResult.isDone();
     }
 
     @Override
     public void waitForCompletion() throws Exception {
         destinationCommandResult.get();
-//        closeable.close();
     }
 
     @Override
@@ -53,13 +50,13 @@ public class FromArchiveTransferResult extends ArchiveTransferResult {
         }
         ArchiveTransferLog archiveTransferLog = getArchiveTransferLog();
 
-        if(archiveTransferLog != null) {
-            builder.append("Files Read:");
-            builder.append(System.lineSeparator());
-            for (String info : archiveTransferLog.getTransferInfo()) {
-                builder.append(info);
-            }
-        }
+//        if(archiveTransferLog != null) {
+//            builder.append("Files Read:");
+//            builder.append(System.lineSeparator());
+//            for (String info : archiveTransferLog.getTransferInfo()) {
+//                builder.append(info);
+//            }
+//        }
         return builder.toString();
     }
 

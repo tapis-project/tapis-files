@@ -87,6 +87,17 @@ public class ArchiveTransferDAOStatements {
             SELECT path from archive_transfer_paths where archive_transfer_id = ?;
             """;
 
+    public static final String GET_ARCHIVE_LOG_FOR_ID =
+            """
+            SELECT log from archive_transfer_log where archive_transfer_id = ?;
+            """;
+
+    public static String INSERT_TRANSFER_LOG =
+            """
+                INSERT INTO archive_transfer_log (archive_transfer_id, log) VALUES (?, ?)
+                    RETURNING log;
+            """;
+
     public static final String UNASSIGN_ZOMBIE_ASSIGNMENTS =
             """
               UPDATE

@@ -1,25 +1,26 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
+import com.google.gson.stream.JsonWriter;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferLogEntry;
+import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class ArchiveTransferLog implements ObservableArchiveInputStream.Observer {
+    Logger log = LoggerFactory.getLogger(ArchiveTransferLog.class);
     private long fileBytesRead;
     private long archiveBytesRead;
-    private List<String> transferInfo = new ArrayList<>();
+
+    List<ArchiveTransferLogEntry> logEntries = new ArrayList<>();
 
     @Override
-    public void file(String name, long bytesRead, String digest) {
-        StringBuilder fileInfo = new StringBuilder();
-        fileInfo.append("Name : ");
-        fileInfo.append(name);
-        fileInfo.append(" Digest : ");
-        fileInfo.append(digest);
-        fileInfo.append(" Bytes : ");
-        fileInfo.append(bytesRead);
-        fileInfo.append(System.lineSeparator());
-        transferInfo.add(fileInfo.toString());
-        this.fileBytesRead += bytesRead;
+    public void file(String name, long size, Date lastModifiedDate, String digest) {
+        logEntries.add(new ArchiveTransferLogEntry(name, size, lastModifiedDate, digest));
+        this.fileBytesRead += size;
     }
 
     public void actualBytesRead(long actualBytesRead) {
@@ -34,7 +35,7 @@ public class ArchiveTransferLog implements ObservableArchiveInputStream.Observer
         return archiveBytesRead;
     }
 
-    public List<String> getTransferInfo() {
-        return transferInfo;
+    public List<ArchiveTransferLogEntry> getLogEntries() {
+        return logEntries;
     }
 }

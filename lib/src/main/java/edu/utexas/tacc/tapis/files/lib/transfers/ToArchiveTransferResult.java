@@ -14,7 +14,7 @@ public class ToArchiveTransferResult extends ArchiveTransferResult {
     }
 
     @Override
-    public boolean isComplete() throws ExecutionException, InterruptedException {
+    public boolean isComplete() {
         return sourceCommandResult.isDone();
 
     }
@@ -31,11 +31,6 @@ public class ToArchiveTransferResult extends ArchiveTransferResult {
         String sourceOutputMessage = (srcCommandOutput == null) ? "" : new String(srcCommandOutput);
         byte[] srcCommandError = srcCommandResult.getCommandError();
         String sourceErrorMessage = (srcCommandError == null) ? "" : new String(srcCommandError);
-//        SSHCommandResult dstCommandResult = getDestinationCommandResult().get();
-//        byte[] dstCommandOutput = dstCommandResult.getCommandOutput();
-//        String destinationOutputMessage = (dstCommandOutput == null) ? "" : new String(dstCommandOutput);
-//        byte[] dstCommandError = dstCommandResult.getCommandError();
-//        String destinationErrorMessage = (dstCommandError == null) ? "" : new String(dstCommandError);
 
         StringBuilder builder = new StringBuilder();
         if(srcCommandResult.getCommandResult() != 0) {
@@ -53,30 +48,16 @@ public class ToArchiveTransferResult extends ArchiveTransferResult {
             builder.append(sourceErrorMessage);
             builder.append(System.lineSeparator());
         }
-//        if(dstCommandResult.getCommandResult() != 0) {
-//            builder.append("DstResult: ");
-//            builder.append(dstCommandResult.getCommandResult());
-//            builder.append(System.lineSeparator());
-//        }
-//        if(!StringUtils.isBlank(destinationOutputMessage)) {
-//            builder.append("DstOutput: ");
-//            builder.append(destinationOutputMessage);
-//            builder.append(System.lineSeparator());
-//        }
-//        if(!StringUtils.isBlank(destinationErrorMessage)) {
-//            builder.append("DstError: ");
-//            builder.append(destinationErrorMessage);
-//            builder.append(System.lineSeparator());
-//        }
+
         ArchiveTransferLog archiveTransferLog = getArchiveTransferLog();
 
-        if(archiveTransferLog != null) {
-            builder.append("Files Read:");
-            builder.append(System.lineSeparator());
-            for (String info : archiveTransferLog.getTransferInfo()) {
-                builder.append(info);
-            }
-        }
+//        if(archiveTransferLog != null) {
+//            builder.append("Files Read:");
+//            builder.append(System.lineSeparator());
+//            for (String info : archiveTransferLog.getTransferInfo()) {
+//                builder.append(info);
+//            }
+//        }
         return builder.toString();
     }
 

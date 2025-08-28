@@ -621,7 +621,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
         String unarchiveCommand = archiveTransferProvider.getUnarchiveCommand(absBasePath.toString());
         SSHCommandResult destinationCommandResult = new SSHCommandResult();
         try(final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
-                borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true);
+                borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true))/*;
             var delayedCloseInputStream = new FilterInputStream(archiveInputStream) {
               @Override
               public void close() throws IOException {
@@ -632,9 +632,12 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
                 super.close();
                 this.close();
               }
-            }) {
+            })*/ {
+              /*
           int returnValue = sshHolder.getSession().execute(unarchiveCommand, delayedCloseInputStream, outputStream, errorStream);
           delayedCloseInputStream.ensureClosed();
+               */
+          int returnValue = sshHolder.getSession().execute(unarchiveCommand, archiveInputStream, outputStream, errorStream);
           destinationCommandResult.setCommandResult(returnValue);
 
           InputStream errorInputStream = new ByteArrayInputStream(errorStream.toByteArray());

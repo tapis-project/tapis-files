@@ -20,7 +20,8 @@
    dst_shared_ctx           TEXT                        DEFAULT NULL,
    assigned_to              uuid                        DEFAULT NULL
  );
- CREATE INDEX ON transfer_tasks (uuid);
+ CREATE INDEX ON archive_transfers (uuid);
+ CREATE INDEX ON archive_transfers (id);
 
  CREATE TABLE IF NOT EXISTS archive_transfer_paths
  (
@@ -28,4 +29,14 @@
                                                         ON DELETE CASCADE ON UPDATE CASCADE,
   path                      VARCHAR(4096)               NOT NULL
  );
- CREATE INDEX ON transfer_tasks (id);
+ CREATE INDEX ON archive_transfer_paths (archive_transfer_id);
+
+
+ create table if not exists archive_transfer_log
+ (
+  archive_transfer_id       int REFERENCES archive_transfers(id)
+                                                        ON DELETE CASCADE ON UPDATE CASCADE,
+  log                       jsonb
+ );
+ CREATE INDEX ON archive_transfer_log(archive_transfer_id);
+

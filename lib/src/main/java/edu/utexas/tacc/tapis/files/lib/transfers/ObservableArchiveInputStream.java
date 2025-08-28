@@ -14,12 +14,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class ObservableArchiveInputStream extends FilterInputStream {
 
     public static interface Observer {
-        void file(String name, long size, String digest);
+        void file(String name, long size, Date lastModifiedDate, String digest);
         void actualBytesRead(long actualBytesRead);
     }
 
@@ -221,10 +222,11 @@ public class ObservableArchiveInputStream extends FilterInputStream {
     private void notifyFile() {
         String name = currentTarEntry.getName();
         long size = currentTarEntry.getSize();
+        Date lastModifiedDate = currentTarEntry.getLastModifiedDate();
         String digest = getMd();
         observerList.stream().forEach(observer -> {
             try {
-                observer.file(name, size, digest);
+                observer.file(name, size, lastModifiedDate, digest);
             } catch (Throwable th) {
                 String msg = LibUtils.getMsg("FILES_XFER_ERROR_NOTIFYING_OBSERVER", "notifyFile");
                 log.error(msg, th);

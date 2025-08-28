@@ -164,7 +164,7 @@ public class ArchiveTransferWorker {
                 } catch (Throwable th) {
                     // if this method throws, it will not get rescheduled.  We would have a zombie worker.  I think the
                     // best thing to do here is exit - we have caught some completely unexpected exception
-                    System.out.println(th);
+                    log.error("Fatal Error.  Exiting worker", th);
                     System.exit(0);
                 }
                 Thread.yield();
@@ -190,10 +190,10 @@ public class ArchiveTransferWorker {
         // get the resourceRequestUser
         ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
         ArchiveTransfer archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
-            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
+            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true, false);
             currentTransfer.setStatus(ArchiveTransferStatus.IN_PROGRESS);
             currentTransfer.setStartTime(Instant.now());
-            return dao.updateArchiveTransfer(context, currentTransfer, true);
+            return dao.updateArchiveTransfer(context, currentTransfer, true, false);
         });
 
         ResourceRequestUser rUser = simulateResourceRequestUser(archiveTransfer);
@@ -380,7 +380,7 @@ public class ArchiveTransferWorker {
         ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
 
         DAOTransactionContext.doInTransaction(context -> {
-            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
+            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true, false);
             currentTransfer.setStatus(ArchiveTransferStatus.COMPLETED);
             currentTransfer.setErrorMessage(updateErrorMessage);
             currentTransfer.setArchiveBytesRead(archiveBytesRead);
@@ -388,7 +388,8 @@ public class ArchiveTransferWorker {
             currentTransfer.setFileBytesRead(fileBytesRead);
             currentTransfer.setNextRetry(null);
             currentTransfer.setRetriesRemaining(0);
-            return dao.updateArchiveTransfer(context, currentTransfer, false);
+            currentTransfer.setTransferLogEntries(archiveTransferLog.getLogEntries());
+            return dao.updateArchiveTransfer(context, currentTransfer, false, true);
         });
 
         return true;
@@ -399,7 +400,7 @@ public class ArchiveTransferWorker {
 
         return DAOTransactionContext.doInTransaction(context -> {
             // read for update
-            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true);
+            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true, false);
 
             // if it's already in a 'final' state, ignore this request and return.
             if(currentTransfer.getStatus().isFinalState()) {
@@ -428,7 +429,7 @@ public class ArchiveTransferWorker {
             currentTransfer.setErrorMessage(errorMessageBuilder.toString());
             currentTransfer.setAssignedTo(null);
 
-            return dao.updateArchiveTransfer(context, currentTransfer, false);
+            return dao.updateArchiveTransfer(context, currentTransfer, false, false);
         });
     }
 

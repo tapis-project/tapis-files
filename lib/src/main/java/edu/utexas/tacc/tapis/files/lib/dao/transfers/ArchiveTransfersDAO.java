@@ -1,10 +1,15 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferLogEntry;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
+import org.apache.commons.dbutils.ColumnHandler;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.RowProcessor;
@@ -12,6 +17,7 @@ import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ColumnListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
+import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,30 +73,64 @@ public class ArchiveTransfersDAO {
                 insertedPaths.add(insertedPath);
             }
         } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertTransferWorker", ex.getMessage()), ex);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertRelativePaths", ex.getMessage()), ex);
         }
 
         return insertedPaths;
     }
 
     public Set<String> getRelativePaths(DAOTransactionContext context, int archiveTransferId) throws DAOException {
-        Set<String> insertedPaths = Collections.emptySet();
+        Set<String> relativePaths = Collections.emptySet();
         try {
             ResultSetHandler<List<String>> handler = new ColumnListHandler<String>("path");
 
             QueryRunner runner = new QueryRunner();
             List<String> paths = runner.query(context.getConnection(), ArchiveTransferDAOStatements.GET_RELATIVE_PATHS_FOR_ID, handler, archiveTransferId);
             if(paths != null) {
-                insertedPaths = new HashSet<>(paths);
+                relativePaths = new HashSet<>(paths);
             }
         } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertTransferWorker", ex.getMessage()), ex);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getRelativePaths", ex.getMessage()), ex);
         }
 
-        return insertedPaths;
+        return relativePaths;
     }
 
-    public ArchiveTransfer getArchiveTransfer(DAOTransactionContext context, UUID archiveTransferUuid, boolean forUpdate, boolean includeRelativePaths) throws DAOException {
+    public List<ArchiveTransferLogEntry> insertArchiveTransferLog(DAOTransactionContext context, int archiveTransferId, List<ArchiveTransferLogEntry> transferLogEntries) throws DAOException {
+        PGobject insertedTransferLogEntries;
+        try {
+            ScalarHandler<PGobject> handler = new ScalarHandler<>("log");
+
+            QueryRunner runner = new QueryRunner();
+            PGobject logObject = new PGobject();
+            logObject.setValue((transferLogEntries) == null ? null : TapisGsonUtils.getGson().toJson(transferLogEntries));
+            logObject.setType("jsonb");
+            insertedTransferLogEntries= runner.query(context.getConnection(), ArchiveTransferDAOStatements.INSERT_TRANSFER_LOG, handler, archiveTransferId, logObject);
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertRelativePaths", ex.getMessage()), ex);
+        }
+
+        return (insertedTransferLogEntries == null) ? Collections.emptyList() :
+        TapisGsonUtils.getGson().fromJson(insertedTransferLogEntries.getValue(), new TypeToken<List<ArchiveTransferLogEntry>>() {});
+    }
+
+    public List<ArchiveTransferLogEntry> getArchiveTransferLog(DAOTransactionContext context, int archiveTransferId) throws DAOException {
+        PGobject archiveTransferLog;
+        try {
+            ScalarHandler<PGobject> handler = new ScalarHandler<>("log");
+
+            QueryRunner runner = new QueryRunner();
+            archiveTransferLog = runner.query(context.getConnection(), ArchiveTransferDAOStatements.GET_ARCHIVE_LOG_FOR_ID, handler, archiveTransferId);
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getArchiveLog", ex.getMessage()), ex);
+        }
+
+        return (archiveTransferLog == null) ? Collections.emptyList() :
+                TapisGsonUtils.getGson().fromJson(archiveTransferLog.getValue(), new TypeToken<List<ArchiveTransferLogEntry>>() {});
+    }
+
+    public ArchiveTransfer getArchiveTransfer(DAOTransactionContext context, UUID archiveTransferUuid, boolean forUpdate,
+                                              boolean includeRelativePaths, boolean includeArchiveTransferLog) throws DAOException {
         RowProcessor rowProcessor = new ArchiveTransferRowProcessor();
         BeanHandler<ArchiveTransfer> handler = new BeanHandler<>(ArchiveTransfer.class, rowProcessor);
 
@@ -109,13 +149,18 @@ public class ArchiveTransfersDAO {
                 archiveTransfer.setRelativePaths(getRelativePaths(context, archiveTransfer.getId()));
             }
 
+            if((archiveTransfer != null) && (includeArchiveTransferLog)) {
+                archiveTransfer.setTransferLogEntries(getArchiveTransferLog(context, archiveTransfer.getId()));
+            }
+
             return archiveTransfer;
         } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAssignedForWorker", ex.getMessage()), ex);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getArchiveTransfer", ex.getMessage()), ex);
         }
     }
 
-    public ArchiveTransfer updateArchiveTransfer(DAOTransactionContext context, ArchiveTransfer archiveTransfer, boolean includeRelativePaths) throws DAOException {
+    public ArchiveTransfer updateArchiveTransfer(DAOTransactionContext context, ArchiveTransfer archiveTransfer,
+                                                 boolean includeRelativePaths, boolean includeTransferLog) throws DAOException {
         RowProcessor rowProcessor = new ArchiveTransferRowProcessor();
         BeanHandler<ArchiveTransfer> handler = new BeanHandler<>(ArchiveTransfer.class, rowProcessor);
 
@@ -141,9 +186,15 @@ public class ArchiveTransfersDAO {
                 updatedArchiveTransfer.setRelativePaths(getRelativePaths(context, archiveTransfer.getId()));
             }
 
+
+            // TODO AXFER: need to handle preventing duplicates somehow - add / update depending on if it exists
+            if(includeTransferLog) {
+                updatedArchiveTransfer.setTransferLogEntries(insertArchiveTransferLog(context, updatedArchiveTransfer.getId(), archiveTransfer.getTransferLogEntries()));
+            }
+
             return updatedArchiveTransfer;
         } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAssignedForWorker", ex.getMessage()), ex);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "updateArchiveTransfer", ex.getMessage()), ex);
         }
     }
 
