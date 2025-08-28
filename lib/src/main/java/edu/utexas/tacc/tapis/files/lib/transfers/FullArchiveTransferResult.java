@@ -31,6 +31,14 @@ public class FullArchiveTransferResult extends ArchiveTransferResult {
         sourceCommandResult.get();
         destinationCommandResult.get();
     }
+
+    @Override
+    public String getMessages() throws ExecutionException, InterruptedException {
+        return getMessages(sourceCommandResult, "Source") + System.lineSeparator() +
+                getMessages(destinationCommandResult, "Destination");
+    }
+
+    /*
     public String getMessages() throws ExecutionException, InterruptedException {
         SSHCommandResult srcCommandResult = getSourceCommandResult().get();
         byte[] srcCommandOutput = srcCommandResult.getCommandOutput();
@@ -75,16 +83,9 @@ public class FullArchiveTransferResult extends ArchiveTransferResult {
             builder.append(System.lineSeparator());
         }
         ArchiveTransferLog archiveTransferLog = getArchiveTransferLog();
-
-//        if(archiveTransferLog != null) {
-//            builder.append("Files Read:");
-//            builder.append(System.lineSeparator());
-//            for (String info : archiveTransferLog.getTransferInfo()) {
-//                builder.append(info);
-//            }
-//        }
         return builder.toString();
     }
+     */
 
     public boolean isSuccess() {
         return(getCommandResultFromFuture(sourceCommandResult).isSuccess() &&

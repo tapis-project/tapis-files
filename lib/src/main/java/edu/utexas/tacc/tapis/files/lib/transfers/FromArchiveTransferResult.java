@@ -26,6 +26,11 @@ public class FromArchiveTransferResult extends ArchiveTransferResult {
 
     @Override
     public String getMessages() throws ExecutionException, InterruptedException {
+        return getMessages(destinationCommandResult, "Destination");
+    }
+/*
+    @Override
+    public String getMessages() throws ExecutionException, InterruptedException {
         SSHCommandResult dstCommandResult = getDestinationCommandResult().get();
         byte[] dstCommandOutput = dstCommandResult.getCommandOutput();
         String destinationOutputMessage = (dstCommandOutput == null) ? "" : new String(dstCommandOutput);
@@ -59,7 +64,7 @@ public class FromArchiveTransferResult extends ArchiveTransferResult {
 //        }
         return builder.toString();
     }
-
+*/
     @Override
     public boolean isSuccess() {
         return getCommandResultFromFuture(destinationCommandResult).isSuccess();

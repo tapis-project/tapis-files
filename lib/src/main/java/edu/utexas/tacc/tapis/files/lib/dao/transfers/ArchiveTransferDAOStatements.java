@@ -89,13 +89,19 @@ public class ArchiveTransferDAOStatements {
 
     public static final String GET_ARCHIVE_LOG_FOR_ID =
             """
-            SELECT log from archive_transfer_log where archive_transfer_id = ?;
+            SELECT log_entries from archive_transfer_log where archive_transfer_id = ?;
             """;
 
     public static String INSERT_TRANSFER_LOG =
             """
-                INSERT INTO archive_transfer_log (archive_transfer_id, log) VALUES (?, ?)
-                    RETURNING log;
+                INSERT INTO archive_transfer_log (archive_transfer_id, log_entries) VALUES (?, ?)
+                    RETURNING log_entries;
+            """;
+    public static String UPDATE_TRANSFER_LOG =
+            """
+                UPDATE archive_transfer_log set log_entries = ? 
+                    WHERE archive_transfer_id = ?
+                    RETURNING log_entries;
             """;
 
     public static final String UNASSIGN_ZOMBIE_ASSIGNMENTS =

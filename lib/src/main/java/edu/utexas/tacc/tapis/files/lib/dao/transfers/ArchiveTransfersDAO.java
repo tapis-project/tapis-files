@@ -56,6 +56,7 @@ public class ArchiveTransfersDAO {
                     archiveTransfer.getDestSharedCtxGrantor(),
                     archiveTransfer.getRetriesRemaining());
             insertedArchiveTransfer.setRelativePaths(insertRelativePaths(context, insertedArchiveTransfer.getId(), archiveTransfer.getRelativePaths()));
+            insertedArchiveTransfer.setTransferLogEntries(insertTransferLogEntries(context, insertedArchiveTransfer.getId(), archiveTransfer.getTransferLogEntries()));
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertTransferWorker", ex.getMessage()), ex);
         }
@@ -96,10 +97,10 @@ public class ArchiveTransfersDAO {
         return relativePaths;
     }
 
-    public List<ArchiveTransferLogEntry> insertArchiveTransferLog(DAOTransactionContext context, int archiveTransferId, List<ArchiveTransferLogEntry> transferLogEntries) throws DAOException {
+    public List<ArchiveTransferLogEntry> insertTransferLogEntries(DAOTransactionContext context, int archiveTransferId, List<ArchiveTransferLogEntry> transferLogEntries) throws DAOException {
         PGobject insertedTransferLogEntries;
         try {
-            ScalarHandler<PGobject> handler = new ScalarHandler<>("log");
+            ScalarHandler<PGobject> handler = new ScalarHandler<>("log_entries");
 
             QueryRunner runner = new QueryRunner();
             PGobject logObject = new PGobject();
@@ -107,26 +108,45 @@ public class ArchiveTransfersDAO {
             logObject.setType("jsonb");
             insertedTransferLogEntries= runner.query(context.getConnection(), ArchiveTransferDAOStatements.INSERT_TRANSFER_LOG, handler, archiveTransferId, logObject);
         } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertRelativePaths", ex.getMessage()), ex);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertArchiveTransferLog", ex.getMessage()), ex);
         }
 
         return (insertedTransferLogEntries == null) ? Collections.emptyList() :
         TapisGsonUtils.getGson().fromJson(insertedTransferLogEntries.getValue(), new TypeToken<List<ArchiveTransferLogEntry>>() {});
     }
 
-    public List<ArchiveTransferLogEntry> getArchiveTransferLog(DAOTransactionContext context, int archiveTransferId) throws DAOException {
-        PGobject archiveTransferLog;
+    public List<ArchiveTransferLogEntry> updateTransferLogEntries(DAOTransactionContext context, int archiveTransferId,
+                                                                  List<ArchiveTransferLogEntry> transferLogEntries) throws DAOException {
+        PGobject insertedTransferLogEntries;
         try {
-            ScalarHandler<PGobject> handler = new ScalarHandler<>("log");
+            ScalarHandler<PGobject> handler = new ScalarHandler<>("log_entries");
 
             QueryRunner runner = new QueryRunner();
-            archiveTransferLog = runner.query(context.getConnection(), ArchiveTransferDAOStatements.GET_ARCHIVE_LOG_FOR_ID, handler, archiveTransferId);
+            PGobject logObject = new PGobject();
+            logObject.setValue((transferLogEntries) == null ? null : TapisGsonUtils.getGson().toJson(transferLogEntries));
+            logObject.setType("jsonb");
+            insertedTransferLogEntries= runner.query(context.getConnection(), ArchiveTransferDAOStatements.UPDATE_TRANSFER_LOG, handler, logObject, archiveTransferId);
         } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getArchiveLog", ex.getMessage()), ex);
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "updateArchiveTransferLog", ex.getMessage()), ex);
         }
 
-        return (archiveTransferLog == null) ? Collections.emptyList() :
-                TapisGsonUtils.getGson().fromJson(archiveTransferLog.getValue(), new TypeToken<List<ArchiveTransferLogEntry>>() {});
+        return (insertedTransferLogEntries == null) ? Collections.emptyList() :
+                TapisGsonUtils.getGson().fromJson(insertedTransferLogEntries.getValue(), new TypeToken<List<ArchiveTransferLogEntry>>() {});
+    }
+
+    public List<ArchiveTransferLogEntry> getTransferLogEntries(DAOTransactionContext context, int archiveTransferId) throws DAOException {
+        PGobject transferLogEntries;
+        try {
+            ScalarHandler<PGobject> handler = new ScalarHandler<>("log_entries");
+
+            QueryRunner runner = new QueryRunner();
+            transferLogEntries = runner.query(context.getConnection(), ArchiveTransferDAOStatements.GET_ARCHIVE_LOG_FOR_ID, handler, archiveTransferId);
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getArchiveTransferLog", ex.getMessage()), ex);
+        }
+
+        return (transferLogEntries == null) ? Collections.emptyList() :
+                TapisGsonUtils.getGson().fromJson(transferLogEntries.getValue(), new TypeToken<List<ArchiveTransferLogEntry>>() {});
     }
 
     public ArchiveTransfer getArchiveTransfer(DAOTransactionContext context, UUID archiveTransferUuid, boolean forUpdate,
@@ -150,7 +170,7 @@ public class ArchiveTransfersDAO {
             }
 
             if((archiveTransfer != null) && (includeArchiveTransferLog)) {
-                archiveTransfer.setTransferLogEntries(getArchiveTransferLog(context, archiveTransfer.getId()));
+                archiveTransfer.setTransferLogEntries(getTransferLogEntries(context, archiveTransfer.getId()));
             }
 
             return archiveTransfer;
@@ -189,7 +209,7 @@ public class ArchiveTransfersDAO {
 
             // TODO AXFER: need to handle preventing duplicates somehow - add / update depending on if it exists
             if(includeTransferLog) {
-                updatedArchiveTransfer.setTransferLogEntries(insertArchiveTransferLog(context, updatedArchiveTransfer.getId(), archiveTransfer.getTransferLogEntries()));
+                updatedArchiveTransfer.setTransferLogEntries(updateTransferLogEntries(context, updatedArchiveTransfer.getId(), archiveTransfer.getTransferLogEntries()));
             }
 
             return updatedArchiveTransfer;

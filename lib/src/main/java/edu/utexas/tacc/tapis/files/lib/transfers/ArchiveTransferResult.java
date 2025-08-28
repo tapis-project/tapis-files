@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.models.SSHCommandResult;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -32,4 +33,33 @@ public abstract class ArchiveTransferResult {
             throw new RuntimeException("Command result is not complete.");
         }
     }
+
+    String getMessages(Future<SSHCommandResult> resultFuture, String resultLable) throws ExecutionException, InterruptedException {
+        SSHCommandResult commandResult = resultFuture.get();
+        byte[] commandOutput = commandResult.getCommandOutput();
+        String outputMessage = (commandOutput == null) ? "" : new String(commandOutput);
+        byte[] commandError = commandResult.getCommandError();
+        String errorMessage = (commandError == null) ? "" : new String(commandError);
+
+        StringBuilder builder = new StringBuilder();
+
+        if(commandResult.getCommandResult() != 0) {
+            builder.append("SrcResult: ");
+            builder.append(commandResult.getCommandResult());
+            builder.append(System.lineSeparator());
+        }
+        if(!StringUtils.isBlank(outputMessage)) {
+            builder.append("SrcOutput: ");
+            builder.append(outputMessage);
+            builder.append(System.lineSeparator());
+        }
+        if(!StringUtils.isBlank(errorMessage)) {
+            builder.append("SrcError: ");
+            builder.append(errorMessage);
+            builder.append(System.lineSeparator());
+        }
+        return builder.toString();
+    }
+
+
 }

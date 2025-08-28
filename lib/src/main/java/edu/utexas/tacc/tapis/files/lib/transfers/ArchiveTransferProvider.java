@@ -64,7 +64,7 @@ public class ArchiveTransferProvider {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(srcAbsBasePath);
-                commandBuilder.append("' -cT- ");
+                commandBuilder.append("' --verbatim-files-from -cT- ");
                 yield commandBuilder.toString();
             }
 
@@ -72,7 +72,7 @@ public class ArchiveTransferProvider {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(srcAbsBasePath);
-                commandBuilder.append("' -czT- ");
+                commandBuilder.append("' --verbatim-files-from -czT- ");
                 yield commandBuilder.toString();
             }
 
