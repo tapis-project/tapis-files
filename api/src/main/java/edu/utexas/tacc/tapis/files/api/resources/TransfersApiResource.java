@@ -73,9 +73,6 @@ public class  TransfersApiResource
 
   private static final String FILES_SVC = StringUtils.capitalize(TapisConstants.SERVICE_NAME_FILES);
 
-  // Always return a nicely formatted response
-  private static final boolean PRETTY = true;
-
   // Message keys
   private static final String TAPIS_FOUND = "TAPIS_FOUND";
 
@@ -117,7 +114,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -172,7 +169,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -224,7 +221,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -265,7 +262,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -304,7 +301,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -404,7 +401,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
 
     // If there is a problem return error response
     if (resp1 != null) {

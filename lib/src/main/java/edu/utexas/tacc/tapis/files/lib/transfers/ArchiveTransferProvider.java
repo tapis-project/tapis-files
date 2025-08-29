@@ -2,6 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.UnrecoverableTransferException;
 import edu.utexas.tacc.tapis.files.lib.models.SSHCommandResult;
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.compress.archivers.ArchiveInputStream;
 import org.apache.commons.compress.archivers.ArchiveOutputStream;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -58,6 +59,7 @@ public class ArchiveTransferProvider {
     }
 
     public String getArchiveCommand(String srcAbsBasePath) {
+        final String opName = "getArchiveCommand";
 
         String command = switch (archiveType) {
             case TAR, TAR_ARCHIVE -> {
@@ -76,8 +78,10 @@ public class ArchiveTransferProvider {
                 yield commandBuilder.toString();
             }
 
-            // TODO AXFER: this is the wrong message - not sure what it should say yet
-            default -> throw new UnrecoverableTransferException("Invalid configuration");
+            default -> {
+                String msg = LibUtils.getMsg("FILES_XFER_INVALID_PARAMETER", opName, "archiveType", archiveType);
+                throw new UnrecoverableTransferException(msg);
+            }
         };
 
         return command;
@@ -117,13 +121,15 @@ public class ArchiveTransferProvider {
 
     public ArchiveTransferResult getArchiveTransferResult(Future<SSHCommandResult> sourceCommandResult,
                                                           Future<SSHCommandResult> destinationCommandResult) {
+        final String opName = "getArchiveTransferResult";
         ArchiveTransferResult result = switch (archiveType) {
             case TAR, TAR_GZIP -> new FullArchiveTransferResult(sourceCommandResult, destinationCommandResult);
-//            case TAR_ARCHIVE, GZIP_ARCHIVE -> new ToArchiveTransferResult(sourceCommandResult);
             case EXPAND_TAR_ARCHIVE, EXPAND_GZIP_ARCHIVE -> new FromArchiveTransferResult(destinationCommandResult);
 
-            // TODO AXFER: this is the wrong message - not sure what it should say yet
-            default -> throw new UnrecoverableTransferException("Invalid configuration");
+            default -> {
+                String msg = LibUtils.getMsg("FILES_XFER_INVALID_PARAMETER", opName, "archiveType", archiveType);
+                throw new UnrecoverableTransferException(msg);
+            }
         };
 
         return result;

@@ -10,6 +10,12 @@ import java.io.InputStream;
 import java.util.concurrent.Future;
 
 public interface ArchiveTransferDestination {
+    default ArchiveTransferResult writeArchive(@NotNull String basePath,
+                                       @NotNull InputStream archiveInputStream,
+                                       ArchiveTransferProvider archiveTransferProvider) throws IOException {
+        return this.writeArchive(basePath, archiveInputStream, archiveTransferProvider, null);
+    }
+
     ArchiveTransferResult writeArchive(@NotNull String basePath,
                                        @NotNull InputStream archiveInputStream,
                                        ArchiveTransferProvider archiveTransferProvider,

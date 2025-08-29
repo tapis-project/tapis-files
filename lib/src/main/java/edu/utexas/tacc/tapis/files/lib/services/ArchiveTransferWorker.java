@@ -29,6 +29,7 @@ import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.sharedapi.security.AuthenticatedUser;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
@@ -186,6 +187,8 @@ public class ArchiveTransferWorker {
     }
 
     private ArchiveTransferResult doTransfer(UUID archiveTransferUuid) throws IOException, DAOException {
+        final String opName = "doTransfer";
+
         // get the resourceRequestUser
         ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
         ArchiveTransfer archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
@@ -218,24 +221,21 @@ public class ArchiveTransferWorker {
                         dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
                     yield handleFullTransfer(srcArchiveXFer, dstArchiveXFer, params, sha256Digest);
                 }
-                // TODO AXFER: fix message
-                throw new UnrecoverableTransferException("Archive transfer must be supported for source and destination systems");
+                throw new UnrecoverableTransferException(LibUtils.getMsg("FILES_XFER_INVALID_FULL_ARCHIVE_NOT_SUPPORTED", opName));
             }
 
             case TAR_ARCHIVE, GZIP_ARCHIVE -> {
                 if (srcClient instanceof ArchiveTransferSource srcArchiveXFer) {
                     yield handleToArchiveTransfer(srcArchiveXFer, dstClient, params, sha256Digest);
                 }
-                // TODO AXFER: fix message
-                throw new UnrecoverableTransferException("Archive transfer must be supported for source and destination systems");
+                throw new UnrecoverableTransferException(LibUtils.getMsg("FILES_XFER_INVALID_TO_ARCHIVE_NOT_SUPPORTED", opName));
 
             }
             case EXPAND_TAR_ARCHIVE, EXPAND_GZIP_ARCHIVE -> {
                 if (dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
                     yield handleFromArchiveTransfer(srcClient, dstArchiveXFer, params, sha256Digest);
                 }
-                // TODO AXFER: fix message
-                throw new UnrecoverableTransferException("Archive transfer must be supported for source and destination systems");
+                throw new UnrecoverableTransferException(LibUtils.getMsg("FILES_XFER_INVALID_FROM_ARCHIVE_NOT_SUPPORTED", opName));
             }
         };
 
@@ -274,25 +274,25 @@ public class ArchiveTransferWorker {
     }
 
     private ArchiveTransferResult handleFromArchiveTransfer(IRemoteDataClient srcClient, ArchiveTransferDestination dstClient, ArchiveTransferParams params, MessageDigest md) throws IOException {
+        final String opName = "handleFromArchiveTransfer";
         ArchiveTransferProvider archiveTransferProvider = new ArchiveTransferProvider(params.getArchiveType(), md);
 
         String srcPath = params.getSrcUri().getPath();
+
         // for now, we will not expand symlink'ed archives ... but maybe that should change?
         FileInfo info = srcClient.getFileInfo(srcPath, false);
         if((info == null) || (!info.isFile())) {
-            throw new UnrecoverableTransferException("Transfer from archive requires source to be a file.");
+            throw new UnrecoverableTransferException(LibUtils.getMsg("FILES_XFER_INVALID_PARAMETER",
+                    opName, "sourceURI", params.getSrcUri()));
         }
 
         InputStream inputStream = srcClient.getStream(srcPath);
-//        ArchiveInputPipe archiveInputPipe = srcClient.getArchiveStream(
-//                params.getSrcUri().getPath(), params.getRelativePaths(), archiveTransferProvider);
         ObservableArchiveInputStream observableArchiveInputStream = new ObservableArchiveInputStream(inputStream, archiveTransferProvider);
         ArchiveTransferLog archiveTransferLog = new ArchiveTransferLog();
         observableArchiveInputStream.addObserver(archiveTransferLog);
 
-        // TODO  AXFER: check to see if there's a better way to handle last param that passing null in this case
         ArchiveTransferResult archiveTransferResult = dstClient.writeArchive(params.getDstUri().getPath(),
-                observableArchiveInputStream, archiveTransferProvider, null);
+                observableArchiveInputStream, archiveTransferProvider);
         archiveTransferResult.setArchiveTransferLog(archiveTransferLog);
 
         return archiveTransferResult;
@@ -329,8 +329,9 @@ public class ArchiveTransferWorker {
 
     private void validateParams(ArchiveTransferParams params) {
         if((!params.getSrcUri().isTapisProtocol()) || (!params.getDstUri().isTapisProtocol()))  {
-            // TODO AXFER: error message
-            throw new UnrecoverableTransferException("Error - must be tapis protocol");
+            String msg = MsgUtils.getMsg("FILES_XFER_INVALID_PARAMETER", "validateParams",
+                    "src/destination protocol", params.getSrcUri().getPath() + "/"  + params.getDstUri().getProtocol());
+            throw new UnrecoverableTransferException(msg);
         }
     }
 

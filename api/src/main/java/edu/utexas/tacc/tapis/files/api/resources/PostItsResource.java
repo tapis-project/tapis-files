@@ -181,7 +181,7 @@ public class PostItsResource {
         TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
 
         TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
-        Response response = ApiUtils.checkContext(threadContext, true);
+        Response response = ApiUtils.checkContext(threadContext);
         if(response != null) {
             return response;
         }

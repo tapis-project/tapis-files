@@ -55,8 +55,6 @@ public class ShareResource
   // Local logger.
   private static final Logger log = LoggerFactory.getLogger(ShareResource.class);
   private final String className = getClass().getSimpleName();
-  // Always return a nicely formatted response
-  private static final boolean PRETTY = true;
   // Json schema resource files.
   private static final String FILE_SHARE_REQUEST = "/edu/utexas/tacc/tapis/files/api/jsonschema/ShareRequest.json";
   // Field names used in Json
@@ -309,7 +307,7 @@ public class ShareResource
     {
       msg = ApiUtils.getMsgAuth("FAPI_SHARE_JSON_INVALID", rUser, op, systemId, path, e.getMessage());
       log.error(msg, e);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
+      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg)).build();
     }
 
     JsonObject obj = TapisGsonUtils.getGson().fromJson(json, JsonObject.class);
@@ -330,7 +328,7 @@ public class ShareResource
     if (users == null || users.size() <= 0)
     {
       msg = ApiUtils.getMsgAuth("FAPI_SHARE_NOUSERS", rUser, op, systemId, path);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
+      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg)).build();
     }
     return null;
   }
@@ -345,7 +343,7 @@ public class ShareResource
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
-    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp = ApiUtils.checkContext(threadContext);
     if (resp != null) return resp;
 
     // Create a user that collects together tenant, user and request information needed by the service call
@@ -365,7 +363,7 @@ public class ShareResource
     {
       msg = ApiUtils.getMsgAuth("FAPI_SHARE_JSON_ERROR", rUser, opName, systemId, path, e.getMessage());
       log.error(msg, e);
-      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
+      return Response.status(Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg)).build();
     }
 
     // ------------------------- Extract and validate payload -------------------------
@@ -389,7 +387,7 @@ public class ShareResource
     msg = ApiUtils.getMsgAuth("FAPI_SHARE_U_UPDATED", rUser, opName, systemId, path, userListStr);
     log.info(msg);
     return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+            .entity(TapisRestUtils.createSuccessResponse(msg, resp1))
             .build();
   }
 
@@ -402,7 +400,7 @@ public class ShareResource
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
-    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp = ApiUtils.checkContext(threadContext);
     if (resp != null) return resp;
 
     // Create a user that collects together tenant, user and request information needed by the service call
@@ -427,7 +425,7 @@ public class ShareResource
     String msg = ApiUtils.getMsgAuth("FAPI_SHARE_P_UPDATED", rUser, opName, systemId, path);
     log.info(msg);
     return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+            .entity(TapisRestUtils.createSuccessResponse(msg, resp1))
             .build();
   }
 
@@ -439,7 +437,7 @@ public class ShareResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp != null) return resp;
 
@@ -463,7 +461,7 @@ public class ShareResource
     if (shareInfo == null)
     {
       String msg = ApiUtils.getMsgAuth("FAPI_SHARE_NOT_FOUND", rUser, systemId, path);
-      return Response.status(Status.NOT_FOUND).entity(TapisRestUtils.createErrorResponse(msg, PRETTY)).build();
+      return Response.status(Status.NOT_FOUND).entity(TapisRestUtils.createErrorResponse(msg)).build();
     }
 
     // ---------------------------- Success -------------------------------
@@ -471,7 +469,7 @@ public class ShareResource
     RespShareInfo resp1 = new RespShareInfo(shareInfo);
     String msg = ApiUtils.getMsg("FAPI_SHARE_FOUND", systemId, path);
     return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+            .entity(TapisRestUtils.createSuccessResponse(msg, resp1))
             .build();
   }
 
@@ -485,7 +483,7 @@ public class ShareResource
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get();
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
-    Response resp = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp = ApiUtils.checkContext(threadContext);
     if (resp != null) return resp;
 
     // Create a user that collects together tenant, user and request information needed by the service call
@@ -507,7 +505,7 @@ public class ShareResource
     String msg = ApiUtils.getMsgAuth("FAPI_SHARE_DEL_ALL", rUser, systemId, path);
     log.info(msg);
     return Response.status(Status.OK)
-            .entity(TapisRestUtils.createSuccessResponse(msg, PRETTY, resp1))
+            .entity(TapisRestUtils.createSuccessResponse(msg, resp1))
             .build();
   }
 }

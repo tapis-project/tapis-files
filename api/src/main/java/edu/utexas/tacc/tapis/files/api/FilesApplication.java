@@ -1,6 +1,5 @@
 package edu.utexas.tacc.tapis.files.api;
 
-import com.google.gson.internal.bind.TypeAdapters;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -145,7 +144,6 @@ public class FilesApplication extends ResourceConfig
     register(OperationsApiResource.class);
     register(UtilsLinuxApiResource.class);
     register(PostItsResource.class);
-    register(TypeAdapters.class);
 
     // we were previously calling - packages("edu.utexas.tacc.tapis");
     // this was inadvertently bringing in TapisExceptionMapper.  I removed that, and replaced it with

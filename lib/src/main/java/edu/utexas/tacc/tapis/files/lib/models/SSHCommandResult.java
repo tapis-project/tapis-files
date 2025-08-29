@@ -32,23 +32,4 @@ public class SSHCommandResult {
     public boolean isSuccess() {
         return commandResult == 0;
     }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Result: ");
-        sb.append(commandResult);
-        sb.append(" Message: ");
-        if(commandError == null) {
-            sb.append("<null>");
-        } else {
-            String error = new String(commandError);
-            sb.append(error);
-        }
-        sb.append(System.lineSeparator());
-        sb.append("Output: ");
-        sb.append((commandOutput == null) ? null : sb.append(new String(commandOutput)));
-        sb.append(System.lineSeparator());
-        return sb.toString();
-    }
 }

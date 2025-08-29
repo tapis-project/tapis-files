@@ -570,7 +570,6 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
                                            @NotNull Set<String> relativePaths,
                                            ArchiveTransferProvider archiveTransferProvider) throws IOException {
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, srcBasePath);
-
     PipedOutputStream outputStream = new PipedOutputStream();
     ArchiveInputPipe archiveInputPipe = new ArchiveInputPipe(outputStream );
 
@@ -620,23 +619,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
         ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
         String unarchiveCommand = archiveTransferProvider.getUnarchiveCommand(absBasePath.toString());
         SSHCommandResult destinationCommandResult = new SSHCommandResult();
-        try(final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
-                borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true))/*;
-            var delayedCloseInputStream = new FilterInputStream(archiveInputStream) {
-              @Override
-              public void close() throws IOException {
-                // ignore this - it's closed later
-              }
-
-              public void ensureClosed() throws IOException {
-                super.close();
-                this.close();
-              }
-            })*/ {
-              /*
-          int returnValue = sshHolder.getSession().execute(unarchiveCommand, delayedCloseInputStream, outputStream, errorStream);
-          delayedCloseInputStream.ensureClosed();
-               */
+        try (final SshSessionPool.PooledSshSession<SSHExecChannel> sshHolder =
+                     borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
           int returnValue = sshHolder.getSession().execute(unarchiveCommand, archiveInputStream, outputStream, errorStream);
           destinationCommandResult.setCommandResult(returnValue);
 

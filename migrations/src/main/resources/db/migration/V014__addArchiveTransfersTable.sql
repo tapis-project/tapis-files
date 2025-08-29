@@ -25,7 +25,7 @@
 
  CREATE TABLE IF NOT EXISTS archive_transfer_paths
  (
-  archive_transfer_id       int UNIQUE REFERENCES archive_transfers(id)
+  archive_transfer_id       int REFERENCES archive_transfers(id)
                                                         ON DELETE CASCADE ON UPDATE CASCADE,
   path                      VARCHAR(4096)               NOT NULL
  );

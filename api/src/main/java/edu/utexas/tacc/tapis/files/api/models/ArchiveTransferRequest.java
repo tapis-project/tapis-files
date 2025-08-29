@@ -30,12 +30,12 @@ public class ArchiveTransferRequest {
         this.destinationBaseUrl = destinationBaseUrl;
     }
 
-    public void setRelativePaths(Set<String> relativePaths) {
-        this.relativePaths = relativePaths;
-    }
-
     public Set<String> getRelativePaths() {
         return relativePaths;
+    }
+
+    public void setRelativePaths(Set<String> relativePaths) {
+        this.relativePaths = relativePaths;
     }
 
     @Override
@@ -76,17 +76,28 @@ public class ArchiveTransferRequest {
             return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "destinationBaseUrl");
         }
 
-        if((relativePaths == null) || (relativePaths.isEmpty())) {
-            return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "relativePaths");
-        }
-
         if((archiveType == null) || (archiveType.isEmpty())) {
             return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "archiveType");
         }
 
         try {
             // try to get the corresponding enum value - throws Illegal argument if it fails
-            ArchiveTransferProvider.ArchiveType.valueOf(archiveType);
+            ArchiveTransferProvider.ArchiveType archiveTypeEnum = ArchiveTransferProvider.ArchiveType.valueOf(archiveType);
+
+            switch(archiveTypeEnum) {
+                case TAR, TAR_GZIP, TAR_ARCHIVE, GZIP_ARCHIVE -> {
+                    if((relativePaths == null) || (relativePaths.isEmpty())) {
+                        return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "relativePaths");
+                    }
+                }
+
+                case EXPAND_TAR_ARCHIVE, EXPAND_GZIP_ARCHIVE -> {
+                    if((relativePaths != null) && (!relativePaths.isEmpty())) {
+                        return LibUtils.getMsg("FILES_XFER_INVALID_PARAMETER", "ArchiveTransferRequest", "relativePaths", "Must be null");
+                    }
+                }
+
+            }
         } catch (IllegalArgumentException ex) {
             return LibUtils.getMsg("FILES_XFER_INVALID_PARAMETER", "ArchiveTransferRequest", "archiveType", ex.getMessage());
         }

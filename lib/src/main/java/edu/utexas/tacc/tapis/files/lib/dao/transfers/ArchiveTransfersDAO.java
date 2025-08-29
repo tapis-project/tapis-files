@@ -64,6 +64,9 @@ public class ArchiveTransfersDAO {
         return insertedArchiveTransfer;
     }
     public Set<String> insertRelativePaths(DAOTransactionContext context, int archiveTransferId, Set<String> relativePaths) throws DAOException {
+        if((relativePaths == null) || (relativePaths.isEmpty())) {
+            return Collections.emptySet();
+        }
         Set<String> insertedPaths = new HashSet<>();
         try {
             ResultSetHandler<String> handler = new ScalarHandler<>("path");
@@ -206,10 +209,9 @@ public class ArchiveTransfersDAO {
                 updatedArchiveTransfer.setRelativePaths(getRelativePaths(context, archiveTransfer.getId()));
             }
 
-
-            // TODO AXFER: need to handle preventing duplicates somehow - add / update depending on if it exists
             if(includeTransferLog) {
-                updatedArchiveTransfer.setTransferLogEntries(updateTransferLogEntries(context, updatedArchiveTransfer.getId(), archiveTransfer.getTransferLogEntries()));
+                updatedArchiveTransfer.setTransferLogEntries(updateTransferLogEntries(context,
+                        updatedArchiveTransfer.getId(), archiveTransfer.getTransferLogEntries()));
             }
 
             return updatedArchiveTransfer;

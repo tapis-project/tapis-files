@@ -9,6 +9,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
@@ -24,11 +25,13 @@ import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_IMPERSONATE;
+import static edu.utexas.tacc.tapis.files.lib.services.FileOpsService.SVCLIST_SHAREDCTX;
 
 public class ArchiveTransfersService {
     private static final Logger log = LoggerFactory.getLogger(ArchiveTransfersService.class);
@@ -52,9 +55,15 @@ public class ArchiveTransfersService {
         // set initialize fields
         archiveTransfer.setStatus(ArchiveTransferStatus.ACCEPTED);
         archiveTransfer.setRetriesRemaining(MAXIMUM_RETRIES);
+
         // Validate the request. Check that all Tapis systems exist and are enabled.
         // Check that transfer between system types is supported.
         validateRequest(rUser, archiveTransfer);
+
+        TransferURI srcURI = new TransferURI(archiveTransfer.getSourceBaseUrl());
+        TransferURI dstURI = new TransferURI(archiveTransfer.getDestinationBaseUrl());
+        checkSharedCtxAllowed(rUser, srcURI, archiveTransfer.getSrcSharedCtxGrantor(),
+                dstURI, archiveTransfer.getDestSharedCtxGrantor());
 
         // Persist the transfer task and associated parent tasks
         try
@@ -245,6 +254,55 @@ public class ArchiveTransfersService {
         }
 
         return sys;
+    }
+
+    /**
+     * Confirm that caller is allowed to set sharedCtx.
+     * Must be a service request from a service in the allowed list.
+     *
+     * @param rUser - ResourceRequestUser containing tenant, user and request info
+     * @param srcURI - Base Source URI
+     * @param srcGrantor - source ctx grantor
+     * @param dstURI - Base Destination URI
+     * @param dstGrantor - destination ctx grantor
+     * @throws ForbiddenException - user not authorized to perform operation
+     */
+    private void checkSharedCtxAllowed(ResourceRequestUser rUser, TransferURI srcURI, String srcGrantor,
+                                       TransferURI dstURI, String dstGrantor)
+            throws ForbiddenException
+    {
+        // Grantor not null indicates attempt to share.
+        boolean srcShared = !StringUtils.isBlank(srcGrantor);
+        boolean dstShared = !StringUtils.isBlank(dstGrantor);
+
+        // If no sharing we are done
+        if (!srcShared && !dstShared) {
+            return;
+        }
+
+        String srcSysId = srcURI.getSystemId();
+        String srcPath = srcURI.getPath();
+        String dstSysId = dstURI.getSystemId();
+        String dstPath = dstURI.getPath();
+
+        // If a service request the username will be the service name. E.g. files, jobs, streams, etc
+        boolean allowed = (rUser.isServiceRequest() && SVCLIST_SHAREDCTX.contains(rUser.getJwtUserId()));
+        if (allowed)
+        {
+            // Src and/or Dest shared, log it
+            if (srcShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_SRC_TXFR", rUser,
+                    "<archiveTransfer>", srcSysId, srcPath, srcGrantor));
+            if (dstShared) log.trace(LibUtils.getMsgAuthR("FILES_AUTH_SHAREDCTX_DST_TXFR", rUser,
+                    "<archiveTransfer>", dstSysId, dstPath, dstGrantor));
+        }
+        else
+        {
+            // Sharing not allowed. Log systems and paths involved
+            String msg = LibUtils.getMsgAuthR("FILES_UNAUTH_SHAREDCTX_TXFR", rUser,
+                    "<archiveTransfer>", srcSysId, srcPath, dstSysId, srcGrantor, dstPath, dstGrantor);
+            log.warn(msg);
+            throw new ForbiddenException(msg);
+        }
     }
 
 }
