@@ -612,6 +612,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
                                             ArchiveTransferProvider archiveTransferProvider,
                                             Future<SSHCommandResult> sourceResultFuture) throws IOException {
     Path absBasePath = PathUtils.getAbsolutePath(rootDir, basePath);
+    mkdir(basePath);
     Future<SSHCommandResult> destinationResultFuture = Executors.newSingleThreadScheduledExecutor().submit(new Callable<SSHCommandResult>() {
       @Override
       public SSHCommandResult call() throws Exception {
