@@ -1,15 +1,18 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransferWorker;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.RowProcessor;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
+import org.apache.commons.lang3.StringUtils;
+import org.postgresql.util.PGobject;
 
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,13 +31,13 @@ public class TransferWorkerDAO {
         return retrievedWorkers;
     }
 
-    public TransferWorker reInsertTransferWorker(DAOTransactionContext context, UUID uuid) throws DAOException {
+    public TransferWorker reInsertTransferWorker(DAOTransactionContext context, UUID uuid, TransferWorkerConfig transferWorkerConfig) throws DAOException {
         TransferWorker transferWorker = null;
         try {
             RowProcessor rowProcessor = new TransferWorkersRowProcessor();
             BeanHandler<TransferWorker> handler = new BeanHandler<>(TransferWorker.class, rowProcessor);
             QueryRunner runner = new QueryRunner();
-            transferWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.REINSERT_TRANSFER_WORKER, handler, uuid);
+            transferWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.REINSERT_TRANSFER_WORKER, handler, uuid, getTransferWorkerConfig(transferWorkerConfig));
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertTransferWorker", ex.getMessage()), ex);
         }
@@ -42,13 +45,29 @@ public class TransferWorkerDAO {
         return transferWorker;
     }
 
-    public TransferWorker insertTransferWorker(DAOTransactionContext context) throws DAOException {
+    public PGobject getTransferWorkerConfig(TransferWorkerConfig transferWorkerConfig) throws SQLException {
+        if(transferWorkerConfig == null) {
+            return null;
+        }
+
+        String transferWorkerConfigJson = TapisGsonUtils.getGson().toJson(transferWorkerConfig);
+        if(StringUtils.isBlank(transferWorkerConfigJson)) {
+            return null;
+        }
+
+        PGobject returnObject = new PGobject();
+        returnObject.setType("jsonb");
+        returnObject.setValue(transferWorkerConfigJson);
+        return returnObject;
+    }
+
+    public TransferWorker insertTransferWorker(DAOTransactionContext context, TransferWorkerConfig transferWorkerConfig) throws DAOException {
         TransferWorker transferWorker = null;
         try {
             RowProcessor rowProcessor = new TransferWorkersRowProcessor();
             BeanHandler<TransferWorker> handler = new BeanHandler<>(TransferWorker.class, rowProcessor);
             QueryRunner runner = new QueryRunner();
-            transferWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.INSERT_TRANSFER_WORKER, handler);
+            transferWorker = runner.query(context.getConnection(), TransferWorkerDAOStatements.INSERT_TRANSFER_WORKER, handler, getTransferWorkerConfig(transferWorkerConfig));
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "insertTransferWorker", ex.getMessage()), ex);
         }

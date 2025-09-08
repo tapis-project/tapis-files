@@ -176,10 +176,12 @@ public class ArchiveTransferWorker {
         // remove all completed transfers before checking capacity
         for (UUID key : futures.keySet()) {
             Future<ArchiveTransferResult> resultFuture = futures.get(key);
-            // updateArchiveTransferIfComplete returns true if it was complete, or false if it's still in progress
-            if(updateArchiveTransferIfComplete(key, resultFuture)) {
-                // remove the future if its result's future(s) are complete
-                futures.remove(key);
+            if(resultFuture.isDone()) {
+                // updateArchiveTransferIfComplete returns true if it was complete, or false if it's still in progress
+                if (updateArchiveTransferIfComplete(key, resultFuture)) {
+                    // remove the future if its result's future(s) are complete
+                    futures.remove(key);
+                }
             }
         }
 

@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
-import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransferDAOStatements;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.PostgresDAO;
@@ -12,7 +11,9 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +22,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /*
  * Class with main used to start a Files worker. See deploy/Dockerfile.workers
@@ -147,13 +150,19 @@ public class TransfersAssigner
         }
     }
 
-    void updateWorkerList(Map<UUID, Integer> activeWorkerMap) {
+    void updateWorkerList(Map<UUID, Integer> activeWorkerMap, TransferWorkerConfig.TransferType forTransferType) {
         TransferWorkerDAO transferWorkerDAO = new TransferWorkerDAO();
 
         List<TransferWorker> workers = null;
         try {
             workers = DAOTransactionContext.doInTransaction((context) -> {
-                return transferWorkerDAO.getTransferWorkers(context);
+                return transferWorkerDAO.getTransferWorkers(context).stream()
+                        // only workers that will accept this type of transfer
+                        .filter(transferWorker -> {
+                            Set<TransferWorkerConfig.TransferType> acceptedTransferTypes =
+                                    transferWorker.getTransferWorkerConfig().getAcceptedTransferTypes();
+                            return (CollectionUtils.isEmpty(acceptedTransferTypes) || acceptedTransferTypes.contains(forTransferType));
+                        }).collect(Collectors.toList());
             });
         } catch (DAOException ex) {
             log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkerList", ex));
@@ -194,7 +203,7 @@ public class TransfersAssigner
             DAOTransactionContext.doInTransaction(context -> {
                 childTaskDao.cleanupZombieChildAssignments(context, TransferTaskChild.TERMINAL_STATES);
                 parentTaskDao.cleanupZombieParentAssignments(context, TransferTaskParent.TERMINAL_STATES);
-                archiveTransfersDAO.cleanupZombieArchiveTransferAssignments(context, TransferTaskParent.TERMINAL_STATES);
+                archiveTransfersDAO.cleanupZombieArchiveTransferAssignments(context);
                 return 0;
             });
         } catch (DAOException ex) {
@@ -271,7 +280,7 @@ public class TransfersAssigner
     private List<UUID> getWorkersThatNeedChildTasks() {
         Map<UUID, Integer> activeWorkerMap = new HashMap<>();
 
-        updateWorkerList(activeWorkerMap);
+        updateWorkerList(activeWorkerMap, TransferWorkerConfig.TransferType.TRANSFER_TYPE_CHILD);
         updateChildWorkCounts(activeWorkerMap);
 
         List<UUID> workersThatNeedWork = new ArrayList<>();
@@ -313,7 +322,7 @@ public class TransfersAssigner
     private List<UUID> getWorkersThatNeedParentTasks() {
         Map<UUID, Integer> activeWorkerMap = new HashMap<>();
 
-        updateWorkerList(activeWorkerMap);
+        updateWorkerList(activeWorkerMap, TransferWorkerConfig.TransferType.TRANSFER_TYPE_PARENT);
         updateParentWorkCounts(activeWorkerMap);
 
         List<UUID> workersThatNeedWork = new ArrayList<>();
@@ -353,7 +362,7 @@ public class TransfersAssigner
     private List<UUID> getWorkersThatNeedArchiveTransfers() {
         Map<UUID, Integer> activeWorkerMap = new HashMap<>();
 
-        updateWorkerList(activeWorkerMap);
+        updateWorkerList(activeWorkerMap, TransferWorkerConfig.TransferType.TRANSFER_TYPE_ARCHIVE);
         updateArchiveTransferWorkCounts(activeWorkerMap);
 
         List<UUID> workersThatNeedWork = new ArrayList<>();

@@ -40,3 +40,4 @@
  );
  CREATE INDEX ON archive_transfer_log(archive_transfer_id);
 
+ ALTER TABLE transfer_worker ADD COLUMN IF NOT EXISTS worker_config JSONB;

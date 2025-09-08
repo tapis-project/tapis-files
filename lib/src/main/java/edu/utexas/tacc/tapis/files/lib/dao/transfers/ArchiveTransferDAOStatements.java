@@ -120,6 +120,16 @@ public class ArchiveTransferDAOStatements {
               ) AND
                   archive_transfers.status != ANY(?)
             """ ;
+    public static final String SET_IN_PROGRESS_BUT_AVAILABLE_TASKS_BACK_TO_ACCEPTED =
+            """
+                UPDATE
+                    archive_transfers
+                SET
+                    status = 'ACCEPTED'
+                WHERE
+                    status = 'IN_PROGRESS' AND
+                    assigned_to IS NULL;
+            """;
     public static final String GET_ARCHIVE_TRANSFER_FOR_UPDATE =
             """
               SELECT

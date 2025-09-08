@@ -12,7 +12,7 @@ public class ArchiveInputPipe extends PipedInputStream {
     public ArchiveInputPipe(PipedOutputStream src) throws IOException {
         super(src);
     }
-    ArchiveInputPipe(PipedOutputStream src, int pipeSize) throws IOException {
+    public ArchiveInputPipe(PipedOutputStream src, int pipeSize) throws IOException {
         super(src, pipeSize);
     }
 

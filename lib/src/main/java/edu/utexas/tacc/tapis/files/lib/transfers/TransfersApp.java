@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.PostgresDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferWorkerDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
 import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransferWorker;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
@@ -84,6 +85,7 @@ public class TransfersApp
 
   private static TransferWorkerDAO workerDAO = new TransferWorkerDAO();
   private static UUID myUuid = null;
+  private static TransferWorkerConfig myConfig = new TransferWorkerConfig(RuntimeSettings.get().getWorkerAcceptedTransferTypes());
 
   public static void main(String[] args)
   {
@@ -162,7 +164,7 @@ public class TransfersApp
       }));
 
       TransfersApp.myUuid = DAOTransactionContext.doInTransaction((context) -> {
-        TransferWorker me = workerDAO.insertTransferWorker(context);
+        TransferWorker me = workerDAO.insertTransferWorker(context, myConfig);
         return me.getUuid();
       });
 
@@ -176,7 +178,7 @@ public class TransfersApp
               DAOTransactionContext.doInTransaction((context) -> {
                 TransferWorkerDAO dao = new TransferWorkerDAO();
                 if(dao.getTransferWorkerById(context, TransfersApp.myUuid) == null) {
-                  dao.reInsertTransferWorker(context, TransfersApp.myUuid);
+                  dao.reInsertTransferWorker(context, TransfersApp.myUuid, TransfersApp.myConfig);
                 } else {
                   dao.updateTransferWorker(context, TransfersApp.myUuid);
                 }

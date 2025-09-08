@@ -1,5 +1,9 @@
 package edu.utexas.tacc.tapis.files.lib.config;
 
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
+
+import java.util.Set;
+
 public interface IRuntimeConfig {
     long getRequiredPostgresVersion();
     String getHostName();
@@ -34,6 +38,7 @@ public interface IRuntimeConfig {
     int getMaxTransferCount();
     int getMaxAssignmentWaitMultiplier();
     boolean isAuditingEnabled();
+    public Set<TransferWorkerConfig.TransferType> getWorkerAcceptedTransferTypes();
     public int getGrizzlyPoolCoreSize();
     public int getGrizzlyPoolMaxSize();
     public String getTapisDebugSystemServicePath();

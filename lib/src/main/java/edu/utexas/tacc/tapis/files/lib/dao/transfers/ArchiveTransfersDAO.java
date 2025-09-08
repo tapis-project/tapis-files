@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferLogEntry;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
@@ -311,12 +312,14 @@ public class ArchiveTransfersDAO {
         }
     }
 
-    public void cleanupZombieArchiveTransferAssignments(DAOTransactionContext context, Set<TransferTaskStatus> terminalStates) throws DAOException {
+    public void cleanupZombieArchiveTransferAssignments(DAOTransactionContext context) throws DAOException {
         try {
             // first unassign everything that's in a non-terminal state
             QueryRunner runner = new QueryRunner();
-            final Array finalStates = context.getConnection().createArrayOf("text", terminalStates.stream().map(value -> value.name()).toArray());
+            final Array finalStates = context.getConnection().createArrayOf("text", ArchiveTransferStatus.getFinalStates().stream().map(value -> value.name()).toArray());
             int zombies = runner.update(context.getConnection(), ArchiveTransferDAOStatements.UNASSIGN_ZOMBIE_ASSIGNMENTS, finalStates);
+            // now find unassigned tasks that are 'IN PROGRESS' and set them back to ACCEPTED
+            runner.update(context.getConnection(), ArchiveTransferDAOStatements.SET_IN_PROGRESS_BUT_AVAILABLE_TASKS_BACK_TO_ACCEPTED);
             if(zombies > 0) {
                 log.info(LibUtils.getMsg("FILES_TXFR_DAO_REASSIGNED_ZOMBIES", zombies, "archiveTransfers"));
             }

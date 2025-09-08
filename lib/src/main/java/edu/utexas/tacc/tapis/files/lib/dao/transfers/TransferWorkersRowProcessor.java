@@ -1,7 +1,10 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransferWorker;
+import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
 import org.apache.commons.dbutils.BasicRowProcessor;
+import org.postgresql.util.PGobject;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -13,10 +16,15 @@ import java.util.UUID;
 public class TransferWorkersRowProcessor extends BasicRowProcessor {
     @Override
     public TransferWorker toBean(ResultSet rs, Class type) throws SQLException {
+        TransferWorkerConfig transferWorkerConfig = null;
         String uuidString = rs.getString("uuid");
         Timestamp lastUpdated = rs.getTimestamp("last_updated");
+        PGobject transferWorkerConfigPGObject = (PGobject) rs.getObject("worker_config");
+        if(!transferWorkerConfigPGObject.isNull()) {
+            transferWorkerConfig = TapisGsonUtils.getGson().fromJson(transferWorkerConfigPGObject.getValue(), TransferWorkerConfig.class);
+        }
 
-        TransferWorker worker = new TransferWorker(UUID.fromString(uuidString), lastUpdated.toInstant());
+        TransferWorker worker = new TransferWorker(UUID.fromString(uuidString), lastUpdated.toInstant(), transferWorkerConfig);
         return worker;
     }
 

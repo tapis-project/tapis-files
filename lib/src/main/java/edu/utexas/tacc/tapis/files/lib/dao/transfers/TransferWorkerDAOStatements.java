@@ -3,13 +3,13 @@ package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 public class TransferWorkerDAOStatements {
     public static final String INSERT_TRANSFER_WORKER =
         """
-            INSERT INTO transfer_worker DEFAULT VALUES
+            INSERT INTO transfer_worker (worker_config) VALUES (?)
                 RETURNING *;
         """;
 
     public static final String REINSERT_TRANSFER_WORKER =
             """
-                INSERT INTO transfer_worker (uuid) VALUES (?)
+                INSERT INTO transfer_worker (uuid, worker_config) VALUES (?, ?)
                     RETURNING *;
             """;
 

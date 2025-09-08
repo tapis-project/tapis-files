@@ -1,6 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.config;
 
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
 import org.apache.commons.lang3.StringUtils;
+import org.bouncycastle.util.Strings;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Function;
 
 public class RuntimeSettings {
 
@@ -44,6 +52,8 @@ public class RuntimeSettings {
         protected final int maxTransferCount = getIntSetting("MAX_TRANSFER_COUNT", 10000);
         protected final int maxAssignmentWaitMultiplier = getIntSetting("MAX_ASSIGNMENT_WAIT_MULTIPLIER", 5);
         protected final boolean auditingEnabled = getBoolSetting("TAPIS_AUDITING_ENABLED", false);
+        protected final Set<TransferWorkerConfig.TransferType> workerAcceptedTransferTypes = getSetSetting("TAPIS_FILES_WORKER_ACCEPTED_TRANSFER_TYPES",
+                Collections.emptySet(), TransferWorkerConfig.TransferType.class, value -> TransferWorkerConfig.TransferType.valueOf(value.trim()));
         protected final long requiredPostgresVersion = 160003;
 
         public long getRequiredPostgresVersion() {
@@ -175,6 +185,10 @@ public class RuntimeSettings {
 
         public boolean isAuditingEnabled() { return auditingEnabled; }
 
+        public Set<TransferWorkerConfig.TransferType> getWorkerAcceptedTransferTypes() {
+            return workerAcceptedTransferTypes;
+        }
+
         public static int getIntSetting(String settingName, int defaultValue) {
             String settingValue = settings.get(settingName);
             if(StringUtils.isBlank(settingValue)) {
@@ -186,6 +200,18 @@ public class RuntimeSettings {
             String settingValue = settings.get(settingName);
             if (StringUtils.isBlank(settingValue)) return defaultValue;
             return Boolean.parseBoolean(settingValue);
+        }
+
+        public static <T> Set<T> getSetSetting(String settingName, Set<T> defaultValue, Class<T> clazz, Function<String, T> objectFromString) {
+            String settingValue = settings.get(settingName);
+            if (StringUtils.isBlank(settingValue)) return defaultValue;
+            String[] stringArray = Strings.split(settingValue, ',');
+
+            Set<T> newSet = new HashSet<>();
+            for(String stringArrayElement : stringArray) {
+                newSet.add(objectFromString.apply(stringArrayElement));
+            }
+            return newSet;
         }
     }
 
