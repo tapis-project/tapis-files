@@ -155,15 +155,12 @@ public class TransfersAssigner
 
         List<TransferWorker> workers = null;
         try {
-            workers = DAOTransactionContext.doInTransaction((context) -> {
-                return transferWorkerDAO.getTransferWorkers(context).stream()
-                        // only workers that will accept this type of transfer
-                        .filter(transferWorker -> {
-                            Set<TransferWorkerConfig.TransferType> acceptedTransferTypes =
-                                    transferWorker.getTransferWorkerConfig().getAcceptedTransferTypes();
-                            return (CollectionUtils.isEmpty(acceptedTransferTypes) || acceptedTransferTypes.contains(forTransferType));
-                        }).collect(Collectors.toList());
-            });
+            workers = DAOTransactionContext.doInTransaction((context) ->
+                    transferWorkerDAO.getTransferWorkers(context).stream()
+                            // only workers that will accept this type of transfer
+                            .filter(transferWorker -> transferWorker.canAssignTask(new TransferWorker.AssignmentParams(forTransferType, null)))
+                            .collect(Collectors.toList())
+            );
         } catch (DAOException ex) {
             log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkerList", ex));
         }
@@ -308,9 +305,10 @@ public class TransfersAssigner
         // do the actual assignment of tasks to workers
         schedulingPolicy.assignChildTasksToWorkers(workersThatNeedWork, queuedTaskIds);
 
+        // TODO:  I can't remember if/why I need this.  Put comment here if you figure it out!  Harmless, but possibly unneeded.
         // if there are still workers that need work and there are still tasks left in the list
         // continue to do assignments.
-        workersThatNeedWork = getWorkersThatNeedChildTasks();
+        // workersThatNeedWork = getWorkersThatNeedChildTasks();
         queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
         return (!queuedTaskIds.isEmpty());
     }
@@ -348,9 +346,10 @@ public class TransfersAssigner
         // do the actual assignment of tasks to workers
         schedulingPolicy.assignParentTasksToWorkers(workersThatNeedWork, queuedTaskIds);
 
+        // TODO:  I can't remember if/why I need this.  Put comment here if you figure it out!  Harmless, but possibly unneeded.
         // if there are still workers that need work and there are still tasks left in the list
         // continue to do assignments.
-        workersThatNeedWork = getWorkersThatNeedParentTasks();
+        // workersThatNeedWork = getWorkersThatNeedParentTasks();
         queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
         return (!queuedTaskIds.isEmpty());
     }
@@ -388,9 +387,10 @@ public class TransfersAssigner
         // do the actual assignment of tasks to workers
         schedulingPolicy.assignArchiveTransfersToWorkers(workersThatNeedWork, queuedTaskIds);
 
+        // TODO:  I can't remember if/why I need this.  Put comment here if you figure it out!  Harmless, but possibly unneeded.
         // if there are still workers that need work and there are still tasks left in the list
         // continue to do assignments.
-        workersThatNeedWork = getWorkersThatNeedArchiveTransfers();
+        // workersThatNeedWork = getWorkersThatNeedArchiveTransfers();
         queuedTaskIds = schedulingPolicy.getQueuedArchiveTransferIds();
         return (!queuedTaskIds.isEmpty());
     }

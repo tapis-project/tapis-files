@@ -62,16 +62,6 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
   }
 
   @Test
-  public void testGetTransferParent() throws DAOException
-  {
-    TransferTask t = createTransferTask(testUser1);
-    TransferTaskParent parent = t.getParentTasks().get(0);
-    TransferTaskParent newParent;
-    newParent = dao.getTransferTaskParentByUUID(parent.getUuid());
-    Assert.assertEquals(newParent.getUuid(), parent.getUuid());
-  }
-
-  @Test
   public void testGetAllParentsForTask() throws DAOException
   {
     TransferTask t = createTransferTask(testUser1);

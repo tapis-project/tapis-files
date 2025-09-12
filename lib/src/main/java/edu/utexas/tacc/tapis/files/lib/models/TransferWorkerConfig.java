@@ -15,33 +15,32 @@ public class TransferWorkerConfig {
     }
 
     private Set<TransferType> acceptedTransferTypes = new HashSet<>();
-//    private Set<String> acceptedTenants = new HashSet<>();
+    private Set<String> acceptedTenants = new HashSet<>();
 
-    // TODO:  When the scheduler will handle 'acceptedTenants', we can uncomment this code
     public TransferWorkerConfig(Collection<TransferType> acceptedTransferTypes/*, Collection<String> acceptedTenants*/) {
         this.acceptedTransferTypes.addAll(acceptedTransferTypes);
-//
-//        // tenants:
-//        if(acceptedTenants != null) {
-//            this.acceptedTenants.addAll(
-//                    acceptedTenants.stream()
-//                            // filter out null/blanks
-//                            .filter(tenantName -> !StringUtils.isBlank(tenantName))
-//                            // map to lower case value
-//                            .map(tenantName -> tenantName.toLowerCase())
-//                            // collect into a set
-//                            .collect(Collectors.toSet())
-//            );
-//        }
+
+        // tenants:
+        if(acceptedTenants != null) {
+            this.acceptedTenants.addAll(
+                    acceptedTenants.stream()
+                            // filter out null/blanks
+                            .filter(tenantName -> !StringUtils.isBlank(tenantName))
+                            // map to lower case value
+                            .map(tenantName -> tenantName.toLowerCase())
+                            // collect into a set
+                            .collect(Collectors.toSet())
+            );
+        }
     }
 
-//    public Set<String> getAcceptedTenants() {
-//        return acceptedTenants;
-//    }
-//
-//    public void setAcceptedTenants(Set<String> acceptedTenants) {
-//        this.acceptedTenants = acceptedTenants;
-//    }
+    public Set<String> getAcceptedTenants() {
+        return acceptedTenants;
+    }
+
+    public void setAcceptedTenants(Set<String> acceptedTenants) {
+        this.acceptedTenants = acceptedTenants;
+    }
 
     public Set<TransferType> getAcceptedTransferTypes() {
         return acceptedTransferTypes;

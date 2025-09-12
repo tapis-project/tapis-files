@@ -198,6 +198,12 @@ public class ChildTaskTransferService {
                         try {
                             List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getChildTasksForWorker(myUuid);
                             for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
+                                if(ttc.getObject().getStatus() == TransferTaskStatus.CANCELLED) {
+                                    // remove assignment and continue
+                                    unassignChild(ttc.getObject());
+                                    continue;
+                                }
+
                                 UUID childUuid = ttc.getObject().getUuid();
                                 if (futures.containsKey(childUuid)) {
                                     if (futures.get(childUuid).isDone()) {

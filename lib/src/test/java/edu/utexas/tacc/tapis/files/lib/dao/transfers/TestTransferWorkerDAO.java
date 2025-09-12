@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransferWorker;
 import org.flywaydb.core.Flyway;
 import org.jooq.DAO;
@@ -9,6 +10,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -35,7 +37,7 @@ public class TestTransferWorkerDAO {
     @Test
     public void testCreateAndReadWorker() throws DAOException {
         TransferWorker insertedWorker = DAOTransactionContext.doInTransaction((context) -> {
-            TransferWorker worker = dao.insertTransferWorker(context);
+            TransferWorker worker = dao.insertTransferWorker(context, new TransferWorkerConfig(Collections.emptySet()));
             context.commit();
             return worker;
         });
@@ -51,7 +53,7 @@ public class TestTransferWorkerDAO {
     @Test
     public void testUpdateWorker() throws DAOException {
         TransferWorker insertedWorker = DAOTransactionContext.doInTransaction((context) -> {
-            TransferWorker worker = dao.insertTransferWorker(context);
+            TransferWorker worker = dao.insertTransferWorker(context, new TransferWorkerConfig(Collections.emptySet()));
             context.commit();
             return worker;
         });
@@ -73,9 +75,9 @@ public class TestTransferWorkerDAO {
         List<TransferWorker> insertedWorkers = new ArrayList<>();
 
         DAOTransactionContext.doInTransaction((context) -> {
-            insertedWorkers.add(dao.insertTransferWorker(context));
-            insertedWorkers.add(dao.insertTransferWorker(context));
-            insertedWorkers.add(dao.insertTransferWorker(context));
+            insertedWorkers.add(dao.insertTransferWorker(context, new TransferWorkerConfig(Collections.emptySet())));
+            insertedWorkers.add(dao.insertTransferWorker(context, new TransferWorkerConfig(Collections.emptySet())));
+            insertedWorkers.add(dao.insertTransferWorker(context, new TransferWorkerConfig(Collections.emptySet())));
             context.commit();
             return insertedWorkers;
         });
@@ -102,7 +104,7 @@ public class TestTransferWorkerDAO {
         int workersToCreate = 3;
         DAOTransactionContext.doInTransaction((context) -> {
             for(int i = 0;i < workersToCreate;i++) {
-                TransferWorker worker = dao.insertTransferWorker(context);
+                TransferWorker worker = dao.insertTransferWorker(context, new TransferWorkerConfig(Collections.emptySet()));
                 checkWorkerFieldsNotNull(worker);
                 insertedWorkers.put(worker.getUuid(), worker);
             }

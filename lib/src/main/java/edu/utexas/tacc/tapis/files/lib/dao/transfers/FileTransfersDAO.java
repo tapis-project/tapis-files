@@ -183,20 +183,6 @@ public class FileTransfersDAO {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getAllParentsForTaskByID", taskId), ex);
         }
     }
-
-    public TransferTaskParent getTransferTaskParentByUUID(@NotNull UUID uuid) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
-            String query = FileTransfersDAOStatements.GET_PARENT_TASK_BY_UUID;
-            QueryRunner runner = new QueryRunner();
-            TransferTaskParent task = runner.query(connection, query, handler, uuid);
-            return task;
-        } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskParentByUUID", uuid), ex);
-        }
-    }
-
     public TransferTaskParent getTransferTaskParentById(@NotNull long id) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {

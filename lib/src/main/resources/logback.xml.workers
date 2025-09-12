@@ -112,6 +112,8 @@
 
     <logger name="org.apache.sshd.client.channel.ChannelExec" level="WARN"/>
 
+    <logger name="edu.utexas.tacc.tapis.files.lib.transfers.ObservableArchiveInputStream" level="WARN"/>
+
     <!-- ssh session pooling logging.  logs to a separate file -->
     <logger name="edu.utexas.tacc.tapis.shared.ssh" level="INFO" additivity="false">
         <appender-ref ref="SSH_POOL_FILE"/>

@@ -24,6 +24,13 @@ public class TransferTaskChildDAOStatements {
                   row_number;
             """ ;
 
+    // NOTE that this contains CANCELLED tasks also.  The worker MUST check the
+    // status and discard any cancelled tasks.  The assigner doesn't know if the
+    // worker was working on this task yet when it was cancelled, or it it was just
+    // in the queue and just not picked up yet.  Or it could even have been picked up
+    // but just not set to in_progress yet.  For all of these reasonse, the assigner
+    // cant know, so the worker MUST check status, and discard and unassigne cancelled
+    // tasks. (this goes for parent tasks too!
     public static final String GET_ACCEPTED_CHILD_TASKS_ASSIGNED_TO_WORKER =
             """
               select * from (
@@ -38,7 +45,8 @@ public class TransferTaskChildDAOStatements {
                 from
                   transfer_tasks_child
                 where
-                  status = 'ACCEPTED' AND
+                  (status = 'ACCEPTED' OR
+                  status = 'CANCELLED') AND
                   assigned_to = ?
               )
                 where

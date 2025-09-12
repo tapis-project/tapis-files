@@ -157,6 +157,17 @@ public class ParentTaskTransferService {
             try {
               List<PrioritizedObject<TransferTaskParent>> ttpList = schedulingPolicy.getParentTasksForWorker(myUuid);
               for (PrioritizedObject<TransferTaskParent> ttp : ttpList) {
+                if(ttp.getObject().getStatus() == TransferTaskStatus.CANCELLED) {
+                  TransferTaskParentDAO ttpDao = new TransferTaskParentDAO();
+                  DAOTransactionContext.doInTransaction(context -> {
+                    TransferTaskParent lockedParent = ttpDao.getTransferTaskParentByUUID(
+                            context, ttp.getObject().getUuid(), true);
+                    lockedParent.setAssignedTo(null);
+                    ttpDao.updateTransferTaskParent(context, lockedParent);
+                    return null;
+                  });
+                  continue;
+                }
                 UUID parentUuid = ttp.getObject().getUuid();
                 if (futures.containsKey(parentUuid)) {
                   if (futures.get(parentUuid).isDone()) {
