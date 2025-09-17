@@ -7,6 +7,7 @@ import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferLogEntry;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
@@ -27,6 +28,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -326,6 +328,30 @@ public class ArchiveTransfersDAO {
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "cleanupZombieParentAssignments", ex.getMessage()), ex);
         }
+    }
+
+    public Collection<ArchiveTransfer> getAssignedTasksInStatus(DAOTransactionContext context, UUID workerUuid,
+                                                                  TransferTaskStatus status, boolean forUpdate) throws DAOException {
+        try {
+            RowProcessor rowProcessor = new ArchiveTransferRowProcessor();
+            BeanListHandler<ArchiveTransfer> handler = new BeanListHandler<>(ArchiveTransfer.class, rowProcessor);
+
+            QueryRunner runner = new QueryRunner();
+            Collection<ArchiveTransfer> archiveTransfers;
+            String stmt;
+            if (forUpdate) {
+                stmt = ArchiveTransferDAOStatements.GET_ASSIGNED_TASKS_IN_STATUS_FOR_UPDATE;
+            } else {
+                stmt = ArchiveTransferDAOStatements.GET_ASSIGNED_TASKS_IN_STATUS;
+            }
+            archiveTransfers = runner.query(context.getConnection(), stmt, handler, workerUuid, status.toString());
+
+
+            return archiveTransfers;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAssignedTasksInStatus", ex.getMessage()), ex);
+        }
+
     }
 
 }

@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -9,12 +8,7 @@ import java.util.concurrent.TimeoutException;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import org.apache.commons.lang3.StringUtils;
@@ -36,13 +30,11 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
-import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
-import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.sharedapi.security.ResourceRequestUser;
 
@@ -71,7 +63,6 @@ public class TransfersService
   private final FileTransfersDAO dao;
   private final FileOpsService fileOpsService;
 
-  private Connection connection;
   private static final TransferTaskStatus[] FINAL_STATES = new TransferTaskStatus[]
   {
     TransferTaskStatus.FAILED, TransferTaskStatus.CANCELLED, TransferTaskStatus.COMPLETED
@@ -107,7 +98,6 @@ public class TransfersService
     systemsCache = cache1;
     fileOpsService = svc1;
     permsService = svc2;
-    init();
   }
 
   // ************************************************************************
@@ -347,43 +337,12 @@ public class TransfersService
 
         // Make dao call to update DB
         dao.cancelTransfer(task);
-
-        // Queue up the cancel message on the control channel
-        TransferControlAction action = new TransferControlAction();
-        action.setAction(TransferControlAction.ControlAction.CANCEL);
-        action.setCreated(Instant.now());
-        action.setTenantId(task.getTenantId());
-        action.setTaskId(task.getId());
-        publishControlMessage(action);
       }
       catch (DAOException ex)
       {
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_CANCEL_ERR", rUser, uuidStr, ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);
-      }
-    }
-
-    public void publishControlMessage(@NotNull TransferControlAction action) throws ServiceException
-    {
-      Channel channel = null;
-
-      try
-      {
-        String m = mapper.writeValueAsString(action);
-        AMQP.BasicProperties properties = null;
-        channel = connection.createChannel();
-        channel.exchangeDeclare(TransfersService.CONTROL_EXCHANGE, BuiltinExchangeType.FANOUT, true);
-        channel.basicPublish(CONTROL_EXCHANGE, "#", properties, m.getBytes());
-      }
-      catch (JsonProcessingException e)
-      {
-        log.error(e.getMessage(), e);
-        throw new ServiceException(LibUtils.getMsg("FILES_TXFR_SVC_ERR_PUBLISH_MESSAGE"));
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      } finally {
-        closeChannel(channel);
       }
     }
 
@@ -424,40 +383,6 @@ public class TransfersService
     // An allowed service is impersonating, log it
     log.info(LibUtils.getMsgAuthR("FILES_AUTH_IMPERSONATE_TXFR", rUser, opName,
                                   uuidStr, impersonationId));
-  }
-
-  /**
-   * Initialize the RabbitMQ exchanges and queues.
-   */
-  private void init()
-  {
-
-    try {
-      connection = RabbitMQConnection.getInstance().newConnection();
-      TransfersService.declareRabbitMQObjects(connection);
-    } catch (Exception ex) {
-      // TODO: fix this correctly
-      throw new RuntimeException(ex.getMessage());
-    }
-  }
-
-  public static void declareRabbitMQObjects(Connection connection) throws IOException, TimeoutException {
-    Channel channel = connection.createChannel();
-    channel.queueDeclare(PARENT_QUEUE, true, false, false, null);
-    channel.queueDeclare(CHILD_QUEUE, true, false, false, null);
-    channel.exchangeDeclare(PARENT_EXCHANGE, BuiltinExchangeType.DIRECT, true, false, null);
-    channel.exchangeDeclare(CHILD_EXCHANGE, BuiltinExchangeType.DIRECT, true, false, null);
-    channel.queueBind(CHILD_QUEUE, CHILD_EXCHANGE, CHILD_ROUTING_KEY);
-    channel.queueBind(PARENT_QUEUE, PARENT_EXCHANGE, PARENT_ROUTING_KEY);
-    channel.close();
-  }
-
-  public boolean isConnectionOk() {
-    if(connection == null) {
-      return false;
-    }
-    // Quick check to see if Rabbit is responding.
-    return connection.isOpen();
   }
 
   /**
@@ -681,25 +606,6 @@ public class TransfersService
       if(TransferTaskRequestElement.TransferType.SERVICE_MOVE_DIRECTORY_CONTENTS.equals(txfrElement.getTransferType())) {
         validateDtnMoveRequest(rUser, srcSystemId, dstSystemId, errMessages);
       }
-    }
-  }
-
-  private void closeChannel(Channel channel) throws ServiceException {
-    try {
-      if ((channel != null) && (channel.isOpen())) {
-        channel.close();
-      } else {
-        log.info("Channel not open");
-      }
-    } catch (TimeoutException | IOException ex) {
-      // TODO:  fix error message
-      throw new ServiceException("Unable to close channel", ex);
-    }
-  }
-
-  public void cleanup() throws IOException {
-    if(isConnectionOk()) {
-      connection.close();
     }
   }
 }

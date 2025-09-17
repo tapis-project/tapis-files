@@ -12,10 +12,6 @@ public interface IRuntimeConfig {
     String getDbName();
     String getDbPassword();
     String getDbPort();
-    String getRabbitMQUsername();
-    String getRabbitMQVHost();
-    String getRabbitmqPassword();
-    String getRabbitMQHost();
     String getServicePassword();
     String getTokensServiceURL();
     String getTenantsServiceURL();

@@ -260,22 +260,6 @@ public class TransfersApp
       missingVars.append("DB_PASSWORD ");
     }
 
-    if (RuntimeSettings.get().getRabbitMQHost() == null) {
-      missingVars.append("RABBITMQ_HOSTNAME ");
-    }
-
-    if (RuntimeSettings.get().getRabbitMQUsername() == null) {
-      missingVars.append("RABBITMQ_USERNAME ");
-    }
-
-    if (RuntimeSettings.get().getRabbitMQVHost() == null) {
-      missingVars.append("RABBITMQ_VHOST ");
-    }
-
-    if (RuntimeSettings.get().getRabbitmqPassword() == null) {
-      missingVars.append("RABBITMQ_PASSWORD ");
-    }
-
     if (RuntimeSettings.get().getServicePassword() == null) {
       missingVars.append("SERVICE_PASSWORD ");
     }

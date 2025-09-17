@@ -43,6 +43,7 @@ import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -79,6 +80,7 @@ public class ParentTaskTransferService {
   private static final int maxRetries = 3;
   private final TransfersService transfersService;
   private final FileTransfersDAO dao;
+  private final TransferTaskParentDAO parentDao;
   private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
   private final RemoteDataClientFactory remoteDataClientFactory;
   private final FilePermsService permsService;
@@ -130,6 +132,7 @@ public class ParentTaskTransferService {
     this.systemsCache = systemsCache;
     this.remoteDataClientFactory = remoteDataClientFactory;
     this.permsService = permsService;
+    this.parentDao = new TransferTaskParentDAO();
 
     connectionThreadPool = Executors.newFixedThreadPool(MAX_CONSUMERS);
   }
@@ -157,17 +160,6 @@ public class ParentTaskTransferService {
             try {
               List<PrioritizedObject<TransferTaskParent>> ttpList = schedulingPolicy.getParentTasksForWorker(myUuid);
               for (PrioritizedObject<TransferTaskParent> ttp : ttpList) {
-                if(ttp.getObject().getStatus() == TransferTaskStatus.CANCELLED) {
-                  TransferTaskParentDAO ttpDao = new TransferTaskParentDAO();
-                  DAOTransactionContext.doInTransaction(context -> {
-                    TransferTaskParent lockedParent = ttpDao.getTransferTaskParentByUUID(
-                            context, ttp.getObject().getUuid(), true);
-                    lockedParent.setAssignedTo(null);
-                    ttpDao.updateTransferTaskParent(context, lockedParent);
-                    return null;
-                  });
-                  continue;
-                }
                 UUID parentUuid = ttp.getObject().getUuid();
                 if (futures.containsKey(parentUuid)) {
                   if (futures.get(parentUuid).isDone()) {
@@ -191,7 +183,9 @@ public class ParentTaskTransferService {
                     });
                     futures.put(parentUuid, future);
                   } catch (Throwable th) {
-                    TransferTaskParent parentTask = dao.getChildTaskByUUID(parentUuid);
+                    TransferTaskParent parentTask = DAOTransactionContext.doInTransaction(context -> {
+                      return parentDao.getTransferTaskParentByUUID(context, parentUuid, false);
+                    });
                     parentTask.setStatus(parentTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
                     updateParentTask(parentTask);
                   }
@@ -205,6 +199,9 @@ public class ParentTaskTransferService {
             if (futures.isEmpty()) {
               shouldExit = true;
             }
+
+            checkForCancelledTasks(myUuid, futures);
+
             Thread.yield();
           }
         } catch (Throwable th) {
@@ -225,6 +222,26 @@ public class ParentTaskTransferService {
     }
 
     return futures.size() < capacity;
+  }
+
+  void checkForCancelledTasks(UUID workerUuid, Map<UUID, Future<TransferTaskParent>> futures) throws DAOException {
+    // This is in a big transaction, but shouldn't happen often, so I dont thing it's going
+    // to be a problem.  We could make this individual transactions that read 1 UUID for update
+    // and cancel it if we need to.
+    DAOTransactionContext.doInTransaction(context -> {
+      Collection<TransferTaskParent> parentTasks = parentDao.getAssignedTasksInStatus(
+              context, workerUuid, TransferTaskStatus.CANCELLED, true);
+      for(TransferTaskParent parentTask : parentTasks) {
+        Future future = futures.get(parentTask.getUuid());
+        if(future != null) {
+          future.cancel(true);
+        }
+        parentTask.setAssignedTo(null);
+        parentDao.updateTransferTaskParent(context, parentTask);
+      }
+      return null;
+    });
+
   }
   public TransferTaskParent handleTask(TransferTaskParent taskParent) throws IOException {
     int retry = 0;
@@ -431,8 +448,7 @@ public class ParentTaskTransferService {
 
   private TransferTaskParent updateParentTask(final TransferTaskParent parentTask) throws DAOException {
     return DAOTransactionContext.doInTransaction((context) -> {
-      TransferTaskParentDAO parentDAO = new TransferTaskParentDAO();
-      return parentDAO.updateTransferTaskParent(context, parentTask);
+      return parentDao.updateTransferTaskParent(context, parentTask);
     });
   }
 
@@ -608,9 +624,8 @@ public class ParentTaskTransferService {
     parentTask.setStatus(TransferTaskStatus.STAGED);
     parentTask.setAssignedTo(null);
     DAOTransactionContext.doInTransaction((context) -> {
-      TransferTaskParentDAO parentDAO = new TransferTaskParentDAO();
       TransferTaskChildDAO childDAO = new TransferTaskChildDAO();
-      parentDAO.updateTransferTaskParent(context, parentTask);
+      parentDao.updateTransferTaskParent(context, parentTask);
       childDAO.bulkInsertChildTasks(context, children);
       return null;
     });
@@ -645,8 +660,7 @@ public class ParentTaskTransferService {
       task = childDAO.insertChildTask(context, task);
       parentTask.setStatus(TransferTaskStatus.STAGED);
       parentTask.setAssignedTo(null);
-      TransferTaskParentDAO parentDAO = new TransferTaskParentDAO();
-      parentDAO.updateTransferTaskParent(context, parentTask);
+      parentDao.updateTransferTaskParent(context, parentTask);
       return null;
     }));
   }

@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,24 +19,18 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Stopwatch;
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.DefaultConsumer;
-import com.rabbitmq.client.Envelope;
 import edu.utexas.tacc.tapis.files.lib.clients.GlobusDataClient;
 import edu.utexas.tacc.tapis.files.lib.clients.HTTPClient;
 import edu.utexas.tacc.tapis.files.lib.clients.IRemoteDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
@@ -43,13 +38,11 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
-import edu.utexas.tacc.tapis.files.lib.models.TransferControlAction;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
-import edu.utexas.tacc.tapis.files.lib.rabbit.RabbitMQConnection;
 import edu.utexas.tacc.tapis.files.lib.transfers.DefaultSchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
@@ -117,6 +110,7 @@ public class ChildTaskTransferService {
     private static final int maxRetries = 3;
     private final TransfersService transfersService;
     private final FileTransfersDAO dao;
+    private final TransferTaskChildDAO childDao;
     private static final ObjectMapper mapper = TapisObjectMapper.getMapper();
     private final RemoteDataClientFactory remoteDataClientFactory;
     private final FileShareService shareService;
@@ -126,8 +120,6 @@ public class ChildTaskTransferService {
     private final FileUtilsService fileUtilsService;
     private static final Logger log = LoggerFactory.getLogger(ChildTaskTransferService.class);
     private static final Logger audit = LoggerFactory.getLogger(AuditUtils.LOGGER_NAME);
-    private Connection connection;
-    private List<Channel> channels = new ArrayList<Channel>();
     private ExecutorService connectionThreadPool = null;
     private ScheduledExecutorService childScheduler = Executors.newSingleThreadScheduledExecutor();
     private ExecutorService childWorkers = Executors.newFixedThreadPool(MAX_THREADS, new ThreadFactory() {
@@ -168,8 +160,7 @@ public class ChildTaskTransferService {
         this.systemsCacheNoAuth = systemsCacheNoAuth;
         this.remoteDataClientFactory = remoteDataClientFactory;
         this.fileUtilsService = fileUtilsService;
-
-        connection = RabbitMQConnection.getInstance().newConnection(connectionThreadPool);
+        this.childDao = new TransferTaskChildDAO();
     }
 
     /* *********************************************************************** */
@@ -198,12 +189,6 @@ public class ChildTaskTransferService {
                         try {
                             List<PrioritizedObject<TransferTaskChild>> ttcList = schedulingPolicy.getChildTasksForWorker(myUuid);
                             for (PrioritizedObject<TransferTaskChild> ttc : ttcList) {
-                                if(ttc.getObject().getStatus() == TransferTaskStatus.CANCELLED) {
-                                    // remove assignment and continue
-                                    unassignChild(ttc.getObject());
-                                    continue;
-                                }
-
                                 UUID childUuid = ttc.getObject().getUuid();
                                 if (futures.containsKey(childUuid)) {
                                     if (futures.get(childUuid).isDone()) {
@@ -227,9 +212,12 @@ public class ChildTaskTransferService {
                                         });
                                         futures.put(childUuid, future);
                                     } catch (Throwable th) {
-                                        TransferTaskChild childTask = dao.getChildTaskByUUID(childUuid);
-                                        childTask.setStatus(childTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
-                                        dao.updateTransferTaskChild(childTask);
+                                        DAOTransactionContext.doInTransaction(context -> {
+                                            TransferTaskChild childTask = childDao.getChildTaskByUUID(context, childUuid, true);
+                                            childTask.setStatus(childTask.isOptional() ? TransferTaskStatus.FAILED_OPT : TransferTaskStatus.FAILED);
+                                            childDao.updateTransferTaskChild(context, childTask);
+                                            return null;
+                                        });
                                     }
                                 }
                             }
@@ -241,6 +229,8 @@ public class ChildTaskTransferService {
                         if (futures.isEmpty()) {
                             shouldExit = true;
                         }
+
+                        checkForCancelledTasks(myUuid, futures);
                     }
                 } catch (Throwable th) {
                     // if this method throws, it will not get rescheduled.  We would have a zombie worker.  I think the
@@ -262,6 +252,26 @@ public class ChildTaskTransferService {
         }
 
         return futures.size() < capacity;
+    }
+
+    void checkForCancelledTasks(UUID workerUuid, Map<UUID, Future<TransferTaskChild>> futures) throws DAOException {
+        // This is in a big transaction, but shouldn't happen often, so I dont thing it's going
+        // to be a problem.  We could make this individual transactions that read 1 UUID for update
+        // and cancel it if we need to.
+        DAOTransactionContext.doInTransaction(context -> {
+            Collection<TransferTaskChild> childTasks = childDao.getAssignedTasksInStatus(
+                    context, workerUuid, TransferTaskStatus.CANCELLED, true);
+            for(TransferTaskChild childTask : childTasks) {
+                Future future = futures.get(childTask.getUuid());
+                if(future != null) {
+                    future.cancel(true);
+                }
+                childTask.setAssignedTo(null);
+                childDao.updateTransferTaskChild(context, childTask);
+            }
+            return null;
+        });
+
     }
 
     public TransferTaskChild handleTask(TransferTaskChild taskChild) {
@@ -342,7 +352,7 @@ public class ChildTaskTransferService {
                         String msg = LibUtils.getMsg("Internal Error.  taskChild is null after checkForParentComplete");
                         throw new IOException(msg);
                     }
-                    taskChild = unassignChild(taskChild);
+                    taskChild = unassignChild(taskChild.getUuid());
                     log.trace("CHILD TRANSFER TIMING: check for complete: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
                 }
 
@@ -358,15 +368,6 @@ public class ChildTaskTransferService {
 
         doErrorStepOne(lastException, taskChild);
         return taskChild;
-    }
-
-    public void nackMessage(Channel channel, Envelope envelope, boolean requeue) throws IOException {
-        channel.basicNack(envelope.getDeliveryTag(), false, requeue);
-    }
-
-    private TransferTaskChild getChildTaskFromMessageBody(byte[] messageBody) throws JsonProcessingException {
-        String jsonMessage = new String(messageBody, StandardCharsets.UTF_8);
-        return TapisObjectMapper.getMapper().readValue(jsonMessage, TransferTaskChild.class);
     }
 
     /* *********************************************************************** */
@@ -670,7 +671,12 @@ public class ChildTaskTransferService {
                 taskChild = dao.updateTransferTaskChild(taskChild);
                 return taskChild;
             }
-            TransferTaskChild updatedChildTask = dao.getChildTaskByUUID(taskChild.getUuid());
+
+            UUID childUUID = taskChild.getUuid();
+            TransferTaskChild updatedChildTask = DAOTransactionContext.doInTransaction(context -> {
+                return childDao.getChildTaskByUUID(context, childUUID, false);
+            });
+
             updatedChildTask.setStatus(TransferTaskStatus.COMPLETED);
             // we should count the actual bytes that we transfer.  For now this is close enough (bigger fish to fry).
             updatedChildTask.setBytesTransferred(updatedChildTask.getTotalBytes());
@@ -764,7 +770,7 @@ public class ChildTaskTransferService {
                     dao.updateTransferTask(topTask);
                 }
             }
-            child = unassignChild(child);
+            child = unassignChild(child.getUuid());
         } catch (DAOException ex) {
             log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", child.getTenantId(), child.getUsername(),
                     "doChildErrorStepOne", child.getId(), child.getTag(), child.getUuid(), ex.getMessage()), ex);
@@ -796,33 +802,6 @@ public class ChildTaskTransferService {
             }
         });
 
-        Channel channel = connection.createChannel();
-        String queueName = "control." + UUID.randomUUID();
-
-        channel.queueDeclare(queueName, false, false, true, null);
-        channel.exchangeDeclare(TransfersService.CONTROL_EXCHANGE, BuiltinExchangeType.FANOUT, true);
-        channel.queueBind(queueName, TransfersService.CONTROL_EXCHANGE, "#");
-
-        channel.basicConsume(queueName, false, new DefaultConsumer(channel) {
-            @Override
-            public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
-                TransferControlAction action = mapper.readValue(body, TransferControlAction.class);
-
-                // the control exchange is a "fan out" exchange, so each queue gets ALL of the control messages.
-                // This means some will not belong to us, so check to make sure it's the right one.  All messages
-                // must be acknoledged though - the ones not for us will be in the correct queues also.  At some
-                // future time, we should change this to be a message header excahnge so we can select the proper
-                // messages - but this is what the old code did, and it works.
-                try {
-                    if (taskChild.getTaskId() == action.getTaskId()) {
-                        future.cancel(true);
-                    }
-                } finally {
-                    channel.basicAck(envelope.getDeliveryTag(), false);
-                }
-            }
-        });
-
         try {
             // Blocking call, but the subscription above will still listen
             TransferTaskChild returnChild = future.get();
@@ -844,11 +823,6 @@ public class ChildTaskTransferService {
         } catch (RuntimeException ex) {
             throw new IOException(ex.getMessage(), ex);
         } finally {
-            try {
-                channel.close();
-            } catch (TimeoutException e) {
-                throw new RuntimeException(e);
-            }
             executorService.shutdown();
         }
     }
@@ -954,12 +928,14 @@ public class ChildTaskTransferService {
         return taskChild;
     }
 
-    private TransferTaskChild unassignChild(TransferTaskChild taskChild) throws DAOException {
+    private TransferTaskChild unassignChild(UUID taskChildUuid) throws DAOException {
         // make this a transaction - requires moving method
-        FileTransfersDAO transfersDAO  = new FileTransfersDAO();
-        taskChild =  transfersDAO.getTransferTaskChild(taskChild.getUuid());
-        taskChild.setAssignedTo(null);
-        return transfersDAO.updateTransferTaskChild(taskChild);
+        TransferTaskChild childTask = DAOTransactionContext.doInTransaction(context -> {
+            TransferTaskChild lockedChild = childDao.getChildTaskByUUID(context, taskChildUuid, true);
+            lockedChild.setAssignedTo(null);
+            return childDao.updateTransferTaskChild(context, lockedChild);
+        });
+        return childTask;
     }
 
     /**

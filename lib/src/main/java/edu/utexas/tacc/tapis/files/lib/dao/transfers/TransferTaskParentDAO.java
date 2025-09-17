@@ -20,6 +20,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -188,5 +189,28 @@ public class TransferTaskParentDAO {
         }
     }
 
+    public Collection<TransferTaskParent> getAssignedTasksInStatus(DAOTransactionContext context, UUID workerUuid,
+                                                                  TransferTaskStatus status, boolean forUpdate) throws DAOException {
+        try {
+            RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
+            BeanListHandler<TransferTaskParent> handler = new BeanListHandler<>(TransferTaskParent.class, rowProcessor);
+
+            QueryRunner runner = new QueryRunner();
+            Collection<TransferTaskParent> parents;
+            String stmt;
+            if (forUpdate) {
+                stmt = TransferTaskParentDAOStatements.GET_ASSIGNED_TASKS_IN_STATUS_FOR_UPDATE;
+            } else {
+                stmt = TransferTaskParentDAOStatements.GET_ASSIGNED_TASKS_IN_STATUS;
+            }
+            parents = runner.query(context.getConnection(), stmt, handler, workerUuid, status.toString());
+
+
+            return parents;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAssignedTasksInStatus", ex.getMessage()), ex);
+        }
+
+    }
 
 }

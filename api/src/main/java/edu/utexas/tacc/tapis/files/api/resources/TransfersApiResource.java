@@ -458,13 +458,4 @@ public class  TransfersApiResource
     archiveTransfer.setArchiveType(archiveTransferRequest.getArchiveType());
     return archiveTransfer;
   }
-
-  // ************************************************************************
-  // *********************** Private Methods ********************************
-  // ************************************************************************
-
-  @PreDestroy
-  public void cleanUp() throws IOException {
-    transfersService.cleanup();
-  }
 }

@@ -23,10 +23,6 @@ public class RuntimeSettings {
         protected String dbUsername = settings.get("DB_USERNAME");
         protected String dbPassword = settings.get("DB_PASSWORD");
         protected String dbPort = settings.get("DB_PORT", "5432");
-        protected String rabbitMQHost = settings.get("RABBITMQ_HOSTNAME");
-        protected String rabbitMQUsername = settings.get("RABBITMQ_USERNAME");
-        protected String rabbitMQVHost = settings.get("RABBITMQ_VHOST");
-        protected String rabbitmqPassword = settings.get("RABBITMQ_PASSWORD");
         protected String servicePassword = settings.get("SERVICE_PASSWORD");
         protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
@@ -82,22 +78,6 @@ public class RuntimeSettings {
 
         public String getDbPort() {
             return dbPort;
-        }
-
-        public String getRabbitMQHost() {
-            return rabbitMQHost;
-        }
-
-        public String getRabbitMQUsername() {
-            return rabbitMQUsername;
-        }
-
-        public String getRabbitMQVHost() {
-            return rabbitMQVHost;
-        }
-
-        public String getRabbitmqPassword() {
-            return rabbitmqPassword;
         }
 
         public String getServicePassword() { return servicePassword; }

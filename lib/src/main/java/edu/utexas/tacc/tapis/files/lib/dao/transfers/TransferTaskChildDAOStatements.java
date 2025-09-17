@@ -24,13 +24,6 @@ public class TransferTaskChildDAOStatements {
                   row_number;
             """ ;
 
-    // NOTE that this contains CANCELLED tasks also.  The worker MUST check the
-    // status and discard any cancelled tasks.  The assigner doesn't know if the
-    // worker was working on this task yet when it was cancelled, or it it was just
-    // in the queue and just not picked up yet.  Or it could even have been picked up
-    // but just not set to in_progress yet.  For all of these reasonse, the assigner
-    // cant know, so the worker MUST check status, and discard and unassigne cancelled
-    // tasks. (this goes for parent tasks too!
     public static final String GET_ACCEPTED_CHILD_TASKS_ASSIGNED_TO_WORKER =
             """
               select * from (
@@ -45,8 +38,7 @@ public class TransferTaskChildDAOStatements {
                 from
                   transfer_tasks_child
                 where
-                  (status = 'ACCEPTED' OR
-                  status = 'CANCELLED') AND
+                  status = 'ACCEPTED' AND
                   assigned_to = ?
               )
                 where
@@ -109,4 +101,26 @@ public class TransferTaskChildDAOStatements {
                     " (tenant_id, task_id, parent_task_id, username, source_uri, destination_uri, status, bytes_transferred, total_bytes, is_dir, is_executable, tag, external_task_id)" +
                     " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                     " RETURNING * ";
+    public static final String GET_CHILD_TASK_BY_UUID =
+            "SELECT * FROM transfer_tasks_child where uuid = ?";
+    public static final String GET_CHILD_TASK_BY_UUID_FOR_UPDATE = GET_CHILD_TASK_BY_UUID + " FOR UPDATE";
+    public static final String UPDATE_CHILD_TASK =
+            """
+                UPDATE transfer_tasks_child
+                SET bytes_transferred = ?, 
+                         status = ?,
+                         retries = ?, 
+                         start_time = ?, 
+                         end_time = ?,
+                         error_message = ?,
+                         external_task_id = ?,
+                         assigned_to = ?
+                    WHERE id = ? 
+                    RETURNING *
+            """;
+
+    public static final String GET_ASSIGNED_TASKS_IN_STATUS =
+            "SELECT * from transfer_tasks_child WHERE assigned_to = ? and status = ? FOR UPDATE";
+    public static final String GET_ASSIGNED_TASKS_IN_STATUS_FOR_UPDATE = GET_ASSIGNED_TASKS_IN_STATUS + " FOR UPDATE";
+
 }
