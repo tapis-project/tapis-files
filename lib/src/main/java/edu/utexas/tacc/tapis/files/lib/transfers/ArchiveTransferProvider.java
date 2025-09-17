@@ -20,10 +20,10 @@ public class ArchiveTransferProvider {
     public enum ArchiveType {
         TAR,
         TAR_GZIP,
-        TAR_ARCHIVE,
-        GZIP_ARCHIVE,
-        EXPAND_TAR_ARCHIVE,
-        EXPAND_GZIP_ARCHIVE
+        TO_TAR_ARCHIVE,
+        TO_GZIP_ARCHIVE,
+        FROM_TAR_ARCHIVE,
+        FROM_GZIP_ARCHIVE
     }
 
     private final ArchiveType archiveType;
@@ -40,9 +40,9 @@ public class ArchiveTransferProvider {
 
     public ArchiveInputStream getArchiveInputStream(InputStream in) throws IOException {
         ArchiveInputStream archiveInputStream = switch (archiveType) {
-            case TAR, TAR_ARCHIVE, EXPAND_TAR_ARCHIVE -> new TarArchiveInputStream(in);
+            case TAR, TO_TAR_ARCHIVE, FROM_TAR_ARCHIVE -> new TarArchiveInputStream(in);
 
-            case TAR_GZIP, GZIP_ARCHIVE, EXPAND_GZIP_ARCHIVE -> new TarArchiveInputStream(new GzipCompressorInputStream(in));
+            case TAR_GZIP, TO_GZIP_ARCHIVE, FROM_GZIP_ARCHIVE -> new TarArchiveInputStream(new GzipCompressorInputStream(in));
         };
 
         return archiveInputStream;
@@ -50,9 +50,9 @@ public class ArchiveTransferProvider {
 
     public ArchiveOutputStream getArchiveOutputStream(OutputStream out) throws IOException {
         ArchiveOutputStream archiveOutputStream = switch (archiveType) {
-            case TAR, TAR_ARCHIVE, EXPAND_TAR_ARCHIVE -> new TarArchiveOutputStream(out);
+            case TAR, TO_TAR_ARCHIVE, FROM_TAR_ARCHIVE -> new TarArchiveOutputStream(out);
 
-            case TAR_GZIP, GZIP_ARCHIVE, EXPAND_GZIP_ARCHIVE -> new TarArchiveOutputStream(new GzipCompressorOutputStream(out));
+            case TAR_GZIP, TO_GZIP_ARCHIVE, FROM_GZIP_ARCHIVE -> new TarArchiveOutputStream(new GzipCompressorOutputStream(out));
         };
 
         return archiveOutputStream;
@@ -62,7 +62,7 @@ public class ArchiveTransferProvider {
         final String opName = "getArchiveCommand";
 
         String command = switch (archiveType) {
-            case TAR, TAR_ARCHIVE -> {
+            case TAR, TO_TAR_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(srcAbsBasePath);
@@ -70,7 +70,7 @@ public class ArchiveTransferProvider {
                 yield commandBuilder.toString();
             }
 
-            case TAR_GZIP, GZIP_ARCHIVE -> {
+            case TAR_GZIP, TO_GZIP_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(srcAbsBasePath);
@@ -95,7 +95,7 @@ public class ArchiveTransferProvider {
         // commandBuilder.append("' -hcT- ");
 
         String command = switch (archiveType) {
-            case TAR, TAR_ARCHIVE, EXPAND_TAR_ARCHIVE -> {
+            case TAR, TO_TAR_ARCHIVE, FROM_TAR_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(dstAbsBasePath);
@@ -103,7 +103,7 @@ public class ArchiveTransferProvider {
                 yield commandBuilder.toString();
             }
 
-            case TAR_GZIP, GZIP_ARCHIVE, EXPAND_GZIP_ARCHIVE -> {
+            case TAR_GZIP, TO_GZIP_ARCHIVE, FROM_GZIP_ARCHIVE -> {
                 StringBuilder commandBuilder = new StringBuilder();
                 commandBuilder.append("tar -C '");
                 commandBuilder.append(dstAbsBasePath);
@@ -124,7 +124,7 @@ public class ArchiveTransferProvider {
         final String opName = "getArchiveTransferResult";
         ArchiveTransferResult result = switch (archiveType) {
             case TAR, TAR_GZIP -> new FullArchiveTransferResult(sourceCommandResult, destinationCommandResult);
-            case EXPAND_TAR_ARCHIVE, EXPAND_GZIP_ARCHIVE -> new FromArchiveTransferResult(destinationCommandResult);
+            case FROM_TAR_ARCHIVE, FROM_GZIP_ARCHIVE -> new FromArchiveTransferResult(destinationCommandResult);
 
             default -> {
                 String msg = LibUtils.getMsg("FILES_XFER_INVALID_PARAMETER", opName, "archiveType", archiveType);

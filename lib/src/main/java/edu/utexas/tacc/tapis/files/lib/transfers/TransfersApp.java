@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Singleton;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -195,29 +196,36 @@ public class TransfersApp
         }
       }, 0, 2, TimeUnit.MINUTES);
 
-      log.info("Getting parentTxfrSvc.");
-      ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
-      log.info("Got parentTxfrSvc.");
+      Collection<TransferWorkerConfig.TransferType> acceptedTypes = RuntimeSettings.get().getWorkerAcceptedTransferTypes();
+      if(acceptedTypes.contains(TransferWorkerConfig.TransferType.TRANSFER_TYPE_PARENT)) {
+        log.info("Getting parentTxfrSvc.");
+        ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
+        log.info("Got parentTxfrSvc.");
 
-      log.info("Starting parent pipeline.");
-      parentTaskTransferService.startListeners(myUuid);
-      log.info("Started parent pipeline.");
+        log.info("Starting parent pipeline.");
+        parentTaskTransferService.startListeners(myUuid);
+        log.info("Started parent pipeline.");
+      }
 
-      log.info("Getting childTxfrSvc.");
-      ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
-      log.info("Got childTxfrSvc.");
+      if(acceptedTypes.contains(TransferWorkerConfig.TransferType.TRANSFER_TYPE_CHILD)) {
+        log.info("Getting childTxfrSvc.");
+        ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
+        log.info("Got childTxfrSvc.");
 
-      log.info("Starting child pipeline.");
-      childTaskTransferService.startListeners(myUuid);
-      log.info("Started child pipeline.");
+        log.info("Starting child pipeline.");
+        childTaskTransferService.startListeners(myUuid);
+        log.info("Started child pipeline.");
+      }
 
-      log.info("Getting archive transfer service.");
-      ArchiveTransferWorker archiveTransferWorker = locator.getService(ArchiveTransferWorker.class);
-      log.info("Got parentTxfrSvc.");
+      if(acceptedTypes.contains(TransferWorkerConfig.TransferType.TRANSFER_TYPE_ARCHIVE)) {
+        log.info("Getting archive transfer service.");
+        ArchiveTransferWorker archiveTransferWorker = locator.getService(ArchiveTransferWorker.class);
+        log.info("Got parentTxfrSvc.");
 
-      log.info("Starting archive transfer worker.");
-      archiveTransferWorker.start(myUuid);
-      log.info("Started archive transfer worker.");
+        log.info("Starting archive transfer worker.");
+        archiveTransferWorker.start(myUuid);
+        log.info("Started archive transfer worker.");
+      }
 
     } catch(Exception ex) {
       String msg = LibUtils.getMsg("FILES_WORKER_APPLICATION_FAILED_TO_START", ex.getMessage());

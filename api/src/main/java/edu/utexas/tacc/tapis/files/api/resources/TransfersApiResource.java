@@ -388,6 +388,45 @@ public class  TransfersApiResource
     return Response.ok(resp).build();
 
   }
+  @DELETE
+  @Path("fastTransfer/{uuid}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response cancelArchiveTransfer(@PathParam("uuid") @ValidUUID String uuid,
+                                     @Context SecurityContext securityContext)
+  {
+    String opName = "cancelArchiveTransfer";
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "uuid=" + uuid);
+    }
+
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
+
+    try
+    {
+      archiveTransfersService.cancelTransfer(rUser, uuid);
+    }
+    catch (ServiceException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+    String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CANCELLED", rUser, uuid);
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
+    return Response.ok(resp).build();
+  }
+
 
   @POST
   @Path("fastTransfer")

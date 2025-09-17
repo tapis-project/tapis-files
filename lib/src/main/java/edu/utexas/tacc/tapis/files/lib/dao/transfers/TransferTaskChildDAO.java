@@ -265,7 +265,7 @@ public class TransferTaskChildDAO {
             } else {
                 stmt = TransferTaskChildDAOStatements.GET_ASSIGNED_TASKS_IN_STATUS;
             }
-            children = runner.query(context.getConnection(), stmt, handler, workerUuid, status.toString());
+            children = runner.query(context.getConnection(), stmt, handler, workerUuid, status.name());
 
 
             return children;

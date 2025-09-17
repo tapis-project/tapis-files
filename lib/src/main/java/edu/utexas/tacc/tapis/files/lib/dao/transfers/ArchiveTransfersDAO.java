@@ -341,7 +341,7 @@ public class ArchiveTransfersDAO {
             } else {
                 stmt = ArchiveTransferDAOStatements.GET_ASSIGNED_TASKS_IN_STATUS;
             }
-            archiveTransfers = runner.query(context.getConnection(), stmt, handler, workerUuid, status.toString());
+            archiveTransfers = runner.query(context.getConnection(), stmt, handler, workerUuid, status.name());
 
 
             return archiveTransfers;
@@ -351,4 +351,12 @@ public class ArchiveTransfersDAO {
 
     }
 
+    public ArchiveTransfer cancelTransfer(DAOTransactionContext context, UUID transferUuid) throws DAOException {
+        ArchiveTransfer archiveTransfer = getArchiveTransfer(context, transferUuid, true, false, false);
+        if(!archiveTransfer.getStatus().isFinalState()) {
+            archiveTransfer.setStatus(ArchiveTransferStatus.CANCELLED);
+            archiveTransfer =  updateArchiveTransfer(context, archiveTransfer, false, false);
+        }
+        return archiveTransfer;
+    }
 }

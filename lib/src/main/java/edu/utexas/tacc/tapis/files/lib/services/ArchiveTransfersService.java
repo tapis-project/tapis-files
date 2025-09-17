@@ -9,7 +9,6 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.systems.client.gen.model.SystemTypeEnum;
 import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
@@ -25,7 +24,6 @@ import javax.inject.Inject;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -46,6 +44,8 @@ public class ArchiveTransfersService {
     private SystemsCache systemsCache;
     @Inject
     private SystemsCacheNoAuth systemsCacheNoAuth;
+
+    private ArchiveTransfersDAO archiveTransfersDao = new ArchiveTransfersDAO();
 
     public ArchiveTransferResponse createArchiveTransfer(@NotNull ResourceRequestUser rUser, @NotNull final ArchiveTransfer archiveTransfer)
             throws ServiceException
@@ -68,9 +68,8 @@ public class ArchiveTransfersService {
         // Persist the transfer task and associated parent tasks
         try
         {
-            ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
             ArchiveTransfer newTransfer = DAOTransactionContext.doInTransaction(context -> {
-                return dao.insertArchiveTransfer(context, archiveTransfer);
+                return archiveTransfersDao.insertArchiveTransfer(context, archiveTransfer);
             });
             return getResponseFromTransfer(newTransfer);
         }
@@ -96,9 +95,8 @@ public class ArchiveTransfersService {
         try
         {
             // Get the task, including summary info if requested.
-            ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
             ArchiveTransfer archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
-                return dao.getArchiveTransfer(context, uuid, false, includePaths, includeArchiveTransferLog);
+                return archiveTransfersDao.getArchiveTransfer(context, uuid, false, includePaths, includeArchiveTransferLog);
             });
 
             if (archiveTransfer == null)
@@ -305,4 +303,37 @@ public class ArchiveTransfersService {
         }
     }
 
+
+    /**
+     * Cancel a transfer task given the task UUID.
+     * @param uuidStr - unique id of task
+     * @throws ServiceException on error
+     * @throws NotFoundException task not found
+     */
+    public void cancelTransfer(@NotNull ResourceRequestUser rUser, @NotNull String uuidStr)
+            throws ServiceException, NotFoundException
+    {
+        String opName = "cancelTransfer";
+        UUID transferUUID = UUID.fromString(uuidStr);
+        ArchiveTransfer transfer;
+        try
+        {
+            // Get top level attributes for the transfer task. Needed for dao call and perm check.
+            transfer = DAOTransactionContext.doInTransaction(context -> archiveTransfersDao.getArchiveTransfer(context, transferUUID, false, false, false));
+            if (transfer == null) {
+                String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_NOT_FOUND", rUser, opName, uuidStr, null);
+                log.error(msg);
+                throw new NotFoundException(msg);
+            }
+            // Do a final permission check based on calling user/tenant and task user/tenant
+            isUserPermitted(rUser, transfer, rUser.getOboUserId(), rUser.getOboTenantId(), opName);
+
+            // Make dao call to update DB
+            DAOTransactionContext.doInTransaction(context -> archiveTransfersDao.cancelTransfer(context, transferUUID));
+        } catch (DAOException ex) {
+            String msg = LibUtils.getMsg("FILES_TXFR_SVC_CANCEL_ERR", rUser, uuidStr, ex.getMessage());
+            log.error(msg, ex);
+            throw new ServiceException(msg, ex);
+        }
+    }
 }

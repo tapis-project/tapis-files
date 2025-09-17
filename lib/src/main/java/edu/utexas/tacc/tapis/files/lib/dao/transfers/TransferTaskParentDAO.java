@@ -203,7 +203,7 @@ public class TransferTaskParentDAO {
             } else {
                 stmt = TransferTaskParentDAOStatements.GET_ASSIGNED_TASKS_IN_STATUS;
             }
-            parents = runner.query(context.getConnection(), stmt, handler, workerUuid, status.toString());
+            parents = runner.query(context.getConnection(), stmt, handler, workerUuid, status.name());
 
 
             return parents;

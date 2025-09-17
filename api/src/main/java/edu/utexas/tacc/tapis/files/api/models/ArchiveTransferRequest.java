@@ -85,13 +85,13 @@ public class ArchiveTransferRequest {
             ArchiveTransferProvider.ArchiveType archiveTypeEnum = ArchiveTransferProvider.ArchiveType.valueOf(archiveType);
 
             switch(archiveTypeEnum) {
-                case TAR, TAR_GZIP, TAR_ARCHIVE, GZIP_ARCHIVE -> {
+                case TAR, TAR_GZIP, TO_TAR_ARCHIVE, TO_GZIP_ARCHIVE -> {
                     if((relativePaths == null) || (relativePaths.isEmpty())) {
                         return LibUtils.getMsg("FILES_XFER_NULL_PARAMETER", "ArchiveTransferRequest", "relativePaths");
                     }
                 }
 
-                case EXPAND_TAR_ARCHIVE, EXPAND_GZIP_ARCHIVE -> {
+                case FROM_TAR_ARCHIVE, FROM_GZIP_ARCHIVE -> {
                     if((relativePaths != null) && (!relativePaths.isEmpty())) {
                         return LibUtils.getMsg("FILES_XFER_INVALID_PARAMETER", "ArchiveTransferRequest", "relativePaths", "Must be null");
                     }

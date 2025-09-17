@@ -29,7 +29,7 @@ public class RuntimeSettings {
         protected String globusClientId = settings.get("TAPIS_GLOBUS_CLIENT_ID", "");
         protected final int parentThreadPoolSize = getIntSetting("PARENT_THREAD_POOL_SIZE", 24);
         protected final int childThreadPoolSize = getIntSetting("CHILD_THREAD_POOL_SIZE", 32);
-        protected final int archiveTransferThreadPoolSize = getIntSetting("ARCHIVE_TRANSFER_THREAD_POOL_SIZE", 15);
+        protected final int archiveTransferThreadPoolSize = getIntSetting("ARCHIVE_TRANSFER_THREAD_POOL_SIZE", 40);
         // How often to poll when monitoring an asynchronous transfer. Default is 120 seconds.
         protected final int asyncTransferPollSeconds = getIntSetting("ASYNC_TRANSFER_POLL_SECONDS", 120);
         protected final int postItsReaperIntervalMinutes = getIntSetting("POSTITS_REAPER_INTERVAL_MINUTES", 1440);

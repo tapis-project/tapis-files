@@ -3,8 +3,6 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import com.google.common.base.Stopwatch;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveInputPipe;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferDestination;
 import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferLog;
@@ -249,14 +247,14 @@ public class ArchiveTransferWorker {
                 throw new UnrecoverableTransferException(LibUtils.getMsg("FILES_XFER_INVALID_FULL_ARCHIVE_NOT_SUPPORTED", opName));
             }
 
-            case TAR_ARCHIVE, GZIP_ARCHIVE -> {
+            case TO_TAR_ARCHIVE, TO_GZIP_ARCHIVE -> {
                 if (srcClient instanceof ArchiveTransferSource srcArchiveXFer) {
                     yield handleToArchiveTransfer(srcArchiveXFer, dstClient, params, sha256Digest);
                 }
                 throw new UnrecoverableTransferException(LibUtils.getMsg("FILES_XFER_INVALID_TO_ARCHIVE_NOT_SUPPORTED", opName));
 
             }
-            case EXPAND_TAR_ARCHIVE, EXPAND_GZIP_ARCHIVE -> {
+            case FROM_TAR_ARCHIVE, FROM_GZIP_ARCHIVE -> {
                 if (dstClient instanceof ArchiveTransferDestination dstArchiveXFer) {
                     yield handleFromArchiveTransfer(srcClient, dstArchiveXFer, params, sha256Digest);
                 }
@@ -412,6 +410,7 @@ public class ArchiveTransferWorker {
             currentTransfer.setEndTime(Instant.now());
             currentTransfer.setFileBytesRead(fileBytesRead);
             currentTransfer.setNextRetry(null);
+            currentTransfer.setAssignedTo(null);
             currentTransfer.setRetriesRemaining(0);
             currentTransfer.setTransferLogEntries(archiveTransferLog.getLogEntries());
             return archiveTransfersDao.updateArchiveTransfer(context, currentTransfer, false, true);
