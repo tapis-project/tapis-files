@@ -8,6 +8,7 @@ public enum ArchiveTransferStatus {
     AWAITING_RETRY(false),
     IN_PROGRESS(false),
     COMPLETED(true),
+    CANCELLED(true),
     FAILED(true);
 
     boolean finalState = false;

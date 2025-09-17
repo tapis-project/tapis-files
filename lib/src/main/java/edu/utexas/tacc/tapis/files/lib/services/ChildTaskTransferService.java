@@ -2,9 +2,7 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.ws.rs.NotFoundException;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Stopwatch;
 import edu.utexas.tacc.tapis.files.lib.clients.GlobusDataClient;
@@ -271,7 +268,6 @@ public class ChildTaskTransferService {
             }
             return null;
         });
-
     }
 
     public TransferTaskChild handleTask(TransferTaskChild taskChild) {

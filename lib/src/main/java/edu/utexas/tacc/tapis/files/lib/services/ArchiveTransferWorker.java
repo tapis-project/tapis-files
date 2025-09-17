@@ -3,6 +3,8 @@ package edu.utexas.tacc.tapis.files.lib.services;
 import com.google.common.base.Stopwatch;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCacheNoAuth;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
+import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveInputPipe;
 import edu.utexas.tacc.tapis.files.lib.clients.ArchiveTransferDestination;
 import edu.utexas.tacc.tapis.files.lib.transfers.ArchiveTransferLog;
@@ -47,6 +49,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -89,6 +92,7 @@ public class ArchiveTransferWorker {
     private SystemsCache systemsCache;
     @Inject
     private SystemsCacheNoAuth systemsCacheNoAuth;
+    private ArchiveTransfersDAO archiveTransfersDao = new ArchiveTransfersDAO();
 
     // this parameter is slightly confusing.  For each combination of tenant/user we will get a maximum of
     // this many items.  For example if there are 3 users (2 in one tenant and 1 in another), and the each have
@@ -160,6 +164,8 @@ public class ArchiveTransferWorker {
                         if (futures.isEmpty()) {
                             shouldExit = true;
                         }
+
+                        checkForCancelledTasks(myUuid, futures);
                     }
                 } catch (Throwable th) {
                     // if this method throws, it will not get rescheduled.  We would have a zombie worker.  I think the
@@ -187,17 +193,34 @@ public class ArchiveTransferWorker {
 
         return futures.size() < capacity;
     }
+    void checkForCancelledTasks(UUID workerUuid, Map<UUID, Future<ArchiveTransferResult>> futures) throws DAOException {
+        // This is in a big transaction, but shouldn't happen often, so I dont thing it's going
+        // to be a problem.  We could make this individual transactions that read 1 UUID for update
+        // and cancel it if we need to.
+        DAOTransactionContext.doInTransaction(context -> {
+            Collection<ArchiveTransfer> archiveTransfers = archiveTransfersDao.getAssignedTasksInStatus(
+                    context, workerUuid, ArchiveTransferStatus.CANCELLED, true);
+            for(ArchiveTransfer archiveTransfer : archiveTransfers) {
+                Future future = futures.get(archiveTransfer.getUuid());
+                if(future != null) {
+                    future.cancel(true);
+                }
+                archiveTransfer.setAssignedTo(null);
+                archiveTransfersDao.updateArchiveTransfer(context, archiveTransfer, false, false);
+            }
+            return null;
+        });
+    }
 
     private ArchiveTransferResult doTransfer(UUID archiveTransferUuid) throws IOException, DAOException {
         final String opName = "doTransfer";
 
         // get the resourceRequestUser
-        ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
         ArchiveTransfer archiveTransfer = DAOTransactionContext.doInTransaction(context -> {
-            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true, false);
+            ArchiveTransfer currentTransfer = archiveTransfersDao.getArchiveTransfer(context, archiveTransferUuid, true, true, false);
             currentTransfer.setStatus(ArchiveTransferStatus.IN_PROGRESS);
             currentTransfer.setStartTime(Instant.now());
-            return dao.updateArchiveTransfer(context, currentTransfer, true, false);
+            return archiveTransfersDao.updateArchiveTransfer(context, currentTransfer, true, false);
         });
 
         ResourceRequestUser rUser = simulateResourceRequestUser(archiveTransfer);
@@ -380,10 +403,9 @@ public class ArchiveTransferWorker {
         final long archiveBytesRead = (archiveTransferLog == null) ? 0 : archiveTransferLog.getArchiveBytesRead();
 
         final String updateErrorMessage = errorMessage;
-        ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
 
         DAOTransactionContext.doInTransaction(context -> {
-            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true, false);
+            ArchiveTransfer currentTransfer = archiveTransfersDao.getArchiveTransfer(context, archiveTransferUuid, true, true, false);
             currentTransfer.setStatus(ArchiveTransferStatus.COMPLETED);
             currentTransfer.setErrorMessage(updateErrorMessage);
             currentTransfer.setArchiveBytesRead(archiveBytesRead);
@@ -392,18 +414,16 @@ public class ArchiveTransferWorker {
             currentTransfer.setNextRetry(null);
             currentTransfer.setRetriesRemaining(0);
             currentTransfer.setTransferLogEntries(archiveTransferLog.getLogEntries());
-            return dao.updateArchiveTransfer(context, currentTransfer, false, true);
+            return archiveTransfersDao.updateArchiveTransfer(context, currentTransfer, false, true);
         });
 
         return true;
     }
 
     private ArchiveTransfer scheduleRetryOrFail(UUID archiveTransferUuid, String errorMessage, boolean forceFail) throws DAOException {
-        ArchiveTransfersDAO dao = new ArchiveTransfersDAO();
-
         return DAOTransactionContext.doInTransaction(context -> {
             // read for update
-            ArchiveTransfer currentTransfer = dao.getArchiveTransfer(context, archiveTransferUuid, true, true, false);
+            ArchiveTransfer currentTransfer = archiveTransfersDao.getArchiveTransfer(context, archiveTransferUuid, true, true, false);
 
             // if it's already in a 'final' state, ignore this request and return.
             if(currentTransfer.getStatus().isFinalState()) {
@@ -432,7 +452,7 @@ public class ArchiveTransferWorker {
             currentTransfer.setErrorMessage(errorMessageBuilder.toString());
             currentTransfer.setAssignedTo(null);
 
-            return dao.updateArchiveTransfer(context, currentTransfer, false, false);
+            return archiveTransfersDao.updateArchiveTransfer(context, currentTransfer, false, false);
         });
     }
 

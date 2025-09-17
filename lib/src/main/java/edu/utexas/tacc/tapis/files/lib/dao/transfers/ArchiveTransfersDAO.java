@@ -1,17 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
-import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferLogEntry;
 import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransferStatus;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
-import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
-import org.apache.commons.dbutils.ColumnHandler;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.RowProcessor;
@@ -331,7 +328,7 @@ public class ArchiveTransfersDAO {
     }
 
     public Collection<ArchiveTransfer> getAssignedTasksInStatus(DAOTransactionContext context, UUID workerUuid,
-                                                                  TransferTaskStatus status, boolean forUpdate) throws DAOException {
+                                                                  ArchiveTransferStatus status, boolean forUpdate) throws DAOException {
         try {
             RowProcessor rowProcessor = new ArchiveTransferRowProcessor();
             BeanListHandler<ArchiveTransfer> handler = new BeanListHandler<>(ArchiveTransfer.class, rowProcessor);

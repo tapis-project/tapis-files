@@ -167,7 +167,7 @@ public class ArchiveTransferDAOStatements {
                   *         
             """ ;
     public static final String GET_ASSIGNED_TASKS_IN_STATUS =
-            "SELECT * from archive_trasnfers WHERE assigned_to = ? and status = ? FOR UPDATE";
+            "SELECT * from archive_transfers WHERE assigned_to = ? and status = ? FOR UPDATE";
     public static final String GET_ASSIGNED_TASKS_IN_STATUS_FOR_UPDATE = GET_ASSIGNED_TASKS_IN_STATUS + " FOR UPDATE";
 
 }
