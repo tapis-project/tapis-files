@@ -1,0 +1,71 @@
+package edu.utexas.tacc.tapis.files.lib.transfers;
+
+import edu.utexas.tacc.tapis.files.lib.models.SSHCommandResult;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
+public abstract class ArchiveTransferResult {
+    private ArchiveTransferLog archiveTransferLog;
+    public abstract boolean isComplete();
+    public abstract void waitForCompletion() throws Exception;
+    public abstract String getMessages() throws ExecutionException, InterruptedException;
+    public abstract boolean isSuccess();
+
+    public ArchiveTransferLog getArchiveTransferLog() {
+        return archiveTransferLog;
+    }
+
+    public void setArchiveTransferLog(ArchiveTransferLog archiveTransferLog) {
+        this.archiveTransferLog = archiveTransferLog;
+    }
+
+    SSHCommandResult getCommandResultFromFuture(Future<SSHCommandResult> future) {
+        if(future.isDone()) {
+            try {
+                return future.get();
+            } catch (Exception ex) {
+                // I don't think this can happen since we know they are complete, but handle it anyway.
+                throw new RuntimeException("Exception getting command result", ex);
+            }
+        } else {
+            throw new RuntimeException("Command result is not complete.");
+        }
+    }
+
+    String getMessages(Future<SSHCommandResult> resultFuture, String resultLabel) throws ExecutionException, InterruptedException {
+        SSHCommandResult commandResult = resultFuture.get();
+        byte[] commandOutput = commandResult.getCommandOutput();
+        String outputMessage = (commandOutput == null) ? "" : new String(commandOutput);
+        byte[] commandError = commandResult.getCommandError();
+        String errorMessage = (commandError == null) ? "" : new String(commandError);
+
+        StringBuilder builder = new StringBuilder();
+
+        if(commandResult.getCommandResult() != 0) {
+            builder.append(resultLabel);
+            builder.append(" - Result :");
+            builder.append(System.lineSeparator());
+            builder.append(commandResult.getCommandResult());
+            builder.append(System.lineSeparator());
+        }
+        if(!StringUtils.isBlank(outputMessage)) {
+            builder.append(resultLabel);
+            builder.append(" - Output :");
+            builder.append(System.lineSeparator());
+            builder.append(outputMessage);
+            builder.append(System.lineSeparator());
+        }
+        if(!StringUtils.isBlank(errorMessage)) {
+            builder.append(resultLabel);
+            builder.append(" - Error :");
+            builder.append(System.lineSeparator());
+            builder.append(errorMessage);
+            builder.append(System.lineSeparator());
+        }
+        return builder.toString();
+    }
+
+
+}

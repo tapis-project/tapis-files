@@ -1,6 +1,7 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.PostgresDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
@@ -10,6 +11,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,32 +22,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /*
- * Class with main used to start a Files worker. See deploy/Dockerfile.workers
- *
- * When the TransferApp starts up, it calls startListenters() for the parent and child task
- * services.  This starts up listeners for the relavent queue (see the approprieat task
- * service class for more).  These listeners will handle each message that comes into the rabbitMQ queue
- * for the service (parent or child).
- *
- * Transfers processing:
- *
- * A request comes into the api for a transfer.  The request can contain multiple transfers.  When that
- * request is handled, the api creates a "top task" in the database.  The top task tracks the transfer
- * request.  For each actual transfer in the request, the api will create a "parent task" whcih gets
- * stored the the parent task table.  Finally the api will write a message into the rabbitMQ parent queue
- * for each parent created.
- *
- * When the parent task service reads a parent task message, it will process it by determining which
- * files are to be transferred for this request.  In the case of a file, there's just one, but in the
- * case of a directory it will walk the directory tree and note each file that must be transferred.
- * For each file that must be transferred a child task is created and written to the child task table
- * in the database.  For each of the child tasks a message pointing to the child task is written to the
- * child task queue.
- *
- * When the child task service reads a child task message from rabbitmq, it will process it by transferring
- * the file described by the child task message, and marking the task compoleted (or failed or whatever).
+ * This class is the "main" for the transfer assigner.  The transfer assigner checks the transfer_workers
+ * table to see which workers to assign work to.  It also checks for workers to go away or stop resoponding
+ * (i.e. stop updating the trasnfer_workers timestamp).  If aw worker goes away any takss assigned to that
+ * worker will get reassigned.
  */
 public class TransfersAssigner
 {
@@ -72,24 +55,28 @@ public class TransfersAssigner
     // main loop for the transfers dispatcher.  Assign children, assign parents, do cleanup.  If we didn't assignthing
     // this time through the loop, sleep a little before going around again.
     void run() throws InterruptedException {
-        boolean moreParentsToSchedule, moreChildrenToSchedule = false;
+        boolean moreParentsToSchedule, moreChildrenToSchedule, moreArchiveTransfersToSchedule = false;
         int loopsWithNoWork = 0;
         for(;;) {
             try {
-                // Assign child and parent tasks.  Keep track of if there's more wore of each
+                // Assign child and parent tasks.  Keep track of if there's more work of each
                 // to do.
                 moreChildrenToSchedule = assignChildTasks();
 
-                // Assign child and parent tasks.  Keep track of if there's more wore of each
+                // Assign child and parent tasks.  Keep track of if there's more work of each
                 // to do.
                 moreParentsToSchedule = assignParentTasks();
+
+                // Assign archive transfers.  Keep track of if there's more work of each
+                // to do.
+                moreArchiveTransfersToSchedule = assignArchiveTransfers();
 
                 // get rid of any tasks that have a worker that no longer exists assigned to it.
                 cleanupZombieAssignments();
 
                 // sleep progressively longer (up to a max) if we don't have more work to do, but don't sleep
                 // if there's work to do.
-                if (!moreChildrenToSchedule && !moreParentsToSchedule) {
+                if (!moreChildrenToSchedule && !moreParentsToSchedule && !moreArchiveTransfersToSchedule) {
                     if(loopsWithNoWork < MAX_WAIT_MULTIPLIER) {
                         loopsWithNoWork++;
                     }
@@ -141,14 +128,17 @@ public class TransfersAssigner
         }
     }
 
-    void updateWorkerList(Map<UUID, Integer> activeWorkerMap) {
+    void updateWorkerList(Map<UUID, Integer> activeWorkerMap, TransferWorkerConfig.TransferType forTransferType) {
         TransferWorkerDAO transferWorkerDAO = new TransferWorkerDAO();
 
         List<TransferWorker> workers = null;
         try {
-            workers = DAOTransactionContext.doInTransaction((context) -> {
-                return transferWorkerDAO.getTransferWorkers(context);
-            });
+            workers = DAOTransactionContext.doInTransaction((context) ->
+                    transferWorkerDAO.getTransferWorkers(context).stream()
+                            // only workers that will accept this type of transfer
+                            .filter(transferWorker -> transferWorker.canAssignTask(new TransferWorker.AssignmentParams(forTransferType, null)))
+                            .collect(Collectors.toList())
+            );
         } catch (DAOException ex) {
             log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkerList", ex));
         }
@@ -183,10 +173,12 @@ public class TransfersAssigner
     private void cleanupZombieAssignments() {
         TransferTaskChildDAO childTaskDao = new TransferTaskChildDAO();
         TransferTaskParentDAO parentTaskDao = new TransferTaskParentDAO();
+        ArchiveTransfersDAO archiveTransfersDAO = new ArchiveTransfersDAO();
         try {
             DAOTransactionContext.doInTransaction(context -> {
                 childTaskDao.cleanupZombieChildAssignments(context, TransferTaskChild.TERMINAL_STATES);
                 parentTaskDao.cleanupZombieParentAssignments(context, TransferTaskParent.TERMINAL_STATES);
+                archiveTransfersDAO.cleanupZombieArchiveTransferAssignments(context);
                 return 0;
             });
         } catch (DAOException ex) {
@@ -236,6 +228,26 @@ public class TransfersAssigner
         }
     }
 
+    // Get the count of parent tasks assigned to each worker uuid in the activeWorkerMap
+    private void updateArchiveTransferWorkCounts(Map<UUID, Integer> activeWorkerMap) {
+        ArchiveTransfersDAO archiveTransfersDAO = new ArchiveTransfersDAO();
+
+        try {
+            Map<UUID, Integer> assignedWorkerCount = DAOTransactionContext.doInTransaction((context -> {
+                return archiveTransfersDAO.getAssignedWorkerCount(context);
+            }));
+
+            for(var workerUuid : assignedWorkerCount.keySet()) {
+                if(activeWorkerMap.containsKey(workerUuid)) {
+                    // update the count in the active worker map from the query we just did
+                    activeWorkerMap.put(workerUuid, assignedWorkerCount.get(workerUuid));
+                }
+            }
+        } catch (DAOException ex) {
+            log.error(LibUtils.getMsg("FILES_TXFR_SCHEDULER_ERROR", "updateWorkCounts", ex));
+        }
+    }
+
     // return workers that "need work".  This is determined by building a map with key of worker uuid,
     // and value equal to the number of child tasks assigned to that worker uuid.  Then go through
     // each key and compare the count to "WORKER_BACKLOG_THRESHOLD".  If it's less, add the worker to
@@ -243,7 +255,7 @@ public class TransfersAssigner
     private List<UUID> getWorkersThatNeedChildTasks() {
         Map<UUID, Integer> activeWorkerMap = new HashMap<>();
 
-        updateWorkerList(activeWorkerMap);
+        updateWorkerList(activeWorkerMap, TransferWorkerConfig.TransferType.TRANSFER_TYPE_CHILD);
         updateChildWorkCounts(activeWorkerMap);
 
         List<UUID> workersThatNeedWork = new ArrayList<>();
@@ -271,9 +283,10 @@ public class TransfersAssigner
         // do the actual assignment of tasks to workers
         schedulingPolicy.assignChildTasksToWorkers(workersThatNeedWork, queuedTaskIds);
 
+        // TODO:  I can't remember if/why I need this.  Put comment here if you figure it out!  Harmless, but possibly unneeded.
         // if there are still workers that need work and there are still tasks left in the list
         // continue to do assignments.
-        workersThatNeedWork = getWorkersThatNeedChildTasks();
+        // workersThatNeedWork = getWorkersThatNeedChildTasks();
         queuedTaskIds = schedulingPolicy.getQueuedChildTaskIds();
         return (!queuedTaskIds.isEmpty());
     }
@@ -285,7 +298,7 @@ public class TransfersAssigner
     private List<UUID> getWorkersThatNeedParentTasks() {
         Map<UUID, Integer> activeWorkerMap = new HashMap<>();
 
-        updateWorkerList(activeWorkerMap);
+        updateWorkerList(activeWorkerMap, TransferWorkerConfig.TransferType.TRANSFER_TYPE_PARENT);
         updateParentWorkCounts(activeWorkerMap);
 
         List<UUID> workersThatNeedWork = new ArrayList<>();
@@ -311,10 +324,52 @@ public class TransfersAssigner
         // do the actual assignment of tasks to workers
         schedulingPolicy.assignParentTasksToWorkers(workersThatNeedWork, queuedTaskIds);
 
+        // TODO:  I can't remember if/why I need this.  Put comment here if you figure it out!  Harmless, but possibly unneeded.
         // if there are still workers that need work and there are still tasks left in the list
         // continue to do assignments.
-        workersThatNeedWork = getWorkersThatNeedChildTasks();
+        // workersThatNeedWork = getWorkersThatNeedParentTasks();
         queuedTaskIds = schedulingPolicy.getQueuedParentTaskIds();
+        return (!queuedTaskIds.isEmpty());
+    }
+
+    // return workers that "need work".  This is determined by building a map with key of worker uuid,
+    // and value equal to the number of archive transfers assigned to that worker uuid.  Then go through
+    // each key and compare the count to "WORKER_BACKLOG_THRESHOLD".  If it's less, add the worker to
+    // the workers that need work list.  Return the list.
+    private List<UUID> getWorkersThatNeedArchiveTransfers() {
+        Map<UUID, Integer> activeWorkerMap = new HashMap<>();
+
+        updateWorkerList(activeWorkerMap, TransferWorkerConfig.TransferType.TRANSFER_TYPE_ARCHIVE);
+        updateArchiveTransferWorkCounts(activeWorkerMap);
+
+        List<UUID> workersThatNeedWork = new ArrayList<>();
+
+        // figure out which workers need work
+        for(var workerUuid : activeWorkerMap.keySet()) {
+            int count = activeWorkerMap.get(workerUuid).intValue();
+            if(count < WORKER_BACKLOG_THRESHOLD) {
+                workersThatNeedWork.add(workerUuid);
+            }
+        }
+
+        return workersThatNeedWork;
+    }
+
+    private boolean assignArchiveTransfers() throws SchedulingPolicyException {
+        // find the uuid's of the workers that need more parent tasks.
+        List<UUID> workersThatNeedWork = getWorkersThatNeedArchiveTransfers();
+
+        // get all of the task ids that need to be assigned
+        List<Integer> queuedTaskIds = schedulingPolicy.getQueuedArchiveTransferIds();
+
+        // do the actual assignment of tasks to workers
+        schedulingPolicy.assignArchiveTransfersToWorkers(workersThatNeedWork, queuedTaskIds);
+
+        // TODO:  I can't remember if/why I need this.  Put comment here if you figure it out!  Harmless, but possibly unneeded.
+        // if there are still workers that need work and there are still tasks left in the list
+        // continue to do assignments.
+        // workersThatNeedWork = getWorkersThatNeedArchiveTransfers();
+        queuedTaskIds = schedulingPolicy.getQueuedArchiveTransferIds();
         return (!queuedTaskIds.isEmpty());
     }
 }

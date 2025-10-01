@@ -176,24 +176,6 @@ public class GeneralResource
       if (checkJWTOK.toggleOn()) _log.info(ApiUtils.getMsg("FILES_READYCHECK_JWT_ERRTOGGLE_CLEARED"));
     }
 
-    // Check that we can connect to the message queue
-    if (!transfersService.isConnectionOk()) {
-      RespBasic r = new RespBasic("Readiness message queue check failed. Check number: " + checkNum);
-      String msg = MsgUtils.getMsg("TAPIS_NOT_READY", "Files Service");
-      // We failed so set the log limiter check.
-      if (checkMQOK.toggleOff())
-      {
-        _log.warn(msg, readyCheckException);
-        _log.warn(LibUtils.getMsg("FILES_READYCHECK_MQ_ERRTOGGLE_SET"));
-      }
-      return Response.status(Status.SERVICE_UNAVAILABLE).entity(TapisRestUtils.createErrorResponse(msg, false, r)).build();
-    }
-    else
-    {
-      // We succeeded so clear the log limiter check.
-      if (checkMQOK.toggleOn()) _log.info(LibUtils.getMsg("FILES_READYCHECK_MQ_ERRTOGGLE_CLEARED"));
-    }
-
 //    // Check that we can connect to the DB
 //    readyCheckException = checkDB();
 //    if (readyCheckException != null)
@@ -255,18 +237,6 @@ public class GeneralResource
     return result;
   }
 
-//  /**
-//   * Check the database
-//   * @return null if OK, otherwise return an exception
-//   */
-//  private Exception checkDB()
-//  {
-//    Exception result;
-//    try { result = svcImpl.checkDB(); }
-//    catch (Exception e) { result = e; }
-//    return result;
-//  }
-//
   /**
    * Retrieve the cached tenants map.
    * @return null if OK, otherwise return an exception
@@ -282,10 +252,5 @@ public class GeneralResource
     }
     catch (Exception e) { result = e; }
     return result;
-  }
-
-  @PreDestroy
-  public void cleanUp() throws IOException {
-    transfersService.cleanup();
   }
 }

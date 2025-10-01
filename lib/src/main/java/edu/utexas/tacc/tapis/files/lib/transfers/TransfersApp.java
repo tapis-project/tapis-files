@@ -10,6 +10,8 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.PostgresDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferWorkerDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
+import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransferWorker;
 import edu.utexas.tacc.tapis.files.lib.services.ChildTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
@@ -37,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Singleton;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -83,6 +86,7 @@ public class TransfersApp
 
   private static TransferWorkerDAO workerDAO = new TransferWorkerDAO();
   private static UUID myUuid = null;
+  private static TransferWorkerConfig myConfig = new TransferWorkerConfig(RuntimeSettings.get().getWorkerAcceptedTransferTypes());
 
   public static void main(String[] args)
   {
@@ -107,6 +111,7 @@ public class TransfersApp
         bindAsContract(FileShareService.class).in(Singleton.class);
         bindAsContract(ChildTaskTransferService.class).in(Singleton.class);
         bindAsContract(ParentTaskTransferService.class).in(Singleton.class);
+        bindAsContract(ArchiveTransferWorker.class).in(Singleton.class);
         bindAsContract(FilePermsCache.class).in(Singleton.class);
         bindFactory(TenantCacheFactory.class).to(TenantManager.class).in(Singleton.class);
         bindFactory(ServiceClientsFactory.class).to(ServiceClients.class).in(Singleton.class);
@@ -160,7 +165,7 @@ public class TransfersApp
       }));
 
       TransfersApp.myUuid = DAOTransactionContext.doInTransaction((context) -> {
-        TransferWorker me = workerDAO.insertTransferWorker(context);
+        TransferWorker me = workerDAO.insertTransferWorker(context, myConfig);
         return me.getUuid();
       });
 
@@ -174,7 +179,7 @@ public class TransfersApp
               DAOTransactionContext.doInTransaction((context) -> {
                 TransferWorkerDAO dao = new TransferWorkerDAO();
                 if(dao.getTransferWorkerById(context, TransfersApp.myUuid) == null) {
-                  dao.reInsertTransferWorker(context, TransfersApp.myUuid);
+                  dao.reInsertTransferWorker(context, TransfersApp.myUuid, TransfersApp.myConfig);
                 } else {
                   dao.updateTransferWorker(context, TransfersApp.myUuid);
                 }
@@ -191,21 +196,36 @@ public class TransfersApp
         }
       }, 0, 2, TimeUnit.MINUTES);
 
-      log.info("Getting parentTxfrSvc.");
-      ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
-      log.info("Got parentTxfrSvc.");
+      Collection<TransferWorkerConfig.TransferType> acceptedTypes = RuntimeSettings.get().getWorkerAcceptedTransferTypes();
+      if(acceptedTypes.contains(TransferWorkerConfig.TransferType.TRANSFER_TYPE_PARENT)) {
+        log.info("Getting parentTxfrSvc.");
+        ParentTaskTransferService parentTaskTransferService = locator.getService(ParentTaskTransferService.class);
+        log.info("Got parentTxfrSvc.");
 
-      log.info("Starting parent pipeline.");
-      parentTaskTransferService.startListeners(myUuid);
-      log.info("Started parent pipeline.");
+        log.info("Starting parent pipeline.");
+        parentTaskTransferService.startListeners(myUuid);
+        log.info("Started parent pipeline.");
+      }
 
-      log.info("Getting childTxfrSvc.");
-      ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
-      log.info("Got childTxfrSvc.");
+      if(acceptedTypes.contains(TransferWorkerConfig.TransferType.TRANSFER_TYPE_CHILD)) {
+        log.info("Getting childTxfrSvc.");
+        ChildTaskTransferService childTaskTransferService = locator.getService(ChildTaskTransferService.class);
+        log.info("Got childTxfrSvc.");
 
-      log.info("Starting child pipeline.");
-      childTaskTransferService.startListeners(myUuid);
-      log.info("Started child pipeline.");
+        log.info("Starting child pipeline.");
+        childTaskTransferService.startListeners(myUuid);
+        log.info("Started child pipeline.");
+      }
+
+      if(acceptedTypes.contains(TransferWorkerConfig.TransferType.TRANSFER_TYPE_ARCHIVE)) {
+        log.info("Getting archive transfer service.");
+        ArchiveTransferWorker archiveTransferWorker = locator.getService(ArchiveTransferWorker.class);
+        log.info("Got parentTxfrSvc.");
+
+        log.info("Starting archive transfer worker.");
+        archiveTransferWorker.start(myUuid);
+        log.info("Started archive transfer worker.");
+      }
 
     } catch(Exception ex) {
       String msg = LibUtils.getMsg("FILES_WORKER_APPLICATION_FAILED_TO_START", ex.getMessage());
@@ -246,22 +266,6 @@ public class TransfersApp
 
     if (RuntimeSettings.get().getDbPassword() == null) {
       missingVars.append("DB_PASSWORD ");
-    }
-
-    if (RuntimeSettings.get().getRabbitMQHost() == null) {
-      missingVars.append("RABBITMQ_HOSTNAME ");
-    }
-
-    if (RuntimeSettings.get().getRabbitMQUsername() == null) {
-      missingVars.append("RABBITMQ_USERNAME ");
-    }
-
-    if (RuntimeSettings.get().getRabbitMQVHost() == null) {
-      missingVars.append("RABBITMQ_VHOST ");
-    }
-
-    if (RuntimeSettings.get().getRabbitmqPassword() == null) {
-      missingVars.append("RABBITMQ_PASSWORD ");
     }
 
     if (RuntimeSettings.get().getServicePassword() == null) {

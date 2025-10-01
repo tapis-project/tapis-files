@@ -71,9 +71,7 @@ public class SystemsCache
     {
       SystemCacheKey key = new SystemCacheKey(tenantId, systemId, tapisUser, impersonationId, sharedCtxGrantor);
       return cache.get(key);
-    }
-    catch (ExecutionException ex)
-    {
+    } catch (ExecutionException ex) {
       // Get the cause. If it is a TapisClientException we need to figure out what happened. NotFound, Forbidden, etc.
       var cause = ex.getCause();
       String msg;

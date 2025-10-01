@@ -101,4 +101,26 @@ public class TransferTaskChildDAOStatements {
                     " (tenant_id, task_id, parent_task_id, username, source_uri, destination_uri, status, bytes_transferred, total_bytes, is_dir, is_executable, tag, external_task_id)" +
                     " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                     " RETURNING * ";
+    public static final String GET_CHILD_TASK_BY_UUID =
+            "SELECT * FROM transfer_tasks_child where uuid = ?";
+    public static final String GET_CHILD_TASK_BY_UUID_FOR_UPDATE = GET_CHILD_TASK_BY_UUID + " FOR UPDATE";
+    public static final String UPDATE_CHILD_TASK =
+            """
+                UPDATE transfer_tasks_child
+                SET bytes_transferred = ?, 
+                         status = ?,
+                         retries = ?, 
+                         start_time = ?, 
+                         end_time = ?,
+                         error_message = ?,
+                         external_task_id = ?,
+                         assigned_to = ?
+                    WHERE id = ? 
+                    RETURNING *
+            """;
+
+    public static final String GET_ASSIGNED_TASKS_IN_STATUS =
+            "SELECT * from transfer_tasks_child WHERE assigned_to = ? and status = ? FOR UPDATE";
+    public static final String GET_ASSIGNED_TASKS_IN_STATUS_FOR_UPDATE = GET_ASSIGNED_TASKS_IN_STATUS + " FOR UPDATE";
+
 }

@@ -1,0 +1,242 @@
+package edu.utexas.tacc.tapis.files.lib.transfers;
+
+import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.ArchiveInputStream;
+import org.apache.commons.compress.archivers.ArchiveOutputStream;
+import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FilterInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+public class ObservableArchiveInputStream extends FilterInputStream {
+
+    public static interface Observer {
+        void file(String name, long size, Date lastModifiedDate, String digest);
+        void actualBytesRead(long actualBytesRead);
+    }
+
+    private final static int BUFFER_SIZE = 50000;
+    private boolean finished = false;
+
+    private final static int READ_BUFFER_SIZE = 500;
+    private final ArchiveInputStream archiveInputStream;
+    private final ArchiveOutputStream archiveOutputStream;
+    private final ByteArrayOutputStream byteArrayOutputStream;
+    ArchiveEntry currentTarEntry = null;
+    int readPosition = 0;
+    int totalRead = 0;
+    Logger log = LoggerFactory.getLogger(ObservableArchiveInputStream.class);
+    private final List<Observer> observerList = new ArrayList<>();
+    private final MessageDigest messageDigest;
+    public ObservableArchiveInputStream(InputStream in, ArchiveTransferProvider archiveTransferProvider) throws IOException {
+        this(archiveTransferProvider.getArchiveInputStream(in), archiveTransferProvider,
+                new ByteArrayOutputStream(), archiveTransferProvider.getMessageDigest());
+    }
+
+    private ObservableArchiveInputStream(ArchiveInputStream archiveInputStream, ArchiveTransferProvider archiveTransferProvider,
+                                         ByteArrayOutputStream byteArrayOutputStream, MessageDigest messageDigest) throws IOException {
+        super(archiveInputStream);
+        this.archiveInputStream = archiveInputStream;
+        this.archiveOutputStream = archiveTransferProvider.getArchiveOutputStream(byteArrayOutputStream);
+        this.byteArrayOutputStream = byteArrayOutputStream;
+        this.messageDigest = messageDigest;
+    }
+
+    @Override
+    public int read() throws IOException {
+        if ((this.finished) && (bytesLeftInReadBuffer() == 0)) {
+            notifyArchiveSize();
+            return -1;
+        }
+
+        if (bytesLeftInReadBuffer() <= 0) {
+            byteArrayOutputStream.reset();
+            readPosition = 0;
+            if (fillReadBuffer(READ_BUFFER_SIZE) == -1) {
+                notifyArchiveSize();
+                return -1;
+            }
+        }
+
+        int readByte = (0x000000FF) & byteArrayOutputStream.toByteArray()[readPosition];
+        totalRead++;
+        readPosition++;
+        return readByte;
+    }
+
+    @Override
+    public int read(@NotNull byte[] b, int off, int len) throws IOException {
+        if (len == 0) {
+            return 0;
+        }
+
+        if ((this.finished) && (bytesLeftInReadBuffer() == 0)) {
+            notifyArchiveSize();
+            return -1;
+        }
+
+        int bytesRead = 0;
+
+        while (bytesRead < len) {
+            if (bytesLeftInReadBuffer() <= 0) {
+                byteArrayOutputStream.reset();
+                readPosition = 0;
+                if (fillReadBuffer(READ_BUFFER_SIZE) == -1) {
+                    return bytesRead;
+                }
+            }
+
+            int copyLength = Math.min(len - bytesRead, bytesLeftInReadBuffer());
+
+            System.arraycopy(byteArrayOutputStream.toByteArray(), readPosition, b, off + bytesRead, copyLength);
+            totalRead += copyLength;
+            readPosition += copyLength;
+            bytesRead += copyLength;
+        }
+
+        log.info("read with offset: " + "byte[] length: " + b.length + " off: " + off + "len: " + len + " read:" + bytesRead + " totalRead: " + totalRead);
+
+        return bytesRead;
+    }
+
+    private int bytesLeftInReadBuffer() {
+        return byteArrayOutputStream.size() - readPosition;
+    }
+
+    @Override
+    public int available() throws IOException {
+        // available is the bytes in the in stream plus whats in the buffer
+        if((!finished) && (bytesLeftInReadBuffer() == 0)) {
+            byteArrayOutputStream.reset();
+            readPosition = 0;
+            fillReadBuffer(BUFFER_SIZE);
+        }
+
+        int available = bytesLeftInReadBuffer();
+        return available;
+    }
+
+    @Override
+    public void mark(int readlimit) {
+        super.mark(readlimit);
+    }
+
+    @Override
+    public void reset() throws IOException {
+        super.reset();
+    }
+
+    @Override
+    public boolean markSupported() {
+        return false;
+    }
+
+    @Override
+    public long skip(long n) throws IOException {
+        return super.skip(n);
+    }
+
+    public int fillReadBuffer(int bytesToRead) throws IOException {
+        if(finished) {
+            return -1;
+        }
+
+        goToNextTarArchiveEntry();
+
+        byte[] fileBytes = new byte[READ_BUFFER_SIZE];
+        while((byteArrayOutputStream.size() < bytesToRead) && (currentTarEntry != null)) {
+            int bytesRead = archiveInputStream.read(fileBytes);
+            if(bytesRead == -1) {
+                archiveOutputStream.closeArchiveEntry();
+                notifyFile();
+                currentTarEntry = null;
+                goToNextTarArchiveEntry();
+            } else {
+                archiveOutputStream.write(fileBytes, 0, bytesRead);
+                updateMd(fileBytes, 0, bytesRead);
+            }
+        }
+
+        return bytesLeftInReadBuffer();
+    }
+
+    public void goToNextTarArchiveEntry() throws IOException {
+        // see if we are in the middle of reading a tar entry
+        if (currentTarEntry == null) {
+            currentTarEntry = archiveInputStream.getNextEntry();
+            if (currentTarEntry != null) {
+                archiveOutputStream.putArchiveEntry(currentTarEntry);
+            } else {
+                // finish the archive, and get the remaining bytes
+                archiveOutputStream.finish();
+                archiveOutputStream.flush();
+                archiveOutputStream.close();
+                finished = true;
+            }
+        }
+    }
+    private String hashAsHex(byte[] hashBytes) {
+        StringBuilder hexString = new StringBuilder(2 * hashBytes.length);
+        for (int i = 0; i < hashBytes.length; i++) {
+            String hex = Integer.toHexString(0xff & hashBytes[i]);
+            if(hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+        return "sha256:" + hexString.toString();
+    }
+
+    private void updateMd(byte[] bytes, int off, int len) {
+        if(messageDigest != null) {
+            messageDigest.update(bytes, off, len);
+        }
+    }
+
+    private String getMd() {
+        if(messageDigest != null) {
+            return hashAsHex(messageDigest.digest());
+        } else {
+            return "Not Calculated";
+        }
+    }
+
+    private void notifyFile() {
+        String name = currentTarEntry.getName();
+        long size = currentTarEntry.getSize();
+        Date lastModifiedDate = currentTarEntry.getLastModifiedDate();
+        String digest = getMd();
+        observerList.stream().forEach(observer -> {
+            try {
+                observer.file(name, size, lastModifiedDate, digest);
+            } catch (Throwable th) {
+                String msg = LibUtils.getMsg("FILES_XFER_ERROR_NOTIFYING_OBSERVER", "notifyFile");
+                log.error(msg, th);
+            }
+        });
+    }
+
+    private void notifyArchiveSize() {
+        observerList.stream().forEach(observer -> {
+            try {
+                observer.actualBytesRead(totalRead);
+            } catch (Throwable th) {
+                String msg = LibUtils.getMsg("FILES_XFER_ERROR_NOTIFYING_OBSERVER", "notifyArchiveSize");
+                log.error(msg, th);
+            }
+        });
+    }
+
+    public void addObserver(Observer observer) {
+        observerList.add(observer);
+    }
+}

@@ -3,12 +3,14 @@ package edu.utexas.tacc.tapis.files.api.resources;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 import javax.servlet.ServletContext;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -28,6 +30,10 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 
 import edu.utexas.tacc.tapis.files.api.FilesApplication;
+import edu.utexas.tacc.tapis.files.api.models.ArchiveTransferRequest;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
+import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransferResponse;
+import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransfersService;
 import edu.utexas.tacc.tapis.sharedapi.utils.TapisRestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.server.Request;
@@ -67,9 +73,6 @@ public class  TransfersApiResource
 
   private static final String FILES_SVC = StringUtils.capitalize(TapisConstants.SERVICE_NAME_FILES);
 
-  // Always return a nicely formatted response
-  private static final boolean PRETTY = true;
-
   // Message keys
   private static final String TAPIS_FOUND = "TAPIS_FOUND";
 
@@ -93,6 +96,8 @@ public class  TransfersApiResource
   TransfersService transfersService;
 
   @Inject
+  ArchiveTransfersService archiveTransfersService;
+  @Inject
   SystemsCache systemsCache;
 
   // ************************************************************************
@@ -109,7 +114,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -164,7 +169,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -216,7 +221,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -257,7 +262,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -296,7 +301,7 @@ public class  TransfersApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -332,13 +337,164 @@ public class  TransfersApiResource
     if (log.isTraceEnabled()) log.trace(task.toString());
     return Response.ok(resp).build();
   }
+  @GET
+  @Path("fastTransfer/{uuid}")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response getArchiveTransfer(@PathParam("uuid") @ValidUUID String archiveTransferUuid,
+                                  @QueryParam("includePaths") @DefaultValue("false") boolean includePaths,
+                                  @QueryParam("includeTransferLog") @DefaultValue("false") boolean includeArchiveTransferLog,
+                                  @QueryParam("impersonationId") String impersonationId,
+                                  @Context SecurityContext securityContext)
+  {
+    String opName = "getFastTransfer";
 
-  // ************************************************************************
-  // *********************** Private Methods ********************************
-  // ************************************************************************
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext);
 
-  @PreDestroy
-  public void cleanUp() throws IOException {
-    transfersService.cleanup();
+    // If there is a problem return error response
+    if (resp1 != null) {
+      return resp1;
+    }
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "archiveTransferId=" + archiveTransferUuid,
+              "includePaths=" + includePaths, "includeTransferLog" + includeArchiveTransferLog, "impersonationId=" + impersonationId);
+    }
+
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
+
+    ArchiveTransferResponse archiveTransferResponse;
+    try
+    {
+      archiveTransferResponse = archiveTransfersService.getArchiveTransfer(rUser,
+              UUID.fromString(archiveTransferUuid), includePaths, includeArchiveTransferLog, impersonationId);
+    }
+    catch (ServiceException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+
+    String msg = MsgUtils.getMsg(TAPIS_FOUND, "TransferTask", archiveTransferUuid);
+    TapisResponse<ArchiveTransferResponse> resp = TapisResponse.createSuccessResponse(msg, archiveTransferResponse);
+    return Response.ok(resp).build();
+
+  }
+  @DELETE
+  @Path("fastTransfer/{uuid}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response cancelArchiveTransfer(@PathParam("uuid") @ValidUUID String uuid,
+                                     @Context SecurityContext securityContext)
+  {
+    String opName = "cancelArchiveTransfer";
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext);
+    // If there is a problem return error response
+    if (resp1 != null) return resp1;
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(), "uuid=" + uuid);
+    }
+
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
+
+    try
+    {
+      archiveTransfersService.cancelTransfer(rUser, uuid);
+    }
+    catch (ServiceException e)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, e.getMessage());
+      log.error(msg, e);
+      throw new WebApplicationException(msg, e);
+    }
+    String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CANCELLED", rUser, uuid);
+    TapisResponse<String> resp = TapisResponse.createSuccessResponse(msg, null);
+    return Response.ok(resp).build();
+  }
+
+
+  @POST
+  @Path("fastTransfer")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  public Response createArchiveTransfer(@Valid ArchiveTransferRequest archiveTransferRequest,
+                                     @Context SecurityContext securityContext)
+  {
+    String opName = "createFastTransfer";
+
+    // Check that we have all we need from the context, the jwtTenantId and jwtUserId
+    // Utility method returns null if all OK and appropriate error response if there was a problem.
+    TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
+    Response resp1 = ApiUtils.checkContext(threadContext);
+
+    // If there is a problem return error response
+    if (resp1 != null) {
+      return resp1;
+    }
+
+    // Create a user that collects together tenant, user and request information needed by service calls
+    ResourceRequestUser rUser = new ResourceRequestUser((AuthenticatedUser) securityContext.getUserPrincipal());
+
+    // Trace this request.
+    if (log.isTraceEnabled()) {
+      ApiUtils.logRequest(rUser, className, opName, _request.getRequestURL().toString(),
+              "transferTaskRequest=" + archiveTransferRequest);
+    }
+
+    TapisRestUtils.checkServiceRestrictions(TapisConstants.SERVICE_NAME_FILES, FilesApplication.getTrustedServices(), rUser);
+
+    // ---------------------------- Make service call -------------------------------
+    ArchiveTransferResponse archiveTransferResponse;
+    try
+    {
+      // Create the txfr task
+      ArchiveTransfer archiveTransfer = getArchiveTransferFromRequest(rUser, archiveTransferRequest);
+      String msg = archiveTransferRequest.validateRequest();
+      if(msg != null) {
+        throw new BadRequestException(msg);
+      }
+      archiveTransferResponse = archiveTransfersService.createArchiveTransfer(rUser, archiveTransfer);
+    }
+    catch (ServiceException ex)
+    {
+      String msg = LibUtils.getMsgAuthR("FILES_TXFR_ERR", rUser, opName, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
+    }
+    String msg = ApiUtils.getMsgAuth("FAPI_TXFR_CREATED", rUser, archiveTransferResponse.getUuid());
+
+    TapisResponse<ArchiveTransferResponse> resp = TapisResponse.createSuccessResponse(msg, archiveTransferResponse);
+
+    // Trace details of the created txfr task.
+    if (log.isTraceEnabled()) log.trace(archiveTransferResponse.toString());
+    return Response.ok(resp).build();
+  }
+
+  private ArchiveTransfer getArchiveTransferFromRequest(ResourceRequestUser rUser, ArchiveTransferRequest archiveTransferRequest) {
+    ArchiveTransfer archiveTransfer = new ArchiveTransfer();
+    archiveTransfer.setUsername(rUser.getOboUserId());
+    archiveTransfer.setTenantId(rUser.getOboTenantId());
+    archiveTransfer.setSourceBaseUrl(archiveTransferRequest.getSourceBaseUrl());
+    archiveTransfer.setDestinationBaseUrl(archiveTransferRequest.getDestinationBaseUrl());
+    archiveTransfer.setSrcSharedCtxGrantor(archiveTransferRequest.getSrcSharedCtxGrantor());
+    archiveTransfer.setDestSharedCtxGrantor(archiveTransferRequest.getDestSharedCtxGrantor());
+    archiveTransfer.setRelativePaths(archiveTransferRequest.getRelativePaths());
+    archiveTransfer.setArchiveType(archiveTransferRequest.getArchiveType());
+    return archiveTransfer;
   }
 }

@@ -139,16 +139,16 @@ public class ApiUtils
    * If all OK return null, else return error response.
    *
    * @param threadContext - thread context to check
-   * @param prettyPrint - flag for pretty print of response
    * @return null if OK, else error response
    */
-  public static Response checkContext(TapisThreadContext threadContext, boolean prettyPrint)
+  public static Response checkContext(TapisThreadContext threadContext)
   {
     if (threadContext.validate()) return null;
     String msg = MsgUtils.getMsg("TAPIS_INVALID_THREADLOCAL_VALUE", "validate");
     log.error(msg);
-    return Response.status(Response.Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg, prettyPrint)).build();
+    return Response.status(Response.Status.BAD_REQUEST).entity(TapisRestUtils.createErrorResponse(msg)).build();
   }
+
 
   /**
    * Trace the incoming request, include info about requesting user, op name and request URL

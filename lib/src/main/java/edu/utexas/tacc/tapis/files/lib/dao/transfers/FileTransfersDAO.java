@@ -183,20 +183,6 @@ public class FileTransfersDAO {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getAllParentsForTaskByID", taskId), ex);
         }
     }
-
-    public TransferTaskParent getTransferTaskParentByUUID(@NotNull UUID uuid) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
-            String query = FileTransfersDAOStatements.GET_PARENT_TASK_BY_UUID;
-            QueryRunner runner = new QueryRunner();
-            TransferTaskParent task = runner.query(connection, query, handler, uuid);
-            return task;
-        } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskParentByUUID", uuid), ex);
-        }
-    }
-
     public TransferTaskParent getTransferTaskParentById(@NotNull long id) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
@@ -309,6 +295,7 @@ public class FileTransfersDAO {
 
     }
 
+    @Deprecated
     public TransferTaskChild updateTransferTaskChild(@NotNull TransferTaskChild task) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
         try (Connection connection = HikariConnectionPool.getConnection()) {
@@ -367,23 +354,6 @@ public class FileTransfersDAO {
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
                   "createTransferTaskParent", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
-        }
-    }
-
-    public TransferTaskChild getChildTaskByUUID(@NotNull UUID taskUUID) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
-
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
-            String stmt = FileTransfersDAOStatements.GET_CHILD_TASK_BY_UUID;
-            QueryRunner runner = new QueryRunner();
-            TransferTaskChild child = runner.query(connection, stmt, handler,
-                taskUUID
-            );
-
-            return child;
-        } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getChildTaskByUUID", taskUUID, ex.getMessage()), ex);
         }
     }
 

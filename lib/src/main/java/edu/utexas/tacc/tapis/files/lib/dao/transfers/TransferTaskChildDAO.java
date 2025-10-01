@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
@@ -10,14 +11,18 @@ import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.RowProcessor;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Array;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -193,5 +198,80 @@ public class TransferTaskChildDAO {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
                     "insertChildTask", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
+    }
+
+    public TransferTaskChild getChildTaskByUUID(DAOTransactionContext context, UUID taskUUID, boolean forUpdate) throws DAOException {
+        RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
+
+        try {
+            BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
+            String stmt = (forUpdate) ? TransferTaskChildDAOStatements.GET_CHILD_TASK_BY_UUID_FOR_UPDATE :
+                    TransferTaskChildDAOStatements.GET_CHILD_TASK_BY_UUID;
+            QueryRunner runner = new QueryRunner();
+            TransferTaskChild child = runner.query(context.getConnection(), stmt, handler,
+                    taskUUID
+            );
+
+            return child;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getChildTaskByUUID", taskUUID, ex.getMessage()), ex);
+        }
+    }
+
+    public TransferTaskChild updateTransferTaskChild(DAOTransactionContext context, TransferTaskChild task) throws DAOException {
+        RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
+        try {
+            BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
+            String stmt = TransferTaskChildDAOStatements.UPDATE_CHILD_TASK;
+            QueryRunner runner = new QueryRunner();
+            Timestamp startTime = null;
+            Timestamp endTime = null;
+            if (task.getStartTime() != null) {
+                startTime = Timestamp.from(task.getStartTime());
+            }
+            if (task.getEndTime() != null) {
+                endTime = Timestamp.from(task.getEndTime());
+            }
+
+            TransferTaskChild updatedTask = runner.query(context.getConnection(), stmt, handler,
+                    task.getBytesTransferred(),
+                    task.getStatus().name(),
+                    task.getRetries(),
+                    startTime,
+                    endTime,
+                    task.getErrorMessage(),
+                    task.getExternalTaskId(),
+                    task.getAssignedTo(),
+                    task.getId()
+            );
+            return updatedTask;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
+                    "updateTransferTaskChild", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
+        }
+    }
+
+    public Collection<TransferTaskChild> getAssignedTasksInStatus(DAOTransactionContext context, UUID workerUuid,
+                                                                  TransferTaskStatus status, boolean forUpdate) throws DAOException {
+        try {
+            RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
+            BeanListHandler<TransferTaskChild> handler = new BeanListHandler<>(TransferTaskChild.class, rowProcessor);
+
+            QueryRunner runner = new QueryRunner();
+            Collection<TransferTaskChild> children;
+            String stmt;
+            if (forUpdate) {
+                stmt = TransferTaskChildDAOStatements.GET_ASSIGNED_TASKS_IN_STATUS_FOR_UPDATE;
+            } else {
+                stmt = TransferTaskChildDAOStatements.GET_ASSIGNED_TASKS_IN_STATUS;
+            }
+            children = runner.query(context.getConnection(), stmt, handler, workerUuid, status.name());
+
+
+            return children;
+        } catch (SQLException ex) {
+            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR_GENERAL", "getAssignedTasksInStatus", ex.getMessage()), ex);
+        }
+
     }
 }

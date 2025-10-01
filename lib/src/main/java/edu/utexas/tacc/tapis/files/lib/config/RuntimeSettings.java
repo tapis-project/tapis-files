@@ -1,6 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.config;
 
+import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
 import org.apache.commons.lang3.StringUtils;
+import org.bouncycastle.util.Strings;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Function;
 
 public class RuntimeSettings {
 
@@ -15,16 +23,13 @@ public class RuntimeSettings {
         protected String dbUsername = settings.get("DB_USERNAME");
         protected String dbPassword = settings.get("DB_PASSWORD");
         protected String dbPort = settings.get("DB_PORT", "5432");
-        protected String rabbitMQHost = settings.get("RABBITMQ_HOSTNAME");
-        protected String rabbitMQUsername = settings.get("RABBITMQ_USERNAME");
-        protected String rabbitMQVHost = settings.get("RABBITMQ_VHOST");
-        protected String rabbitmqPassword = settings.get("RABBITMQ_PASSWORD");
         protected String servicePassword = settings.get("SERVICE_PASSWORD");
         protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String globusClientId = settings.get("TAPIS_GLOBUS_CLIENT_ID", "");
         protected final int parentThreadPoolSize = getIntSetting("PARENT_THREAD_POOL_SIZE", 24);
         protected final int childThreadPoolSize = getIntSetting("CHILD_THREAD_POOL_SIZE", 32);
+        protected final int archiveTransferThreadPoolSize = getIntSetting("ARCHIVE_TRANSFER_THREAD_POOL_SIZE", 40);
         // How often to poll when monitoring an asynchronous transfer. Default is 120 seconds.
         protected final int asyncTransferPollSeconds = getIntSetting("ASYNC_TRANSFER_POLL_SECONDS", 120);
         protected final int postItsReaperIntervalMinutes = getIntSetting("POSTITS_REAPER_INTERVAL_MINUTES", 1440);
@@ -43,6 +48,8 @@ public class RuntimeSettings {
         protected final int maxTransferCount = getIntSetting("MAX_TRANSFER_COUNT", 10000);
         protected final int maxAssignmentWaitMultiplier = getIntSetting("MAX_ASSIGNMENT_WAIT_MULTIPLIER", 5);
         protected final boolean auditingEnabled = getBoolSetting("TAPIS_AUDITING_ENABLED", false);
+        protected final Set<TransferWorkerConfig.TransferType> workerAcceptedTransferTypes = getSetSetting("TAPIS_FILES_WORKER_ACCEPTED_TRANSFER_TYPES",
+                Collections.emptySet(), TransferWorkerConfig.TransferType.class, value -> TransferWorkerConfig.TransferType.valueOf(value.trim()));
         protected final long requiredPostgresVersion = 160003;
 
         public long getRequiredPostgresVersion() {
@@ -73,22 +80,6 @@ public class RuntimeSettings {
             return dbPort;
         }
 
-        public String getRabbitMQHost() {
-            return rabbitMQHost;
-        }
-
-        public String getRabbitMQUsername() {
-            return rabbitMQUsername;
-        }
-
-        public String getRabbitMQVHost() {
-            return rabbitMQVHost;
-        }
-
-        public String getRabbitmqPassword() {
-            return rabbitmqPassword;
-        }
-
         public String getServicePassword() { return servicePassword; }
 
         public String getTokensServiceURL() { return tokensServiceURL; }
@@ -105,6 +96,11 @@ public class RuntimeSettings {
 
         public int getParentThreadPoolSize() {
             return parentThreadPoolSize;
+        }
+
+        @Override
+        public int getArchiveTransferThreadPoolSize() {
+            return archiveTransferThreadPoolSize;
         }
 
         public int getAsyncTransferPollSeconds() { return asyncTransferPollSeconds; }
@@ -169,6 +165,10 @@ public class RuntimeSettings {
 
         public boolean isAuditingEnabled() { return auditingEnabled; }
 
+        public Set<TransferWorkerConfig.TransferType> getWorkerAcceptedTransferTypes() {
+            return workerAcceptedTransferTypes;
+        }
+
         public static int getIntSetting(String settingName, int defaultValue) {
             String settingValue = settings.get(settingName);
             if(StringUtils.isBlank(settingValue)) {
@@ -180,6 +180,18 @@ public class RuntimeSettings {
             String settingValue = settings.get(settingName);
             if (StringUtils.isBlank(settingValue)) return defaultValue;
             return Boolean.parseBoolean(settingValue);
+        }
+
+        public static <T> Set<T> getSetSetting(String settingName, Set<T> defaultValue, Class<T> clazz, Function<String, T> objectFromString) {
+            String settingValue = settings.get(settingName);
+            if (StringUtils.isBlank(settingValue)) return defaultValue;
+            String[] stringArray = Strings.split(settingValue, ',');
+
+            Set<T> newSet = new HashSet<>();
+            for(String stringArrayElement : stringArray) {
+                newSet.add(objectFromString.apply(stringArrayElement));
+            }
+            return newSet;
         }
     }
 

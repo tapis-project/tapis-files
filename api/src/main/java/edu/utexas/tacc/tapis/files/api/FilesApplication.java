@@ -10,6 +10,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.PostgresDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.factories.ServiceContextFactory;
+import edu.utexas.tacc.tapis.files.lib.services.ArchiveTransfersService;
 import edu.utexas.tacc.tapis.files.lib.services.FileOpsService;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
 import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
@@ -94,7 +95,7 @@ public class FilesApplication extends ResourceConfig
   // We must be running on a specific site and this will never change
   private static String siteId;
   public static String getSiteId() {return siteId;}
-  public static List<String> getTrustedServices() {return List.of(TapisConstants.SERVICE_NAME_JOBS, "workflows");}
+  public static List<String> getTrustedServices() {return List.of(TapisConstants.SERVICE_NAME_JOBS);}
   private static String siteAdminTenantId;
   public static String getSiteAdminTenantId() {return siteAdminTenantId;}
 
@@ -192,6 +193,7 @@ public class FilesApplication extends ResourceConfig
           bindAsContract(FileUtilsService.class).in(Singleton.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
+          bindAsContract(ArchiveTransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);
           bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
           bindAsContract(FilePermsService.class).in(Singleton.class);
@@ -328,22 +330,6 @@ public class FilesApplication extends ResourceConfig
 
     if (RuntimeSettings.get().getDbPassword() == null) {
       missingVars.append("DB_PASSWORD ");
-    }
-
-    if (RuntimeSettings.get().getRabbitMQHost() == null) {
-      missingVars.append("RABBITMQ_HOSTNAME ");
-    }
-
-    if (RuntimeSettings.get().getRabbitMQUsername() == null) {
-      missingVars.append("RABBITMQ_USERNAME ");
-    }
-
-    if (RuntimeSettings.get().getRabbitMQVHost() == null) {
-      missingVars.append("RABBITMQ_VHOST ");
-    }
-
-    if (RuntimeSettings.get().getRabbitmqPassword() == null) {
-      missingVars.append("RABBITMQ_PASSWORD ");
     }
 
     if (RuntimeSettings.get().getServicePassword() == null) {

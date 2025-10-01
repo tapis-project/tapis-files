@@ -62,8 +62,6 @@ public class OperationsApiResource
 
   // Some methods do not support impersonationId
   private static final String impersonationIdNull = null;
-  // Always return a nicely formatted response
-  private static final boolean PRETTY = true;
 
   // ************************************************************************
   // *********************** Fields *****************************************
@@ -172,7 +170,7 @@ public class OperationsApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -217,7 +215,7 @@ public class OperationsApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -266,7 +264,7 @@ public class OperationsApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -305,7 +303,7 @@ public class OperationsApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 
@@ -340,7 +338,7 @@ public class OperationsApiResource
     // Check that we have all we need from the context, the jwtTenantId and jwtUserId
     // Utility method returns null if all OK and appropriate error response if there was a problem.
     TapisThreadContext threadContext = TapisThreadLocal.tapisThreadContext.get(); // Local thread context
-    Response resp1 = ApiUtils.checkContext(threadContext, PRETTY);
+    Response resp1 = ApiUtils.checkContext(threadContext);
     // If there is a problem return error response
     if (resp1 != null) return resp1;
 

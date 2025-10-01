@@ -59,6 +59,11 @@ public class TransferTaskParentDAOStatements {
                   assigned_to;
             """ ;
 
+    public static final String GET_PARENT_TASK_BY_UUID =
+            "SELECT * FROM transfer_tasks_parent where uuid = ?";
+
+    public static final String GET_PARENT_TASK_BY_UUID_FOR_UPDATE =
+            "SELECT * FROM transfer_tasks_parent where uuid = ? for update";
 
     public static final String ASSIGN_TASKS_TO_WORKER =
             """
@@ -134,5 +139,8 @@ public class TransferTaskParentDAOStatements {
                         WHERE uuid = ?
                         RETURNING *
             """;
+    public static final String GET_ASSIGNED_TASKS_IN_STATUS =
+            "SELECT * from transfer_tasks_parent WHERE assigned_to = ? and status = ? FOR UPDATE";
+    public static final String GET_ASSIGNED_TASKS_IN_STATUS_FOR_UPDATE = GET_ASSIGNED_TASKS_IN_STATUS + " FOR UPDATE";
 
 }

@@ -1,10 +1,12 @@
 package edu.utexas.tacc.tapis.files.lib.transfers;
 
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.ArchiveTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
@@ -70,6 +72,46 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
 
         return prioritizedWork;
     }
+
+    @Override
+    public void assignArchiveTransfersToWorkers(List<UUID> workerIds, List<Integer> queuedTaskIds) throws SchedulingPolicyException {
+        if(workerIds.size() == 0) {
+            // if there are no workers in the list, there is nothing to do
+            return;
+        }
+
+        int amountPerWorker = (int) Math.ceil((double)queuedTaskIds.size() / (double)workerIds.size());
+        for (UUID uuid : workerIds) {
+            List<Integer> tasksToAssign = new ArrayList<>();
+            for(int i=0;i<amountPerWorker;i++) {
+                if(i < queuedTaskIds.size()) {
+                    tasksToAssign.add(queuedTaskIds.remove(i));
+                } else {
+                    break;
+                }
+            }
+            if(!tasksToAssign.isEmpty()) {
+                // assign parent tasks, but only if we got some tasks to assign
+                assignArchiveTransfersToWorker(tasksToAssign, uuid);
+            }
+        }
+    }
+    @Override
+    public List<PrioritizedObject<ArchiveTransfer>> getArchiveTransfersForWorker(UUID workerUuid) throws SchedulingPolicyException {
+        // get all the work to be assigned
+        List<PrioritizedObject<ArchiveTransfer>> prioritizedWork = null;
+        try {
+            ArchiveTransfersDAO archiveTransfersDAO = new ArchiveTransfersDAO();
+            prioritizedWork = DAOTransactionContext.doInTransaction(context -> {
+                return archiveTransfersDAO.getAssignedWorkForWorker(context, cachedRows, workerUuid);
+            });
+        } catch (DAOException ex) {
+            throw new SchedulingPolicyException(LibUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getArchiveTransfersForWorker", ex));
+        }
+
+        return prioritizedWork;
+    }
+
 
     /**
      * Gets the queued child task ids.  This is the list containing the next batch of child tasks that need to be assigned
@@ -172,6 +214,41 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
     }
 
     @Override
+    public List<Integer> getQueuedArchiveTransferIds() throws SchedulingPolicyException {
+        // get all the work to be assigned
+        List<PrioritizedObject<ArchiveTransfer>> prioritizedWork = null;
+        try {
+            ArchiveTransfersDAO archiveTransfersDAO = new ArchiveTransfersDAO();
+            prioritizedWork = DAOTransactionContext.doInTransaction(context -> {
+                return archiveTransfersDAO.getAcceptedArchiveTransfersForTenantsAndUsers(context, cachedRows);
+            });
+        } catch (DAOException ex) {
+            throw new SchedulingPolicyException(LibUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "getQueuedTaskIds", ex));
+        }
+
+        if(CollectionUtils.isEmpty(prioritizedWork)) {
+            return Collections.emptyList();
+        }
+
+        List<Integer> queuedTaskIds = new ArrayList<>();
+        Map<String, List<Integer>> tenantWorkMap = refillArchiveTransfers(prioritizedWork);
+        while(!tenantWorkMap.isEmpty()) {
+            Iterator<String> tenantIterator = tenantWorkMap.keySet().iterator();
+            while (tenantIterator.hasNext()) {
+                String tenant = tenantIterator.next();
+                List<Integer> archiveTransferList = tenantWorkMap.get(tenant);
+                if (archiveTransferList.isEmpty()) {
+                    tenantIterator.remove();
+                } else {
+                    queuedTaskIds.add(archiveTransferList.remove(0));
+                }
+            }
+        }
+
+        return queuedTaskIds;
+    }
+
+    @Override
     public void assignParentTasksToWorkers(List<UUID> workerIds, List<Integer> queuedTaskIds) throws SchedulingPolicyException {
         if(workerIds.size() == 0) {
             // if there are no workers in the list, there is nothing to do
@@ -238,6 +315,20 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
 
     }
 
+    private void assignArchiveTransfersToWorker(List<Integer> taskIds, UUID workerId) throws SchedulingPolicyException {
+        try {
+            ArchiveTransfersDAO archiveTransfersDAO = new ArchiveTransfersDAO();
+            DAOTransactionContext.doInTransaction(context -> {
+                archiveTransfersDAO.assignToWorkers(context, taskIds, workerId);
+                return null;
+            });
+        } catch (DAOException ex) {
+            throw new SchedulingPolicyException(LibUtils.getMsg("FILES_TXFR_DEFAULT_SCHEDULING_POLICY_ERROR", "assignParentTasksToWorker", ex));
+        }
+
+    }
+
+
     private Map<String, List<Integer>> refillChildTasks(List<PrioritizedObject<TransferTaskChild>> prioritizedObjects) {
         Map<String, List<Integer>> returnMap = new HashMap<>();
 
@@ -269,6 +360,24 @@ public class DefaultSchedulingPolicy implements SchedulingPolicy {
             }
 
             parentList.add(prioritizedWork.getObject().getId());
+        }
+
+        return returnMap;
+    }
+
+    private Map<String, List<Integer>> refillArchiveTransfers(List<PrioritizedObject<ArchiveTransfer>> prioritizedObjects) {
+        Map<String, List<Integer>> returnMap = new HashMap<>();
+
+        // put tenant/work in map in priority order
+        for(var prioritizedWork : prioritizedObjects) {
+            ArchiveTransfer work = prioritizedWork.getObject();
+            List<Integer> archiveTransferList = returnMap.get(work.getTenantId());
+            if(archiveTransferList == null) {
+                archiveTransferList = new ArrayList<>();
+                returnMap.put(work.getTenantId(), archiveTransferList);
+            }
+
+            archiveTransferList.add(prioritizedWork.getObject().getId());
         }
 
         return returnMap;
