@@ -73,8 +73,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
 {
   private static final int MAX_PERMS_INT = Integer.parseInt("777", 8);
   public static final long MAX_LISTING_VALUE = Long.MAX_VALUE;
-  public static final int MAX_ERROR_BYTES = 10000000;
-  public static final int MAX_OUTPUT_BYTES = 10000000;
+  public static final int MAX_ERROR_BYTES = 10000;
+  public static final int MAX_OUTPUT_BYTES = 10000;
 
   // SFTP client throws IOException containing this string if a path does not exist.
   private static final String NO_SUCH_FILE = "no such file";
@@ -538,32 +538,6 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
       // rethrow - wrap in runtime exception to preserve stack trace in the throwable.
       throw new RuntimeException(th);
     }
-  }
-
-  private Path getParent(FileInfo fileInfo) {
-    Path path = Path.of(fileInfo.getPath());
-    if(path != null){
-      Path parentPath = path.getParent();
-      if(parentPath == null) {
-        parentPath = Path.of("");
-        return parentPath;
-      }
-    }
-
-    // TODO:  Fix this;
-    throw new RuntimeException("Unable to get path");
-  }
-
-  private Path getFileName(FileInfo fileInfo) {
-    if(fileInfo.isFile()) {
-      Path path = Path.of(fileInfo.getPath());
-      if (path != null) {
-        return path.getFileName();
-      }
-    }
-
-    // TODO:  Fix this;
-    throw new RuntimeException("Unable to get path");
   }
 
   @Override
