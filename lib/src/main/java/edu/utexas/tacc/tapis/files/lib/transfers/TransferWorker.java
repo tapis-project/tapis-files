@@ -46,6 +46,9 @@ public class TransferWorker {
      */
     public boolean canAssignTask(AssignmentParams assignmentParams) {
         // return false at any point if it's excluded - if we get to the end we will accept it.
+        if(transferWorkerConfig == null) {
+            return false;
+        }
 
         // look at the Type - skip if the param was left null
         if(assignmentParams.transferType != null) {
