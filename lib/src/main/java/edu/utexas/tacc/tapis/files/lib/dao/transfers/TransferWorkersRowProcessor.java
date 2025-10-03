@@ -20,7 +20,7 @@ public class TransferWorkersRowProcessor extends BasicRowProcessor {
         String uuidString = rs.getString("uuid");
         Timestamp lastUpdated = rs.getTimestamp("last_updated");
         PGobject transferWorkerConfigPGObject = (PGobject) rs.getObject("worker_config");
-        if(!transferWorkerConfigPGObject.isNull()) {
+        if((transferWorkerConfigPGObject != null) && (!transferWorkerConfigPGObject.isNull())) {
             transferWorkerConfig = TapisGsonUtils.getGson().fromJson(transferWorkerConfigPGObject.getValue(), TransferWorkerConfig.class);
         }
 
