@@ -154,6 +154,7 @@ public class TransfersApp
           if(TransfersApp.myUuid != null) {
             try {
               DAOTransactionContext.doInTransaction((context) -> {
+                log.warn("SHUTDOWN: Removing uuid " + myUuid + " from transfer worker table.");
                 TransfersApp.workerDAO.deleteTransferWorkerById(context, TransfersApp.myUuid);
                 return null;
               });
