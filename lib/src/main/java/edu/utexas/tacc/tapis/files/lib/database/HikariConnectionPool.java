@@ -19,7 +19,7 @@ public class HikariConnectionPool {
     private static final Logger log = LoggerFactory.getLogger(HikariConnectionPool.class);
 
     static {
-        String dbUrl = String.format("jdbc:postgresql://%s:%s/%s/ApplicationName=%s",
+        String dbUrl = String.format("jdbc:postgresql://%s:%s/%s?ApplicationName=%s",
             conf.getDbHost(),
             conf.getDbPort(),
             conf.getDbName(),
