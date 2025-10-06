@@ -12,6 +12,7 @@ public interface IRuntimeConfig {
     String getDbName();
     String getDbPassword();
     String getDbPort();
+    String getDbApplicationName();
     String getServicePassword();
     String getTokensServiceURL();
     String getTenantsServiceURL();

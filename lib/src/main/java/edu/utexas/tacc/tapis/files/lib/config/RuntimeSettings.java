@@ -23,6 +23,7 @@ public class RuntimeSettings {
         protected String dbUsername = settings.get("DB_USERNAME");
         protected String dbPassword = settings.get("DB_PASSWORD");
         protected String dbPort = settings.get("DB_PORT", "5432");
+        protected String dbApplicationName = settings.get("DB_APPLICATION_NAME", "FilesService");
         protected String servicePassword = settings.get("SERVICE_PASSWORD");
         protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
@@ -78,6 +79,11 @@ public class RuntimeSettings {
 
         public String getDbPort() {
             return dbPort;
+        }
+
+        @Override
+        public String getDbApplicationName() {
+            return dbApplicationName;
         }
 
         public String getServicePassword() { return servicePassword; }
