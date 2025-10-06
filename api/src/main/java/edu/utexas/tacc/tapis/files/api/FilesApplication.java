@@ -298,30 +298,13 @@ public class FilesApplication extends ResourceConfig
   }
 
   private void checkRequiredSettings() {
-    PostgresDAO pgDao = new PostgresDAO();
-    try {
-      DAOTransactionContext.doInTransaction(context -> {
-        long postgresVersion = pgDao.getPostgresVersion(context);
-        if (postgresVersion < RuntimeSettings.get().getRequiredPostgresVersion()) {
-          throw new RuntimeException(LibUtils.getMsg("FILES_TXFR_UNSUPPORTED_POSTGRES_VERSION", postgresVersion, RuntimeSettings.get().getRequiredPostgresVersion()));
-        }
-        return postgresVersion;
-      });
-    } catch (DAOException ex) {
-      throw new RuntimeException(ex.getMessage(), ex);
+    StringBuilder missingVars = new StringBuilder();
+    if (RuntimeSettings.get().getDbUrl() == null) {
+      missingVars.append("DB_URL ");
     }
 
-    StringBuilder missingVars = new StringBuilder();
     if(RuntimeSettings.get().getSiteId() == null) {
       missingVars.append("TAPIS_SITE_ID ");
-    }
-
-    if (RuntimeSettings.get().getDbHost() == null) {
-      missingVars.append("DB_HOST ");
-    }
-
-    if (RuntimeSettings.get().getDbName() == null) {
-      missingVars.append("DB_NAME ");
     }
 
     if (RuntimeSettings.get().getDbUsername() == null) {
@@ -338,6 +321,19 @@ public class FilesApplication extends ResourceConfig
 
     if(!missingVars.isEmpty()) {
       throw new RuntimeException(MsgUtils.getMsg("FILES_API_SERVICE_MISSING_REQUIRED_VARIABLES", missingVars.toString()));
+    }
+
+    PostgresDAO pgDao = new PostgresDAO();
+    try {
+      DAOTransactionContext.doInTransaction(context -> {
+        long postgresVersion = pgDao.getPostgresVersion(context);
+        if (postgresVersion < RuntimeSettings.get().getRequiredPostgresVersion()) {
+          throw new RuntimeException(LibUtils.getMsg("FILES_TXFR_UNSUPPORTED_POSTGRES_VERSION", postgresVersion, RuntimeSettings.get().getRequiredPostgresVersion()));
+        }
+        return postgresVersion;
+      });
+    } catch (DAOException ex) {
+      throw new RuntimeException(ex.getMessage(), ex);
     }
   }
 }

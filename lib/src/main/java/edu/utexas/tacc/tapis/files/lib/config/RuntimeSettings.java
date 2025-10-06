@@ -4,7 +4,6 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferWorkerConfig;
 import org.apache.commons.lang3.StringUtils;
 import org.bouncycastle.util.Strings;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -18,12 +17,9 @@ public class RuntimeSettings {
 
         protected String hostName = settings.get("TAPIS_LOCAL_NODE_NAME", "devHost");
         protected String siteId = settings.get("TAPIS_SITE_ID"); // Site ID must be set in environment
-        protected String dbHost = settings.get("DB_HOST");
-        protected String dbName = settings.get("DB_NAME");
+        protected String dbUrl = settings.get("DB_URL");
         protected String dbUsername = settings.get("DB_USERNAME");
         protected String dbPassword = settings.get("DB_PASSWORD");
-        protected String dbPort = settings.get("DB_PORT", "5432");
-        protected String dbApplicationName = settings.get("DB_APPLICATION_NAME", "FilesService");
         protected String servicePassword = settings.get("SERVICE_PASSWORD");
         protected String tokensServiceURL = settings.get("TOKENS_SERVICE_URL", "https://dev.develop.tapis.io");
         protected String tenantsServiceURL = settings.get("TENANTS_SERVICE_URL", "https://dev.develop.tapis.io");
@@ -60,13 +56,8 @@ public class RuntimeSettings {
         public String getHostName() {
             return hostName;
         }
-
-        public String getDbHost() {
-            return dbHost;
-        }
-
-        public String getDbName() {
-            return dbName;
+        public String getDbUrl() {
+            return dbUrl;
         }
 
         public String getDbUsername() {
@@ -75,15 +66,6 @@ public class RuntimeSettings {
 
         public String getDbPassword() {
             return dbPassword;
-        }
-
-        public String getDbPort() {
-            return dbPort;
-        }
-
-        @Override
-        public String getDbApplicationName() {
-            return dbApplicationName;
         }
 
         public String getServicePassword() { return servicePassword; }
@@ -202,18 +184,12 @@ public class RuntimeSettings {
     }
 
     private static class TestConfig extends BaseConfig {
-        protected String dbHost = settings.get("DB_HOST", "localhost");
-        protected String dbName = "test";
+        protected String dbUrl = settings.get("DB_URL", "jdbc:postgresql://localhost:5432/test");
         protected String dbUsername = "test";
         protected String dbPassword = "test";
-        protected String dbPort = "5432";
-
         @Override
-        public String getDbName() { return dbName; }
-
-        @Override
-        public String getDbHost() {
-            return dbHost;
+        public String getDbUrl() {
+            return dbUrl;
         }
 
         @Override
@@ -224,11 +200,6 @@ public class RuntimeSettings {
         @Override
         public String getDbPassword() {
             return dbPassword;
-        }
-
-        @Override
-        public String getDbPort() {
-            return dbPort;
         }
     }
 

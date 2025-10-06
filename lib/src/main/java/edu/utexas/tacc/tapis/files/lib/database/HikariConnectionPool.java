@@ -19,13 +19,7 @@ public class HikariConnectionPool {
     private static final Logger log = LoggerFactory.getLogger(HikariConnectionPool.class);
 
     static {
-        String dbUrl = String.format("jdbc:postgresql://%s:%s/%s?ApplicationName=%s",
-            conf.getDbHost(),
-            conf.getDbPort(),
-            conf.getDbName(),
-            conf.getDbApplicationName()
-        );
-        config.setJdbcUrl(dbUrl);
+        config.setJdbcUrl(conf.getDbUrl());
         config.setUsername(conf.getDbUsername());
         config.setPassword(conf.getDbPassword());
         config.addDataSourceProperty("cachePrepStmts", "true");

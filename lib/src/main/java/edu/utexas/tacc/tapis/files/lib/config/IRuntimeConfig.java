@@ -8,11 +8,8 @@ public interface IRuntimeConfig {
     long getRequiredPostgresVersion();
     String getHostName();
     String getDbUsername();
-    String getDbHost();
-    String getDbName();
+    String getDbUrl();
     String getDbPassword();
-    String getDbPort();
-    String getDbApplicationName();
     String getServicePassword();
     String getTokensServiceURL();
     String getTenantsServiceURL();
