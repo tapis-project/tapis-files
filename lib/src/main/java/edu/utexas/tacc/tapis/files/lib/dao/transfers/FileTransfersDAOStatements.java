@@ -148,8 +148,8 @@ public class FileTransfersDAOStatements
     //language=SQL
     public static final String INSERT_TASK =
         "INSERT into transfer_tasks " +
-            "(tenant_id, username, status, tag)" +
-            "values (?, ?, ?, ?)" +
+            "(tenant_id, username, status, tag, parent_tracking_id)" +
+            "values (?, ?, ?, ?, ?)" +
             "RETURNING *";
 
     //language=SQL
