@@ -9,6 +9,21 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 25Q4.0 - 2025-10-13
+
+Incremental improvements and new features.  
+
+### New features:
+- "Fast Transfers" (archiving transfers) Beta Version
+
+### Bug fixes:
+- Improved handling of workers at shutdown.
+- Incorporate minor bug in ssh connection/session pooling from tapis library.
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 1.9.1 - 2025-06-23
 
 Incremental improvements and new features.  
