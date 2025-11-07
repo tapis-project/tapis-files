@@ -55,6 +55,7 @@ public class FileTransfersDAO {
           insertTaskStmnt.setString(2, task.getUsername());
           insertTaskStmnt.setString(3, TransferTaskStatus.ACCEPTED.name());
           insertTaskStmnt.setString(4, task.getTag());
+          insertTaskStmnt.setString(5, task.getParentTrackingId());
           insertTaskStmnt.execute();
 
           ResultSet rs = insertTaskStmnt.getGeneratedKeys();

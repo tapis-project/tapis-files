@@ -19,6 +19,7 @@ Incremental improvements and new features.
 ### Bug fixes:
 - Improved handling of workers at shutdown.
 - Incorporate minor bug in ssh connection/session pooling from tapis library.
+- Add parentTrackingId to SQL insert statement for table transfer_tasks.
 
 ### Breaking Changes
 - None
