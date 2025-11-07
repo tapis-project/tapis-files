@@ -724,13 +724,7 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
           throws TapisException, IOException, NotFoundException
   {
     String opName = "chgrp";
-    // Validate that group is valid linux group name
-    if (!USER_REGEX.matcher(newGroup).matches())
-    {
-      String msg = LibUtils.getMsg("FILES_CLIENT_SSH_LINUXOP_USRGRP", oboTenant, oboUser, systemId, effectiveUserId, host,
-              path, opName, newGroup);
-      throw new TapisException(msg);
-    }
+
     // Run the command
     return runLinuxChangeOp(opName, newGroup, path, recursive);
   }
