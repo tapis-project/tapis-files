@@ -79,14 +79,15 @@ public class SystemsCache
       {
         var tce = (TapisClientException) cause;
         Response.Status status = Response.Status.fromStatusCode(tce.getCode());
-        msg = cause.getMessage();
-        switch (status)
-        {
-          case NOT_FOUND ->  throw new NotFoundException(msg);
-          case FORBIDDEN ->  throw new ForbiddenException(msg);
-          case UNAUTHORIZED -> throw new NotAuthorizedException(msg, NO_CHALLENGE);
-          case BAD_REQUEST -> throw new BadRequestException(msg);
-          case INTERNAL_SERVER_ERROR -> throw new WebApplicationException(msg);
+        if(status != null) {
+          msg = cause.getMessage();
+          switch (status) {
+            case NOT_FOUND -> throw new NotFoundException(msg);
+            case FORBIDDEN -> throw new ForbiddenException(msg);
+            case UNAUTHORIZED -> throw new NotAuthorizedException(msg, NO_CHALLENGE);
+            case BAD_REQUEST -> throw new BadRequestException(msg);
+            case INTERNAL_SERVER_ERROR -> throw new WebApplicationException(msg);
+          }
         }
       }
       // It was something other than a TapisClientException or fromStatusCode returned null or some unhandled code.
