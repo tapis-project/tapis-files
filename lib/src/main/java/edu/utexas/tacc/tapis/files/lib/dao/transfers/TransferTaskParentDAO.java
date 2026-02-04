@@ -160,8 +160,12 @@ public class TransferTaskParentDAO {
             BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
             String stmt = TransferTaskParentDAOStatements.UPDATE_PARENT_TASK;
             QueryRunner runner = new QueryRunner();
+            Timestamp nextRetry = null;
             Timestamp startTime = null;
             Timestamp endTime = null;
+            if (task.getNextRetry() != null) {
+                nextRetry = Timestamp.from(task.getNextRetry());
+            }
             if (task.getStartTime() != null) {
                 startTime = Timestamp.from(task.getStartTime());
             }
@@ -172,6 +176,7 @@ public class TransferTaskParentDAO {
                     task.getSourceURI().toString(),
                     task.getDestinationURI().toString(),
                     task.getStatus().name(),
+                    nextRetry,
                     startTime,
                     endTime,
                     task.getBytesTransferred(),

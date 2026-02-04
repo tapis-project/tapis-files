@@ -315,7 +315,7 @@ public class FileTransfersDAO {
             TransferTaskChild updatedTask = runner.query(connection, stmt, handler,
                 task.getBytesTransferred(),
                 task.getStatus().name(),
-                task.getRetries(),
+                task.getRetriesRemaining(),
                 startTime,
                 endTime,
                 task.getErrorMessage(),

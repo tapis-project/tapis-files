@@ -23,7 +23,7 @@ class TransferTaskChildRowProcessor extends BasicRowProcessor {
         task.setSourceURI(rs.getString("source_uri"));
         task.setDestinationURI(rs.getString("destination_uri"));
         task.setCreated(rs.getTimestamp("created").toInstant());
-        task.setRetries(rs.getInt("retries"));
+        task.setRetriesRemaining(rs.getInt("retries_remaining"));
         task.setUuid(rs.getObject("uuid", UUID.class));
         task.setStatus(rs.getString("status"));
         task.setDir(rs.getBoolean("is_dir"));
@@ -33,6 +33,7 @@ class TransferTaskChildRowProcessor extends BasicRowProcessor {
         task.setErrorMessage(rs.getString("error_message"));
         task.setExternalTaskId(rs.getString("external_task_id"));
         task.setAssignedTo(rs.getObject("assigned_to", UUID.class));
+        Optional.ofNullable(rs.getTimestamp("next_retry")).ifPresent(ts -> task.setNextRetry(ts.toInstant()));
         Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts -> task.setStartTime(ts.toInstant()));
         Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts -> task.setEndTime(ts.toInstant()));
         return task;

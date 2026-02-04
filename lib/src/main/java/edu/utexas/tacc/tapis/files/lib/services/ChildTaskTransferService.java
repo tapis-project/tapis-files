@@ -2,7 +2,9 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.TemporalAmount;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -90,7 +92,7 @@ public class ChildTaskTransferService {
     // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
     // 5 items in the queue
     private static final int MAX_THREADS = RuntimeSettings.get().getChildThreadPoolSize();
-
+    private static final TemporalAmount RETRY_WAIT = Duration.ofMinutes(10);
     private static final String impersonationIdNull = null;
     private static final String auditDataNull = null;
     private static final TapisSystem sourceSystemNull = null;
@@ -499,7 +501,8 @@ public class ChildTaskTransferService {
 
             // Update task in DB to IN_PROGRESS and increment the retries on this particular task
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
-            taskChild.setRetries(taskChild.getRetries() + 1);
+            //TODO:  Fix this if need be
+//            taskChild.setRetries(taskChild.getRetries() + 1);
             taskChild = dao.updateTransferTaskChild(taskChild);
 
             // For some reason taskChild does not have the tag set at this point.
@@ -1178,6 +1181,42 @@ public class ChildTaskTransferService {
                                              impersonationIdNull, topTaskUuid.get());
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
+    }
+
+    private TransferTaskChild scheduleRetryOrFail(UUID archiveTransferUuid, String errorMessage, boolean forceFail) throws DAOException {
+        return DAOTransactionContext.doInTransaction(context -> {
+            // read for update
+            TransferTaskChild currentTransfer = childDao.getChildTaskByUUID(context, archiveTransferUuid, true);
+
+            // if it's already in a 'final' state, ignore this request and return.
+            if(currentTransfer.isTerminal()) {
+                return currentTransfer;
+            }
+
+            int retriesRemaining = currentTransfer.getRetriesRemaining();
+            StringBuilder errorMessageBuilder = new StringBuilder();
+            if ((retriesRemaining > 0) && (!forceFail)) {
+                // if there are more retries, schedule the next one.
+                currentTransfer.setRetriesRemaining(retriesRemaining - 1);
+                currentTransfer.setStatus(TransferTaskStatus.AWAITING_RETRY);
+                currentTransfer.setNextRetry(Instant.now().plus(RETRY_WAIT));
+                errorMessageBuilder.append("Scheduling retry:  ");
+                errorMessageBuilder.append(System.lineSeparator());
+                errorMessageBuilder.append(errorMessage);
+            } else {
+                // if there are no more retries, fail the transfer
+                currentTransfer.setStatus(TransferTaskStatus.FAILED);
+                currentTransfer.setRetriesRemaining(0);
+                currentTransfer.setNextRetry(null);
+                errorMessageBuilder.append("No more retries available.  Last error:");
+                errorMessageBuilder.append(System.lineSeparator());
+                errorMessageBuilder.append(errorMessage);
+            }
+            currentTransfer.setErrorMessage(errorMessageBuilder.toString());
+            currentTransfer.setAssignedTo(null);
+
+            return childDao.updateTransferTaskChild(context, currentTransfer);
+        });
     }
 
     /*

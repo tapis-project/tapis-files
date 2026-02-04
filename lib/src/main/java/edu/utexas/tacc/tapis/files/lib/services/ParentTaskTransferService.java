@@ -12,6 +12,7 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
+import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
@@ -41,7 +42,9 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -76,6 +79,7 @@ public class ParentTaskTransferService {
   // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
   // 5 items in the queue
   private static final int QOS = 2;
+  private static final TemporalAmount RETRY_WAIT = Duration.ofMinutes(10);
   private static final int MAX_CONSUMERS = RuntimeSettings.get().getParentThreadPoolSize();
   private static final int maxRetries = 3;
   private final TransfersService transfersService;
@@ -153,7 +157,7 @@ public class ParentTaskTransferService {
 
           while (!shouldExit) {
             if(!canCreateNewFutures(futures, maxFutures)) {
-              log.trace("Max future capacity reached - wait for some to complete");
+//              log.trace("Max future capacity reached - wait for some to complete");
               Thread.yield();
               continue;
             }
@@ -665,7 +669,41 @@ public class ParentTaskTransferService {
     }));
   }
 
+  private TransferTaskParent scheduleRetryOrFail(UUID archiveTransferUuid, String errorMessage, boolean forceFail) throws DAOException {
+    return DAOTransactionContext.doInTransaction(context -> {
+      // read for update
+      TransferTaskParent currentTransfer = parentDao.getTransferTaskParentByUUID(context, archiveTransferUuid, true);
 
+      // if it's already in a 'final' state, ignore this request and return.
+      if(currentTransfer.isTerminal()) {
+        return currentTransfer;
+      }
+
+      int retriesRemaining = currentTransfer.getRetriesRemaining();
+      StringBuilder errorMessageBuilder = new StringBuilder();
+      if ((retriesRemaining > 0) && (!forceFail)) {
+        // if there are more retries, schedule the next one.
+        currentTransfer.setRetriesRemaining(retriesRemaining - 1);
+        currentTransfer.setStatus(TransferTaskStatus.AWAITING_RETRY);
+        currentTransfer.setNextRetry(Instant.now().plus(RETRY_WAIT));
+        errorMessageBuilder.append("Scheduling retry:  ");
+        errorMessageBuilder.append(System.lineSeparator());
+        errorMessageBuilder.append(errorMessage);
+      } else {
+        // if there are no more retries, fail the transfer
+        currentTransfer.setStatus(TransferTaskStatus.FAILED);
+        currentTransfer.setRetriesRemaining(0);
+        currentTransfer.setNextRetry(null);
+        errorMessageBuilder.append("No more retries available.  Last error:");
+        errorMessageBuilder.append(System.lineSeparator());
+        errorMessageBuilder.append(errorMessage);
+      }
+      currentTransfer.setErrorMessage(errorMessageBuilder.toString());
+      currentTransfer.setAssignedTo(null);
+
+      return parentDao.updateTransferTaskParent(context, currentTransfer);
+    });
+  }
   /**
    * This method handles exceptions/errors if the parent task failed.
    * A parent task may have no children, so we also need to check for completion of top level task.

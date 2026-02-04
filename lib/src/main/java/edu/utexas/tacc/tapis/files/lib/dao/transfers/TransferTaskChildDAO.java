@@ -236,7 +236,7 @@ public class TransferTaskChildDAO {
             TransferTaskChild updatedTask = runner.query(context.getConnection(), stmt, handler,
                     task.getBytesTransferred(),
                     task.getStatus().name(),
-                    task.getRetries(),
+                    task.getRetriesRemaining(),
                     startTime,
                     endTime,
                     task.getErrorMessage(),
