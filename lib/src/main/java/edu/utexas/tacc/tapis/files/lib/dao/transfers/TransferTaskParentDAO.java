@@ -176,6 +176,7 @@ public class TransferTaskParentDAO {
                     task.getSourceURI().toString(),
                     task.getDestinationURI().toString(),
                     task.getStatus().name(),
+                    task.getRetriesRemaining(),
                     nextRetry,
                     startTime,
                     endTime,

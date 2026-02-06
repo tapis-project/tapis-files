@@ -16,3 +16,6 @@ BEGIN
     EXECUTE 'ALTER TABLE transfer_tasks_child RENAME COLUMN retries to retries_remaining';
   END IF;
 END $$;
+
+ CREATE INDEX ON transfer_tasks_parent(next_retry);
+ CREATE INDEX ON transfer_tasks_child(next_retry);

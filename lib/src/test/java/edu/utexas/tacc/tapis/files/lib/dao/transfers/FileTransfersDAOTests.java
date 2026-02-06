@@ -135,7 +135,7 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
     element2.setTag(tag);
     elements.add(element2);
 
-    task = dao.createTransferTask(task, elements);
+    task = dao.createTransferTask(task, elements, 3);
     return task;
   }
 }

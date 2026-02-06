@@ -133,6 +133,7 @@ public class TransferTaskParentDAOStatements {
                          SET source_uri = ?,
                              destination_uri = ?,
                              status = ?,
+                             retries_remaining = ?,
                              next_retry = ?,
                              start_time = ?,
                              end_time = ?,

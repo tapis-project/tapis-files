@@ -247,35 +247,27 @@ public class ParentTaskTransferService {
     });
 
   }
-  public TransferTaskParent handleTask(TransferTaskParent taskParent) throws IOException {
-    int retry = 0;
+  public TransferTaskParent handleTask(TransferTaskParent taskParent) throws DAOException {
     Exception lastException = null;
-    while (retry < maxRetries) {
-      try {
-        if(isLocalMove(taskParent.getTransferType())) {
-          doLocalMove(taskParent);
+    try {
+      if (isLocalMove(taskParent.getTransferType())) {
+        doLocalMove(taskParent);
+        return taskParent;
+      } else {
+        if (createChildTasks(taskParent)) {
           return taskParent;
-        } else {
-          if (createChildTasks(taskParent)) {
-            return taskParent;
-          }
         }
-      } catch (ServiceException ex) {
-        lastException = ex;
-      } catch (Exception ex) {
-        lastException = ex;
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
-                "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
-        log.error(msg, ex);
-        // unexpected exception occurred - don't retry, just fail
-        break;
       }
-
-      retry++;
+    } catch (ServiceException ex) {
+      lastException = ex;
+      scheduleRetryOrFail(taskParent.getUuid(), ex.getMessage(), false);
+    } catch (Exception ex) {
+      lastException = ex;
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
+              "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      scheduleRetryOrFail(taskParent.getUuid(), msg, true);
     }
-
-    // out of retries, so give up on this one.
-    doErrorParentStepOne(lastException, taskParent);
 
     return null;
   }
@@ -627,6 +619,7 @@ public class ParentTaskTransferService {
     parentTask.setTotalBytes(totalBytes);
     parentTask.setStatus(TransferTaskStatus.STAGED);
     parentTask.setAssignedTo(null);
+    parentTask.setNextRetry(null);
     DAOTransactionContext.doInTransaction((context) -> {
       TransferTaskChildDAO childDAO = new TransferTaskChildDAO();
       parentDao.updateTransferTaskParent(context, parentTask);
@@ -691,15 +684,8 @@ public class ParentTaskTransferService {
         errorMessageBuilder.append(errorMessage);
       } else {
         // if there are no more retries, fail the transfer
-        currentTransfer.setStatus(TransferTaskStatus.FAILED);
-        currentTransfer.setRetriesRemaining(0);
-        currentTransfer.setNextRetry(null);
-        errorMessageBuilder.append("No more retries available.  Last error:");
-        errorMessageBuilder.append(System.lineSeparator());
-        errorMessageBuilder.append(errorMessage);
+        currentTransfer = doErrorParentStepOne(errorMessageBuilder.toString(), currentTransfer);
       }
-      currentTransfer.setErrorMessage(errorMessageBuilder.toString());
-      currentTransfer.setAssignedTo(null);
 
       return parentDao.updateTransferTaskParent(context, currentTransfer);
     });
@@ -708,13 +694,11 @@ public class ParentTaskTransferService {
    * This method handles exceptions/errors if the parent task failed.
    * A parent task may have no children, so we also need to check for completion of top level task.
    *
-   * @param caughtException Exception
+   * @param exceptionErrorMessage String
    * @param parent          TransferTaskParent
    * @return TransferTasksParent TransferTaskParent
    */
-  private TransferTaskParent doErrorParentStepOne(Exception caughtException, TransferTaskParent parent) {
-    String exceptionErrorMessage = (caughtException == null) ? "<NULL>" : caughtException.getMessage();
-
+  private TransferTaskParent doErrorParentStepOne(String exceptionErrorMessage, TransferTaskParent parent) {
     try {
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString(), exceptionErrorMessage));
 
@@ -723,6 +707,8 @@ public class ParentTaskTransferService {
         parent.setStatus(TransferTaskStatus.FAILED_OPT);
       else
         parent.setStatus(TransferTaskStatus.FAILED);
+      parent.setRetriesRemaining(0);
+      parent.setNextRetry(null);
       parent.setEndTime(Instant.now());
       parent.setErrorMessage(exceptionErrorMessage);
       parent.setFinalMessage("Failed - doErrorParentStepOne");
