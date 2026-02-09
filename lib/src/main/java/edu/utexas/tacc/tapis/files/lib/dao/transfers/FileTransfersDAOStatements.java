@@ -102,7 +102,7 @@ public class FileTransfersDAOStatements
             UPDATE transfer_tasks_child
             SET bytes_transferred = ?, 
                      status = ?,
-                     retries = ?, 
+                     retries_remaining = ?, 
                      start_time = ?, 
                      end_time = ?,
                      error_message = ?,

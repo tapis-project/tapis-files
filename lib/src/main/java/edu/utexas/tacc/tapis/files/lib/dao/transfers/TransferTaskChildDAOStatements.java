@@ -102,8 +102,8 @@ public class TransferTaskChildDAOStatements {
 
     public static final String INSERT_CHILD_TASK =
             "INSERT into transfer_tasks_child " +
-                    " (tenant_id, task_id, parent_task_id, username, source_uri, destination_uri, status, bytes_transferred, total_bytes, is_dir, is_executable, tag, external_task_id)" +
-                    " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                    " (tenant_id, task_id, parent_task_id, username, source_uri, destination_uri, status, bytes_transferred, total_bytes, is_dir, is_executable, tag, retries_remaining, external_task_id)" +
+                    " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                     " RETURNING * ";
     public static final String GET_CHILD_TASK_BY_UUID =
             "SELECT * FROM transfer_tasks_child where uuid = ?";
@@ -113,7 +113,7 @@ public class TransferTaskChildDAOStatements {
                 UPDATE transfer_tasks_child
                 SET bytes_transferred = ?, 
                          status = ?,
-                         retries = ?, 
+                         retries_remaining = ?, 
                          next_retry = ?,
                          start_time = ?, 
                          end_time = ?,
