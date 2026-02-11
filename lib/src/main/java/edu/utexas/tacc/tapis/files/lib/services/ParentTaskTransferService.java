@@ -12,7 +12,6 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
-import edu.utexas.tacc.tapis.files.lib.models.ArchiveTransfer;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
@@ -156,7 +155,7 @@ public class ParentTaskTransferService {
 
           while (!shouldExit) {
             if(!canCreateNewFutures(futures, maxFutures)) {
-//              log.trace("Max future capacity reached - wait for some to complete");
+              log.trace("Max future capacity reached - wait for some to complete");
               Thread.yield();
               continue;
             }

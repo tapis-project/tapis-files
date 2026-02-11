@@ -495,8 +495,6 @@ public class ChildTaskTransferService {
 
             // Update task in DB to IN_PROGRESS and increment the retries on this particular task
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
-            //TODO:  Fix this if need be
-//            taskChild.setRetries(taskChild.getRetries() + 1);
             taskChild = dao.updateTransferTaskChild(taskChild);
 
             // For some reason taskChild does not have the tag set at this point.
@@ -709,7 +707,6 @@ public class ChildTaskTransferService {
      * @return Mono with the updated TransferTaskChild
      */
     private TransferTaskChild doErrorStepOne(DAOTransactionContext context, String errorMessage, TransferTaskChild child) {
-//        String errorMessage = (cause == null) ? "<NULL>" : cause.getMessage();
         log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR10", child.toString()));
 
         // First update child task, mark FAILED_OPT or FAILED and set error message
