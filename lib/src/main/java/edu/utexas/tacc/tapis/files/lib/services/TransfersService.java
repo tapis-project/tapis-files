@@ -60,6 +60,7 @@ public class TransfersService
   public static String CONTROL_EXCHANGE = "tapis.files.transfers.control";
   private static String CHILD_ROUTING_KEY = "child";
   public static String PARENT_ROUTING_KEY = "parent";
+  public static int PARENT_TASK_RETRIES = 3;
   private final FileTransfersDAO dao;
   private final FileOpsService fileOpsService;
 
@@ -301,7 +302,7 @@ public class TransfersService
       {
         // Persist the transfer task and associated parent tasks to the DB
         log.trace(LibUtils.getMsgAuthR("FILES_TXFR_PERSIST_TASK", rUser, tag, elements.size()));
-        TransferTask newTask = dao.createTransferTask(task, elements);
+        TransferTask newTask = dao.createTransferTask(task, elements, PARENT_TASK_RETRIES);
         return newTask;
       }
       catch (DAOException e)

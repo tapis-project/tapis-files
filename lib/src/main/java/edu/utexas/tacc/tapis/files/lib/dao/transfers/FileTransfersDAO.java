@@ -38,7 +38,7 @@ public class FileTransfersDAO {
      * @return Transfer task
      * @throws DAOException on error
      */
-    public TransferTask createTransferTask(TransferTask task, List<TransferTaskRequestElement> elements)
+    public TransferTask createTransferTask(TransferTask task, List<TransferTaskRequestElement> elements, int parentTaskRetries)
             throws DAOException
     {
       int taskId = 0;
@@ -75,6 +75,7 @@ public class FileTransfersDAO {
             insertParentTaskStmnt.setString(9, element.getDestSharedCtx());
             insertParentTaskStmnt.setString(10, element.getTag());
             insertParentTaskStmnt.setString(11, element.getTransferType() == null ? TransferTaskRequestElement.TransferType.TRANSFER.name() : element.getTransferType().name());
+            insertParentTaskStmnt.setInt(12, parentTaskRetries);
             insertParentTaskStmnt.addBatch();
           }
           insertParentTaskStmnt.executeBatch();
@@ -315,7 +316,7 @@ public class FileTransfersDAO {
             TransferTaskChild updatedTask = runner.query(connection, stmt, handler,
                 task.getBytesTransferred(),
                 task.getStatus().name(),
-                task.getRetries(),
+                task.getRetriesRemaining(),
                 startTime,
                 endTime,
                 task.getErrorMessage(),
@@ -349,7 +350,8 @@ public class FileTransfersDAO {
                 task.getSrcSharedCtxGrantor(),
                 task.getDestSharedCtxGrantor(),
                 task.getTag(),
-                task.getTransferType() == null ? null : task.getTransferType().name()
+                task.getTransferType() == null ? null : task.getTransferType().name(),
+                task.getRetriesRemaining()
                 );
             return insertedTask;
         } catch (SQLException ex) {

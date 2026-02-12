@@ -156,6 +156,7 @@ public class TransferTaskChildDAO {
                     child.isDir(),
                     child.setIsExecutable(),
                     child.getTag(),
+                    child.getRetriesRemaining(),
                     child.getExternalTaskId()
             });
         });
@@ -190,6 +191,7 @@ public class TransferTaskChildDAO {
                     task.isDir(),
                     task.setIsExecutable(),
                     task.getTag(),
+                    task.getRetriesRemaining(),
                     task.getExternalTaskId()
             );
 
@@ -226,17 +228,22 @@ public class TransferTaskChildDAO {
             QueryRunner runner = new QueryRunner();
             Timestamp startTime = null;
             Timestamp endTime = null;
+            Timestamp nextRetry = null;
             if (task.getStartTime() != null) {
                 startTime = Timestamp.from(task.getStartTime());
             }
             if (task.getEndTime() != null) {
                 endTime = Timestamp.from(task.getEndTime());
             }
+            if (task.getNextRetry() != null) {
+                nextRetry = Timestamp.from(task.getNextRetry());
+            }
 
             TransferTaskChild updatedTask = runner.query(context.getConnection(), stmt, handler,
                     task.getBytesTransferred(),
                     task.getStatus().name(),
-                    task.getRetries(),
+                    task.getRetriesRemaining(),
+                    nextRetry,
                     startTime,
                     endTime,
                     task.getErrorMessage(),

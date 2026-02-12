@@ -98,13 +98,13 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
       }
     });
 
-    child.setRetries(10);
+    child.setRetriesRemaining(10);
     child.setBytesTransferred(10000);
     child.setStartTime(Instant.now());
     child.setEndTime(Instant.now());
     child = dao.updateTransferTaskChild(child);
 
-    Assert.assertEquals(child.getRetries(), 10);
+    Assert.assertEquals(child.getRetriesRemaining(), 10);
     Assert.assertEquals(child.getBytesTransferred(), 10000);
     Assert.assertNotNull(child.getStartTime());
     Assert.assertNotNull(child.getEndTime());
@@ -135,7 +135,7 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
     element2.setTag(tag);
     elements.add(element2);
 
-    task = dao.createTransferTask(task, elements);
+    task = dao.createTransferTask(task, elements, 3);
     return task;
   }
 }

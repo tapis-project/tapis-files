@@ -34,9 +34,11 @@ class TransferTaskParentRowProcessor extends BasicRowProcessor {
         task.setFinalMessage(rs.getString("final_message"));
         String transferTypeString = rs.getString("transfer_type");
         task.setAssignedTo(rs.getObject("assigned_to", UUID.class));
+        task.setRetriesRemaining(rs.getInt("retries_remaining"));
         if (!StringUtils.isBlank(transferTypeString)) {
             task.setTransferType(TransferTaskParent.TransferType.valueOf(transferTypeString));
         }
+        Optional.ofNullable(rs.getTimestamp("next_retry")).ifPresent(ts -> task.setNextRetry(ts.toInstant()));
         Optional.ofNullable(rs.getTimestamp("start_time")).ifPresent(ts -> task.setStartTime(ts.toInstant()));
         Optional.ofNullable(rs.getTimestamp("end_time")).ifPresent(ts -> task.setEndTime(ts.toInstant()));
         return task;
