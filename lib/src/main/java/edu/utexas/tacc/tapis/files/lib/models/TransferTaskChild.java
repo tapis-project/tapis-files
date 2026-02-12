@@ -11,7 +11,6 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 public class TransferTaskChild extends TransferTaskParent
 {
   private int parentTaskId;
-  private int retries;
   private boolean isDir;
   private boolean isExecutable;
   private String externalTaskId = ""; // Id for an external async txfr, such as Globus
@@ -100,7 +99,7 @@ public class TransferTaskChild extends TransferTaskParent
             .add("parentTaskId=" + parentTaskId)
             .add("taskId=" + taskId)
             .add("externalTaskId=" + externalTaskId)
-            .add("retries=" + retries)
+            .add("retries_remaining=" + retriesRemaining)
             .add("tenantId='" + tenantId + "'")
             .add("username='" + username + "'")
             .add("sourceURI='" + sourceURI + "'")
@@ -110,6 +109,7 @@ public class TransferTaskChild extends TransferTaskParent
             .add("bytesTransferred=" + bytesTransferred)
             .add("status='" + status + "'")
             .add("created=" + created)
+            .add("nextRetry=" + nextRetry)
             .add("startTime=" + startTime)
             .add("endTime=" + endTime)
             .toString();
@@ -117,8 +117,6 @@ public class TransferTaskChild extends TransferTaskParent
 
   public int getParentTaskId() { return parentTaskId; }
   public void setParentTaskId(int i) { parentTaskId = i; }
-  public int getRetries() { return retries; }
-  public void setRetries(int i) { retries = i; }
   public boolean isDir() { return isDir; }
   public void setDir(boolean b) { isDir = b; }
   public boolean setIsExecutable() { return isExecutable; }

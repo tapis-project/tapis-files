@@ -41,7 +41,9 @@ import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.json.TapisObjectMapper;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -75,9 +77,9 @@ public class ParentTaskTransferService {
   // this ends up being the maximum number of un-acked items.  This include all items in progress as well as items
   // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
   // 5 items in the queue
-  private static final int QOS = 2;
+  public static int CHILD_TASK_RETRIES = 3;
+  private static final TemporalAmount RETRY_WAIT = Duration.ofMinutes(10);
   private static final int MAX_CONSUMERS = RuntimeSettings.get().getParentThreadPoolSize();
-  private static final int maxRetries = 3;
   private final TransfersService transfersService;
   private final FileTransfersDAO dao;
   private final TransferTaskParentDAO parentDao;
@@ -243,35 +245,27 @@ public class ParentTaskTransferService {
     });
 
   }
-  public TransferTaskParent handleTask(TransferTaskParent taskParent) throws IOException {
-    int retry = 0;
+  public TransferTaskParent handleTask(TransferTaskParent taskParent) throws DAOException {
     Exception lastException = null;
-    while (retry < maxRetries) {
-      try {
-        if(isLocalMove(taskParent.getTransferType())) {
-          doLocalMove(taskParent);
+    try {
+      if (isLocalMove(taskParent.getTransferType())) {
+        doLocalMove(taskParent);
+        return taskParent;
+      } else {
+        if (createChildTasks(taskParent)) {
           return taskParent;
-        } else {
-          if (createChildTasks(taskParent)) {
-            return taskParent;
-          }
         }
-      } catch (ServiceException ex) {
-        lastException = ex;
-      } catch (Exception ex) {
-        lastException = ex;
-        String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
-                "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
-        log.error(msg, ex);
-        // unexpected exception occurred - don't retry, just fail
-        break;
       }
-
-      retry++;
+    } catch (ServiceException ex) {
+      lastException = ex;
+      scheduleRetryOrFail(taskParent.getUuid(), ex.getMessage(), false);
+    } catch (Exception ex) {
+      lastException = ex;
+      String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskParent.getTenantId(), taskParent.getUsername(),
+              "handleDelivery", taskParent.getId(), taskParent.getTag(), taskParent.getUuid(), ex.getMessage());
+      log.error(msg, ex);
+      scheduleRetryOrFail(taskParent.getUuid(), msg, true);
     }
-
-    // out of retries, so give up on this one.
-    doErrorParentStepOne(lastException, taskParent);
 
     return null;
   }
@@ -448,8 +442,12 @@ public class ParentTaskTransferService {
 
   private TransferTaskParent updateParentTask(final TransferTaskParent parentTask) throws DAOException {
     return DAOTransactionContext.doInTransaction((context) -> {
-      return parentDao.updateTransferTaskParent(context, parentTask);
+      return updateParentTask(context, parentTask);
     });
+  }
+
+  private TransferTaskParent updateParentTask(DAOTransactionContext context, final TransferTaskParent parentTask) throws DAOException {
+    return parentDao.updateTransferTaskParent(context, parentTask);
   }
 
   /**
@@ -565,7 +563,6 @@ public class ParentTaskTransferService {
     }
 
     // Get a listing of all files to be transferred
-    //TODO: Retries will break this, should delete anything in the DB if it is a retry?
     List<FileInfo> fileListing;
     // NOTE Treat all source system types the same. For S3 it will be all objects matching the srcPath as a prefix.
     log.trace(LibUtils.getMsg("FILES_TXFR_LSR1", taskTenant, taskUser, "doParentStepOneA07", parentId, parentUuid, srcId, srcPath, tag));
@@ -615,6 +612,7 @@ public class ParentTaskTransferService {
       // it can make some weird totals that don't really make sense.
       if (!f.isDir()) totalBytes += f.getSize();
       TransferTaskChild child = new TransferTaskChild(parentTask, f, srcSystem);
+      child.setRetriesRemaining(CHILD_TASK_RETRIES);
       children.add(child);
       log.trace(LibUtils.getMsg("FILES_TXFR_ADD_CHILD2", taskTenant, taskUser, "doParentStepOneA11", parentId, parentUuid, child, tag));
     }
@@ -623,6 +621,7 @@ public class ParentTaskTransferService {
     parentTask.setTotalBytes(totalBytes);
     parentTask.setStatus(TransferTaskStatus.STAGED);
     parentTask.setAssignedTo(null);
+    parentTask.setNextRetry(null);
     DAOTransactionContext.doInTransaction((context) -> {
       TransferTaskChildDAO childDAO = new TransferTaskChildDAO();
       parentDao.updateTransferTaskParent(context, parentTask);
@@ -656,6 +655,7 @@ public class ParentTaskTransferService {
       task.setStatus(TransferTaskStatus.ACCEPTED);
       task.setTenantId(parentTask.getTenantId());
       task.setUsername(parentTask.getUsername());
+      task.setRetriesRemaining(CHILD_TASK_RETRIES);
       TransferTaskChildDAO childDAO = new TransferTaskChildDAO();
       task = childDAO.insertChildTask(context, task);
       parentTask.setStatus(TransferTaskStatus.STAGED);
@@ -665,18 +665,46 @@ public class ParentTaskTransferService {
     }));
   }
 
+  private TransferTaskParent scheduleRetryOrFail(UUID archiveTransferUuid, String errorMessage, boolean forceFail) throws DAOException {
+    return DAOTransactionContext.doInTransaction(context -> {
+      // read for update
+      TransferTaskParent currentTransfer = parentDao.getTransferTaskParentByUUID(context, archiveTransferUuid, true);
 
+      // if it's already in a 'final' state, ignore this request and return.
+      if(currentTransfer.isTerminal()) {
+        return currentTransfer;
+      }
+
+      int retriesRemaining = currentTransfer.getRetriesRemaining();
+      StringBuilder errorMessageBuilder = new StringBuilder();
+      if ((retriesRemaining > 0) && (!forceFail)) {
+        // if there are more retries, schedule the next one.
+        currentTransfer.setRetriesRemaining(retriesRemaining - 1);
+        currentTransfer.setStatus(TransferTaskStatus.AWAITING_RETRY);
+        currentTransfer.setNextRetry(Instant.now().plus(RETRY_WAIT));
+        errorMessageBuilder.append("Scheduling retry:  ");
+        errorMessageBuilder.append(System.lineSeparator());
+        errorMessageBuilder.append(errorMessage);
+      } else {
+        // if there are no more retries, fail the transfer
+        errorMessageBuilder.append("No more retries available.  Last error:");
+        errorMessageBuilder.append(System.lineSeparator());
+        errorMessageBuilder.append(errorMessage);
+        currentTransfer = doErrorParentStepOne(context, errorMessageBuilder.toString(), currentTransfer);
+      }
+
+      return parentDao.updateTransferTaskParent(context, currentTransfer);
+    });
+  }
   /**
    * This method handles exceptions/errors if the parent task failed.
    * A parent task may have no children, so we also need to check for completion of top level task.
    *
-   * @param caughtException Exception
+   * @param exceptionErrorMessage String
    * @param parent          TransferTaskParent
    * @return TransferTasksParent TransferTaskParent
    */
-  private TransferTaskParent doErrorParentStepOne(Exception caughtException, TransferTaskParent parent) {
-    String exceptionErrorMessage = (caughtException == null) ? "<NULL>" : caughtException.getMessage();
-
+  private TransferTaskParent doErrorParentStepOne(DAOTransactionContext context, String exceptionErrorMessage, TransferTaskParent parent) {
     try {
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR7A", parent.toString(), exceptionErrorMessage));
 
@@ -685,11 +713,13 @@ public class ParentTaskTransferService {
         parent.setStatus(TransferTaskStatus.FAILED_OPT);
       else
         parent.setStatus(TransferTaskStatus.FAILED);
+      parent.setRetriesRemaining(0);
+      parent.setNextRetry(null);
       parent.setEndTime(Instant.now());
       parent.setErrorMessage(exceptionErrorMessage);
       parent.setFinalMessage("Failed - doErrorParentStepOne");
       parent.setAssignedTo(null);
-      parent = updateParentTask(parent);
+      parent = updateParentTask(context, parent);
       // This should really never happen, it means that the parent with that ID was not in the database.
       if (parent == null) {
         return null;

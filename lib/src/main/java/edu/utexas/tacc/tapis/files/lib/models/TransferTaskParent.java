@@ -45,6 +45,8 @@ public class TransferTaskParent
   protected String finalMessage;
   protected TransferType transferType;
   protected UUID assignedTo;
+  protected Instant nextRetry;
+  protected int retriesRemaining;
 
   public TransferTaskParent(){}
 
@@ -212,6 +214,22 @@ public class TransferTaskParent
     this.assignedTo = assignedTo;
   }
 
+  public int getRetriesRemaining() {
+    return retriesRemaining;
+  }
+
+  public void setRetriesRemaining(int retriesRemaining) {
+    this.retriesRemaining = retriesRemaining;
+  }
+
+  public void setNextRetry(Instant nextRetry) {
+    this.nextRetry = nextRetry;
+  }
+
+  public Instant getNextRetry() {
+    return nextRetry;
+  }
+
   // Support for equals
   @Override
   public boolean equals(java.lang.Object o)
@@ -251,6 +269,7 @@ public class TransferTaskParent
             .add("startTime=" + startTime)
             .add("endTime=" + endTime)
             .add("transferType=" + transferType)
+            .add("nextRetry=" + nextRetry)
             .toString();
   }
 }

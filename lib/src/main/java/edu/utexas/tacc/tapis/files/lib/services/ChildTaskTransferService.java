@@ -2,7 +2,9 @@ package edu.utexas.tacc.tapis.files.lib.services;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.TemporalAmount;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -90,7 +92,7 @@ public class ChildTaskTransferService {
     // in the queue.  So for example if there are 5 threads and this is set to 10, we will have 5 items in progress and
     // 5 items in the queue
     private static final int MAX_THREADS = RuntimeSettings.get().getChildThreadPoolSize();
-
+    private static final TemporalAmount RETRY_WAIT = Duration.ofMinutes(10);
     private static final String impersonationIdNull = null;
     private static final String auditDataNull = null;
     private static final TapisSystem sourceSystemNull = null;
@@ -104,7 +106,6 @@ public class ChildTaskTransferService {
     // this makes sense - if not please update the comment :)
     private static final int MAX_WORK_ITEM_DEPTH = 100;
     private static String CHILD_QUEUE = "tapis.files.transfers.child";
-    private static final int maxRetries = 3;
     private final TransfersService transfersService;
     private final FileTransfersDAO dao;
     private final TransferTaskChildDAO childDao;
@@ -270,9 +271,7 @@ public class ChildTaskTransferService {
         });
     }
 
-    public TransferTaskChild handleTask(TransferTaskChild taskChild) {
-
-        int retry = 0;
+    public TransferTaskChild handleTask(TransferTaskChild taskChild) throws DAOException {
         boolean preTransferUpdateComplete = false;
         boolean transferComplete = false;
         boolean postTransferUpdateComplete = false;
@@ -292,77 +291,74 @@ public class ChildTaskTransferService {
         // that.  For any other purpose it's stale, and shouldn't be used.
         TransferTaskParent parentTask = null;
         String srcSharedCtxGrantor = null;
-
-        while (retry < maxRetries) {
-            try {
-                if (parentTask == null) {
-                    Stopwatch sw = Stopwatch.createStarted();
-                    parentTask = dao.getTransferTaskParentById(parentTaskId);
-                    srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
-                    log.trace("CHILD TRANSFER TIMING: Get parent task info: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
-                }
-                if (!preTransferUpdateComplete) {
-                    Stopwatch sw = Stopwatch.createStarted();
-                    taskChild = updateStatusBeforeTransfer(taskChild);
-                    if (taskChild == null) {
-                        // if updateStatusBeforeTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
-                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after updateStatusBeforeTransfer");
-                        throw new IOException(msg);
-                    } else {
-                        preTransferUpdateComplete = true;
-                    }
-                    log.trace("CHILD TRANSFER TIMING: Update status before transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
-                }
-
-                if (!transferComplete) {
-                    Stopwatch sw = Stopwatch.createStarted();
-                    taskChild = doTransfer(taskChild, srcSharedCtxGrantor);
-                    if (taskChild == null) {
-                        // if doTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
-                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after doTransfer");
-                        throw new IOException(msg);
-                    } else {
-                        transferComplete = true;
-                    }
-                    log.trace("CHILD TRANSFER TIMING: doTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
-                }
-
-                if (!postTransferUpdateComplete) {
-                    Stopwatch sw = Stopwatch.createStarted();
-                    taskChild = updateStatusAfterTransfer(taskChild);
-                    if (taskChild == null) {
-                        // if updateStatusAfterTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
-                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after updateStatusAfterTransfer");
-                        throw new IOException(msg);
-                    } else {
-                        postTransferUpdateComplete = true;
-                    }
-                    log.trace("CHILD TRANSFER TIMING: update status after transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
-                }
-
-                if (!parentCheckComplete) {
-                    Stopwatch sw = Stopwatch.createStarted();
-                    taskChild = checkForComplete(taskChild);
-                    if (taskChild == null) {
-                        // if checkForParentCompletion fails, it throws an exception.  We shouldn't get here.  Just being defensive
-                        String msg = LibUtils.getMsg("Internal Error.  taskChild is null after checkForParentComplete");
-                        throw new IOException(msg);
-                    }
-                    taskChild = unassignChild(taskChild.getUuid());
-                    log.trace("CHILD TRANSFER TIMING: check for complete: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
-                }
-
-                return taskChild;
-            } catch (Exception e) {
-                String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", tenantId, user,
-                        "handleMessage", id, tag, uuid, e.getMessage());
-                log.error(msg, e);
-                lastException = e;
+        try {
+            if (parentTask == null) {
+                Stopwatch sw = Stopwatch.createStarted();
+                parentTask = dao.getTransferTaskParentById(parentTaskId);
+                srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
+                log.trace("CHILD TRANSFER TIMING: Get parent task info: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
             }
-            retry++;
+            if (!preTransferUpdateComplete) {
+                Stopwatch sw = Stopwatch.createStarted();
+                taskChild = updateStatusBeforeTransfer(taskChild);
+                if (taskChild == null) {
+                    // if updateStatusBeforeTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
+                    String msg = LibUtils.getMsg("Internal Error.  taskChild is null after updateStatusBeforeTransfer");
+                    throw new IOException(msg);
+                } else {
+                    preTransferUpdateComplete = true;
+                }
+                log.trace("CHILD TRANSFER TIMING: Update status before transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+            }
+
+            if (!transferComplete) {
+                Stopwatch sw = Stopwatch.createStarted();
+                taskChild = doTransfer(taskChild, srcSharedCtxGrantor);
+                if (taskChild == null) {
+                    // if doTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
+                    String msg = LibUtils.getMsg("Internal Error.  taskChild is null after doTransfer");
+                    throw new IOException(msg);
+                } else {
+                    transferComplete = true;
+                }
+                log.trace("CHILD TRANSFER TIMING: doTransfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+            }
+
+            if (!postTransferUpdateComplete) {
+                Stopwatch sw = Stopwatch.createStarted();
+                taskChild = updateStatusAfterTransfer(taskChild);
+                if (taskChild == null) {
+                    // if updateStatusAfterTransfer fails, it throws an exception.  We shouldn't get here.  Just being defensive
+                    String msg = LibUtils.getMsg("Internal Error.  taskChild is null after updateStatusAfterTransfer");
+                    throw new IOException(msg);
+                } else {
+                    postTransferUpdateComplete = true;
+                }
+                log.trace("CHILD TRANSFER TIMING: update status after transfer: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+            }
+
+            if (!parentCheckComplete) {
+                Stopwatch sw = Stopwatch.createStarted();
+                taskChild = checkForComplete(taskChild);
+                if (taskChild == null) {
+                    // if checkForParentCompletion fails, it throws an exception.  We shouldn't get here.  Just being defensive
+                    String msg = LibUtils.getMsg("Internal Error.  taskChild is null after checkForParentComplete");
+                    throw new IOException(msg);
+                }
+                taskChild = unassignChild(taskChild.getUuid());
+                log.trace("CHILD TRANSFER TIMING: check for complete: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
+            }
+
+            return taskChild;
+        } catch (Exception e) {
+            String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", tenantId, user,
+                    "handleMessage", id, tag, uuid, e.getMessage());
+            log.error(msg, e);
+            lastException = e;
         }
 
-        doErrorStepOne(lastException, taskChild);
+        scheduleRetryOrFail(taskChild.getUuid(), lastException.getMessage(), false);
+
         return taskChild;
     }
 
@@ -499,7 +495,6 @@ public class ChildTaskTransferService {
 
             // Update task in DB to IN_PROGRESS and increment the retries on this particular task
             taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
-            taskChild.setRetries(taskChild.getRetries() + 1);
             taskChild = dao.updateTransferTaskChild(taskChild);
 
             // For some reason taskChild does not have the tag set at this point.
@@ -707,12 +702,11 @@ public class ChildTaskTransferService {
      * Since FAILED_OPT is now supported we also need to check here if
      * top task / parent task are done and update status (as is done in stepFour).
      *
-     * @param cause Exception that was thrown
+     * @param errorMessage Message from error that occurred
      * @param child the Child task that failed
      * @return Mono with the updated TransferTaskChild
      */
-    private TransferTaskChild doErrorStepOne(Throwable cause, TransferTaskChild child) {
-        String exceptionMessage = (cause == null) ? "<NULL>" : cause.getMessage();
+    private TransferTaskChild doErrorStepOne(DAOTransactionContext context, String errorMessage, TransferTaskChild child) {
         log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR10", child.toString()));
 
         // First update child task, mark FAILED_OPT or FAILED and set error message
@@ -721,10 +715,10 @@ public class ChildTaskTransferService {
         } else {
             child.setStatus(TransferTaskStatus.FAILED);
         }
-        child.setErrorMessage(exceptionMessage);
+        child.setErrorMessage(errorMessage);
         child.setEndTime(Instant.now());
         try {
-            child = dao.updateTransferTaskChild(child);
+            child = childDao.updateTransferTaskChild(context, child);
             // In theory should never happen, it means that the child with that ID was not in the database.
             if (child == null) {
                 return null;
@@ -748,7 +742,7 @@ public class ChildTaskTransferService {
                     parent.setStatus(TransferTaskStatus.FAILED);
                 }
                 parent.setEndTime(Instant.now());
-                parent.setErrorMessage(exceptionMessage);
+                parent.setErrorMessage(errorMessage);
                 parent.setFinalMessage("Failed - Child doErrorStepOne");
                 log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR14", parent.getId(), parent.getTag(), parent.getUuid(), child.getId(), child.getUuid(), parent.getStatus()));
                 updateParentTask(parent);
@@ -760,7 +754,7 @@ public class ChildTaskTransferService {
                         return null;
                     }
                     topTask.setStatus(TransferTaskStatus.FAILED);
-                    topTask.setErrorMessage(exceptionMessage);
+                    topTask.setErrorMessage(errorMessage);
                     topTask.setEndTime(Instant.now());
                     log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR13", topTask.getId(), topTask.getTag(), topTask.getUuid(), parent.getId(), parent.getUuid(), child.getId(), child.getUuid()));
                     dao.updateTransferTask(topTask);
@@ -1178,6 +1172,42 @@ public class ChildTaskTransferService {
                                              impersonationIdNull, topTaskUuid.get());
             audit.info(AuditUtils.auditMsg(ar.getAuditData()));
         }
+    }
+
+    private TransferTaskChild scheduleRetryOrFail(UUID archiveTransferUuid, String errorMessage, boolean forceFail) throws DAOException {
+        return DAOTransactionContext.doInTransaction(context -> {
+            // read for update
+            TransferTaskChild currentTransfer = childDao.getChildTaskByUUID(context, archiveTransferUuid, true);
+
+            // if it's already in a 'final' state, ignore this request and return.
+            if(currentTransfer.isTerminal()) {
+                return currentTransfer;
+            }
+
+            int retriesRemaining = currentTransfer.getRetriesRemaining();
+            StringBuilder errorMessageBuilder = new StringBuilder();
+            if ((retriesRemaining > 0) && (!forceFail)) {
+                // if there are more retries, schedule the next one.
+                currentTransfer.setRetriesRemaining(retriesRemaining - 1);
+                currentTransfer.setStatus(TransferTaskStatus.AWAITING_RETRY);
+                currentTransfer.setNextRetry(Instant.now().plus(RETRY_WAIT));
+                errorMessageBuilder.append("Scheduling retry:  ");
+                errorMessageBuilder.append(System.lineSeparator());
+                errorMessageBuilder.append(errorMessage);
+            } else {
+                // if there are no more retries, fail the transfer
+                currentTransfer.setRetriesRemaining(0);
+                currentTransfer.setNextRetry(null);
+                errorMessageBuilder.append("No more retries available.  Last error:");
+                errorMessageBuilder.append(System.lineSeparator());
+                errorMessageBuilder.append(errorMessage);
+                doErrorStepOne(context, errorMessage, currentTransfer);
+            }
+            currentTransfer.setErrorMessage(errorMessageBuilder.toString());
+            currentTransfer.setAssignedTo(null);
+
+            return childDao.updateTransferTaskChild(context, currentTransfer);
+        });
     }
 
     /*

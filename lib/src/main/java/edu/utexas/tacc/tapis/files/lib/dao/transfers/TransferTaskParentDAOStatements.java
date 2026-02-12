@@ -15,8 +15,10 @@ public class TransferTaskParentDAOStatements {
                 from
                   transfer_tasks_parent
                 where
-                  status = 'ACCEPTED' AND
-                  assigned_to IS NULL
+                  assigned_to IS NULL  AND 
+                  ((status = 'ACCEPTED') OR 
+                    (status = 'AWAITING_RETRY' 
+                    AND next_retry <= NOW()))
               )
                 where
                   row_number <= ?
@@ -38,8 +40,10 @@ public class TransferTaskParentDAOStatements {
                 from
                   transfer_tasks_parent
                 where
-                  status = 'ACCEPTED' AND
-                  assigned_to = ?
+                  assigned_to = ? AND
+                  ((status = 'ACCEPTED') OR 
+                    (status = 'AWAITING_RETRY' 
+                    AND next_retry <= NOW()))
               )
                 where
                   row_number <= ?
@@ -129,6 +133,8 @@ public class TransferTaskParentDAOStatements {
                          SET source_uri = ?,
                              destination_uri = ?,
                              status = ?,
+                             retries_remaining = ?,
+                             next_retry = ?,
                              start_time = ?,
                              end_time = ?,
                              bytes_transferred =?,
