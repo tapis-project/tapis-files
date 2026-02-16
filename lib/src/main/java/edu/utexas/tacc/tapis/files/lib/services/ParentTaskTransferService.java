@@ -484,6 +484,14 @@ public class ParentTaskTransferService {
         log.trace(LibUtils.getMsg("FILES_TXFR_TOP_TASK_TERM", taskTenant, taskUser, "doParentStepOneA03", topTaskId, topTask.getStatus(), parentId, parentTask.getStatus(), parentUuid, tag));
         topTask.setEndTime(Instant.now());
         dao.updateTransferTask(topTask);
+        parentTask = DAOTransactionContext.doInTransaction(context -> {
+          final TransferTaskParent currentParent =
+                  parentDao.getTransferTaskParentByUUID(context, parentUuid, true);
+          currentParent.setStatus(TransferTaskStatus.FAILED);
+          currentParent.setErrorMessage("Top task is already in a terminal state");
+          parentDao.updateTransferTaskParent(context, currentParent);
+          return currentParent;
+        });
         return false;
       }
 
