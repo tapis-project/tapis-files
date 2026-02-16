@@ -294,10 +294,19 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
         sessionHolder.getSession().mkdir(tmpPathStr);
       } catch (SftpException e) {
         try (var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
+          // NOTE:  this sleep is here to help with an issue that can come up when multiple threads are creating
+          // the same directory.  What's supposed to happen in this method is that we check and if the directroy
+          // doesn't exist we create it.  Due to a race condition with the looking and creating, we might fail
+          // to make the directory (someone else made it between the look and the mkdir).  The code in
+          // this exception handler will check this case - see if the directory exists now.  If so we return
+          // success.  But sometimes the check fails.  If we wait a moment it works.  This is presumable due
+          // to something like write caching on the filesystem.  Starting with 200ms wait.  It's not critical
+          // that we catch this since we retry, but maybe it will help prevent needing to retry.
+          Thread.sleep(200);
           // Caught an exception.  If we look and see a directory there, it most likely means it was create
           // by another thread.  That's fine.  It's been created, so we will call it a success.
           FileInfo fileInfo = getFileInfo(path, true);
-          if((fileInfo != null) && (fileInfo.isDir())) {
+          if ((fileInfo != null) && (fileInfo.isDir())) {
             return;
           }
         } catch (Exception ex) {
