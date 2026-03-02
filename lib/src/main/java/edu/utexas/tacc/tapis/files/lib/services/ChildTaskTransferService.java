@@ -748,7 +748,7 @@ public class ChildTaskTransferService {
                 updateParentTask(parent);
                 // If parent is required update top level task to FAILED and set error message
                 if (!parent.isOptional()) {
-                    TransferTask topTask = dao.getTransferTaskByID(child.getTaskId());
+                    TransferTask topTask = dao.getTransferTaskByID(context, child.getTaskId());
                     // Again, should not happen, it means that the top task was not in the database.
                     if (topTask == null) {
                         return null;

@@ -700,7 +700,7 @@ public class ParentTaskTransferService {
         errorMessageBuilder.append(errorMessage);
         currentTransfer = doErrorParentStepOne(context, errorMessageBuilder.toString(), currentTransfer);
       }
-
+      currentTransfer.setAssignedTo(null);
       return parentDao.updateTransferTaskParent(context, currentTransfer);
     });
   }
@@ -734,7 +734,7 @@ public class ParentTaskTransferService {
       }
 
       // Now update the top level task
-      TransferTask topTask = dao.getTransferTaskByID(parent.getTaskId());
+      TransferTask topTask = dao.getTransferTaskByID(context, parent.getTaskId());
       // This should also not happen, it means that the top task was not in the database.
       if (topTask == null) {
         return null;
@@ -749,7 +749,7 @@ public class ParentTaskTransferService {
         topTask.setEndTime(Instant.now());
         topTask.setErrorMessage(exceptionErrorMessage);
         log.debug(LibUtils.getMsg("FILES_TXFR_SVC_ERR7C", topTask.getId(), topTask.getTag(), topTask.getUuid(), parent.getId(), parent.getUuid()));
-        dao.updateTransferTask(topTask);
+        dao.updateTransferTask(context, topTask);
       }
     } catch (DAOException ex) {
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", parent.getTenantId(), parent.getUsername(),
