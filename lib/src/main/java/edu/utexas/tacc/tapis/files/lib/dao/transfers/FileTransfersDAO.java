@@ -133,11 +133,17 @@ public class FileTransfersDAO {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskByUUID", taskUUID), ex);
         }
     }
-
     public TransferTask getTransferTaskByID(@NotNull int taskId) throws DAOException {
+        return DAOTransactionContext.doInTransaction(context -> {
+            return getTransferTaskByID(context, taskId);
+        });
+    }
+
+    public TransferTask getTransferTaskByID(DAOTransactionContext context, @NotNull int taskId) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         RowProcessor summaryRowProcessor = new TransferTaskSummaryRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+        Connection connection = context.getConnection();
+        try {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_TASK_BY_ID;
             QueryRunner runner = new QueryRunner();
@@ -205,8 +211,15 @@ public class FileTransfersDAO {
      * @param task
      */
     public TransferTask updateTransferTask(@NotNull TransferTask task) throws DAOException {
+        return DAOTransactionContext.doInTransaction(context -> {
+            return updateTransferTask(context, task);
+        });
+    }
+
+    public TransferTask updateTransferTask(DAOTransactionContext context, @NotNull TransferTask task) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+        Connection connection = context.getConnection();
+        try {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.UPDATE_TRANSFER_TASK;
             QueryRunner runner = new QueryRunner();
