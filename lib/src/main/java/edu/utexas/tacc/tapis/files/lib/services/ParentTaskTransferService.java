@@ -338,7 +338,8 @@ public class ParentTaskTransferService {
     log.debug(parentTask.toString());
 
     try {
-      parentTask = dao.getTransferTaskParentById(parentTask.getId());
+      int parentTaskId = parentTask.getId();
+      parentTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskParentById(context, parentTaskId));
       if (parentTask.isTerminal()) {
         return false;
       }
@@ -371,7 +372,7 @@ public class ParentTaskTransferService {
 
   private void updateTaskMoveSuccess(TransferTaskParent parentTask) throws DAOException {
     int topTaskId = parentTask.getTaskId();
-    TransferTask topTask = dao.getTransferTaskByID(topTaskId);
+    TransferTask topTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskByID(context, topTaskId));
     // Check to see if all children of a parent task are complete. If so, update the parent task.
     if (!parentTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
       parentTask.setStatus(TransferTaskStatus.COMPLETED);
@@ -384,15 +385,19 @@ public class ParentTaskTransferService {
     }
     // Check to see if all the children of a top task are complete. If so, update the top task.
     if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
-      long incompleteParentCount = dao.getIncompleteParentCount(topTaskId);
-      long incompleteChildCount = dao.getIncompleteChildrenCount(topTaskId);
-      if (incompleteChildCount == 0 && incompleteParentCount == 0) {
-        topTask.setStatus(TransferTaskStatus.COMPLETED);
-        topTask.setEndTime(Instant.now());
+      DAOTransactionContext.doInTransaction(context -> {
 
-        log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_MOVE_COMPLETE", topTaskId, topTask.getUuid(), topTask.getTag()));
-        dao.updateTransferTask(topTask);
-      }
+        long incompleteParentCount = dao.getIncompleteParentCount(context, topTaskId);
+        long incompleteChildCount = dao.getIncompleteChildrenCount(context, topTaskId);
+        if (incompleteChildCount == 0 && incompleteParentCount == 0) {
+          topTask.setStatus(TransferTaskStatus.COMPLETED);
+          topTask.setEndTime(Instant.now());
+
+          log.trace(LibUtils.getMsg("FILES_TXFR_PARENT_TASK_MOVE_COMPLETE", topTaskId, topTask.getUuid(), topTask.getTag()));
+          dao.updateTransferTask(context, topTask);
+        }
+        return null;
+      });
     }
   }
 
@@ -420,7 +425,8 @@ public class ParentTaskTransferService {
       updateParentTask(parentTask);
 
       // If parent is required update top level task to FAILED and set error message
-      TransferTask topTask = dao.getTransferTaskByID(parentTask.getTaskId());
+      int paretTaskId = parentTask.getTaskId();
+      final TransferTask topTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskByID(context, paretTaskId));
       if (parentTask.isOptional()) {
         topTask.setStatus(TransferTaskStatus.FAILED);
         topTask.setErrorMessage(cause);
@@ -432,7 +438,7 @@ public class ParentTaskTransferService {
       }
 
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_MOVE_FAILURE", topTask.getId(), topTask.getTag(), topTask.getUuid(), parentTask.getId(), parentTask.getUuid()));
-      dao.updateTransferTask(topTask);
+      DAOTransactionContext.doInTransaction(context -> dao.updateTransferTask(context, topTask));
 
     } catch (DAOException ex) {
       log.error(LibUtils.getMsg("FILES_TXFR_SVC_UPDATE_STATUS_ERROR", parentTask.getTenantId(), parentTask.getUsername(),
@@ -470,21 +476,24 @@ public class ParentTaskTransferService {
     // Update the top level task and then the parent task
     try {
       // Update top level task.
-      TransferTask topTask = dao.getTransferTaskByID(topTaskId);
-      if (topTask.getStartTime() == null) {
-        log.trace(LibUtils.getMsg("FILES_TXFR_TASK_START", taskTenant, taskUser, "doParentStepOneA04", topTask.getId(), parentId, parentUuid, tag));
-        topTask.setStartTime(Instant.now());
-        // Update status unless already in a terminal state (such as cancelled)
-        if (!topTask.isTerminal()) topTask.setStatus(TransferTaskStatus.IN_PROGRESS);
-        dao.updateTransferTask(topTask);
-      }
+      TransferTask topTask = DAOTransactionContext.doInTransaction(context -> {
+        TransferTask currentTopTask = dao.getTransferTaskByID(context, topTaskId);
+        if (currentTopTask.getStartTime() == null) {
+          log.trace(LibUtils.getMsg("FILES_TXFR_TASK_START", taskTenant, taskUser, "doParentStepOneA04", currentTopTask.getId(), parentId, parentUuid, tag));
+          currentTopTask.setStartTime(Instant.now());
+          // Update status unless already in a terminal state (such as cancelled)
+          if (!currentTopTask.isTerminal()) currentTopTask.setStatus(TransferTaskStatus.IN_PROGRESS);
+          currentTopTask = dao.updateTransferTask(context, currentTopTask);
+        }
+        return currentTopTask;
+      });
 
       // If top task in terminal state then return
       if (topTask.isTerminal()) {
         log.trace(LibUtils.getMsg("FILES_TXFR_TOP_TASK_TERM", taskTenant, taskUser, "doParentStepOneA03", topTaskId, topTask.getStatus(), parentId, parentTask.getStatus(), parentUuid, tag));
         topTask.setEndTime(Instant.now());
-        dao.updateTransferTask(topTask);
         parentTask = DAOTransactionContext.doInTransaction(context -> {
+          dao.updateTransferTask(context, topTask);
           final TransferTaskParent currentParent =
                   parentDao.getTransferTaskParentByUUID(context, parentUuid, true);
           currentParent.setStatus(TransferTaskStatus.FAILED);
@@ -765,17 +774,21 @@ public class ParentTaskTransferService {
    * @param topTaskId ID of top level TransferTask
    */
   private void checkForComplete(int topTaskId) throws DAOException {
-    TransferTask topTask = dao.getTransferTaskByID(topTaskId);
+    TransferTask topTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskByID(context, topTaskId));
     // Check to see if all the children of a top task are complete. If so, update the top task.
     if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
-      long incompleteParentCount = dao.getIncompleteParentCount(topTaskId);
-      long incompleteChildCount = dao.getIncompleteChildrenCount(topTaskId);
-      if (incompleteChildCount == 0 && incompleteParentCount == 0) {
-        topTask.setStatus(TransferTaskStatus.COMPLETED);
-        topTask.setEndTime(Instant.now());
-        log.trace(LibUtils.getMsg("FILES_TXFR_TASK_COMPLETE1", topTaskId, topTask.getUuid(), topTask.getTag()));
-        dao.updateTransferTask(topTask);
-      }
+      DAOTransactionContext.doInTransaction(context -> {
+
+        long incompleteParentCount = dao.getIncompleteParentCount(context, topTaskId);
+        long incompleteChildCount = dao.getIncompleteChildrenCount(context, topTaskId);
+        if (incompleteChildCount == 0 && incompleteParentCount == 0) {
+          topTask.setStatus(TransferTaskStatus.COMPLETED);
+          topTask.setEndTime(Instant.now());
+          log.trace(LibUtils.getMsg("FILES_TXFR_TASK_COMPLETE1", topTaskId, topTask.getUuid(), topTask.getTag()));
+          dao.updateTransferTask(context, topTask);
+        }
+        return null;
+      });
     }
   }
 }

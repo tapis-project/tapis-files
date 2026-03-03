@@ -13,6 +13,7 @@ import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
+import org.jooq.DAO;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
@@ -33,18 +34,18 @@ public class FileTransfersDAO {
 
     /**
      * Create a transfer task and all the associated TransferTaskParent objects.
+     * @param context Transaction context
      * @param task Transfer task
      * @param elements all top level transfer request elements
      * @return Transfer task
      * @throws DAOException on error
      */
-    public TransferTask createTransferTask(TransferTask task, List<TransferTaskRequestElement> elements, int parentTaskRetries)
-            throws DAOException
+    public TransferTask createTransferTask(DAOTransactionContext context, TransferTask task,
+                                           List<TransferTaskRequestElement> elements, int parentTaskRetries) throws DAOException
     {
       int taskId = 0;
-      try (Connection connection = HikariConnectionPool.getConnection())
-      {
-        connection.setAutoCommit(false);
+      Connection connection = context.getConnection();
+      try {
         try (PreparedStatement insertTaskStmnt =
                      connection.prepareStatement(FileTransfersDAOStatements.INSERT_TASK, Statement.RETURN_GENERATED_KEYS);
              PreparedStatement insertParentTaskStmnt =
@@ -86,7 +87,6 @@ public class FileTransfersDAO {
         {
             if(!connection.isClosed()) {
                 connection.rollback();
-                connection.setAutoCommit(true);
             }
         }
       }
@@ -98,17 +98,18 @@ public class FileTransfersDAO {
       // Primary task has been inserted into transfer_tasks table and
       //   all parent tasks have been inserted into transfer_tasks_parent table
       // Now create a fully populated TransferTask object and return it.
-      TransferTask newTask = getTransferTaskByID(taskId);
-      List<TransferTaskParent> parents = getAllParentsForTaskByID(newTask.getId());
+      TransferTask newTask = getTransferTaskByID(context, taskId);
+      List<TransferTaskParent> parents = getAllParentsForTaskByID(context, newTask.getId());
       newTask.setParentTasks(parents);
       return newTask;
     }
 
-    public TransferTask getTransferTaskByUUID(@NotNull UUID taskUUID, boolean includeSummary)
+    public TransferTask getTransferTaskByUUID(DAOTransactionContext context, @NotNull UUID taskUUID, boolean includeSummary)
             throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         RowProcessor summaryRowProcessor = new TransferTaskSummaryRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+        Connection connection = context.getConnection();
+        try {
             BeanHandler<TransferTask> handler = new BeanHandler<>(TransferTask.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_TASK_BY_UUID;
             QueryRunner runner = new QueryRunner();
@@ -133,12 +134,6 @@ public class FileTransfersDAO {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskByUUID", taskUUID), ex);
         }
     }
-    public TransferTask getTransferTaskByID(@NotNull int taskId) throws DAOException {
-        return DAOTransactionContext.doInTransaction(context -> {
-            return getTransferTaskByID(context, taskId);
-        });
-    }
-
     public TransferTask getTransferTaskByID(DAOTransactionContext context, @NotNull int taskId) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         RowProcessor summaryRowProcessor = new TransferTaskSummaryRowProcessor();
@@ -167,37 +162,37 @@ public class FileTransfersDAO {
         }
     }
 
-    public TransferTaskChild getTransferTaskChild(@NotNull UUID taskUUID) throws DAOException {
+    public TransferTaskChild getTransferTaskChild(DAOTransactionContext context, @NotNull UUID taskUUID) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+        try {
             BeanHandler<TransferTaskChild> handler = new BeanHandler<>(TransferTaskChild.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_CHILD_TASK_BY_UUID;
             QueryRunner runner = new QueryRunner();
-            return runner.query(connection, query, handler, taskUUID);
+            return runner.query(context.getConnection(), query, handler, taskUUID);
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskChild", taskUUID), ex);
         }
     }
 
-    public List<TransferTaskParent> getAllParentsForTaskByID(@NotNull int taskId) throws DAOException {
+    public List<TransferTaskParent> getAllParentsForTaskByID(DAOTransactionContext context, @NotNull int taskId) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+        try {
             BeanListHandler<TransferTaskParent> handler = new BeanListHandler<>(TransferTaskParent.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_PARENTS_FOR_TASK_BY_ID;
             QueryRunner runner = new QueryRunner();
-            List<TransferTaskParent> parentTasks = runner.query(connection, query, handler, taskId);
+            List<TransferTaskParent> parentTasks = runner.query(context.getConnection(), query, handler, taskId);
             return parentTasks;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getAllParentsForTaskByID", taskId), ex);
         }
     }
-    public TransferTaskParent getTransferTaskParentById(@NotNull long id) throws DAOException {
+    public TransferTaskParent getTransferTaskParentById(DAOTransactionContext context, @NotNull long id) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+        try {
             BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
             String query = FileTransfersDAOStatements.GET_PARENT_TASK_BY_ID;
             QueryRunner runner = new QueryRunner();
-            TransferTaskParent task = runner.query(connection, query, handler, id);
+            TransferTaskParent task = runner.query(context.getConnection(), query, handler, id);
             return task;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getTransferTaskParentById", id), ex);
@@ -210,12 +205,6 @@ public class FileTransfersDAO {
      *
      * @param task
      */
-    public TransferTask updateTransferTask(@NotNull TransferTask task) throws DAOException {
-        return DAOTransactionContext.doInTransaction(context -> {
-            return updateTransferTask(context, task);
-        });
-    }
-
     public TransferTask updateTransferTask(DAOTransactionContext context, @NotNull TransferTask task) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskRowProcessor();
         Connection connection = context.getConnection();
@@ -244,41 +233,12 @@ public class FileTransfersDAO {
         }
     }
 
-    /**
-     * This method is used to increment the total size of the transfer. As the directory
-     * is recursively walked, we will add the size of the files to the current total.
-     *
-     * @param task
-     * @param newBytes The size in bytes to be added to the total size of the transfer
-     */
-    public TransferTaskParent updateTransferTaskParentSize(@NotNull TransferTask task, Long newBytes) throws DAOException {
-        RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
-            String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK_SIZE;
-            QueryRunner runner = new QueryRunner();
-            TransferTaskParent updatedTask = runner.query(connection, stmt, handler,
-                newBytes,
-                task.getId());
-            return updatedTask;
-        } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                  "updateTransferTaskParentSize", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
-        }
-    }
-
-    /**
-     * This method is used to increment the total size of the transfer. As the directory
-     * is recursively walked, we will add the size of the files to the current total.
-     *
-     * @param task
-     * @param newBytes The size in bytes to be added to the total size of the transfer
-     */
-    public void updateTransferTaskChildBytesTransferred(@NotNull TransferTaskChild task, Long newBytes) throws DAOException {
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+    public void updateTransferTaskChildBytesTransferred(DAOTransactionContext context, @NotNull TransferTaskChild task,
+                                                        Long newBytes) throws DAOException {
+        try {
             String stmt = FileTransfersDAOStatements.UPDATE_CHILD_TASK_BYTES_TRANSFERRED;
             QueryRunner runner = new QueryRunner();
-            runner.execute(connection, stmt,
+            runner.execute(context.getConnection(), stmt,
                 newBytes,
                 task.getId());
         } catch (SQLException ex) {
@@ -288,20 +248,19 @@ public class FileTransfersDAO {
     }
 
 
-
     /**
      * This method is used to increment the bytes that have been transferred in the parent task
      *
      * @param taskId
      * @param newBytes The size in bytes to be added to the total size of the transfer
      */
-    public void updateTransferTaskParentBytesTransferred(long taskId, Long newBytes) throws DAOException {
+    public void updateTransferTaskParentBytesTransferred(DAOTransactionContext context, long taskId, Long newBytes) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskParentRowProcessor();
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+        try {
             BeanHandler<TransferTaskParent> handler = new BeanHandler<>(TransferTaskParent.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.UPDATE_PARENT_TASK_BYTES_TRANSFERRED;
             QueryRunner runner = new QueryRunner();
-            runner.execute(connection, stmt,
+            runner.execute(context.getConnection(), stmt,
                 newBytes,
                 taskId);
         } catch (SQLException ex) {
@@ -393,26 +352,26 @@ public class FileTransfersDAO {
         }
     }
 
-    public long getIncompleteParentCount(@NotNull long taskId) throws DAOException
+    public long getIncompleteParentCount(DAOTransactionContext context, @NotNull long taskId) throws DAOException
     {
       ScalarHandler<Long> scalarHandler = new ScalarHandler<>();
       QueryRunner runner = new QueryRunner();
       String query = FileTransfersDAOStatements.GET_PARENT_TASK_INCOMPLETE_COUNT;
-      try (Connection connection = HikariConnectionPool.getConnection()) {
-        long count = runner.query(connection, query, scalarHandler, taskId);
+      try {
+        long count = runner.query(context.getConnection(), query, scalarHandler, taskId);
         return count;
       } catch (SQLException ex) {
         throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getIncompleteChildrenCount", taskId), ex);
       }
     }
 
-    public long getIncompleteChildrenCount(@NotNull long taskId) throws DAOException
+    public long getIncompleteChildrenCount(DAOTransactionContext context, @NotNull long taskId) throws DAOException
     {
         ScalarHandler<Long> scalarHandler = new ScalarHandler<>();
         QueryRunner runner = new QueryRunner();
         String query = FileTransfersDAOStatements.GET_CHILD_TASK_INCOMPLETE_COUNT;
-        try (Connection connection = HikariConnectionPool.getConnection()) {
-            long count = runner.query(connection, query, scalarHandler, taskId);
+        try {
+            long count = runner.query(context.getConnection(), query, scalarHandler, taskId);
             return count;
         } catch (SQLException ex) {
             throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR2", "getIncompleteChildrenCount", taskId), ex);
@@ -453,19 +412,16 @@ public class FileTransfersDAO {
         }
     }
 
-    public List<TransferTaskChild> getAllChildren(@NotNull TransferTaskParent task) throws DAOException {
+    public List<TransferTaskChild> getAllChildren(DAOTransactionContext context, @NotNull TransferTaskParent task) throws DAOException {
         RowProcessor rowProcessor = new TransferTaskChildRowProcessor();
 
-        try (Connection connection = HikariConnectionPool.getConnection()) {
+        try {
             ResultSetHandler<List<TransferTaskChild>> handler = new BeanListHandler<>(TransferTaskChild.class, rowProcessor);
             String stmt = FileTransfersDAOStatements.GET_ALL_CHILDREN_FOR_PARENT;
             QueryRunner runner = new QueryRunner();
 
             List<TransferTaskChild> children = runner.query(
-                connection,
-                stmt,
-                handler,
-                task.getId()
+                context.getConnection(), stmt, handler, task.getId()
             );
 
             return children;
@@ -475,14 +431,13 @@ public class FileTransfersDAO {
         }
     }
 
-    public void cancelTransfer(@NotNull TransferTask task) throws DAOException
+    public void cancelTransfer(DAOTransactionContext context, @NotNull TransferTask task) throws DAOException
     {
-        try (Connection connection = HikariConnectionPool.getConnection())
-        {
+        try {
             String stmt = FileTransfersDAOStatements.CANCEL_TRANSFER_TASK_AND_CHILDREN;
             QueryRunner runner = new QueryRunner();
 
-            runner.execute(connection, stmt, task.getId(), task.getId(), task.getId());
+            runner.execute(context.getConnection(), stmt, task.getId(), task.getId(), task.getId());
         }
         catch (SQLException ex)
         {
