@@ -60,6 +60,7 @@ import edu.utexas.tacc.tapis.systems.client.gen.model.TapisSystem;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sshd.common.io.WritePendingException;
 import org.jetbrains.annotations.NotNull;
+import org.jooq.DAO;
 import org.jvnet.hk2.annotations.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -294,7 +295,7 @@ public class ChildTaskTransferService {
         try {
             if (parentTask == null) {
                 Stopwatch sw = Stopwatch.createStarted();
-                parentTask = dao.getTransferTaskParentById(parentTaskId);
+                parentTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskParentById(context, parentTaskId));
                 srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
                 log.trace("CHILD TRANSFER TIMING: Get parent task info: " + taskChild.getId() + " time: " + sw.elapsed(TimeUnit.MILLISECONDS));
             }
@@ -387,33 +388,45 @@ public class ChildTaskTransferService {
         log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
         // Update parent task and then child task
         try {
-            taskChild = dao.getTransferTaskChild(taskChild.getUuid());
-            TransferTask topTask = dao.getTransferTaskByID(taskChild.getTaskId());
-            TransferTaskParent parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
-            // UUIDs for topTask, parentTask, childTask
-            String topTaskUUID = topTask.getUuid().toString();
-            String parentTaskUUID = parentTask.getUuid().toString();
-            String childTaskUUID = taskChild.getUuid().toString();
-            log.debug(LibUtils.getMsg("FILES_TXFR_CHILD_STEP", stepLabel, topTaskUUID, parentTaskUUID, childTaskUUID, taskChild.getTag()));
-            log.debug(LibUtils.getMsg("FILES_TXFR_PARENT_TASK", stepLabel, parentTask));
+            UUID uuid = taskChild.getUuid();
+            TransferTaskParent parentTask = DAOTransactionContext.doInTransaction(context -> {
+                TransferTaskChild currentTask = dao.getTransferTaskChild(context, uuid);
+                TransferTask topTask = dao.getTransferTaskByID(context, currentTask.getTaskId());
+                TransferTaskParent currentParentTask = dao.getTransferTaskParentById(context, currentTask.getParentTaskId());
+                // UUIDs for topTask, parentTask, childTask
+                String topTaskUUID = topTask.getUuid().toString();
+                String parentTaskUUID = currentParentTask.getUuid().toString();
+                String childTaskUUID = currentTask.getUuid().toString();
+                log.debug(LibUtils.getMsg("FILES_TXFR_CHILD_STEP", stepLabel, topTaskUUID, currentParentTask, childTaskUUID, currentTask.getTag()));
+                log.debug(LibUtils.getMsg("FILES_TXFR_PARENT_TASK", stepLabel, currentParentTask));
+                return currentParentTask;
+            });
+
             // If the parent task not in final state and not yet set to IN_PROGRESS do it here.
             if (!parentTask.isTerminal() && !parentTask.getStatus().equals(TransferTaskStatus.IN_PROGRESS)) {
-                parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
-                if (parentTask.getStartTime() == null) parentTask.setStartTime(Instant.now());
-                updateParentTask(parentTask);
+              parentTask.setStatus(TransferTaskStatus.IN_PROGRESS);
+              if (parentTask.getStartTime() == null) {
+                  parentTask.setStartTime(Instant.now());
+              }
+              updateParentTask(parentTask);
             }
 
             // If cancelled or failed set the end time, and we are done
             if (taskChild.isTerminal()) {
-                taskChild.setEndTime(Instant.now());
-                taskChild = dao.updateTransferTaskChild(taskChild);
-                return taskChild;
+                return DAOTransactionContext.doInTransaction(context -> {
+                    TransferTaskChild currentTaskChild = childDao.getChildTaskByUUID(context, uuid, true);
+                    currentTaskChild.setEndTime(Instant.now());
+                    return childDao.updateTransferTaskChild(context, currentTaskChild);
+                });
             }
 
             // Ready to start. Update child task status and start time.
-            taskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
-            taskChild.setStartTime(Instant.now());
-            taskChild = dao.updateTransferTaskChild(taskChild);
+            taskChild = DAOTransactionContext.doInTransaction(context -> {
+                TransferTaskChild currentTaskChild = childDao.getChildTaskByUUID(context, uuid, true);
+                currentTaskChild.setStatus(TransferTaskStatus.IN_PROGRESS);
+                currentTaskChild.setStartTime(Instant.now());
+                return childDao.updateTransferTaskChild(context, currentTaskChild);
+            });
 
             return taskChild;
         } catch (DAOException ex) {
@@ -470,13 +483,15 @@ public class ChildTaskTransferService {
         TransferTask topTask;
         TransferTaskParent parentTask;
         try {
+            int taskId = taskChild.getTaskId();
             // Get top task uuid and audit parentTrackingId. Place parentTrackingId in thread local context.
-            topTask = dao.getTransferTaskByID(taskChild.getTaskId());
+            topTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskByID(context, taskId));
             topTaskUuid.set(topTask.getUuid().toString());
             TapisThreadLocal.tapisThreadContext.get().setTrackingId(topTask.getParentTrackingId());
 
             // Get the parent task. We will need it for shared ctx grantors.
-            parentTask = dao.getTransferTaskParentById(taskChild.getParentTaskId());
+            int parentTaskId = taskChild.getParentTaskId();
+            parentTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskParentById(context, parentTaskId));
             // child task does not have the shared context info.  We have to get it from the parent.
             srcSharedCtxGrantor = parentTask.getSrcSharedCtxGrantor();
             destSharedCtxGrantor = parentTask.getDestSharedCtxGrantor();
@@ -579,7 +594,8 @@ public class ChildTaskTransferService {
             // The ChildTransferTask may have been updated by calling thread, e.g. cancelled, so we look it up again
             // here before passing it on
             try {
-                taskChild = dao.getTransferTaskChild(taskChild.getUuid());
+                UUID taskChildUUID = taskChild.getUuid();
+                taskChild = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskChild(context, taskChildUUID));
             } catch (DAOException ex) {
                 String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                         "processTransfer", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
@@ -636,7 +652,8 @@ public class ChildTaskTransferService {
         // The ChildTransferTask may have been updated by calling thread, e.g. cancelled, so we look it up again
         // here before passing it on
         try {
-            taskChild = dao.getTransferTaskChild(taskChild.getUuid());
+            UUID childUUID = taskChild.getUuid();
+            taskChild = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskChild(context, childUUID));
         } catch (DAOException ex) {
             String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
                     "processTransfer", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
@@ -665,15 +682,17 @@ public class ChildTaskTransferService {
 
             UUID childUUID = taskChild.getUuid();
             TransferTaskChild updatedChildTask = DAOTransactionContext.doInTransaction(context -> {
-                return childDao.getChildTaskByUUID(context, childUUID, false);
+                TransferTaskChild child = childDao.getChildTaskByUUID(context, childUUID, false);
+
+                child.setStatus(TransferTaskStatus.COMPLETED);
+                // we should count the actual bytes that we transfer.  For now this is close enough (bigger fish to fry).
+                child.setBytesTransferred(child.getTotalBytes());
+                child.setEndTime(Instant.now());
+                child = childDao.updateTransferTaskChild(context, child);
+                dao.updateTransferTaskParentBytesTransferred(context, child.getParentTaskId(), child.getBytesTransferred());
+                return child;
             });
 
-            updatedChildTask.setStatus(TransferTaskStatus.COMPLETED);
-            // we should count the actual bytes that we transfer.  For now this is close enough (bigger fish to fry).
-            updatedChildTask.setBytesTransferred(updatedChildTask.getTotalBytes());
-            updatedChildTask.setEndTime(Instant.now());
-            updatedChildTask = dao.updateTransferTaskChild(updatedChildTask);
-            dao.updateTransferTaskParentBytesTransferred(updatedChildTask.getParentTaskId(), updatedChildTask.getBytesTransferred());
             return updatedChildTask;
         } catch (DAOException ex) {
             String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
@@ -682,21 +701,7 @@ public class ChildTaskTransferService {
             throw new ServiceException(msg, ex);
         }
     }
-/*
-    private TransferTaskChild checkForParentCompletion(@NotNull TransferTaskChild taskChild) throws ServiceException {
-        String stepLabel = "Four";
-        log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
-        try {
-            checkForComplete(taskChild.getTaskId(), taskChild.getParentTaskId());
-        } catch (DAOException ex) {
-            String msg = LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                    "ChildStepFour", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage());
-            log.error(msg, ex);
-            throw new ServiceException(msg, ex);
-        }
-        return taskChild;
-    }
-*/
+
     /**
      * Error handler for any of the steps.
      * Since FAILED_OPT is now supported we also need to check here if
@@ -729,7 +734,7 @@ public class ChildTaskTransferService {
             if (child.isOptional()) {
                 child = checkForComplete(child);
             } else {
-                TransferTaskParent parent = dao.getTransferTaskParentById(child.getParentTaskId());
+                TransferTaskParent parent = dao.getTransferTaskParentById(context, child.getParentTaskId());
                 // This also should not happen, it means that the parent with that ID was not in the database.
                 if (parent == null) {
                     return null;
@@ -757,7 +762,7 @@ public class ChildTaskTransferService {
                     topTask.setErrorMessage(errorMessage);
                     topTask.setEndTime(Instant.now());
                     log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR13", topTask.getId(), topTask.getTag(), topTask.getUuid(), parent.getId(), parent.getUuid(), child.getId(), child.getUuid()));
-                    dao.updateTransferTask(topTask);
+                    dao.updateTransferTask(context, topTask);
                 }
             }
             child = unassignChild(child.getUuid());
@@ -817,28 +822,6 @@ public class ChildTaskTransferService {
         }
     }
 
-    /**
-     * This method is called during the actual transfer of bytes. As the stream is read, events on
-     * the number of bytes transferred are passed here to be written to the datastore.
-     *
-     * @param bytesSent total bytes sent in latest update
-     * @param taskChild The transfer task that is being worked on currently
-     * @return Mono with number of bytes sent
-     */
-    private Long updateProgress(Long bytesSent, TransferTaskChild taskChild) {
-        // Be careful here if any other updates need to be done, this method (probably) runs in a different
-        // thread than the main thread. It is possible for the TransferTaskChild passed in above to have been updated
-        // on a different thread.
-        try {
-            dao.updateTransferTaskChildBytesTransferred(taskChild, bytesSent);
-            return bytesSent;
-        } catch (DAOException ex) {
-            log.error(LibUtils.getMsg("FILES_TXFR_SVC_ERR1", taskChild.getTenantId(), taskChild.getUsername(),
-                    "updateProgress", taskChild.getId(), taskChild.getTag(), taskChild.getUuid(), ex.getMessage()));
-            return null;
-        }
-    }
-
     private TransferTaskChild cancelTransferChild(TransferTaskChild taskChild, String srcSharedCtxGrantor) throws ServiceException, IOException {
         TransferTaskChild retChild;
         log.info("CANCELLING TRANSFER CHILD");
@@ -889,8 +872,8 @@ public class ChildTaskTransferService {
 
         String stepLabel = "Four";
         log.info(LibUtils.getMsg("FILES_TXFR_CHILD_TASK", stepLabel, taskChild));
-        TransferTask topTask = dao.getTransferTaskByID(topTaskId);
-        TransferTaskParent parentTask = dao.getTransferTaskParentById(parentTaskId);
+        final TransferTask topTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskByID(context, topTaskId));
+        TransferTaskParent parentTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskParentById(context, parentTaskId));
 
         // Check to see if all children of a parent task are complete. If so, update the parent task.
         if (!parentTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
@@ -906,13 +889,15 @@ public class ChildTaskTransferService {
 
         // Check to see if all the children of a top task are complete. If so, update the top task.
         if (!topTask.getStatus().equals(TransferTaskStatus.COMPLETED)) {
-            long incompleteParentCount = dao.getIncompleteParentCount(topTaskId);
-            long incompleteChildCount = dao.getIncompleteChildrenCount(topTaskId);
+            long incompleteParentCount = DAOTransactionContext.doInTransaction(
+                    context -> dao.getIncompleteParentCount(context, topTaskId));
+            long incompleteChildCount = DAOTransactionContext.doInTransaction(
+                    context -> dao.getIncompleteChildrenCount(context, topTaskId));
             if (incompleteChildCount == 0 && incompleteParentCount == 0) {
                 topTask.setStatus(TransferTaskStatus.COMPLETED);
                 topTask.setEndTime(Instant.now());
                 log.trace(LibUtils.getMsg("FILES_TXFR_TASK_COMPLETE2", topTaskId, topTask.getUuid(), topTask.getTag()));
-                dao.updateTransferTask(topTask);
+                DAOTransactionContext.doInTransaction(context -> dao.updateTransferTask(context, topTask));
             }
         }
         return taskChild;
@@ -1092,7 +1077,8 @@ public class ChildTaskTransferService {
             int iteration = 1;
             while (true) {
                 // Get latest taskChild info to see if it has been cancelled
-                taskChild = dao.getTransferTaskChild(taskChild.getUuid());
+                UUID childUUID = taskChild.getUuid();
+                taskChild = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskChild(context, childUUID));
                 // If in a terminal state, e.g. cancelled, set the end time and exit loop
                 if (taskChild.isTerminal()) {
                     taskChild.setEndTime(Instant.now());

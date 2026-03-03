@@ -57,7 +57,8 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
   public void testGetTaskByUUID() throws DAOException
   {
     TransferTask t = createTransferTask(testUser1);
-    TransferTask newTask = dao.getTransferTaskByUUID(t.getUuid(), false);
+    TransferTask newTask = DAOTransactionContext.doInTransaction(context ->
+            dao.getTransferTaskByUUID(context, t.getUuid(), false));
     Assert.assertEquals(newTask.getId(), t.getId());
   }
 
@@ -65,7 +66,8 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
   public void testGetAllParentsForTask() throws DAOException
   {
     TransferTask t = createTransferTask(testUser1);
-    List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(t.getId());
+    List<TransferTaskParent> parents =
+            DAOTransactionContext.doInTransaction(context -> dao.getAllParentsForTaskByID(context, t.getId()));
     Assert.assertEquals(parents.size(), 2);
   }
 
@@ -116,26 +118,28 @@ public class FileTransfersDAOTests extends BaseDatabaseIntegrationTest
   private TransferTask createTransferTask(String userName) throws DAOException
   {
     String tag = "testTag";
-    TransferTask task = new TransferTask();
-    task.setTag(tag);
-    task.setParentTrackingId("");
-    task.setTenantId(testTenant);
-    task.setUsername(userName);
-    task.setStatus(TransferTaskStatus.ACCEPTED.name());
-    List<TransferTaskRequestElement> elements = new ArrayList<>();
-    TransferTaskRequestElement element1 = new TransferTaskRequestElement();
-    element1.setDestinationURI("tapis://sourceSystem/path");
-    element1.setSourceURI("tapis://destSystem/path");
-    element1.setTag(tag);
-    elements.add(element1);
+    TransferTask newTask = DAOTransactionContext.doInTransaction(context -> {
+      TransferTask task = new TransferTask();
+      task.setTag(tag);
+      task.setParentTrackingId("");
+      task.setTenantId(testTenant);
+      task.setUsername(userName);
+      task.setStatus(TransferTaskStatus.ACCEPTED.name());
+      List<TransferTaskRequestElement> elements = new ArrayList<>();
+      TransferTaskRequestElement element1 = new TransferTaskRequestElement();
+      element1.setDestinationURI("tapis://sourceSystem/path");
+      element1.setSourceURI("tapis://destSystem/path");
+      element1.setTag(tag);
+      elements.add(element1);
 
-    TransferTaskRequestElement element2 = new TransferTaskRequestElement();
-    element2.setDestinationURI("tapis://sourceSystem2/path");
-    element2.setSourceURI("tapis://destSystem2/path");
-    element2.setTag(tag);
-    elements.add(element2);
+      TransferTaskRequestElement element2 = new TransferTaskRequestElement();
+      element2.setDestinationURI("tapis://sourceSystem2/path");
+      element2.setSourceURI("tapis://destSystem2/path");
+      element2.setTag(tag);
+      elements.add(element2);
+      return dao.createTransferTask(context, task, elements, 3);
+    });
 
-    task = dao.createTransferTask(task, elements, 3);
-    return task;
+    return newTask;
   }
 }

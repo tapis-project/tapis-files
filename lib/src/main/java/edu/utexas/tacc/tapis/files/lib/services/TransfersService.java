@@ -9,6 +9,7 @@ import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.NotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import org.apache.commons.lang3.StringUtils;
@@ -109,7 +110,8 @@ public class TransfersService
     {
       try
       {
-        TransferTask task = dao.getTransferTaskByUUID(transferTaskUuid, includeSummaryFalse);
+        TransferTask task = DAOTransactionContext.doInTransaction(context ->
+                dao.getTransferTaskByUUID(context, transferTaskUuid, includeSummaryFalse));
         return task.getTenantId().equals(tenantId) && task.getUsername().equals(username);
       }
       catch (DAOException ex)
@@ -141,25 +143,26 @@ public class TransfersService
       UUID taskUuid = UUID.fromString(uuidStr);
 
         try {
-            TransferTask task = dao.getTransferTaskByUUID(taskUuid, includeSummaryTrue);
-            if (task == null)
-            {
-              String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_NOT_FOUND", rUser, opName, taskUuid, impersonationId);
-              log.error(msg);
-              throw new NotFoundException(msg);
-            }
+            return DAOTransactionContext.doInTransaction(context -> {
+              TransferTask task = dao.getTransferTaskByUUID(context, taskUuid, includeSummaryTrue);
+              if (task == null) {
+                String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_NOT_FOUND", rUser, opName, taskUuid, impersonationId);
+                log.error(msg);
+                throw new NotFoundException(msg);
+              }
 
-            // Do a final permission check based on calling user/tenant and task user/tenant
-            isUserPermitted(rUser, task, oboOrImpersonatedUser, rUser.getOboTenantId(), opName);
+              // Do a final permission check based on calling user/tenant and task user/tenant
+              isUserPermitted(rUser, task, oboOrImpersonatedUser, rUser.getOboTenantId(), opName);
 
-            // Fetch and fill in parents and children
-            List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(task.getId());
-            task.setParentTasks(parents);
-            for (TransferTaskParent parent : parents) {
-                List<TransferTaskChild> children = dao.getAllChildren(parent);
+              // Fetch and fill in parents and children
+              List<TransferTaskParent> parents = dao.getAllParentsForTaskByID(context, task.getId());
+              task.setParentTasks(parents);
+              for (TransferTaskParent parent : parents) {
+                List<TransferTaskChild> children = dao.getAllChildren(context, parent);
                 parent.setChildren(children);
-            }
-            return task;
+              }
+              return task;
+            });
         }
         catch (DAOException ex)
         {
@@ -221,7 +224,9 @@ public class TransfersService
       try
       {
         // Get the task, including summary info if requested.
-        TransferTask task = dao.getTransferTaskByUUID(taskUuid, includeSummary);
+        TransferTask task = DAOTransactionContext.doInTransaction(context ->
+                dao.getTransferTaskByUUID(context, taskUuid, includeSummary));
+
         if (task == null)
         {
           String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_NOT_FOUND", rUser  ,opName, taskUuid, impersonationId);
@@ -302,7 +307,8 @@ public class TransfersService
       {
         // Persist the transfer task and associated parent tasks to the DB
         log.trace(LibUtils.getMsgAuthR("FILES_TXFR_PERSIST_TASK", rUser, tag, elements.size()));
-        TransferTask newTask = dao.createTransferTask(task, elements, PARENT_TASK_RETRIES);
+        TransferTask newTask = DAOTransactionContext.doInTransaction(context ->
+                dao.createTransferTask(context, task, elements, PARENT_TASK_RETRIES));
         return newTask;
       }
       catch (DAOException e)
@@ -323,24 +329,25 @@ public class TransfersService
     {
       String opName = "cancelTransfer";
       UUID taskUuid = UUID.fromString(uuidStr);
-      TransferTask task;
-      try
-      {
+      try {
         // Get top level attributes for the transfer task. Needed for dao call and perm check.
-        task = dao.getTransferTaskByUUID(taskUuid, includeSummaryFalse);
+        TransferTask task = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskByUUID(context, taskUuid, includeSummaryFalse));
+
         if (task == null) {
           String msg = LibUtils.getMsgAuthR("FILES_TXFR_SVC_NOT_FOUND", rUser, opName, taskUuid, impersonationIdNull);
           log.error(msg);
           throw new NotFoundException(msg);
         }
+
         // Do a final permission check based on calling user/tenant and task user/tenant
         isUserPermitted(rUser, task, rUser.getOboUserId(), rUser.getOboTenantId(), opName);
 
         // Make dao call to update DB
-        dao.cancelTransfer(task);
-      }
-      catch (DAOException ex)
-      {
+        DAOTransactionContext.doInTransaction(context -> {
+          dao.cancelTransfer(context, task);
+          return null;
+        });
+      } catch (DAOException ex) {
         String msg = LibUtils.getMsg("FILES_TXFR_SVC_CANCEL_ERR", rUser, uuidStr, ex.getMessage());
         log.error(msg, ex);
         throw new ServiceException(msg, ex);

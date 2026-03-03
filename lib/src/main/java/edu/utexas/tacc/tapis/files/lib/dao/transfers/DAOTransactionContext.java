@@ -21,13 +21,27 @@ import java.sql.SQLException;
 public class DAOTransactionContext implements AutoCloseable {
     private static Logger log = LoggerFactory.getLogger(DAOTransactionContext.class);
     private Connection connection = null;
+    // set to true if this is the context that started the transaction on the connection (and must commit/rollback)
+    private boolean isTransactionContainer = false;
+
+    private static ThreadLocal<Connection> connectionThreadLocal = new ThreadLocal<>();
 
     public static interface DAOOperation<T> {
         T doOperation(DAOTransactionContext context) throws DAOException;
     }
 
-    public DAOTransactionContext() throws DAOException {
-        this.connection = HikariConnectionPool.getConnection();
+    public DAOTransactionContext(boolean useExistingTransaction) throws DAOException {
+        Connection existingConnection = connectionThreadLocal.get();
+        if(useExistingTransaction && existingConnection != null) {
+            connection = existingConnection;
+        }
+
+        if(this.connection == null) {
+            this.connection = HikariConnectionPool.getConnection();
+            connectionThreadLocal.set(this.connection);
+            this.isTransactionContainer = true;
+        }
+
         try {
             connection.setAutoCommit(false);
         } catch (SQLException e) {
@@ -91,16 +105,21 @@ public class DAOTransactionContext implements AutoCloseable {
      * @throws DAOException - if an error occurs.
      */
     public static <T> T doInTransaction(DAOOperation<T> op) throws DAOException {
-        DAOTransactionContext context = new DAOTransactionContext();
+        DAOTransactionContext context = new DAOTransactionContext(true);
         try {
             T returnValue = op.doOperation(context);
-            context.commit();
+            if(context.isTransactionContainer) {
+                context.commit();
+            }
             return returnValue;
         } finally {
             // this will rollback anything not committed.  This really amounts to rolling back
             // if an exception occurs;
-            context.rollback();
-            context.close();
+            if(context.isTransactionContainer) {
+                connectionThreadLocal.remove();
+                context.rollback();
+                context.close();
+            }
         }
     }
 
