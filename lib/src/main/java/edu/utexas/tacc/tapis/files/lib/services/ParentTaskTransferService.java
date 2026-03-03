@@ -425,8 +425,8 @@ public class ParentTaskTransferService {
       updateParentTask(parentTask);
 
       // If parent is required update top level task to FAILED and set error message
-      int paretTaskId = parentTask.getTaskId();
-      final TransferTask topTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskByID(context, paretTaskId));
+      int parentTaskId = parentTask.getTaskId();
+      final TransferTask topTask = DAOTransactionContext.doInTransaction(context -> dao.getTransferTaskByID(context, parentTaskId));
       if (parentTask.isOptional()) {
         topTask.setStatus(TransferTaskStatus.FAILED);
         topTask.setErrorMessage(cause);
@@ -492,7 +492,7 @@ public class ParentTaskTransferService {
       if (topTask.isTerminal()) {
         log.trace(LibUtils.getMsg("FILES_TXFR_TOP_TASK_TERM", taskTenant, taskUser, "doParentStepOneA03", topTaskId, topTask.getStatus(), parentId, parentTask.getStatus(), parentUuid, tag));
         topTask.setEndTime(Instant.now());
-        parentTask = DAOTransactionContext.doInTransaction(context -> {
+        DAOTransactionContext.doInTransaction(context -> {
           dao.updateTransferTask(context, topTask);
           final TransferTaskParent currentParent =
                   parentDao.getTransferTaskParentByUUID(context, parentUuid, true);
@@ -501,6 +501,7 @@ public class ParentTaskTransferService {
           parentDao.updateTransferTaskParent(context, currentParent);
           return currentParent;
         });
+
         return false;
       }
 

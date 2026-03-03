@@ -13,7 +13,6 @@ import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
 import org.apache.commons.dbutils.handlers.ScalarHandler;
-import org.jooq.DAO;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
@@ -232,21 +231,6 @@ public class FileTransfersDAO {
                   "updateTransferTask", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
         }
     }
-
-    public void updateTransferTaskChildBytesTransferred(DAOTransactionContext context, @NotNull TransferTaskChild task,
-                                                        Long newBytes) throws DAOException {
-        try {
-            String stmt = FileTransfersDAOStatements.UPDATE_CHILD_TASK_BYTES_TRANSFERRED;
-            QueryRunner runner = new QueryRunner();
-            runner.execute(context.getConnection(), stmt,
-                newBytes,
-                task.getId());
-        } catch (SQLException ex) {
-            throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR1", task.getTenantId(), task.getUsername(),
-                "updateTransferTaskParentSize", task.getId(), task.getTag(), task.getUuid(), ex.getMessage()), ex);
-        }
-    }
-
 
     /**
      * This method is used to increment the bytes that have been transferred in the parent task
