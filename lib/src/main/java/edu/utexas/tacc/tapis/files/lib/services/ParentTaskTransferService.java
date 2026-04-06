@@ -498,6 +498,7 @@ public class ParentTaskTransferService {
                   parentDao.getTransferTaskParentByUUID(context, parentUuid, true);
           currentParent.setStatus(TransferTaskStatus.FAILED);
           currentParent.setErrorMessage("Top task is already in a terminal state");
+          currentParent.setAssignedTo(null);
           parentDao.updateTransferTaskParent(context, currentParent);
           return currentParent;
         });
@@ -700,6 +701,7 @@ public class ParentTaskTransferService {
         currentTransfer.setRetriesRemaining(retriesRemaining - 1);
         currentTransfer.setStatus(TransferTaskStatus.AWAITING_RETRY);
         currentTransfer.setNextRetry(Instant.now().plus(RETRY_WAIT));
+        currentTransfer.setAssignedTo(null);
         errorMessageBuilder.append("Scheduling retry:  ");
         errorMessageBuilder.append(System.lineSeparator());
         errorMessageBuilder.append(errorMessage);
