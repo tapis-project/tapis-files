@@ -9,6 +9,20 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 26Q1.1 - 2026-04-07
+
+Incremental improvements and new features.  
+
+### New features:
+- None
+
+### Bug fixes:
+- fixed issue where failed transfers could cause hang in certain situations
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 26Q1.0 - 2026-03-03
 
 Incremental improvements and new features.  
