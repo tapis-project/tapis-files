@@ -9,6 +9,21 @@ You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
 ---------------------------------------------------------------------------
+## 26Q2.0 - 2026-05-11
+
+Incremental improvements and new features.  
+
+### New features:
+- None
+
+### Bug fixes:
+- fixed issue where getContents (download file) could fail if range header
+  is used, and the file path has spaces in it.
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 26Q1.1 - 2026-04-07
 
 Incremental improvements and new features.  
