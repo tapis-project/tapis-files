@@ -630,11 +630,21 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
   {
     Path absPath = PathUtils.getAbsolutePath(rootDir, path);
     try(var sessionHolder = borrowAutoCloseableExecChannel(DEFAULT_SESSION_WAIT, true)) {
-      //TODO: This should use Piped streams
-      String command = String.format("dd if=%s ibs=1 skip=%s count=%s", absPath, startByte, count);
+      
+      String command = String.format("dd if=%s ibs=1 skip=%s count=%s",
+              safelySingleQuoteString(absPath.toString()),
+              safelySingleQuoteString(String.valueOf(startByte)),
+              safelySingleQuoteString(String.valueOf(count)));
+
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       ByteArrayOutputStream outErr = new ByteArrayOutputStream();
-      sessionHolder.getSession().execute(command, out, outErr, false);
+      int exitCode = sessionHolder.getSession().execute(command, out, outErr, false);
+
+      if (exitCode != 0) {
+        String msg = LibUtils.getMsg("FILES_CLIENT_SSH_OP_ERR1", oboTenant, oboUser, "getBytesByRange", systemId, effectiveUserId, host, path, outErr.toString());
+        log.warn(msg);
+        throw new IOException(msg);
+      }
       return new ByteArrayInputStream(out.toByteArray());
     }
     catch (TapisException e)
