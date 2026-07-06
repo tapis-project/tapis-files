@@ -23,6 +23,9 @@ import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
+import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
+import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
@@ -110,6 +113,8 @@ public class FileOpsService
   SystemsCache systemsCache;
   @Inject
   SystemsCacheNoAuth systemsCacheNoAuth;
+  @Inject
+  private ServiceClients serviceClients;
 
   // We must be running on a specific site and this will never change
   // These are initialized in method initService()
@@ -164,11 +169,11 @@ public class FileOpsService
     String oboUser = rUser.getOboUserId();
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
-
+    boolean isAdmin = isAdmin(oboTenant, oboUser, sysId, pathStr);
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, sysId, relPathStr, Permission.READ,
-                                                           impersonationId, sharedCtxGrantor);
+                                                           impersonationId, sharedCtxGrantor, isAdmin);
 
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
@@ -251,11 +256,11 @@ public class FileOpsService
       String oboUser = rUser.getOboUserId();
       // Get normalized path relative to system rootDir and protect against ../..
       String relPathStr = PathUtils.getRelativePath(pathStr).toString();
-
+      boolean isAdmin = isAdmin(oboTenant, oboUser, sysId, pathStr);
       // Fetch system with credentials including auth checks for system and path
       TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                              opName, sysId, relPathStr, Permission.READ,
-                                                             impersonationId, sharedCtxGrantor);
+                                                             impersonationId, sharedCtxGrantor, isAdmin);
 
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
@@ -319,11 +324,11 @@ public class FileOpsService
     String oboUser = rUser.getOboUserId();
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
-
+    boolean isAdmin = isAdmin(oboTenant, oboUser, sysId, pathStr);
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, sysId, relPathStr, Permission.READ,
-                                                           impersonationId, sharedCtxGrantor);
+                                                           impersonationId, sharedCtxGrantor, isAdmin);
 
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
@@ -358,10 +363,11 @@ public class FileOpsService
     String oboUser = rUser.getOboUserId();
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+    boolean isAdmin = isAdmin(oboTenant, oboUser, systemId, pathStr);
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, systemId, relPathStr, Permission.MODIFY,
-                                                           IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
+                                                           IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL, isAdmin);
 
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
@@ -454,11 +460,11 @@ public class FileOpsService
     String oboUser = rUser.getOboUserId();
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
-
+    boolean isAdmin = isAdmin(oboTenant, oboUser, sysId, pathStr);
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, sysId, relPathStr, Permission.MODIFY,
-                                                           IMPERSONATION_ID_NULL, sharedCtxGrantor);
+                                                           IMPERSONATION_ID_NULL, sharedCtxGrantor, isAdmin);
 
     // Reserve a client connection, use it to perform the operation and then release it
     IRemoteDataClient client = null;
@@ -535,6 +541,9 @@ public class FileOpsService
       // Get normalized paths relative to system rootDir and protect against ../..
       String srcRelPathStr = PathUtils.getRelativePath(srcPathStr).toString();
       String dstRelPathStr = PathUtils.getRelativePath(dstPathStr).toString();
+      // NOTE: systemId and path are passed in for logging only, so we can use this for both calls below.
+      //       Boolean is independent of path.
+      boolean isAdmin = isAdmin(oboTenant, oboUser, systemId, srcPathStr);
 
       // Fetch system with credentials including auth checks for system and source path
       TapisSystem sys;
@@ -542,13 +551,13 @@ public class FileOpsService
       {
         sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                    opName, systemId, srcRelPathStr, Permission.READ,
-                                                   IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
+                                                   IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL, isAdmin);
       }
       else
       {
         sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                    opName, systemId, srcRelPathStr, Permission.MODIFY,
-                                                   IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
+                                                   IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL, isAdmin);
       }
 
       // To simplify auth check fetch the system again with check for destination path.
@@ -557,7 +566,7 @@ public class FileOpsService
       // checks. Might consider refactoring in the long term. Plus, if we ever support share with MODIFY it will change.
       sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                  opName, systemId, dstRelPathStr, Permission.MODIFY,
-                                                 IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
+                                                 IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL, isAdmin);
 
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
@@ -663,11 +672,11 @@ public class FileOpsService
       String oboUser = rUser.getOboUserId();
       // Get normalized path relative to system rootDir and protect against ../..
       String relPathStr = PathUtils.getRelativePath(pathStr).toString();
-
+      boolean isAdmin = isAdmin(oboTenant, oboUser, systemId, pathStr);
       // Fetch system with credentials including auth checks for system and path
       TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                              opName, systemId, relPathStr, Permission.MODIFY,
-                                                             IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL);
+                                                             IMPERSONATION_ID_NULL, SHARED_CTX_GRANTOR_NULL, isAdmin);
 
       // Reserve a client connection, use it to perform the operation and then release it
       IRemoteDataClient client = null;
@@ -741,11 +750,12 @@ public class FileOpsService
     String opName = "getZipStream";
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+    boolean isAdmin = isAdmin(rUser.getOboTenantId(), rUser.getOboUserId(), sysId, pathStr);
 
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, sysId, relPathStr, Permission.READ,
-                                                           impersonationId, sharedCtxGrantor);
+                                                           impersonationId, sharedCtxGrantor, isAdmin);
 
     // If rootDir + path results in all files then reject
     String rootDir = sys.getRootDir();
@@ -793,11 +803,12 @@ public class FileOpsService
     String opName = "getByteRangeStream";
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+    boolean isAdmin = isAdmin(rUser.getOboTenantId(), rUser.getOboUserId(), sysId, pathStr);
 
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, sysId, relPathStr, Permission.READ,
-                                                           impersonationId, sharedCtxGrantor);
+                                                           impersonationId, sharedCtxGrantor, isAdmin);
 
     StreamingOutput outStream = output -> {
     InputStream stream = null;
@@ -843,11 +854,12 @@ public class FileOpsService
     String opName = "getPagedStream";
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+    boolean isAdmin = isAdmin(rUser.getOboTenantId(), rUser.getOboUserId(), sysId, pathStr);
 
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, sysId, relPathStr, Permission.READ,
-                                                           impersonationId, sharedCtxGrantor);
+                                                           impersonationId, sharedCtxGrantor, isAdmin);
 
     StreamingOutput outStream = output -> {
       InputStream stream = null;
@@ -890,11 +902,12 @@ public class FileOpsService
     String opName = "getFullStream";
     // Get normalized path relative to system rootDir and protect against ../..
     String relPathStr = PathUtils.getRelativePath(pathStr).toString();
+    boolean isAdmin = isAdmin(rUser.getOboTenantId(), rUser.getOboUserId(), sysId, pathStr);
 
     // Fetch system with credentials including auth checks for system and path
     TapisSystem sys = LibUtils.getResolvedSysWithAuthCheck(rUser, shareService, systemsCache, systemsCacheNoAuth, permsService,
                                                            opName, sysId, relPathStr, Permission.READ,
-                                                           impersonationId, sharedCtxGrantor);
+                                                           impersonationId, sharedCtxGrantor, isAdmin);
 
     StreamingOutput outStream = output -> {
       try
@@ -1188,5 +1201,42 @@ public class FileOpsService
     // a true migration.
 //    flyway.repair();
     flyway.migrate();
+  }
+
+  /**
+   * Get Security Kernel client with oboUser and oboTenant set as given.
+   * Do not cache.
+   * Always use serviceClients.getClient() because it checks for expired service jwt token and refreshes as needed.
+   * @param oboUser - obo user
+   * @param oboTenant - obo tenant
+   * @return SK client
+   * @throws TapisClientException - for Tapis related exceptions
+   */
+  private SKClient getSKClient(String oboTenant, String oboUser) throws TapisClientException
+  {
+    try { return serviceClients.getClient(oboUser, oboTenant, SKClient.class); }
+    catch (Exception e)
+    {
+      String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, oboTenant, oboUser);
+      log.error(msg, e);
+      throw new TapisClientException(msg, e);
+    }
+  }
+
+  /*
+   * Check to see if the oboUser has the admin role in the obo tenant
+   */
+  private boolean isAdmin(String oboTenant, String oboUser, String sysId, String path)
+          throws WebApplicationException
+  {
+    try {
+      return getSKClient(oboTenant, oboUser).isAdmin(oboTenant, oboUser);
+    }
+    catch (TapisClientException ex) {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GETSK_ERR", oboTenant, oboUser, "FileShareSvc", sysId,
+              path, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
+    }
   }
 }
