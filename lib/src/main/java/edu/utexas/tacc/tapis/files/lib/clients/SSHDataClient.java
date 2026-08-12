@@ -305,8 +305,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
           //
           // UPDATE:  Adding 10X loop in the hopes it will help on the actual HPC machines.  Sometimes we're still
           // seeing failures on mkdir of deep directory structures during transfers.  This is a concurrency issue.
-          for(int i=1;i<=10;i++) {
-            Thread.sleep(200);
+          for(int i=1;i<=20;i++) {
+            Thread.sleep(100);
             // Caught an exception.  If we look and see a directory there, it most likely means it was created
             // by another thread.  That's fine.  It's been created, so we will call it a success.
             FileInfo fileInfo = getFileInfo(path, true);
