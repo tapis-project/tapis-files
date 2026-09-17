@@ -293,6 +293,8 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
       try(var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
         sessionHolder.getSession().mkdir(tmpPathStr);
       } catch (SftpException e) {
+        boolean found = false;
+        int counter = 1;
         try (var sessionHolder = borrowAutoCloseableSftpClient(DEFAULT_SESSION_WAIT, true)) {
           // NOTE:  this sleep is here to help with an issue that can come up when multiple threads are creating
           // the same directory.  What's supposed to happen in this method is that we check and if the directroy
@@ -302,17 +304,33 @@ public class SSHDataClient implements ISSHDataClient, ArchiveTransferSource, Arc
           // success.  But sometimes the check fails.  If we wait a moment it works.  This is presumable due
           // to something like write caching on the filesystem.  Starting with 200ms wait.  It's not critical
           // that we catch this since we retry, but maybe it will help prevent needing to retry.
-          Thread.sleep(200);
-          // Caught an exception.  If we look and see a directory there, it most likely means it was create
-          // by another thread.  That's fine.  It's been created, so we will call it a success.
-          FileInfo fileInfo = getFileInfo(path, true);
-          if ((fileInfo != null) && (fileInfo.isDir())) {
-            return;
+          //
+          // UPDATE:  Adding 10X loop in the hopes it will help on the actual HPC machines.  Sometimes we're still
+          // seeing failures on mkdir of deep directory structures during transfers.  This is a concurrency issue.
+          //
+          // UPDATE 2:  It turns out the getFileInfo was using the wrong path!!  This code may get a WHOLE lot simpler
+          // if this works out.  We can probably remove the loop with sleep if we don't need it after this fix
+          for(counter=1;counter<=20;counter++) {
+            // Caught an exception.  If we look and see a directory there, it most likely means it was created
+            // by another thread.  That's fine.  It's been created, so we will call it a success.  Unfortunately
+            // getFileInfo requires a relative path though, and not an absolute path, so make the conversion first.
+            Path relativeTmpPath = rootDirPath.relativize(tmpPath);
+            FileInfo fileInfo = getFileInfo(relativeTmpPath.toString(), true);
+            if ((fileInfo != null) && (fileInfo.isDir())) {
+              log.warn(String.format("MKDIR needed %d iterations of checking for the directory. Path: %s", counter, tmpPathStr));
+              found = true;
+              break;
+            }
+            log.warn(String.format("MKDIR did not see directory after %d iterations of checking. Path: %s", counter, tmpPathStr));
+            Thread.sleep(100);
           }
         } catch (Exception ex) {
           // ignore this - it's handled below with the original exception
         }
-        handleSftpException(e, "mkdir", tmpPathStr);
+        if(!found) {
+          log.warn(String.format("MKDIR giving up on directory after %d iterations of checking. Path: %s", counter, tmpPathStr));
+          handleSftpException(e, "mkdir", tmpPathStr);
+        }
       }
     }
   }

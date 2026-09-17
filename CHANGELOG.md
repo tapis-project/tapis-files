@@ -22,6 +22,20 @@ New feature.
 - None
 
 ---------------------------------------------------------------------------
+## 26Q2.1 - 2026-08-12
+
+Incremental improvements and new features.  
+
+### New features:
+- None
+
+### Bug fixes:
+- fixed issue where mkdir can fail under certain conditions
+
+### Breaking Changes
+- None
+
+---------------------------------------------------------------------------
 ## 26Q2.0 - 2026-05-11
 
 Incremental improvements and new features.  
