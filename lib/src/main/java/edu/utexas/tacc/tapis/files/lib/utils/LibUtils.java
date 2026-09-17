@@ -223,6 +223,18 @@ public class LibUtils
     }
   }
 
+  /*
+   * Simple wrapper for callers who do not want to allow tenant admins.
+   */
+  public static TapisSystem getResolvedSysWithAuthCheck(ResourceRequestUser rUser, FileShareService shareService,
+                                                        SystemsCache sysCache, SystemsCacheNoAuth sysCacheNoAuth,
+                                                        FilePermsService permsService, String opName, String sysId,
+                                                        String relPathStr, Permission perm, String impersonationId,
+                                                        String sharedCtxGrantor)
+          throws WebApplicationException {
+    return getResolvedSysWithAuthCheck(rUser, shareService, sysCache, sysCacheNoAuth, permsService, opName, sysId,
+            relPathStr, perm, impersonationId, sharedCtxGrantor, false);
+  }
   /**
    * Get a TapisSystem with credentials.
    * Include auth checks as appropriate for system and path
@@ -237,11 +249,11 @@ public class LibUtils
    * @throws ForbiddenException - oboUserId not authorized to perform operation
    */
   public static TapisSystem getResolvedSysWithAuthCheck(ResourceRequestUser rUser, FileShareService shareService,
-                                                         SystemsCache sysCache, SystemsCacheNoAuth sysCacheNoAuth,
-                                                         FilePermsService permsService, String opName,
-                                                         String sysId, String relPathStr, Permission perm,
-                                                         String impersonationId, String sharedCtxGrantor)
-          throws ForbiddenException
+                                                        SystemsCache sysCache, SystemsCacheNoAuth sysCacheNoAuth,
+                                                        FilePermsService permsService, String opName, String sysId,
+                                                        String relPathStr, Permission perm, String impersonationId,
+                                                        String sharedCtxGrantor, boolean isAdmin)
+          throws WebApplicationException
   {
     String oboTenant = rUser.getOboTenantId();
     String oboUser = rUser.getOboUserId();
@@ -258,11 +270,11 @@ public class LibUtils
     // We will use a number of system attributes to determine if access is allowed.
     TapisSystem sys = getSystemIfEnabledNoAuth(rUser, sysCacheNoAuth, sysId, oboOrImpersonatedUser);
 
-    // Check for ownership
+    // Check for ownership or tenant admin
     // ------------------------
     // If requester is owner of system or in shared context and share grantor is owner then allow.
     String sysOwner = sys.getOwner() == null ? "" : sys.getOwner();
-    if (oboOrImpersonatedUser.equals(sysOwner) || sysOwner.equals(sharedCtxGrantor)) return sys;
+    if (oboOrImpersonatedUser.equals(sysOwner) || sysOwner.equals(sharedCtxGrantor) || isAdmin) return sys;
 
     // Check for system sharing
     // ------------------------
