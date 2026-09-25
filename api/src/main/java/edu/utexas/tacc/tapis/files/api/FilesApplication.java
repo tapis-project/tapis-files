@@ -1,5 +1,6 @@
 package edu.utexas.tacc.tapis.files.api;
 
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import edu.utexas.tacc.tapis.files.api.providers.FilePermissionsAuthz;
 import edu.utexas.tacc.tapis.files.lib.caches.FilePermsCache;
 import edu.utexas.tacc.tapis.files.lib.caches.SystemsCache;
@@ -17,6 +18,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
+import edu.utexas.tacc.tapis.files.lib.services.ManagementStatsService;
 import edu.utexas.tacc.tapis.files.lib.services.PostItsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
@@ -120,6 +122,7 @@ public class FilesApplication extends ResourceConfig
 
     // Serialization
     register(JacksonFeature.class);
+    register(Jdk8Module.class);
 
     // ExceptionMappers, need both because ValidationMapper is a custom Jersey thing and
     // cannot be implemented in a generic mapper
@@ -144,6 +147,7 @@ public class FilesApplication extends ResourceConfig
     register(OperationsApiResource.class);
     register(UtilsLinuxApiResource.class);
     register(PostItsResource.class);
+    register(ManagementStatsResource.class);
 
     // we were previously calling - packages("edu.utexas.tacc.tapis");
     // this was inadvertently bringing in TapisExceptionMapper.  I removed that, and replaced it with
@@ -193,6 +197,7 @@ public class FilesApplication extends ResourceConfig
           bindAsContract(FileUtilsService.class).in(Singleton.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
+          bindAsContract(ManagementStatsService.class);
           bindAsContract(ArchiveTransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);
           bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);

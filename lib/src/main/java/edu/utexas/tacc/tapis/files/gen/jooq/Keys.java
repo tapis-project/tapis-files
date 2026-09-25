@@ -4,9 +4,22 @@
 package edu.utexas.tacc.tapis.files.gen.jooq;
 
 
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferLog;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferPaths;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransfers;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.FilesPostits;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasks;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksChild;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksParent;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.ArchiveTransferLogRecord;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.ArchiveTransferPathsRecord;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.ArchiveTransfersRecord;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.FilesPostitsRecord;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.TransferTasksChildRecord;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.TransferTasksParentRecord;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.TransferTasksRecord;
 
+import org.jooq.ForeignKey;
 import org.jooq.TableField;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
@@ -24,5 +37,20 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
+    public static final UniqueKey<ArchiveTransferLogRecord> ARCHIVE_TRANSFER_LOG_ARCHIVE_TRANSFER_ID_KEY = Internal.createUniqueKey(ArchiveTransferLog.ARCHIVE_TRANSFER_LOG, DSL.name("archive_transfer_log_archive_transfer_id_key"), new TableField[] { ArchiveTransferLog.ARCHIVE_TRANSFER_LOG.ARCHIVE_TRANSFER_ID }, true);
+    public static final UniqueKey<ArchiveTransfersRecord> ARCHIVE_TRANSFERS_PKEY = Internal.createUniqueKey(ArchiveTransfers.ARCHIVE_TRANSFERS, DSL.name("archive_transfers_pkey"), new TableField[] { ArchiveTransfers.ARCHIVE_TRANSFERS.ID }, true);
     public static final UniqueKey<FilesPostitsRecord> FILES_POSTITS_PKEY = Internal.createUniqueKey(FilesPostits.FILES_POSTITS, DSL.name("files_postits_pkey"), new TableField[] { FilesPostits.FILES_POSTITS.ID }, true);
+    public static final UniqueKey<TransferTasksRecord> TRANSFER_TASKS_PKEY = Internal.createUniqueKey(TransferTasks.TRANSFER_TASKS, DSL.name("transfer_tasks_pkey"), new TableField[] { TransferTasks.TRANSFER_TASKS.ID }, true);
+    public static final UniqueKey<TransferTasksChildRecord> TRANSFER_TASKS_CHILD_PKEY = Internal.createUniqueKey(TransferTasksChild.TRANSFER_TASKS_CHILD, DSL.name("transfer_tasks_child_pkey"), new TableField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.ID }, true);
+    public static final UniqueKey<TransferTasksParentRecord> TRANSFER_TASKS_PARENT_PKEY = Internal.createUniqueKey(TransferTasksParent.TRANSFER_TASKS_PARENT, DSL.name("transfer_tasks_parent_pkey"), new TableField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.ID }, true);
+
+    // -------------------------------------------------------------------------
+    // FOREIGN KEY definitions
+    // -------------------------------------------------------------------------
+
+    public static final ForeignKey<ArchiveTransferLogRecord, ArchiveTransfersRecord> ARCHIVE_TRANSFER_LOG__ARCHIVE_TRANSFER_LOG_ARCHIVE_TRANSFER_ID_FKEY = Internal.createForeignKey(ArchiveTransferLog.ARCHIVE_TRANSFER_LOG, DSL.name("archive_transfer_log_archive_transfer_id_fkey"), new TableField[] { ArchiveTransferLog.ARCHIVE_TRANSFER_LOG.ARCHIVE_TRANSFER_ID }, Keys.ARCHIVE_TRANSFERS_PKEY, new TableField[] { ArchiveTransfers.ARCHIVE_TRANSFERS.ID }, true);
+    public static final ForeignKey<ArchiveTransferPathsRecord, ArchiveTransfersRecord> ARCHIVE_TRANSFER_PATHS__ARCHIVE_TRANSFER_PATHS_ARCHIVE_TRANSFER_ID_FKEY = Internal.createForeignKey(ArchiveTransferPaths.ARCHIVE_TRANSFER_PATHS, DSL.name("archive_transfer_paths_archive_transfer_id_fkey"), new TableField[] { ArchiveTransferPaths.ARCHIVE_TRANSFER_PATHS.ARCHIVE_TRANSFER_ID }, Keys.ARCHIVE_TRANSFERS_PKEY, new TableField[] { ArchiveTransfers.ARCHIVE_TRANSFERS.ID }, true);
+    public static final ForeignKey<TransferTasksChildRecord, TransferTasksParentRecord> TRANSFER_TASKS_CHILD__TRANSFER_TASKS_CHILD_PARENT_TASK_ID_FKEY = Internal.createForeignKey(TransferTasksChild.TRANSFER_TASKS_CHILD, DSL.name("transfer_tasks_child_parent_task_id_fkey"), new TableField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.PARENT_TASK_ID }, Keys.TRANSFER_TASKS_PARENT_PKEY, new TableField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.ID }, true);
+    public static final ForeignKey<TransferTasksChildRecord, TransferTasksRecord> TRANSFER_TASKS_CHILD__TRANSFER_TASKS_CHILD_TASK_ID_FKEY = Internal.createForeignKey(TransferTasksChild.TRANSFER_TASKS_CHILD, DSL.name("transfer_tasks_child_task_id_fkey"), new TableField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.TASK_ID }, Keys.TRANSFER_TASKS_PKEY, new TableField[] { TransferTasks.TRANSFER_TASKS.ID }, true);
+    public static final ForeignKey<TransferTasksParentRecord, TransferTasksRecord> TRANSFER_TASKS_PARENT__TRANSFER_TASKS_PARENT_TASK_ID_FKEY = Internal.createForeignKey(TransferTasksParent.TRANSFER_TASKS_PARENT, DSL.name("transfer_tasks_parent_task_id_fkey"), new TableField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.TASK_ID }, Keys.TRANSFER_TASKS_PKEY, new TableField[] { TransferTasks.TRANSFER_TASKS.ID }, true);
 }

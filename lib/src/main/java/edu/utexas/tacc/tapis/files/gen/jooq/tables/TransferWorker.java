@@ -12,11 +12,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function2;
+import org.jooq.Function3;
+import org.jooq.JSONB;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row2;
+import org.jooq.Row3;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -57,6 +58,11 @@ public class TransferWorker extends TableImpl<TransferWorkerRecord> {
      * The column <code>public.transfer_worker.last_updated</code>.
      */
     public final TableField<TransferWorkerRecord, OffsetDateTime> LAST_UPDATED = createField(DSL.name("last_updated"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field("CURRENT_TIMESTAMP", SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
+
+    /**
+     * The column <code>public.transfer_worker.worker_config</code>.
+     */
+    public final TableField<TransferWorkerRecord, JSONB> WORKER_CONFIG = createField(DSL.name("worker_config"), SQLDataType.JSONB, this, "");
 
     private TransferWorker(Name alias, Table<TransferWorkerRecord> aliased) {
         this(alias, aliased, null);
@@ -136,18 +142,18 @@ public class TransferWorker extends TableImpl<TransferWorkerRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row2 type methods
+    // Row3 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row2<java.util.UUID, OffsetDateTime> fieldsRow() {
-        return (Row2) super.fieldsRow();
+    public Row3<java.util.UUID, OffsetDateTime, JSONB> fieldsRow() {
+        return (Row3) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function2<? super java.util.UUID, ? super OffsetDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function3<? super java.util.UUID, ? super OffsetDateTime, ? super JSONB, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -155,7 +161,7 @@ public class TransferWorker extends TableImpl<TransferWorkerRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function2<? super java.util.UUID, ? super OffsetDateTime, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function3<? super java.util.UUID, ? super OffsetDateTime, ? super JSONB, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

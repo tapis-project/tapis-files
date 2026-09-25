@@ -50,7 +50,7 @@ public class DAOTransactionContext implements AutoCloseable {
         }
     }
 
-    protected Connection getConnection() {
+    public Connection getConnection() {
         return connection;
     }
 

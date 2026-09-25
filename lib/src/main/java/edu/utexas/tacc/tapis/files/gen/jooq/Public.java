@@ -4,7 +4,13 @@
 package edu.utexas.tacc.tapis.files.gen.jooq;
 
 
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferLog;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferPaths;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransfers;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.FilesPostits;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasks;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksChild;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksParent;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferWorker;
 
 import java.util.Arrays;
@@ -29,9 +35,39 @@ public class Public extends SchemaImpl {
     public static final Public PUBLIC = new Public();
 
     /**
+     * The table <code>public.archive_transfer_log</code>.
+     */
+    public final ArchiveTransferLog ARCHIVE_TRANSFER_LOG = ArchiveTransferLog.ARCHIVE_TRANSFER_LOG;
+
+    /**
+     * The table <code>public.archive_transfer_paths</code>.
+     */
+    public final ArchiveTransferPaths ARCHIVE_TRANSFER_PATHS = ArchiveTransferPaths.ARCHIVE_TRANSFER_PATHS;
+
+    /**
+     * The table <code>public.archive_transfers</code>.
+     */
+    public final ArchiveTransfers ARCHIVE_TRANSFERS = ArchiveTransfers.ARCHIVE_TRANSFERS;
+
+    /**
      * The table <code>public.files_postits</code>.
      */
     public final FilesPostits FILES_POSTITS = FilesPostits.FILES_POSTITS;
+
+    /**
+     * The table <code>public.transfer_tasks</code>.
+     */
+    public final TransferTasks TRANSFER_TASKS = TransferTasks.TRANSFER_TASKS;
+
+    /**
+     * The table <code>public.transfer_tasks_child</code>.
+     */
+    public final TransferTasksChild TRANSFER_TASKS_CHILD = TransferTasksChild.TRANSFER_TASKS_CHILD;
+
+    /**
+     * The table <code>public.transfer_tasks_parent</code>.
+     */
+    public final TransferTasksParent TRANSFER_TASKS_PARENT = TransferTasksParent.TRANSFER_TASKS_PARENT;
 
     /**
      * The table <code>public.transfer_worker</code>.
@@ -54,7 +90,13 @@ public class Public extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            ArchiveTransferLog.ARCHIVE_TRANSFER_LOG,
+            ArchiveTransferPaths.ARCHIVE_TRANSFER_PATHS,
+            ArchiveTransfers.ARCHIVE_TRANSFERS,
             FilesPostits.FILES_POSTITS,
+            TransferTasks.TRANSFER_TASKS,
+            TransferTasksChild.TRANSFER_TASKS_CHILD,
+            TransferTasksParent.TRANSFER_TASKS_PARENT,
             TransferWorker.TRANSFER_WORKER
         );
     }

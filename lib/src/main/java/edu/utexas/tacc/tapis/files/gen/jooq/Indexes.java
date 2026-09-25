@@ -4,7 +4,13 @@
 package edu.utexas.tacc.tapis.files.gen.jooq;
 
 
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferLog;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferPaths;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransfers;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.FilesPostits;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasks;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksChild;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksParent;
 
 import org.jooq.Index;
 import org.jooq.OrderField;
@@ -22,8 +28,32 @@ public class Indexes {
     // INDEX definitions
     // -------------------------------------------------------------------------
 
+    public static final Index ARCHIVE_TRANSFER_LOG_ARCHIVE_TRANSFER_ID_IDX = Internal.createIndex(DSL.name("archive_transfer_log_archive_transfer_id_idx"), ArchiveTransferLog.ARCHIVE_TRANSFER_LOG, new OrderField[] { ArchiveTransferLog.ARCHIVE_TRANSFER_LOG.ARCHIVE_TRANSFER_ID }, false);
+    public static final Index ARCHIVE_TRANSFER_PATHS_ARCHIVE_TRANSFER_ID_IDX = Internal.createIndex(DSL.name("archive_transfer_paths_archive_transfer_id_idx"), ArchiveTransferPaths.ARCHIVE_TRANSFER_PATHS, new OrderField[] { ArchiveTransferPaths.ARCHIVE_TRANSFER_PATHS.ARCHIVE_TRANSFER_ID }, false);
+    public static final Index ARCHIVE_TRANSFERS_ID_IDX = Internal.createIndex(DSL.name("archive_transfers_id_idx"), ArchiveTransfers.ARCHIVE_TRANSFERS, new OrderField[] { ArchiveTransfers.ARCHIVE_TRANSFERS.ID }, false);
+    public static final Index ARCHIVE_TRANSFERS_UUID_IDX = Internal.createIndex(DSL.name("archive_transfers_uuid_idx"), ArchiveTransfers.ARCHIVE_TRANSFERS, new OrderField[] { ArchiveTransfers.ARCHIVE_TRANSFERS.UUID }, false);
     public static final Index FILES_POSTITS_EXPIRATION_INDEX = Internal.createIndex(DSL.name("files_postits_expiration_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.EXPIRATION }, false);
     public static final Index FILES_POSTITS_OWNER_INDEX = Internal.createIndex(DSL.name("files_postits_owner_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.OWNER }, false);
     public static final Index FILES_POSTITS_TENANTID_INDEX = Internal.createIndex(DSL.name("files_postits_tenantid_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.TENANT_ID }, false);
     public static final Index FILES_POSTITS_TIMESUSED_INDEX = Internal.createIndex(DSL.name("files_postits_timesused_index"), FilesPostits.FILES_POSTITS, new OrderField[] { FilesPostits.FILES_POSTITS.TIMES_USED }, false);
+    public static final Index TRANSFER_TASKS_CHILD_ASSIGNED_TO_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_assigned_to_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.ASSIGNED_TO }, false);
+    public static final Index TRANSFER_TASKS_CHILD_CREATED_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_created_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.CREATED }, false);
+    public static final Index TRANSFER_TASKS_CHILD_NEXT_RETRY_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_next_retry_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.NEXT_RETRY }, false);
+    public static final Index TRANSFER_TASKS_CHILD_PARENT_TASK_ID_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_parent_task_id_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.PARENT_TASK_ID }, false);
+    public static final Index TRANSFER_TASKS_CHILD_STATUS_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_status_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.STATUS }, false);
+    public static final Index TRANSFER_TASKS_CHILD_TASK_ID_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_task_id_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.TASK_ID }, false);
+    public static final Index TRANSFER_TASKS_CHILD_TENANT_ID_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_tenant_id_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.TENANT_ID }, false);
+    public static final Index TRANSFER_TASKS_CHILD_TENANT_ID_USERNAME_UUID_PARENT_TASK_ID_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_tenant_id_username_uuid_parent_task_id_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.TENANT_ID, TransferTasksChild.TRANSFER_TASKS_CHILD.USERNAME, TransferTasksChild.TRANSFER_TASKS_CHILD.UUID, TransferTasksChild.TRANSFER_TASKS_CHILD.PARENT_TASK_ID, TransferTasksChild.TRANSFER_TASKS_CHILD.TASK_ID }, false);
+    public static final Index TRANSFER_TASKS_CHILD_USERNAME_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_username_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.USERNAME }, false);
+    public static final Index TRANSFER_TASKS_CHILD_UUID_IDX = Internal.createIndex(DSL.name("transfer_tasks_child_uuid_idx"), TransferTasksChild.TRANSFER_TASKS_CHILD, new OrderField[] { TransferTasksChild.TRANSFER_TASKS_CHILD.UUID }, true);
+    public static final Index TRANSFER_TASKS_PARENT_ASSIGNED_TO_IDX = Internal.createIndex(DSL.name("transfer_tasks_parent_assigned_to_idx"), TransferTasksParent.TRANSFER_TASKS_PARENT, new OrderField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.ASSIGNED_TO }, false);
+    public static final Index TRANSFER_TASKS_PARENT_CREATED_IDX = Internal.createIndex(DSL.name("transfer_tasks_parent_created_idx"), TransferTasksParent.TRANSFER_TASKS_PARENT, new OrderField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.CREATED }, false);
+    public static final Index TRANSFER_TASKS_PARENT_NEXT_RETRY_IDX = Internal.createIndex(DSL.name("transfer_tasks_parent_next_retry_idx"), TransferTasksParent.TRANSFER_TASKS_PARENT, new OrderField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.NEXT_RETRY }, false);
+    public static final Index TRANSFER_TASKS_PARENT_STATUS_IDX = Internal.createIndex(DSL.name("transfer_tasks_parent_status_idx"), TransferTasksParent.TRANSFER_TASKS_PARENT, new OrderField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.STATUS }, false);
+    public static final Index TRANSFER_TASKS_PARENT_TASK_ID_IDX = Internal.createIndex(DSL.name("transfer_tasks_parent_task_id_idx"), TransferTasksParent.TRANSFER_TASKS_PARENT, new OrderField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.TASK_ID }, false);
+    public static final Index TRANSFER_TASKS_PARENT_TENANT_ID_IDX = Internal.createIndex(DSL.name("transfer_tasks_parent_tenant_id_idx"), TransferTasksParent.TRANSFER_TASKS_PARENT, new OrderField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.TENANT_ID }, false);
+    public static final Index TRANSFER_TASKS_PARENT_TENANT_ID_USERNAME_UUID_TASK_ID_IDX = Internal.createIndex(DSL.name("transfer_tasks_parent_tenant_id_username_uuid_task_id_idx"), TransferTasksParent.TRANSFER_TASKS_PARENT, new OrderField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.TENANT_ID, TransferTasksParent.TRANSFER_TASKS_PARENT.USERNAME, TransferTasksParent.TRANSFER_TASKS_PARENT.UUID, TransferTasksParent.TRANSFER_TASKS_PARENT.TASK_ID }, false);
+    public static final Index TRANSFER_TASKS_PARENT_USERNAME_IDX = Internal.createIndex(DSL.name("transfer_tasks_parent_username_idx"), TransferTasksParent.TRANSFER_TASKS_PARENT, new OrderField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.USERNAME }, false);
+    public static final Index TRANSFER_TASKS_PARENT_UUID_IDX = Internal.createIndex(DSL.name("transfer_tasks_parent_uuid_idx"), TransferTasksParent.TRANSFER_TASKS_PARENT, new OrderField[] { TransferTasksParent.TRANSFER_TASKS_PARENT.UUID }, true);
+    public static final Index TRANSFER_TASKS_UUID_IDX = Internal.createIndex(DSL.name("transfer_tasks_uuid_idx"), TransferTasks.TRANSFER_TASKS, new OrderField[] { TransferTasks.TRANSFER_TASKS.UUID }, false);
 }

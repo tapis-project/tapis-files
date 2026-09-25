@@ -4,7 +4,13 @@
 package edu.utexas.tacc.tapis.files.gen.jooq;
 
 
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferLog;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferPaths;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransfers;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.FilesPostits;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasks;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksChild;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksParent;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferWorker;
 
 
@@ -15,9 +21,39 @@ import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferWorker;
 public class Tables {
 
     /**
+     * The table <code>public.archive_transfer_log</code>.
+     */
+    public static final ArchiveTransferLog ARCHIVE_TRANSFER_LOG = ArchiveTransferLog.ARCHIVE_TRANSFER_LOG;
+
+    /**
+     * The table <code>public.archive_transfer_paths</code>.
+     */
+    public static final ArchiveTransferPaths ARCHIVE_TRANSFER_PATHS = ArchiveTransferPaths.ARCHIVE_TRANSFER_PATHS;
+
+    /**
+     * The table <code>public.archive_transfers</code>.
+     */
+    public static final ArchiveTransfers ARCHIVE_TRANSFERS = ArchiveTransfers.ARCHIVE_TRANSFERS;
+
+    /**
      * The table <code>public.files_postits</code>.
      */
     public static final FilesPostits FILES_POSTITS = FilesPostits.FILES_POSTITS;
+
+    /**
+     * The table <code>public.transfer_tasks</code>.
+     */
+    public static final TransferTasks TRANSFER_TASKS = TransferTasks.TRANSFER_TASKS;
+
+    /**
+     * The table <code>public.transfer_tasks_child</code>.
+     */
+    public static final TransferTasksChild TRANSFER_TASKS_CHILD = TransferTasksChild.TRANSFER_TASKS_CHILD;
+
+    /**
+     * The table <code>public.transfer_tasks_parent</code>.
+     */
+    public static final TransferTasksParent TRANSFER_TASKS_PARENT = TransferTasksParent.TRANSFER_TASKS_PARENT;
 
     /**
      * The table <code>public.transfer_worker</code>.
