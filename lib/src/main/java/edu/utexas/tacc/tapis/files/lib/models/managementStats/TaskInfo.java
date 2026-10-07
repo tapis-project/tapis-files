@@ -13,14 +13,16 @@ import java.util.UUID;
 class TaskInfo {
 
     private int id;
+    private UUID uuid;
     private String status;
     private String tenant;
     private String user;
     private String errorMessage;
     private Instant created;
 
-    TaskInfo(int id, String status, String tenant, String user, Instant created) {
+    TaskInfo(int id, UUID uuid, String status, String tenant, String user, Instant created) {
         this.id = id;
+        this.uuid = uuid;
         this.status = status;
         this.tenant = tenant;
         this.user = user;
@@ -49,6 +51,14 @@ class TaskInfo {
 
     public Instant getCreated() {
         return created;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 }
 

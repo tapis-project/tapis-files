@@ -300,8 +300,9 @@ public class ManagementStatsDAO {
     // conversion methods
     private ParentTaskInfo parentInfoFromParentTask(TransferTasksParentRecord task) {
         Instant nextRetry = (task.getNextRetry() == null) ? null : task.getNextRetry().toInstant();
-        ParentTaskInfo parentTaskInfo = new ParentTaskInfo(task.getId(), task.getStatus(), task.getTaskId(), task.getTenantId(),
-                task.getUsername(), task.getRetriesRemaining(), nextRetry, task.getCreated().toInstant());
+        ParentTaskInfo parentTaskInfo = new ParentTaskInfo(task.getId(), task.getUuid(), task.getStatus(),
+                task.getTaskId(), task.getTenantId(), task.getUsername(), task.getRetriesRemaining(),
+                nextRetry, task.getCreated().toInstant());
         parentTaskInfo.setErrorMessage(task.getErrorMessage());
         parentTaskInfo.setAssignedTo(task.getAssignedTo());
         return parentTaskInfo;
@@ -309,8 +310,8 @@ public class ManagementStatsDAO {
 
     private ChildTaskInfo childInfoFromChildTask(TransferTasksChildRecord task) {
         Instant nextRetry = (task.getNextRetry() == null) ? null : task.getNextRetry().toInstant();
-        ChildTaskInfo childTaskInfo = new ChildTaskInfo(task.getId(), task.getStatus(), task.getTaskId(),
-                task.getParentTaskId(), task.getTenantId(), task.getUsername(),
+        ChildTaskInfo childTaskInfo = new ChildTaskInfo(task.getId(), task.getUuid(), task.getStatus(),
+                task.getTaskId(), task.getParentTaskId(), task.getTenantId(), task.getUsername(),
                 task.getRetriesRemaining(), task.getNextRetry() == null ? null : task.getNextRetry().toInstant(), task.getCreated().toInstant());
         childTaskInfo.setErrorMessage(task.getErrorMessage());
         childTaskInfo.setAssignedTo(task.getAssignedTo());
@@ -318,8 +319,8 @@ public class ManagementStatsDAO {
     }
 
     private TopTaskInfo topInfoFromTopTask(TransferTasksRecord task) {
-        TopTaskInfo topTaskInfo = new TopTaskInfo(task.getId(), task.getStatus(), task.getTenantId(),
-                task.getUsername(), task.getCreated().toInstant());
+        TopTaskInfo topTaskInfo = new TopTaskInfo(task.getId(), task.getUuid(), task.getStatus(),
+                task.getTenantId(), task.getUsername(), task.getCreated().toInstant());
         topTaskInfo.setErrorMessage(task.getErrorMessage());
         return topTaskInfo;
     }

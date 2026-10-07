@@ -11,16 +11,17 @@ public class ParentTaskInfo extends TaskInfo {
     private Instant nextRetry;
     private UUID assignedTo;
     public static ParentTaskInfo frtomParentTask(TransferTaskParent task) {
-        ParentTaskInfo parentTaskInfo = new ParentTaskInfo(task.getId(), task.getStatus().toString(), task.getTaskId(),
-                task.getTenantId(), task.getUsername(), task.getRetriesRemaining(), task.getNextRetry(), task.getCreated());
+        ParentTaskInfo parentTaskInfo = new ParentTaskInfo(task.getId(), task.getUuid(), task.getStatus().toString(),
+                task.getTaskId(), task.getTenantId(), task.getUsername(), task.getRetriesRemaining(),
+                task.getNextRetry(), task.getCreated());
         parentTaskInfo.setErrorMessage(task.getErrorMessage());
         parentTaskInfo.setAssignedTo(task.getAssignedTo());
         return parentTaskInfo;
     }
 
-    public ParentTaskInfo(int id, String status, int topTaskId, String tenant, String user, int retriesRemaining,
+    public ParentTaskInfo(int id, UUID uuid, String status, int topTaskId, String tenant, String user, int retriesRemaining,
                           Instant nextRetry, Instant created) {
-        super(id, status, tenant, user, created);
+        super(id, uuid, status, tenant, user, created);
         this.topTaskId = topTaskId;
         this.retriesRemaining = retriesRemaining;
         this.nextRetry = nextRetry;

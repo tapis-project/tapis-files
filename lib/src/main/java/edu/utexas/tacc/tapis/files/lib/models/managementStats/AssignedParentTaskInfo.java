@@ -10,16 +10,16 @@ public class AssignedParentTaskInfo extends ParentTaskInfo {
     private int priority;
     public static AssignedParentTaskInfo fromParentTask(int priority, TransferTaskParent task) {
         AssignedParentTaskInfo assignedParentTaskInfo = new AssignedParentTaskInfo(priority, task.getId(),
-                task.getStatus().toString(), task.getTaskId(), task.getTenantId(), task.getUsername(),
-                task.getRetriesRemaining(), task.getNextRetry(), task.getCreated());
+                task.getUuid(), task.getStatus().toString(), task.getTaskId(), task.getTenantId(),
+                task.getUsername(), task.getRetriesRemaining(), task.getNextRetry(), task.getCreated());
         assignedParentTaskInfo.setErrorMessage(task.getErrorMessage());
         assignedParentTaskInfo.setAssignedTo(task.getAssignedTo());
         return assignedParentTaskInfo;
     }
 
-    public AssignedParentTaskInfo(int priority, int id, String status, int topTaskId, String tenant,
+    public AssignedParentTaskInfo(int priority, int id, UUID uuid, String status, int topTaskId, String tenant,
                                   String user, int retriesRemaining, Instant nextRetry, Instant created) {
-        super(id, status, topTaskId, tenant, user, retriesRemaining, nextRetry, created);
+        super(id, uuid, status, topTaskId, tenant, user, retriesRemaining, nextRetry, created);
         this.priority = priority;
     }
 
