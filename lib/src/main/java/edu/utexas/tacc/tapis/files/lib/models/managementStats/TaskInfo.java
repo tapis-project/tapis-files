@@ -8,8 +8,6 @@ import org.apache.commons.lang3.StringUtils;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Optional;
-import java.util.OptionalInt;
 import java.util.UUID;
 
 class TaskInfo {
@@ -18,7 +16,7 @@ class TaskInfo {
     private String status;
     private String tenant;
     private String user;
-    private Optional<String> errorMessage;
+    private String errorMessage;
     private Instant created;
 
     TaskInfo(int id, String status, String tenant, String user, Instant created) {
@@ -27,15 +25,10 @@ class TaskInfo {
         this.tenant = tenant;
         this.user = user;
         this.created = created;
-        this.errorMessage = Optional.empty();
     }
 
-    public void setErrorMessage(String errorMessage) {
-        if (StringUtils.isBlank(errorMessage)) {
-            this.errorMessage = Optional.empty();
-        } else {
-            this.errorMessage = Optional.of(errorMessage);
-        }
+    public int getId() {
+        return id;
     }
 
     public String getTenant() {
@@ -46,7 +39,11 @@ class TaskInfo {
         return user;
     }
 
-    public Optional<String> getErrorMessage() {
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = StringUtils.isBlank(errorMessage) ? null : errorMessage;
+    }
+
+    public String getErrorMessage() {
         return errorMessage;
     }
 

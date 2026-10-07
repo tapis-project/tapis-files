@@ -20,6 +20,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.lib.services.ParentTaskTransferService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.SshLogger;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
 import edu.utexas.tacc.tapis.shared.security.ServiceContext;
@@ -87,6 +88,7 @@ public class TransfersApp
   private static TransferWorkerDAO workerDAO = new TransferWorkerDAO();
   private static UUID myUuid = null;
   private static TransferWorkerConfig myConfig = new TransferWorkerConfig(RuntimeSettings.get().getWorkerAcceptedTransferTypes());
+  private static SshLogger sshLogger;
 
   public static void main(String[] args)
   {
@@ -143,6 +145,7 @@ public class TransfersApp
       tenantManager.getTenants();
       // Set admin tenant also, needed when building a client for calling other services (such as SK) as ourselves.
       siteAdminTenantId = tenantManager.getSiteAdminTenantId(siteId);
+      FilesAppContext.setSiteAdminTenantId(siteAdminTenantId);
 
       log.info("Getting serviceContext.");
       ServiceContext serviceContext = locator.getService(ServiceContext.class);
@@ -156,6 +159,7 @@ public class TransfersApp
               DAOTransactionContext.doInTransaction((context) -> {
                 log.warn("SHUTDOWN: Removing uuid " + myUuid + " from transfer worker table.");
                 TransfersApp.workerDAO.deleteTransferWorkerById(context, TransfersApp.myUuid);
+                sshLogger.shutdown();
                 return null;
               });
             } catch (DAOException ex) {
@@ -169,6 +173,8 @@ public class TransfersApp
         TransferWorker me = workerDAO.insertTransferWorker(context, myConfig);
         return me.getUuid();
       });
+      sshLogger = new SshLogger("Transfer Worker " + myUuid);
+      sshLogger.start();
 
       log.info(LibUtils.getMsg("FILES_TXFR_APP_ID", myUuid));
 

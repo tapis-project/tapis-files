@@ -22,6 +22,7 @@ public class TapisObjectMapper {
      * @return ObjectMapper
      */
     public static ObjectMapper getMapper() {
+        JavaTimeModule javaTimeModule = new JavaTimeModule();
         if (mapper == null) {
             mapper = new ObjectMapper();
             mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);

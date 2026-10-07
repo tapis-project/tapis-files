@@ -23,6 +23,7 @@ import edu.utexas.tacc.tapis.files.lib.clients.SSHDataClient;
 import edu.utexas.tacc.tapis.files.lib.config.RuntimeSettings;
 import edu.utexas.tacc.tapis.files.lib.models.AuditRecord;
 import edu.utexas.tacc.tapis.files.lib.models.NativeLinuxOpResult;
+import edu.utexas.tacc.tapis.files.lib.transfers.FilesAppContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
 import edu.utexas.tacc.tapis.shared.utils.AuditUtils;
 import edu.utexas.tacc.tapis.shared.utils.TapisGsonUtils;
@@ -114,7 +115,7 @@ public class FileOpsService
   // We must be running on a specific site and this will never change
   // These are initialized in method initService()
   private static String siteId;
-  private static String siteAdminTenantId;
+  private static String siteAdminTenantId = FilesAppContext.getSiteAdminTenantId();
   public static String getSiteId() {return siteId;}
   public static String getServiceTenantId() {return siteAdminTenantId;}
   public static String getServiceUserId() {return SERVICE_NAME;}

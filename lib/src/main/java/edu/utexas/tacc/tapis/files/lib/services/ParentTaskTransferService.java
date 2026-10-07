@@ -22,6 +22,7 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferURI;
 import edu.utexas.tacc.tapis.files.lib.transfers.DefaultSchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.TransferWorkerUtils;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.utils.PathUtils;
@@ -93,6 +94,7 @@ public class ParentTaskTransferService {
   private ExecutorService connectionThreadPool;
   private ScheduledExecutorService channelMonitorService = Executors.newSingleThreadScheduledExecutor();
   private static final int MAX_TRANSFER_COUNT = RuntimeSettings.get().getMaxTransferCount();
+  private static final long POLL_BACKOFF_MILLIS = 200;
 
   // this parameter is slightly confusing.  For each combination of tenant/user we will get a maximum of
   // this many items.  For example if there are 3 users (2 in one tenant and 1 in another), and the each have
@@ -156,7 +158,7 @@ public class ParentTaskTransferService {
           while (!shouldExit) {
             if(!canCreateNewFutures(futures, maxFutures)) {
               log.trace("Max future capacity reached - wait for some to complete");
-              Thread.yield();
+              TransferWorkerUtils.sleepBriefly(POLL_BACKOFF_MILLIS);
               continue;
             }
             try {
@@ -204,7 +206,7 @@ public class ParentTaskTransferService {
 
             checkForCancelledTasks(myUuid, futures);
 
-            Thread.yield();
+            TransferWorkerUtils.sleepBriefly(POLL_BACKOFF_MILLIS);
           }
         } catch (Throwable th) {
           // if this method throws, it will not get rescheduled.  We would have a zombie worker.  I think the

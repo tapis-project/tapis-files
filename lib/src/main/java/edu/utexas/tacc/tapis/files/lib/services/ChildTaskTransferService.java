@@ -46,6 +46,7 @@ import edu.utexas.tacc.tapis.files.lib.transfers.DefaultSchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.TransfersApp;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.TransferWorkerUtils;
 import edu.utexas.tacc.tapis.globusproxy.client.gen.model.GlobusTransferTask;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.exceptions.TapisException;
@@ -106,6 +107,7 @@ public class ChildTaskTransferService {
     // one of those users only had 1 task, we would get 2 for the first 2 users, and one for that user.  Hopefully
     // this makes sense - if not please update the comment :)
     private static final int MAX_WORK_ITEM_DEPTH = 100;
+    private static final long POLL_BACKOFF_MILLIS = 200;
     private static String CHILD_QUEUE = "tapis.files.transfers.child";
     private final TransfersService transfersService;
     private final FileTransfersDAO dao;
@@ -182,7 +184,7 @@ public class ChildTaskTransferService {
 
                     while (!shouldExit) {
                         if(!canCreateNewFutures(futures, maxFutures)) {
-                            Thread.yield();
+                            TransferWorkerUtils.sleepBriefly(POLL_BACKOFF_MILLIS);
                             continue;
                         }
                         try {
@@ -230,13 +232,14 @@ public class ChildTaskTransferService {
                         }
 
                         checkForCancelledTasks(myUuid, futures);
+
+                        TransferWorkerUtils.sleepBriefly(POLL_BACKOFF_MILLIS);
                     }
                 } catch (Throwable th) {
                     // if this method throws, it will not get rescheduled.  We would have a zombie worker.  I think the
                     // best thing to do here is exit - we have caught some completely unexpected exception
                     System.exit(0);
-                }
-                Thread.yield();
+                }                
             }
         }, 5, 5, TimeUnit.SECONDS);
     }

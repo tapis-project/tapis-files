@@ -19,8 +19,10 @@ import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
 import edu.utexas.tacc.tapis.files.lib.services.ManagementStatsService;
+import edu.utexas.tacc.tapis.files.lib.transfers.FilesAppContext;
 import edu.utexas.tacc.tapis.files.lib.services.PostItsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
+import edu.utexas.tacc.tapis.files.lib.utils.SshLogger;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
@@ -65,7 +67,6 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /*
@@ -100,8 +101,7 @@ public class FilesApplication extends ResourceConfig
   public static List<String> getTrustedServices() {return List.of(TapisConstants.SERVICE_NAME_JOBS);}
   private static String siteAdminTenantId;
   public static String getSiteAdminTenantId() {return siteAdminTenantId;}
-
-  private static ScheduledExecutorService loggerExecutorService;
+  private final SshLogger sshLogger = new SshLogger("Files API");
 
   public FilesApplication()
   {
@@ -180,6 +180,7 @@ public class FilesApplication extends ResourceConfig
       tenantManager.getTenants();
       // Set admin tenant also, needed when building a client for calling other services (such as SK) as ourselves.
       siteAdminTenantId = tenantManager.getSiteAdminTenantId(siteId);
+      FilesAppContext.setSiteAdminTenantId(siteAdminTenantId);
 
       // Initialize security filter used when processing a request.
       JWTValidateRequestFilter.setSiteId(siteId);
@@ -222,7 +223,7 @@ public class FilesApplication extends ResourceConfig
               .setTraceDuringCleanupFrequency(RuntimeSettings.get().getSshPoolTraceOnCleanupInterval())
               .setMaxSessionLifetime(Duration.ofMillis(RuntimeSettings.get().getSshPoolApiMaxSessionLifetimeMillis()));
       SshSessionPool.init(poolPolicy);
-
+      sshLogger.start();
     }
     catch (Exception e)
     {
@@ -285,20 +286,23 @@ public class FilesApplication extends ResourceConfig
     server.start();
     PostItsService postItsService = locator.getService(PostItsService.class);
 
-    Thread filesShutdownThread = new FilesShutdownThread(postItsService);
+    Thread filesShutdownThread = new FilesShutdownThread(postItsService, config.sshLogger);
     Runtime.getRuntime().addShutdownHook(filesShutdownThread);
     postItsService.startPostItsReaper(RuntimeSettings.get().getPostItsReaperIntervalMinutes());
   }
 
   private static class FilesShutdownThread extends Thread {
     private final PostItsService postItsService;
-
-    public FilesShutdownThread(PostItsService postItsService) {
+    private final SshLogger sshLogger;
+    public FilesShutdownThread(PostItsService postItsService, SshLogger sshLogger) {
       this.postItsService = postItsService;
+      this.sshLogger = sshLogger;
     }
+
     @Override
     public void run() {
       postItsService.shutdown();
+      sshLogger.shutdown();
     }
   }
 

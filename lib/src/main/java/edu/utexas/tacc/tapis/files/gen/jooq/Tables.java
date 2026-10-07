@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferLog;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransferPaths;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransfers;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.FilesPostits;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.SshSessionLog;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasks;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksChild;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksParent;
@@ -39,6 +40,11 @@ public class Tables {
      * The table <code>public.files_postits</code>.
      */
     public static final FilesPostits FILES_POSTITS = FilesPostits.FILES_POSTITS;
+
+    /**
+     * The table <code>public.ssh_session_log</code>.
+     */
+    public static final SshSessionLog SSH_SESSION_LOG = SshSessionLog.SSH_SESSION_LOG;
 
     /**
      * The table <code>public.transfer_tasks</code>.

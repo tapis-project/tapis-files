@@ -8,6 +8,7 @@ import edu.utexas.tacc.tapis.files.lib.exceptions.ServiceException;
 import edu.utexas.tacc.tapis.files.lib.models.FileInfo.Permission;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import edu.utexas.tacc.tapis.security.client.SKClient;
+import edu.utexas.tacc.tapis.security.client.gen.model.RoleTypeEnum;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.i18n.MsgUtils;
 import edu.utexas.tacc.tapis.shared.security.ServiceClients;
@@ -19,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.List;
 
 /*
  * Service level methods for Tapis File permissions.
@@ -124,6 +126,23 @@ public class FilePermsService
       log.error(msg, ex);
       throw new ServiceException(msg, ex);
     }
+  }
+
+  public boolean isSiteAdmin(String tenantId, String userName) throws ServiceException {
+    try {
+      List<String> siteAdminRoleNames = getSKClient().getRoleNames(tenantId, RoleTypeEnum.SITE_ADMIN);
+      for(String roleName : siteAdminRoleNames) {
+        if(getSKClient().hasRole(tenantId, userName, roleName, RoleTypeEnum.SITE_ADMIN)) {
+          return true;
+        }
+      }
+    } catch (TapisClientException ex) {
+      String msg = LibUtils.getMsg("FILES_SITE_ADMIN_CK_ERR", tenantId, userName, "isSiteAdmin", ex.getMessage());
+      log.error(msg, ex);
+      throw new ServiceException(msg, ex);
+    }
+
+    return false;
   }
 
   public void removePathPermissionFromAllRoles(String tenantId, String username,  String systemId, String path)
