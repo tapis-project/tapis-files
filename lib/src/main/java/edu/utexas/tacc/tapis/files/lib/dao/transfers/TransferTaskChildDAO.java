@@ -297,6 +297,11 @@ public class TransferTaskChildDAO {
         }).toList();
     }
 
+    public int countChildTasks(DAOTransactionContext context, ChildTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return filesDAOHelper.fetchCount(context, query);
+    }
+
     public List<ChildTaskInfo> getChildTaskInfos(DAOTransactionContext context, ChildTaskQuery query) throws DAOException {
         FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
         return getChildInfosFromChildTaskList(filesDAOHelper.fetch(context, query));

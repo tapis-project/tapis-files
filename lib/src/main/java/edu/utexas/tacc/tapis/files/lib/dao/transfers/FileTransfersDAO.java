@@ -468,6 +468,12 @@ public class FileTransfersDAO {
         }).toList();
     }
 
+    public int countTopTasks(DAOTransactionContext context, TopTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return filesDAOHelper.fetchCount(context, query);
+    }
+
+
     public TopTaskInfo getTopTaskInfo(DAOTransactionContext context, TopTaskQuery query) throws DAOException {
         FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
         return getTopInfoFromTopTask(filesDAOHelper.fetchOne(context, query));

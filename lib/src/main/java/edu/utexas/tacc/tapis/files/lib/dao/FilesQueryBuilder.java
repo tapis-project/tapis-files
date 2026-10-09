@@ -1,13 +1,12 @@
 package edu.utexas.tacc.tapis.files.lib.dao;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
-import org.jooq.Comparator;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.SortField;
+import org.jooq.Table;
 import org.jooq.TableField;
-import org.jooq.TableLike;
 import org.jooq.impl.DSL;
 
 import java.util.ArrayList;
@@ -67,13 +66,13 @@ public abstract class FilesQueryBuilder<R extends Record> {
         }
     }
 
-    private final TableLike<R> table;
+    private final Table<R> table;
     private List<SortField<?>> sortFields = new ArrayList<>();
     List<Condition> conditions = new ArrayList<>();
     Integer offset;
     Integer limit;
 
-    FilesQueryBuilder(TableLike<R> table) {
+    FilesQueryBuilder(Table<R> table) {
         this.table = table;
     }
 
@@ -86,6 +85,14 @@ public abstract class FilesQueryBuilder<R extends Record> {
                 });
     }
 
+    public <T> boolean addNullCondition(ComparableField<R, T> field) {
+        return conditions.add(field.getJooqField().isNull());
+    }
+
+    public <T> boolean addNotNullCondition(ComparableField<R, T> field) {
+        return conditions.add(field.getJooqField().isNotNull());
+    }
+
     public <T> boolean addCondition(ComparableField<R, T> field, Comparator comparator, T value) {
         return conditions.add(field.getJooqField().compare(getJooqComparator(comparator), value));
     }
@@ -94,6 +101,7 @@ public abstract class FilesQueryBuilder<R extends Record> {
         return sortFields.add(field.getJooqField().sort(getJooqSortOrder(sortOrder)));
     }
 
+    // TODO: These are all AND's ... do we need or?  is there a not? etc.
     protected Condition buildCondition() {
         Condition returnCondition = DSL.noCondition();
 
@@ -108,7 +116,7 @@ public abstract class FilesQueryBuilder<R extends Record> {
         return sortFields;
     }
 
-    protected TableLike<R> getTable() {
+    protected Table<R> getTable() {
         return table;
     }
 

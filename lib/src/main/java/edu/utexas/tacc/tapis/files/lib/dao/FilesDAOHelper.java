@@ -36,4 +36,9 @@ public class FilesDAOHelper {
         }
         return select.fetchOne();
     }
+
+    public <R extends Record> int fetchCount(DAOTransactionContext context, FilesQueryBuilder<R> query) throws DAOException {
+        DSLContext db = DSL.using(context.getConnection());
+        return db.fetchCount(query.getTable(), query.buildCondition());
+    }
 }

@@ -235,6 +235,12 @@ public class TransferTaskParentDAO {
         }).toList();
     }
 
+    public int countParentTasks(DAOTransactionContext context, ParentTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return filesDAOHelper.fetchCount(context, query);
+    }
+
+
     public List<ParentTaskInfo> getParentTaskInfos(DAOTransactionContext context, ParentTaskQuery query) throws DAOException {
         FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
         return getParentInfosFromParentTaskList(filesDAOHelper.fetch(context, query));
