@@ -1,10 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.TransferTasksChildRecord;
+import edu.utexas.tacc.tapis.files.lib.dao.ChildTaskQuery;
+import edu.utexas.tacc.tapis.files.lib.dao.FilesDAOHelper;
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskChild;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.lib.models.managementStats.ChildTaskInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
@@ -21,11 +25,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -281,4 +287,68 @@ public class TransferTaskChildDAO {
         }
 
     }
+
+    // New Jooq functions go here - perhaps, replace all of the above with jooq as possible..
+
+    public List<TransferTaskChild> getChildTasks(DAOTransactionContext context, ChildTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return filesDAOHelper.fetch(context, query).stream().map(record -> {
+            return getChildTaskFromRecord(record);
+        }).toList();
+    }
+
+    public List<ChildTaskInfo> getChildTaskInfos(DAOTransactionContext context, ChildTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return getChildInfosFromChildTaskList(filesDAOHelper.fetch(context, query));
+    }
+
+    private List<ChildTaskInfo> getChildInfosFromChildTaskList(List<TransferTasksChildRecord> tasks) {
+        return tasks.stream().map(child -> {
+            return getChildInfoFromChildTask(child);
+        }).toList();
+    }
+
+    private ChildTaskInfo getChildInfoFromChildTask(TransferTasksChildRecord task) {
+        Instant nextRetry = (task.getNextRetry() == null) ? null : task.getNextRetry().toInstant();
+        ChildTaskInfo childTaskInfo = new ChildTaskInfo(task.getId(), task.getUuid(), task.getStatus(),
+                task.getTaskId(), task.getParentTaskId(), task.getTenantId(), task.getUsername(),
+                task.getRetriesRemaining(), task.getNextRetry() == null ? null : task.getNextRetry().toInstant(), task.getCreated().toInstant());
+        childTaskInfo.setErrorMessage(task.getErrorMessage());
+        childTaskInfo.setAssignedTo(task.getAssignedTo());
+        return childTaskInfo;
+    }
+
+    private List<TransferTaskChild> getChildTasksFromRecords(List<TransferTasksChildRecord> tasks) {
+        return tasks.stream().map(child -> {
+            return getChildTaskFromRecord(child);
+        }).toList();
+    }
+
+    private TransferTaskChild getChildTaskFromRecord(TransferTasksChildRecord record) {
+        TransferTaskChild task = new TransferTaskChild();
+        task.setId(record.getId());
+        task.setTaskId(record.getTaskId());
+        task.setParentTaskId(record.getParentTaskId());
+        task.setUsername(record.getUsername());
+        task.setTenantId(record.getTenantId());
+        task.setSourceURI(record.getSourceUri());
+        task.setDestinationURI(record.getDestinationUri());
+        task.setCreated(record.getCreated().toInstant());
+        task.setRetriesRemaining(record.getRetriesRemaining());
+        task.setUuid(record.getUuid());
+        task.setStatus(record.getStatus());
+        task.setDir(record.getIsDir());
+        task.setExecutable(Boolean.parseBoolean(record.getIsExecutable()));
+        task.setTotalBytes(record.getTotalBytes());
+        task.setBytesTransferred(record.getBytesTransferred());
+        task.setErrorMessage(record.getErrorMessage());
+        task.setExternalTaskId(record.getExternalTaskId());
+        task.setAssignedTo(record.getAssignedTo());
+        Optional.ofNullable(record.getNextRetry().toInstant());
+        Optional.ofNullable(record.getStartTime().toInstant());
+        Optional.ofNullable(record.getEndTime().toInstant());
+        return task;
+    }
+
+
 }

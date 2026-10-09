@@ -1,5 +1,10 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.TransferTasksChildRecord;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.TransferTasksRecord;
+import edu.utexas.tacc.tapis.files.lib.dao.ChildTaskQuery;
+import edu.utexas.tacc.tapis.files.lib.dao.FilesDAOHelper;
+import edu.utexas.tacc.tapis.files.lib.dao.TopTaskQuery;
 import edu.utexas.tacc.tapis.files.lib.database.HikariConnectionPool;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTask;
@@ -8,6 +13,8 @@ import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskRequestElement;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskSummary;
+import edu.utexas.tacc.tapis.files.lib.models.managementStats.ChildTaskInfo;
+import edu.utexas.tacc.tapis.files.lib.models.managementStats.TopTaskInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.dbutils.*;
 import org.apache.commons.dbutils.handlers.BeanHandler;
@@ -16,7 +23,9 @@ import org.apache.commons.dbutils.handlers.ScalarHandler;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -448,4 +457,59 @@ public class FileTransfersDAO {
       throw new DAOException(LibUtils.getMsg("FILES_TXFR_DAO_ERR5", tenantId, userName, ex.getMessage()), ex);
     }
   }
+
+
+    // New Jooq functions go here - perhaps, replace all of the above with jooq as possible..
+
+    public List<TransferTask> getTopTasks(DAOTransactionContext context, TopTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return filesDAOHelper.fetch(context, query).stream().map(record -> {
+            return getTopTaskFromRecord(record);
+        }).toList();
+    }
+
+    public TopTaskInfo getTopTaskInfo(DAOTransactionContext context, TopTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return getTopInfoFromTopTask(filesDAOHelper.fetchOne(context, query));
+    }
+
+    public List<TopTaskInfo> getTopTaskInfos(DAOTransactionContext context, TopTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return getTopInfosFromTopTaskList(filesDAOHelper.fetch(context, query));
+    }
+
+    private List<TopTaskInfo> getTopInfosFromTopTaskList(List<TransferTasksRecord> tasks) {
+        return tasks.stream().map(top -> {
+            return getTopInfoFromTopTask(top);
+        }).toList();
+    }
+
+    private TopTaskInfo getTopInfoFromTopTask(TransferTasksRecord task) {
+        TopTaskInfo topTaskInfo = new TopTaskInfo(task.getId(), task.getUuid(), task.getStatus(),
+                task.getTenantId(), task.getUsername(), task.getCreated().toInstant());
+        return topTaskInfo;
+    }
+
+    private List<TransferTask> getTopTasksFromRecords(List<TransferTasksRecord> tasks) {
+        return tasks.stream().map(top -> {
+            return getTopTaskFromRecord(top);
+        }).toList();
+    }
+
+    private TransferTask getTopTaskFromRecord(TransferTasksRecord record) {
+        TransferTask task = new TransferTask();
+        task.setId(record.getId());
+        task.setTenantId(record.getTenantId());
+        task.setUsername(record.getUsername());
+        task.setCreated(record.getCreated().toInstant());
+        task.setUuid(record.getUuid());
+        task.setStatus(record.getStatus());
+        task.setTag(record.getTag());
+        task.setParentTrackingId(record.getParentTrackingId());
+        task.setErrorMessage(record.getErrorMessage());
+        Optional.ofNullable(record.getStartTime().toInstant());
+        Optional.ofNullable(record.getEndTime().toInstant());
+        return task;
+    }
+
 }

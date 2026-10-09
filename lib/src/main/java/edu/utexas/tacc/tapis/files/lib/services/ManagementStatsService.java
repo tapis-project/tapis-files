@@ -1,7 +1,14 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
+import edu.utexas.tacc.tapis.files.lib.dao.ChildTaskQuery;
+import edu.utexas.tacc.tapis.files.lib.dao.FilesQueryBuilder;
+import edu.utexas.tacc.tapis.files.lib.dao.ParentTaskQuery;
+import edu.utexas.tacc.tapis.files.lib.dao.TopTaskQuery;
 import edu.utexas.tacc.tapis.files.lib.dao.stats.ManagementStatsDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
+import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskParentDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferWorkerDAO;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.exceptions.SchedulingPolicyException;
@@ -23,8 +30,10 @@ import edu.utexas.tacc.tapis.files.lib.models.managementStats.TopTaskInfo;
 import edu.utexas.tacc.tapis.files.lib.models.managementStats.TransferWorkerInfo;
 import edu.utexas.tacc.tapis.files.lib.transfers.DefaultSchedulingPolicy;
 import edu.utexas.tacc.tapis.files.lib.transfers.SchedulingPolicy;
+import org.apache.commons.collections.CollectionUtils;
 import org.jvnet.hk2.annotations.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -132,12 +141,28 @@ public class ManagementStatsService {
     public TaskDetails getTaskDetailsByTaskId(int taskId, int parentLimit, int childLimit) throws ServiceException {
         TaskDetails taskDetails = new TaskDetails();
         try {
-            ManagementStatsDAO msDAO = new ManagementStatsDAO();
+            FileTransfersDAO topTaskDAO = new FileTransfersDAO();
+            TransferTaskChildDAO childTaskDAO = new TransferTaskChildDAO();
+            TransferTaskParentDAO parentTaskDAO = new TransferTaskParentDAO();
+
             return DAOTransactionContext.doInTransaction(tx -> {
-                TopTaskInfo topTaskInfo = msDAO.getTopTaskByTaskId(tx, taskId);
+                TopTaskQuery topTaskQuery = new TopTaskQuery();
+                topTaskQuery.addCondition(TopTaskQuery.COMPARE_FIELD_ID, FilesQueryBuilder.Comparator.EQUALS, taskId);
+                topTaskQuery.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                TopTaskInfo topTaskInfo = topTaskDAO.getTopTaskInfo(tx, topTaskQuery);
                 taskDetails.setTopTaskInfo(topTaskInfo);
-                taskDetails.getParentTaskInfos().addAll(msDAO.getParentTasksByTopTaskId(tx, topTaskInfo.getId(), parentLimit));
-                taskDetails.getChildTaskInfos().addAll(msDAO.getChildTasksByTopTaskId(tx, topTaskInfo.getId(), childLimit));
+
+                ParentTaskQuery parentTaskQuery = new ParentTaskQuery();
+                parentTaskQuery.addCondition(ParentTaskQuery.COMPARE_FIELD_TOP_TASK_ID, FilesQueryBuilder.Comparator.EQUALS, topTaskInfo.getId());
+                parentTaskQuery.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                parentTaskQuery.setLimit(parentLimit);
+                taskDetails.getParentTaskInfos().addAll(parentTaskDAO.getParentTaskInfos(tx, parentTaskQuery));
+
+                ChildTaskQuery childTaskQuery = new ChildTaskQuery();
+                childTaskQuery.addCondition(ChildTaskQuery.COMPARE_FIELD_TOP_TASK_ID, FilesQueryBuilder.Comparator.EQUALS, topTaskInfo.getId());
+                childTaskQuery.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                childTaskQuery.setLimit(childLimit);
+                taskDetails.getChildTaskInfos().addAll(childTaskDAO.getChildTaskInfos(tx, childTaskQuery));
                 return taskDetails;
             });
         } catch (Exception ex) {
@@ -153,12 +178,26 @@ public class ManagementStatsService {
             throw new RuntimeException("Error: no uuid was provided");
         } else {
             try {
-                ManagementStatsDAO msDAO = new ManagementStatsDAO();
+                FileTransfersDAO topTaskDAO = new FileTransfersDAO();
+                TransferTaskChildDAO childTaskDAO = new TransferTaskChildDAO();
+                TransferTaskParentDAO parentTaskDAO = new TransferTaskParentDAO();
                 return DAOTransactionContext.doInTransaction(tx -> {
-                    TopTaskInfo topTaskInfo = msDAO.getTopTaskByUuid(tx, uuid);
+                    TopTaskQuery topTaskQuery = new TopTaskQuery();
+                    topTaskQuery.addCondition(TopTaskQuery.COMPARE_FIELD_UUID, FilesQueryBuilder.Comparator.EQUALS, uuid);
+                    topTaskQuery.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                    TopTaskInfo topTaskInfo = topTaskDAO.getTopTaskInfo(tx, topTaskQuery);
                     taskDetails.setTopTaskInfo(topTaskInfo);
-                    taskDetails.getParentTaskInfos().addAll(msDAO.getParentTasksByTopTaskId(tx, topTaskInfo.getId(), parentLimit));
-                    taskDetails.getChildTaskInfos().addAll(msDAO.getChildTasksByTopTaskId(tx, topTaskInfo.getId(), childLimit));
+
+                    ParentTaskQuery parentTaskQuery = new ParentTaskQuery();
+                    parentTaskQuery.addCondition(ParentTaskQuery.COMPARE_FIELD_TOP_TASK_ID, FilesQueryBuilder.Comparator.EQUALS, topTaskInfo.getId());
+                    parentTaskQuery.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                    parentTaskQuery.setLimit(parentLimit);
+
+                    ChildTaskQuery childTaskQuery = new ChildTaskQuery();
+                    childTaskQuery.addCondition(ChildTaskQuery.COMPARE_FIELD_TOP_TASK_ID, FilesQueryBuilder.Comparator.EQUALS, topTaskInfo.getId());
+                    childTaskQuery.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                    childTaskQuery.setLimit(childLimit);
+                    taskDetails.getChildTaskInfos().addAll(childTaskDAO.getChildTaskInfos(tx, childTaskQuery));
                     return taskDetails;
                 });
             } catch (Exception ex) {
@@ -213,22 +252,34 @@ public class ManagementStatsService {
     }
 
     private List<ParentTaskInfo> getQueuedParentTasks(List<Integer> queuedParentTaskIds) throws DAOException {
-        ManagementStatsDAO msDao = new ManagementStatsDAO();
+        TransferTaskParentDAO parentTaskDAO = new TransferTaskParentDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
-            return msDao.getParentTasks(tx, queuedParentTaskIds);
+            ParentTaskQuery query = new ParentTaskQuery();
+            if(CollectionUtils.isEmpty(queuedParentTaskIds)) {
+                return Collections.emptyList();
+            }
+            query.addCollectionConditon(ParentTaskQuery.COMPARE_FIELD_ID, FilesQueryBuilder.CollectionComparator.IN, queuedParentTaskIds);
+            query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            return parentTaskDAO.getParentTaskInfos(tx, query);
         });
     }
 
     private List<ParentTaskInfo> getParentTasksWaitingForRetry() throws DAOException {
-        ManagementStatsDAO msDao = new ManagementStatsDAO();
+        TransferTaskParentDAO parentTaskDAO = new TransferTaskParentDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
-            return msDao.getParentTasksInStatus(tx, List.of(TransferTaskStatus.AWAITING_RETRY));
+            ParentTaskQuery query = new ParentTaskQuery();
+            query.addCondition(ParentTaskQuery.COMPARE_FIELD_STATUS, FilesQueryBuilder.Comparator.EQUALS, TransferTaskStatus.AWAITING_RETRY.name());
+            query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            return parentTaskDAO.getParentTaskInfos(tx, query);
         });
     }
     private List<ParentTaskInfo> getParentInProgressTasks() throws DAOException {
-        ManagementStatsDAO msDao = new ManagementStatsDAO();
+        TransferTaskParentDAO parentTaskDAO = new TransferTaskParentDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
-            return msDao.getParentTasksInStatus(tx, List.of(TransferTaskStatus.IN_PROGRESS));
+            ParentTaskQuery query = new ParentTaskQuery();
+            query.addCondition(ParentTaskQuery.COMPARE_FIELD_STATUS, FilesQueryBuilder.Comparator.EQUALS, TransferTaskStatus.IN_PROGRESS.name());
+            query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            return parentTaskDAO.getParentTaskInfos(tx, query);
         });
     }
 
@@ -252,43 +303,73 @@ public class ManagementStatsService {
     }
 
     private List<ChildTaskInfo> getQueuedChildTasks(List<Integer> queuedChildTaskIds) throws DAOException {
-        ManagementStatsDAO msDao = new ManagementStatsDAO();
+        TransferTaskChildDAO childTaskDAO = new TransferTaskChildDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
-            return msDao.getChildTasks(tx, queuedChildTaskIds);
+            ChildTaskQuery query = new ChildTaskQuery();
+
+            // if there are no queued child task ids, no need to do a query.
+            if(CollectionUtils.isEmpty(queuedChildTaskIds)) {
+                return Collections.EMPTY_LIST;
+            }
+            query.addCollectionConditon(ChildTaskQuery.COMPARE_FIELD_ID, FilesQueryBuilder.CollectionComparator.IN,  queuedChildTaskIds);
+            query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            return childTaskDAO.getChildTaskInfos(tx, query);
         });
     }
 
     private List<ChildTaskInfo> getChildTasksWaitingForRetry() throws DAOException {
-        ManagementStatsDAO msDao = new ManagementStatsDAO();
+        TransferTaskChildDAO childTaskDAO = new TransferTaskChildDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
-            return msDao.getChildTasksInStatus(tx, List.of(TransferTaskStatus.AWAITING_RETRY));
+            ChildTaskQuery query = new ChildTaskQuery();
+            query.addCondition(ChildTaskQuery.COMPARE_FIELD_STATUS, FilesQueryBuilder.Comparator.EQUALS,
+                    TransferTaskStatus.AWAITING_RETRY.name());
+            query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            return childTaskDAO.getChildTaskInfos(tx, query);
         });
     }
     private List<ChildTaskInfo> getChildInProgressTasks() throws DAOException {
-        ManagementStatsDAO msDao = new ManagementStatsDAO();
+        TransferTaskChildDAO childTaskDAO = new TransferTaskChildDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
-            return msDao.getChildTasksInStatus(tx, List.of(TransferTaskStatus.IN_PROGRESS));
+            ChildTaskQuery query = new ChildTaskQuery();
+            query.addCondition(ChildTaskQuery.COMPARE_FIELD_STATUS, FilesQueryBuilder.Comparator.EQUALS,
+                    TransferTaskStatus.AWAITING_RETRY.name());
+            query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            return childTaskDAO.getChildTaskInfos(tx, query);
         });
     }
 
     /* ******************* Top Task Stuff ****************** */
     private List<TopTaskInfo> getTopInProgressTasks() throws DAOException {
-        ManagementStatsDAO msDao = new ManagementStatsDAO();
+        FileTransfersDAO topTaskDAO = new FileTransfersDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
-            return msDao.getTopTasksInStatus(tx, List.of(TransferTaskStatus.IN_PROGRESS), Optional.empty());
+            TopTaskQuery query = new TopTaskQuery();
+            query.addCondition(TopTaskQuery.COMPARE_FIELD_STATUS, FilesQueryBuilder.Comparator.EQUALS,
+                    TransferTaskStatus.IN_PROGRESS.name());
+            query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            return topTaskDAO.getTopTaskInfos(tx, query);
         });
     }
 
     private List<TopTaskInfo> getTopTaskRecentSuccesses(int limit) throws DAOException {
-        ManagementStatsDAO msDao = new ManagementStatsDAO();
+        FileTransfersDAO topTaskDAO = new FileTransfersDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
-            return msDao.getTopTasksInStatus(tx, List.of(TransferTaskStatus.COMPLETED),  Optional.of(limit));
+            TopTaskQuery query = new TopTaskQuery();
+            query.addCondition(TopTaskQuery.COMPARE_FIELD_STATUS, FilesQueryBuilder.Comparator.EQUALS,
+                    TransferTaskStatus.COMPLETED.name());
+            query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.setLimit(limit);
+            return topTaskDAO.getTopTaskInfos(tx, query);
         });
     }
     private List<TopTaskInfo> getTopTaskRecentErrors(int limit) throws DAOException {
-        ManagementStatsDAO msDao = new ManagementStatsDAO();
+        FileTransfersDAO topTaskDAO = new FileTransfersDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
-            return msDao.getTopTasksInStatus(tx, List.of(TransferTaskStatus.FAILED), Optional.of(limit));
+            TopTaskQuery query = new TopTaskQuery();
+            query.addCondition(TopTaskQuery.COMPARE_FIELD_STATUS, FilesQueryBuilder.Comparator.EQUALS,
+                    TransferTaskStatus.FAILED.name());
+            query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.setLimit(limit);
+            return topTaskDAO.getTopTaskInfos(tx, query);
         });
     }
 

@@ -1,15 +1,20 @@
 package edu.utexas.tacc.tapis.files.lib.dao.transfers;
 
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.TransferTasksParentRecord;
+import edu.utexas.tacc.tapis.files.lib.dao.FilesDAOHelper;
+import edu.utexas.tacc.tapis.files.lib.dao.ParentTaskQuery;
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import edu.utexas.tacc.tapis.files.lib.models.PrioritizedObject;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskParent;
 import edu.utexas.tacc.tapis.files.lib.models.TransferTaskStatus;
+import edu.utexas.tacc.tapis.files.lib.models.managementStats.ParentTaskInfo;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.ResultSetHandler;
 import org.apache.commons.dbutils.RowProcessor;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,11 +24,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -219,4 +226,70 @@ public class TransferTaskParentDAO {
 
     }
 
+    // New Jooq functions go here - perhaps, replace all of the above with jooq as possible..
+
+    public List<TransferTaskParent> getParentTasks(DAOTransactionContext context, ParentTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return filesDAOHelper.fetch(context, query).stream().map(record -> {
+            return getParentTaskFromRecord(record);
+        }).toList();
+    }
+
+    public List<ParentTaskInfo> getParentTaskInfos(DAOTransactionContext context, ParentTaskQuery query) throws DAOException {
+        FilesDAOHelper filesDAOHelper = new FilesDAOHelper();
+        return getParentInfosFromParentTaskList(filesDAOHelper.fetch(context, query));
+    }
+
+    private List<ParentTaskInfo> getParentInfosFromParentTaskList(List<TransferTasksParentRecord> tasks) {
+        return tasks.stream().map(parent -> {
+            return getParentInfoFromParentTask(parent);
+        }).toList();
+    }
+
+    private ParentTaskInfo getParentInfoFromParentTask(TransferTasksParentRecord task) {
+        Instant nextRetry = (task.getNextRetry() == null) ? null : task.getNextRetry().toInstant();
+        ParentTaskInfo parentTaskInfo = new ParentTaskInfo(task.getId(), task.getUuid(), task.getStatus(),
+                task.getTaskId(), task.getTenantId(), task.getUsername(), task.getRetriesRemaining(),
+                task.getNextRetry() == null ? null : task.getNextRetry().toInstant(), task.getCreated().toInstant());
+        parentTaskInfo.setErrorMessage(task.getErrorMessage());
+        parentTaskInfo.setAssignedTo(task.getAssignedTo());
+        return parentTaskInfo;
+    }
+
+    private List<TransferTaskParent> getParentTasksFromRecords(List<TransferTasksParentRecord> tasks) {
+        return tasks.stream().map(parent -> {
+            return getParentTaskFromRecord(parent);
+        }).toList();
+    }
+
+    private TransferTaskParent getParentTaskFromRecord(TransferTasksParentRecord record) {
+        TransferTaskParent task = new TransferTaskParent();
+        task.setId(record.getId());
+        task.setTaskId(record.getTaskId());
+        task.setUsername(record.getUsername());
+        task.setTenantId(record.getTenantId());
+        task.setSourceURI(record.getSourceUri());
+        task.setDestinationURI(record.getDestinationUri());
+        task.setCreated(record.getCreated().toInstant());
+        task.setUuid(record.getUuid());
+        task.setStatus(record.getStatus());
+        task.setOptional(record.getOptional());
+        task.setSrcSharedCtxGrantor(record.getSrcSharedCtx());
+        task.setDestSharedCtxGrantor(record.getDstSharedCtx());
+        task.setTag(record.getTag());
+        task.setTotalBytes(record.getTotalBytes());
+        task.setBytesTransferred(record.getBytesTransferred());
+        task.setErrorMessage(record.getErrorMessage());
+        task.setFinalMessage(record.getFinalMessage());
+        String transferTypeString = record.getTransferType();
+        if(!StringUtils.isBlank(transferTypeString)) {
+            task.setTransferType(TransferTaskParent.TransferType.valueOf(transferTypeString));
+        }
+        task.setAssignedTo(record.getAssignedTo());
+        task.setRetriesRemaining(record.getRetriesRemaining());
+        Optional.ofNullable(record.getNextRetry().toInstant());
+        Optional.ofNullable(record.getStartTime().toInstant());
+        Optional.ofNullable(record.getEndTime().toInstant());
+        return task;
+    }
 }

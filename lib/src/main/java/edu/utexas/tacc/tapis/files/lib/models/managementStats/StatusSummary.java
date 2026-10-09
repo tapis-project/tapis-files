@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class StatusSummary {
+    int queuedTopTasks;
     int inProgressTopTasks;
 
     int inProgressChildTasks;
@@ -16,7 +17,14 @@ public class StatusSummary {
     int unassignedParentTasks;
     int awaitingRetryParentTasks;
 
-//    Map<String, Integer> assignmentsByWorker = new HashMap();
+
+    public int getQueuedTopTasks() {
+        return queuedTopTasks;
+    }
+
+    public void setQueuedTopTasks(int queuedTopTasks) {
+        this.queuedTopTasks = queuedTopTasks;
+    }
 
     public int getInProgressTopTasks() {
         return inProgressTopTasks;
@@ -25,6 +33,7 @@ public class StatusSummary {
     public void setInProgressTopTasks(int inProgressTopTasks) {
         this.inProgressTopTasks = inProgressTopTasks;
     }
+
 
     public int getInProgressChildTasks() {
         return inProgressChildTasks;
