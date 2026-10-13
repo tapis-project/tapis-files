@@ -8,6 +8,19 @@ https://tapis.readthedocs.io/en/latest/technical/files.html
 You may also reference live-docs based on the openapi specification here:
 https://tapis-project.github.io/live-docs
 
+## 26Q2.1 - 2026-??-??
+
+New feature.
+
+### New features:
+- Allow tenant admin users to make sharing and file operation calls on behalf of other users in a tenant.
+
+### Bug fixes:
+- None
+
+### Breaking Changes
+- None
+
 ---------------------------------------------------------------------------
 ## 26Q2.1 - 2026-08-12
 

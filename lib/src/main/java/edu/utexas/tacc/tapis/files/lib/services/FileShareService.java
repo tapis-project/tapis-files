@@ -319,11 +319,11 @@ public class FileShareService
 //      throw new WebApplicationException(LibUtils.getMsgAuthR("FILES_OPSCR_ERR", rUser, opName, systemId, pathStr,
 //              ex.getMessage()), ex);
 //    }
-    // User must be system owner or have READ permission
+    // User must be system owner, tenant admin or have READ permission
     try
     {
-      // If not the owner check for READ permission
-      if (!isOwner)
+      // If not the owner or tenant admin check for READ permission
+      if (!isOwner && notAdmin(oboTenant, oboUser, systemId, path))
       {
         LibUtils.checkPermitted(permsService, oboTenant, oboUser, systemId, pathStr, FileInfo.Permission.READ);
       }
@@ -410,7 +410,7 @@ public class FileShareService
   /**
    * Share a path with one or more users
    * Sharing means grantees effectively have READ permission on the path.
-   * Only System owner may share file paths.
+   * Only System owner or tenant admin may share file paths.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
    * @param systemId - Tapis system
@@ -470,7 +470,7 @@ public class FileShareService
 
   /**
    * Remove all share access for a path on a system including public.
-   * Must be system owner
+   * Must be system owner or tenant admin
    * Retrieve all shares and use deleteShareById.
    *
    * @param rUser - ResourceRequestUser containing tenant, user and request info
@@ -495,7 +495,7 @@ public class FileShareService
     String pathStr = PathUtils.getSKRelativePath(path).toString();
 
     // User must be system owner
-    if (!isOwner)
+    if (!isOwner && notAdmin(oboTenant, oboUser, systemId, path))
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, opName);
       log.warn(msg);
@@ -591,7 +591,7 @@ public class FileShareService
     String oboTenant = rUser.getOboTenantId();
 
     // User must be system owner
-    if (!isOwner)
+    if (!isOwner && notAdmin(oboTenant, oboUser, systemId, path))
     {
       String msg = LibUtils.getMsg("FILES_NOT_AUTHORIZED", oboTenant, oboUser, systemId, pathStr, opName);
       log.warn(msg);
@@ -802,19 +802,19 @@ public class FileShareService
         svcTenantName = TenantManager.getInstance().getSiteAdminTenantId(siteId);
       }
     }
-    return getSKClient(SERVICE_NAME, svcTenantName);
+    return getSKClient(svcTenantName, SERVICE_NAME);
   }
 
   /**
    * Get Security Kernel client with oboUser and oboTenant set as given.
    * Do not cache.
    * Always use serviceClients.getClient() because it checks for expired service jwt token and refreshes as needed.
-   * @param oboUser - obo user
    * @param oboTenant - obo tenant
+   * @param oboUser - obo user
    * @return SK client
    * @throws TapisClientException - for Tapis related exceptions
    */
-  private SKClient getSKClient(String oboUser, String oboTenant) throws TapisClientException
+  private SKClient getSKClient(String oboTenant, String oboUser) throws TapisClientException
   {
     try { return serviceClients.getClient(oboUser, oboTenant, SKClient.class); }
     catch (Exception e)
@@ -822,6 +822,23 @@ public class FileShareService
       String msg = MsgUtils.getMsg("TAPIS_CLIENT_NOT_FOUND", TapisConstants.SERVICE_NAME_SECURITY, oboTenant, oboUser);
       log.error(msg, e);
       throw new TapisClientException(msg, e);
+    }
+  }
+
+  /*
+   * Check to see if the oboUser has the admin role in the obo tenant
+   */
+  private boolean notAdmin(String oboTenant, String oboUser, String sysId, String path)
+          throws WebApplicationException
+  {
+    try {
+      return getSKClient(oboTenant, oboUser).isAdmin(oboTenant, oboUser);
+    }
+    catch (TapisClientException ex) {
+      String msg = LibUtils.getMsg("FILES_CLIENT_GETSK_ERR", oboTenant, oboUser, "FileShareSvc", sysId,
+                                    path, ex.getMessage());
+      log.error(msg, ex);
+      throw new WebApplicationException(msg, ex);
     }
   }
 }
