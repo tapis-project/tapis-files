@@ -392,5 +392,6 @@ public class TransferTasksParentRecord extends UpdatableRecordImpl<TransferTasks
         setAssignedTo(assignedTo);
         setNextRetry(nextRetry);
         setRetriesRemaining(retriesRemaining);
+        resetTouchedOnNotNull();
     }
 }

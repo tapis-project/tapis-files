@@ -7,29 +7,36 @@ package edu.utexas.tacc.tapis.files.gen.jooq.tables;
 import edu.utexas.tacc.tapis.files.gen.jooq.Indexes;
 import edu.utexas.tacc.tapis.files.gen.jooq.Keys;
 import edu.utexas.tacc.tapis.files.gen.jooq.Public;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasks.TransferTasksPath;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksParent.TransferTasksParentPath;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.TransferTasksChildRecord;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function22;
 import org.jooq.Identity;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
 import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row22;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -58,7 +65,7 @@ public class TransferTasksChild extends TableImpl<TransferTasksChildRecord> {
     /**
      * The column <code>public.transfer_tasks_child.id</code>.
      */
-    public final TableField<TransferTasksChildRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<TransferTasksChildRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).generatedByDefaultAsIdentity(), this, "");
 
     /**
      * The column <code>public.transfer_tasks_child.tenant_id</code>.
@@ -68,7 +75,7 @@ public class TransferTasksChild extends TableImpl<TransferTasksChildRecord> {
     /**
      * The column <code>public.transfer_tasks_child.created</code>.
      */
-    public final TableField<TransferTasksChildRecord, OffsetDateTime> CREATED = createField(DSL.name("created"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field("CURRENT_TIMESTAMP", SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
+    public final TableField<TransferTasksChildRecord, OffsetDateTime> CREATED = createField(DSL.name("created"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("CURRENT_TIMESTAMP"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "");
 
     /**
      * The column <code>public.transfer_tasks_child.username</code>.
@@ -78,7 +85,7 @@ public class TransferTasksChild extends TableImpl<TransferTasksChildRecord> {
     /**
      * The column <code>public.transfer_tasks_child.uuid</code>.
      */
-    public final TableField<TransferTasksChildRecord, java.util.UUID> UUID = createField(DSL.name("uuid"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field("uuid_generate_v4()", SQLDataType.UUID)), this, "");
+    public final TableField<TransferTasksChildRecord, java.util.UUID> UUID = createField(DSL.name("uuid"), SQLDataType.UUID.nullable(false).defaultValue(DSL.field(DSL.raw("uuid_generate_v4()"), SQLDataType.UUID)), this, "");
 
     /**
      * The column <code>public.transfer_tasks_child.source_uri</code>.
@@ -98,22 +105,22 @@ public class TransferTasksChild extends TableImpl<TransferTasksChildRecord> {
     /**
      * The column <code>public.transfer_tasks_child.bytes_transferred</code>.
      */
-    public final TableField<TransferTasksChildRecord, Long> BYTES_TRANSFERRED = createField(DSL.name("bytes_transferred"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field("0", SQLDataType.BIGINT)), this, "");
+    public final TableField<TransferTasksChildRecord, Long> BYTES_TRANSFERRED = createField(DSL.name("bytes_transferred"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
 
     /**
      * The column <code>public.transfer_tasks_child.total_bytes</code>.
      */
-    public final TableField<TransferTasksChildRecord, Long> TOTAL_BYTES = createField(DSL.name("total_bytes"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field("0", SQLDataType.BIGINT)), this, "");
+    public final TableField<TransferTasksChildRecord, Long> TOTAL_BYTES = createField(DSL.name("total_bytes"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
 
     /**
      * The column <code>public.transfer_tasks_child.retries_remaining</code>.
      */
-    public final TableField<TransferTasksChildRecord, Integer> RETRIES_REMAINING = createField(DSL.name("retries_remaining"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field("0", SQLDataType.INTEGER)), this, "");
+    public final TableField<TransferTasksChildRecord, Integer> RETRIES_REMAINING = createField(DSL.name("retries_remaining"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INTEGER)), this, "");
 
     /**
      * The column <code>public.transfer_tasks_child.is_dir</code>.
      */
-    public final TableField<TransferTasksChildRecord, Boolean> IS_DIR = createField(DSL.name("is_dir"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field("false", SQLDataType.BOOLEAN)), this, "");
+    public final TableField<TransferTasksChildRecord, Boolean> IS_DIR = createField(DSL.name("is_dir"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "");
 
     /**
      * The column <code>public.transfer_tasks_child.start_time</code>.
@@ -158,7 +165,7 @@ public class TransferTasksChild extends TableImpl<TransferTasksChildRecord> {
     /**
      * The column <code>public.transfer_tasks_child.is_executable</code>.
      */
-    public final TableField<TransferTasksChildRecord, String> IS_EXECUTABLE = createField(DSL.name("is_executable"), SQLDataType.CLOB.defaultValue(DSL.field("false", SQLDataType.CLOB)), this, "");
+    public final TableField<TransferTasksChildRecord, String> IS_EXECUTABLE = createField(DSL.name("is_executable"), SQLDataType.CLOB.defaultValue(DSL.field(DSL.raw("false"), SQLDataType.CLOB)), this, "");
 
     /**
      * The column <code>public.transfer_tasks_child.next_retry</code>.
@@ -166,11 +173,11 @@ public class TransferTasksChild extends TableImpl<TransferTasksChildRecord> {
     public final TableField<TransferTasksChildRecord, OffsetDateTime> NEXT_RETRY = createField(DSL.name("next_retry"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "");
 
     private TransferTasksChild(Name alias, Table<TransferTasksChildRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private TransferTasksChild(Name alias, Table<TransferTasksChildRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private TransferTasksChild(Name alias, Table<TransferTasksChildRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -196,8 +203,37 @@ public class TransferTasksChild extends TableImpl<TransferTasksChildRecord> {
         this(DSL.name("transfer_tasks_child"), null);
     }
 
-    public <O extends Record> TransferTasksChild(Table<O> child, ForeignKey<O, TransferTasksChildRecord> key) {
-        super(child, key, TRANSFER_TASKS_CHILD);
+    public <O extends Record> TransferTasksChild(Table<O> path, ForeignKey<O, TransferTasksChildRecord> childPath, InverseForeignKey<O, TransferTasksChildRecord> parentPath) {
+        super(path, childPath, parentPath, TRANSFER_TASKS_CHILD);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class TransferTasksChildPath extends TransferTasksChild implements Path<TransferTasksChildRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> TransferTasksChildPath(Table<O> path, ForeignKey<O, TransferTasksChildRecord> childPath, InverseForeignKey<O, TransferTasksChildRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private TransferTasksChildPath(Name alias, Table<TransferTasksChildRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public TransferTasksChildPath as(String alias) {
+            return new TransferTasksChildPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public TransferTasksChildPath as(Name alias) {
+            return new TransferTasksChildPath(alias, this);
+        }
+
+        @Override
+        public TransferTasksChildPath as(Table<?> alias) {
+            return new TransferTasksChildPath(alias.getQualifiedName(), this);
+        }
     }
 
     @Override
@@ -225,27 +261,28 @@ public class TransferTasksChild extends TableImpl<TransferTasksChildRecord> {
         return Arrays.asList(Keys.TRANSFER_TASKS_CHILD__TRANSFER_TASKS_CHILD_PARENT_TASK_ID_FKEY, Keys.TRANSFER_TASKS_CHILD__TRANSFER_TASKS_CHILD_TASK_ID_FKEY);
     }
 
-    private transient TransferTasksParent _transferTasksParent;
-    private transient TransferTasks _transferTasks;
+    private transient TransferTasksParentPath _transferTasksParent;
 
     /**
      * Get the implicit join path to the
      * <code>public.transfer_tasks_parent</code> table.
      */
-    public TransferTasksParent transferTasksParent() {
+    public TransferTasksParentPath transferTasksParent() {
         if (_transferTasksParent == null)
-            _transferTasksParent = new TransferTasksParent(this, Keys.TRANSFER_TASKS_CHILD__TRANSFER_TASKS_CHILD_PARENT_TASK_ID_FKEY);
+            _transferTasksParent = new TransferTasksParentPath(this, Keys.TRANSFER_TASKS_CHILD__TRANSFER_TASKS_CHILD_PARENT_TASK_ID_FKEY, null);
 
         return _transferTasksParent;
     }
+
+    private transient TransferTasksPath _transferTasks;
 
     /**
      * Get the implicit join path to the <code>public.transfer_tasks</code>
      * table.
      */
-    public TransferTasks transferTasks() {
+    public TransferTasksPath transferTasks() {
         if (_transferTasks == null)
-            _transferTasks = new TransferTasks(this, Keys.TRANSFER_TASKS_CHILD__TRANSFER_TASKS_CHILD_TASK_ID_FKEY);
+            _transferTasks = new TransferTasksPath(this, Keys.TRANSFER_TASKS_CHILD__TRANSFER_TASKS_CHILD_TASK_ID_FKEY, null);
 
         return _transferTasks;
     }
@@ -289,27 +326,87 @@ public class TransferTasksChild extends TableImpl<TransferTasksChildRecord> {
         return new TransferTasksChild(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row22 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row22<Integer, String, OffsetDateTime, String, java.util.UUID, String, String, String, Long, Long, Integer, Boolean, OffsetDateTime, OffsetDateTime, String, Integer, Integer, String, String, java.util.UUID, String, OffsetDateTime> fieldsRow() {
-        return (Row22) super.fieldsRow();
+    public TransferTasksChild where(Condition condition) {
+        return new TransferTasksChild(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function22<? super Integer, ? super String, ? super OffsetDateTime, ? super String, ? super java.util.UUID, ? super String, ? super String, ? super String, ? super Long, ? super Long, ? super Integer, ? super Boolean, ? super OffsetDateTime, ? super OffsetDateTime, ? super String, ? super Integer, ? super Integer, ? super String, ? super String, ? super java.util.UUID, ? super String, ? super OffsetDateTime, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public TransferTasksChild where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function22<? super Integer, ? super String, ? super OffsetDateTime, ? super String, ? super java.util.UUID, ? super String, ? super String, ? super String, ? super Long, ? super Long, ? super Integer, ? super Boolean, ? super OffsetDateTime, ? super OffsetDateTime, ? super String, ? super Integer, ? super Integer, ? super String, ? super String, ? super java.util.UUID, ? super String, ? super OffsetDateTime, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public TransferTasksChild where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public TransferTasksChild where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public TransferTasksChild where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public TransferTasksChild where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public TransferTasksChild where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public TransferTasksChild where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public TransferTasksChild whereExists(TableLike<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public TransferTasksChild whereNotExists(TableLike<?> select) {
+        return where(DSL.notExists(select));
     }
 }

@@ -1,7 +1,6 @@
 package edu.utexas.tacc.tapis.files.lib.utils;
 
-import edu.utexas.tacc.tapis.files.gen.jooq.tables.SshSessionLog;
-import edu.utexas.tacc.tapis.files.lib.dao.stats.ManagementStatsDAO;
+import edu.utexas.tacc.tapis.files.lib.dao.stats.SSHSessionLogDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.models.managementStats.ConnectionDetails;
 import edu.utexas.tacc.tapis.shared.ssh.SshSessionPool;
@@ -28,16 +27,16 @@ public class SshLogger {
     public void start() {
         loggerTaskFuture = loggerExecutorService.scheduleAtFixedRate(() -> {
             try {
-                ManagementStatsDAO msDao = new ManagementStatsDAO();
+                SSHSessionLogDAO msDao = new SSHSessionLogDAO();
                 DAOTransactionContext.doInTransaction(tx -> {
-                    msDao.deleteOlderThan(tx, contextName, Instant.now().minus(1, ChronoUnit.HOURS));
+                    msDao.deleteOlderThan(tx, contextName, Instant.now().minus(5, ChronoUnit.MINUTES));
                     ConnectionDetails details = new ConnectionDetails();
                     details.setContextName(contextName);
                     details.setSessionPoolDetails(SshSessionPool.getInstance().getDetailsAsJson(false));
                     return msDao.saveSshStats(tx, details);
                 });
             } catch (Throwable th) {
-                String msg = LibUtils.getMsg("SSH_POOL_STATS_FAILURE");
+                String msg = LibUtils.getMsg("SSH_LOGGER_ERROR");
                 log.warn(msg, th);
             }
         }, 0, 1, TimeUnit.MINUTES);
@@ -52,7 +51,7 @@ public class SshLogger {
         try {
             loggerExecutorService.awaitTermination(SSH_LOGGER_SHUTDOWN_TIMEOUT_MILLISECONDS, TimeUnit.MILLISECONDS);
         } catch (InterruptedException ex) {
-            log.warn(LibUtils.getMsg("POSTIT_SERVICE_SHUTDOWN_ERROR", ex.getMessage()), ex);
+            log.warn(LibUtils.getMsg("SSH_LOGGER_ERROR", ex.getMessage()), ex);
         } finally {
             if (!loggerExecutorService.isShutdown()) {
                 loggerExecutorService.shutdownNow();

@@ -2,7 +2,6 @@ package edu.utexas.tacc.tapis.files.lib.dao;
 
 import edu.utexas.tacc.tapis.files.lib.exceptions.DAOException;
 import org.jooq.Condition;
-import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.SortField;
 import org.jooq.Table;
@@ -10,10 +9,9 @@ import org.jooq.TableField;
 import org.jooq.impl.DSL;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
-public abstract class FilesQueryBuilder<R extends Record> {
+public abstract class QueryBuilder<R extends Record> {
     public enum SortOrder {
         ASC,
         DESC,
@@ -38,7 +36,7 @@ public abstract class FilesQueryBuilder<R extends Record> {
         }
     }
 
-    public static class ComparableField<R extends Record, T> extends FilesQueryBuilder.MappedField<R, T> {
+    public static class ComparableField<R extends Record, T> extends QueryBuilder.MappedField<R, T> {
         public ComparableField(TableField<R, T> jooqField) {
             super(jooqField);
         }
@@ -50,7 +48,7 @@ public abstract class FilesQueryBuilder<R extends Record> {
     Integer offset;
     Integer limit;
 
-    FilesQueryBuilder(Table<R> table) {
+    QueryBuilder(Table<R> table) {
         this.table = table;
     }
 

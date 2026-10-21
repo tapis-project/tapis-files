@@ -26,7 +26,7 @@ import edu.utexas.tacc.tapis.files.lib.models.managementStats.StatusSummary;
 import edu.utexas.tacc.tapis.files.lib.models.managementStats.TaskDetails;
 import edu.utexas.tacc.tapis.files.lib.models.managementStats.TopTaskDetails;
 import edu.utexas.tacc.tapis.files.lib.services.FilePermsService;
-import edu.utexas.tacc.tapis.files.lib.services.ManagementStatsService;
+import edu.utexas.tacc.tapis.files.lib.services.AppStatusService;
 import edu.utexas.tacc.tapis.shared.TapisConstants;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadContext;
 import edu.utexas.tacc.tapis.shared.threadlocal.TapisThreadLocal;
@@ -61,7 +61,7 @@ public class ManagementStatsResource
   private Request _request;
 
   @Inject
-  private ManagementStatsService statsService;
+  private AppStatusService statusService;
 
   @Inject
   private FilePermsService filePermsService;
@@ -72,7 +72,7 @@ public class ManagementStatsResource
   @GET
   @Path("/summary")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response summaryStats(@QueryParam("limitPerType") @DefaultValue("1000") @Min(1) @Max(100000) int limitPerType,
+  public Response summaryStatus(@QueryParam("limitPerType") @DefaultValue("1000") @Min(1) @Max(100000) int limitPerType,
                              @QueryParam("status") @DefaultValue("all") String statusString,
                              @Context SecurityContext securityContext)
   {
@@ -81,14 +81,14 @@ public class ManagementStatsResource
 
     StatusSummary statusSummary = null;
     try {
-      statusSummary = statsService.getStatusSummary();
+      statusSummary = statusService.getStatusSummary();
     } catch (ServiceException e) {
-      String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_ERROR", rUser, opName, e.getMessage());
+      String msg = ApiUtils.getMsgAuth("FAPI_OP_ERROR", rUser, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
 
-    String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_COMPLETE", rUser, opName);
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName);
     TapisResponse<StatusSummary> resp = TapisResponse.createSuccessResponse(msg, statusSummary);
     return Response.ok(resp).build();
   }
@@ -108,14 +108,14 @@ public class ManagementStatsResource
 
     TopTaskDetails topTaskDetails = null;
     try {
-      topTaskDetails = statsService.getTopTaskDetails(successLimit, errorLimit);
+      topTaskDetails = statusService.getTopTaskDetails(successLimit, errorLimit);
     } catch (ServiceException e) {
-      String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_ERROR", rUser, opName, e.getMessage());
+      String msg = ApiUtils.getMsgAuth("FAPI_OP_ERROR", rUser, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
 
-    String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_COMPLETE", rUser, opName);
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName);
     TapisResponse<TopTaskDetails> resp = TapisResponse.createSuccessResponse(msg, topTaskDetails);
     return Response.ok(resp).build();
   }
@@ -131,14 +131,14 @@ public class ManagementStatsResource
 
     ParentTaskDetails parentTaskDetails = null;
     try {
-      parentTaskDetails = statsService.getParentTaskDetails();
+      parentTaskDetails = statusService.getParentTaskDetails();
     } catch (ServiceException e) {
-      String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_ERROR", rUser, opName, e.getMessage());
+      String msg = ApiUtils.getMsgAuth("FAPI_OP_ERROR", rUser, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
 
-    String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_COMPLETE", rUser, opName);
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName);
     TapisResponse<ParentTaskDetails> resp = TapisResponse.createSuccessResponse(msg, parentTaskDetails);
     return Response.ok(resp).build();
   }
@@ -154,14 +154,14 @@ public class ManagementStatsResource
 
     ChildTaskDetails childTaskDetails = null;
     try {
-      childTaskDetails = statsService.getChildTaskDetails();
+      childTaskDetails = statusService.getChildTaskDetails();
     } catch (ServiceException e) {
-      String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_ERROR", rUser, opName, e.getMessage());
+      String msg = ApiUtils.getMsgAuth("FAPI_OP_ERROR", rUser, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
 
-    String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_COMPLETE", rUser, opName);
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName);
     TapisResponse<ChildTaskDetails> resp = TapisResponse.createSuccessResponse(msg, childTaskDetails);
     return Response.ok(resp).build();
   }
@@ -182,19 +182,19 @@ public class ManagementStatsResource
     try {
       try {
         UUID taskUuid = UUID.fromString(topTaskIdOrUuid);
-        taskDetails = statsService.getTaskDetailsByUuid(taskUuid, parentLimit, childLimit);
+        taskDetails = statusService.getTaskDetailsByUuid(taskUuid, parentLimit, childLimit);
       } catch (IllegalArgumentException e) {
         int taskId = Integer.parseInt(topTaskIdOrUuid);
-        taskDetails = statsService.getTaskDetailsByTaskId(taskId, parentLimit, childLimit);
+        taskDetails = statusService.getTaskDetailsByTaskId(taskId, parentLimit, childLimit);
       }
 
     } catch (ServiceException e) {
-      String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_ERROR", rUser, opName, e.getMessage());
+      String msg = ApiUtils.getMsgAuth("FAPI_OP_ERROR", rUser, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
 
-    String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_COMPLETE", rUser, opName);
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName);
     TapisResponse<TaskDetails> resp = TapisResponse.createSuccessResponse(msg, taskDetails);
     return Response.ok(resp).build();
   }
@@ -209,14 +209,14 @@ public class ManagementStatsResource
 
     List<ConnectionDetails> connectionDetails = null;
     try {
-      connectionDetails = statsService.getConnectionInfo();
+      connectionDetails = statusService.getConnectionInfo();
     } catch (ServiceException e) {
-      String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_ERROR", rUser, opName, e.getMessage());
+      String msg = ApiUtils.getMsgAuth("FAPI_OP_ERROR", rUser, opName, e.getMessage());
       log.error(msg, e);
       throw new WebApplicationException(msg, e);
     }
 
-    String msg = ApiUtils.getMsgAuth("FAPI_STATUS_OP_COMPLETE", rUser, opName);
+    String msg = ApiUtils.getMsgAuth("FAPI_OP_COMPLETE", rUser, opName);
     TapisResponse<List<ConnectionDetails>> resp = TapisResponse.createSuccessResponse(msg, connectionDetails);
     return Response.ok(resp).build();
   }

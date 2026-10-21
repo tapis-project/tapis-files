@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static edu.utexas.tacc.tapis.files.lib.dao.FilesQueryBuilder.ComparableField;
+import static edu.utexas.tacc.tapis.files.lib.dao.QueryBuilder.ComparableField;
 public class QueryCondition<R extends Record> {
     public enum Comparator {
         EQUALS,

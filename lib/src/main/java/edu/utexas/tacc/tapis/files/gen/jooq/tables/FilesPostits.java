@@ -11,24 +11,25 @@ import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.FilesPostitsRecord;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
+import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
-import org.jooq.Function12;
 import org.jooq.Index;
 import org.jooq.Name;
-import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row12;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -102,24 +103,24 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
     /**
      * The column <code>public.files_postits.expiration</code>.
      */
-    public final TableField<FilesPostitsRecord, LocalDateTime> EXPIRATION = createField(DSL.name("expiration"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field("(now() AT TIME ZONE 'utc'::text)", SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<FilesPostitsRecord, LocalDateTime> EXPIRATION = createField(DSL.name("expiration"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("(now() AT TIME ZONE 'utc'::text)"), SQLDataType.LOCALDATETIME)), this, "");
 
     /**
      * The column <code>public.files_postits.created</code>.
      */
-    public final TableField<FilesPostitsRecord, LocalDateTime> CREATED = createField(DSL.name("created"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field("(now() AT TIME ZONE 'utc'::text)", SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<FilesPostitsRecord, LocalDateTime> CREATED = createField(DSL.name("created"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("(now() AT TIME ZONE 'utc'::text)"), SQLDataType.LOCALDATETIME)), this, "");
 
     /**
      * The column <code>public.files_postits.updated</code>.
      */
-    public final TableField<FilesPostitsRecord, LocalDateTime> UPDATED = createField(DSL.name("updated"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field("(now() AT TIME ZONE 'utc'::text)", SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<FilesPostitsRecord, LocalDateTime> UPDATED = createField(DSL.name("updated"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("(now() AT TIME ZONE 'utc'::text)"), SQLDataType.LOCALDATETIME)), this, "");
 
     private FilesPostits(Name alias, Table<FilesPostitsRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private FilesPostits(Name alias, Table<FilesPostitsRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private FilesPostits(Name alias, Table<FilesPostitsRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -141,10 +142,6 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
      */
     public FilesPostits() {
         this(DSL.name("files_postits"), null);
-    }
-
-    public <O extends Record> FilesPostits(Table<O> child, ForeignKey<O, FilesPostitsRecord> key) {
-        super(child, key, FILES_POSTITS);
     }
 
     @Override
@@ -201,27 +198,87 @@ public class FilesPostits extends TableImpl<FilesPostitsRecord> {
         return new FilesPostits(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row12 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row12<String, String, String, Integer, Integer, String, String, String, String, LocalDateTime, LocalDateTime, LocalDateTime> fieldsRow() {
-        return (Row12) super.fieldsRow();
+    public FilesPostits where(Condition condition) {
+        return new FilesPostits(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function12<? super String, ? super String, ? super String, ? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super LocalDateTime, ? super LocalDateTime, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public FilesPostits where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function12<? super String, ? super String, ? super String, ? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super String, ? super LocalDateTime, ? super LocalDateTime, ? super LocalDateTime, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public FilesPostits where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public FilesPostits where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public FilesPostits where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public FilesPostits where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public FilesPostits where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public FilesPostits where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public FilesPostits whereExists(TableLike<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public FilesPostits whereNotExists(TableLike<?> select) {
+        return where(DSL.notExists(select));
     }
 }

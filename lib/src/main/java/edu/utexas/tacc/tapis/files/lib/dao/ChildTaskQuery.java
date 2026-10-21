@@ -7,7 +7,7 @@ import java.util.UUID;
 
 import static edu.utexas.tacc.tapis.files.gen.jooq.tables.TransferTasksChild.TRANSFER_TASKS_CHILD;
 
-public class ChildTaskQuery extends FilesQueryBuilder<TransferTasksChildRecord> {
+public class ChildTaskQuery extends QueryBuilder<TransferTasksChildRecord> {
     public static SortableField<TransferTasksChildRecord, OffsetDateTime> SORT_FIELD_CREATED =
             new SortableField<TransferTasksChildRecord, OffsetDateTime>(TRANSFER_TASKS_CHILD.CREATED);
 

@@ -1,11 +1,11 @@
 package edu.utexas.tacc.tapis.files.lib.services;
 
 import edu.utexas.tacc.tapis.files.lib.dao.ChildTaskQuery;
-import edu.utexas.tacc.tapis.files.lib.dao.FilesQueryBuilder;
+import edu.utexas.tacc.tapis.files.lib.dao.QueryBuilder;
 import edu.utexas.tacc.tapis.files.lib.dao.ParentTaskQuery;
 import edu.utexas.tacc.tapis.files.lib.dao.QueryCondition;
 import edu.utexas.tacc.tapis.files.lib.dao.TopTaskQuery;
-import edu.utexas.tacc.tapis.files.lib.dao.stats.ManagementStatsDAO;
+import edu.utexas.tacc.tapis.files.lib.dao.stats.SSHSessionLogDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.DAOTransactionContext;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.FileTransfersDAO;
 import edu.utexas.tacc.tapis.files.lib.dao.transfers.TransferTaskChildDAO;
@@ -41,7 +41,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class ManagementStatsService {
+public class AppStatusService {
     public static final int CACHED_ROWS = 300;
     SchedulingPolicy schedulingPolicy = new DefaultSchedulingPolicy(CACHED_ROWS);
     // TODO:  rename unnassigned to queued_unassigned or something like that.  Make other names match too.
@@ -56,81 +56,88 @@ public class ManagementStatsService {
                 // top task counts
                 {
                     TopTaskQuery query = new TopTaskQuery();
-                    QueryCondition condition = QueryCondition.isEqual(TopTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.ACCEPTED.name());
-                    query.setQueryCondition(condition);
+                    query.setQueryCondition(
+                        QueryCondition.isEqual(TopTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.ACCEPTED.name())
+                    );
                     statusSummary.setQueuedTopTasks(topTaskDAO.countTopTasks(tx, query));
                 }
                 {
                     TopTaskQuery query = new TopTaskQuery();
-                    QueryCondition condition = QueryCondition.isEqual(
-                            TopTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name());
-                    query.setQueryCondition(condition);
+                    query.setQueryCondition(
+                        QueryCondition.isEqual(TopTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name())
+                    );
                     statusSummary.setInProgressTopTasks(topTaskDAO.countTopTasks(tx, query));
                 }
 
                 // parent task counts
                 {
                     ParentTaskQuery query = new ParentTaskQuery();
-                    QueryCondition condition = QueryCondition.isEqual(
-                            ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name());
-                    query.setQueryCondition(condition);
+                    query.setQueryCondition(
+                        QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name())
+                    );
                     statusSummary.setInProgressParentTasks(parentTaskDAO.countParentTasks(tx, query));
                 }
                 {
                     ParentTaskQuery query = new ParentTaskQuery();
-                    QueryCondition condition = QueryCondition.isNotNull(ParentTaskQuery.COMPARE_FIELD_ASSIGNED_TO);
-                    query.setQueryCondition(condition);
+                    query.setQueryCondition(
+                        QueryCondition.isNotNull(ParentTaskQuery.COMPARE_FIELD_ASSIGNED_TO)
+                    );
                     statusSummary.setAssignedParentTasks(parentTaskDAO.countParentTasks(tx, query));
                 }
                 {
                     ParentTaskQuery query = new ParentTaskQuery();
-                    QueryCondition condition = QueryCondition.and(
+                    query.setQueryCondition(
+                        QueryCondition.and(
                             QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.ACCEPTED.name()),
                             QueryCondition.isNull(ParentTaskQuery.COMPARE_FIELD_ASSIGNED_TO)
+                        )
                     );
-                    query.setQueryCondition(condition);
                     statusSummary.setUnassignedParentTasks(parentTaskDAO.countParentTasks(tx, query));
                 }
                 {
                     ParentTaskQuery query = new ParentTaskQuery();
-                    QueryCondition condition = QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.AWAITING_RETRY.name());
-                    query.setQueryCondition(condition);
+                    query.setQueryCondition(
+                            QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.AWAITING_RETRY.name())
+                    );
                     statusSummary.setAwaitingRetryParentTasks(parentTaskDAO.countParentTasks(tx, query));
                 }
 
                 // child task counts
                 {
                     ChildTaskQuery query = new ChildTaskQuery();
-                    QueryCondition condition = QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name());
-                    query.setQueryCondition(condition);
+                    query.setQueryCondition(
+                        QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name())
+                    );
                     statusSummary.setInProgressChildTasks(childTaskDAO.countChildTasks(tx, query));
                 }
                 {
                     ChildTaskQuery query = new ChildTaskQuery();
-                    QueryCondition condition = QueryCondition.isNotNull(ChildTaskQuery.COMPARE_FIELD_ASSIGNED_TO);
-                    query.setQueryCondition(condition);
+                    query.setQueryCondition(
+                        QueryCondition.isNotNull(ChildTaskQuery.COMPARE_FIELD_ASSIGNED_TO)
+                    );
                     statusSummary.setAssignedChildTasks(childTaskDAO.countChildTasks(tx, query));
                 }
                 {
                     ChildTaskQuery query = new ChildTaskQuery();
-                    QueryCondition condition = QueryCondition.and(
+                    query.setQueryCondition(
+                        QueryCondition.and(
                             QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.ACCEPTED.name()),
                             QueryCondition.isNull(ChildTaskQuery.COMPARE_FIELD_ASSIGNED_TO)
+                        )
                     );
-                    query.setQueryCondition(condition);
                     statusSummary.setUnassignedChildTasks(childTaskDAO.countChildTasks(tx, query));
                 }
                 {
                     ChildTaskQuery query = new ChildTaskQuery();
-                    QueryCondition condition = QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.AWAITING_RETRY.name());
-                    query.setQueryCondition(condition);
+                    query.setQueryCondition(
+                        QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.AWAITING_RETRY.name())
+                    );
                     statusSummary.setAwaitingRetryChildTasks(childTaskDAO.countChildTasks(tx, query));
                 }
                 return statusSummary;
             });
         } catch (Exception ex) {
-            // TODO: do real exception stuff here
-            throw new ServiceException("Error", ex);
+            throw new ServiceException("Error retrieving status summary", ex);
         }
     }
 
@@ -141,8 +148,7 @@ public class ManagementStatsService {
             topTaskDetails.getRecentSuccesses().addAll(getTopTaskRecentSuccesses(successLimit));
             topTaskDetails.getRecentErrors().addAll(getTopTaskRecentErrors(errorLimit));
         } catch (Exception ex) {
-            // TODO: do real exception stuff here
-            throw new ServiceException("Error", ex);
+            throw new ServiceException("Error retrieving top task details", ex);
         }
 
         return topTaskDetails;
@@ -160,8 +166,7 @@ public class ManagementStatsService {
             parentTaskDetails.getParentInProgress().addAll(getParentInProgressTasks());
 
         } catch (Exception ex) {
-            // TODO: do real exception stuff here
-            throw new ServiceException("Error", ex);
+            throw new ServiceException("Error retrieving parent task details", ex);
         }
 
         return parentTaskDetails;
@@ -178,8 +183,7 @@ public class ManagementStatsService {
             childTaskDetails.getAssignedChildTasks().addAll(getAssignedChildTasks(transferWorkers));
             childTaskDetails.getChildInProgress().addAll(getChildInProgressTasks());
         } catch (Exception ex) {
-            // TODO: do real exception stuff here
-            throw new ServiceException("Error", ex);
+            throw new ServiceException("Error retrieving child task details", ex);
         }
 
         return childTaskDetails;
@@ -197,7 +201,7 @@ public class ManagementStatsService {
                 topTaskQuery.setQueryCondition(
                         QueryCondition.isEqual(TopTaskQuery.COMPARE_FIELD_ID, taskId)
                 );
-                topTaskQuery.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                topTaskQuery.addSortField(TopTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
                 TopTaskInfo topTaskInfo = topTaskDAO.getTopTaskInfo(tx, topTaskQuery);
                 taskDetails.setTopTaskInfo(topTaskInfo);
 
@@ -205,7 +209,7 @@ public class ManagementStatsService {
                 parentTaskQuery.setQueryCondition(
                         QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_TOP_TASK_ID, topTaskInfo.getId())
                 );
-                parentTaskQuery.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                parentTaskQuery.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
                 parentTaskQuery.setLimit(parentLimit);
                 taskDetails.getParentTaskInfos().addAll(parentTaskDAO.getParentTaskInfos(tx, parentTaskQuery));
 
@@ -213,22 +217,20 @@ public class ManagementStatsService {
                 childTaskQuery.setQueryCondition(
                         QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_TOP_TASK_ID, topTaskInfo.getId())
                 );
-                childTaskQuery.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                childTaskQuery.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
                 childTaskQuery.setLimit(childLimit);
                 taskDetails.getChildTaskInfos().addAll(childTaskDAO.getChildTaskInfos(tx, childTaskQuery));
                 return taskDetails;
             });
         } catch (Exception ex) {
-            // TODO: do real exception stuff here
-            throw new ServiceException("Error", ex);
+            throw new ServiceException("Error getting task details by id for id: " + taskId, ex);
         }
     }
 
     public TaskDetails getTaskDetailsByUuid(UUID uuid, int parentLimit, int childLimit) throws ServiceException {
         TaskDetails taskDetails = new TaskDetails();
         if (uuid == null) {
-            // TODO: do real exception stuff here
-            throw new RuntimeException("Error: no uuid was provided");
+            throw new ServiceException("Error: no uuid was provided");
         } else {
             try {
                 FileTransfersDAO topTaskDAO = new FileTransfersDAO();
@@ -239,7 +241,7 @@ public class ManagementStatsService {
                     topTaskQuery.setQueryCondition(
                             QueryCondition.isEqual(TopTaskQuery.COMPARE_FIELD_UUID, uuid)
                     );
-                    topTaskQuery.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                    topTaskQuery.addSortField(TopTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
                     TopTaskInfo topTaskInfo = topTaskDAO.getTopTaskInfo(tx, topTaskQuery);
                     taskDetails.setTopTaskInfo(topTaskInfo);
 
@@ -247,7 +249,7 @@ public class ManagementStatsService {
                     parentTaskQuery.setQueryCondition(
                             QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_TOP_TASK_ID, topTaskInfo.getId())
                     );
-                    parentTaskQuery.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                    parentTaskQuery.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
                     parentTaskQuery.setLimit(parentLimit);
                     taskDetails.getParentTaskInfos().addAll(parentTaskDAO.getParentTaskInfos(tx, parentTaskQuery));
 
@@ -255,27 +257,25 @@ public class ManagementStatsService {
                     childTaskQuery.setQueryCondition(
                             QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_TOP_TASK_ID, topTaskInfo.getId())
                     );
-                    childTaskQuery.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+                    childTaskQuery.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
                     childTaskQuery.setLimit(childLimit);
                     taskDetails.getChildTaskInfos().addAll(childTaskDAO.getChildTaskInfos(tx, childTaskQuery));
                     return taskDetails;
                 });
             } catch (Exception ex) {
-                // TODO: do real exception stuff here
-                throw new ServiceException("Error", ex);
+                throw new ServiceException("Error getting task details by uuid for uuid: " + uuid, ex);
             }
         }
     }
 
     public List<ConnectionDetails> getConnectionInfo() throws ServiceException {
         try {
-            ManagementStatsDAO msDAO = new ManagementStatsDAO();
+            SSHSessionLogDAO msDAO = new SSHSessionLogDAO();
             return DAOTransactionContext.doInTransaction(tx -> {
                 return msDAO.getSshStats(tx);
             });
         } catch (Exception ex) {
-            // TODO: do real exception stuff here
-            throw new ServiceException("Error", ex);
+            throw new ServiceException("Error getting connection information", ex);
         }
     }
 
@@ -321,7 +321,7 @@ public class ManagementStatsService {
             query.setQueryCondition(
                     QueryCondition.isIn(ParentTaskQuery.COMPARE_FIELD_ID, queuedParentTaskIds)
             );
-            query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
             return parentTaskDAO.getParentTaskInfos(tx, query);
         });
     }
@@ -333,7 +333,7 @@ public class ManagementStatsService {
             query.setQueryCondition(
                     QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.AWAITING_RETRY.name())
             );
-            query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
             return parentTaskDAO.getParentTaskInfos(tx, query);
         });
     }
@@ -344,7 +344,7 @@ public class ManagementStatsService {
             query.setQueryCondition(
                     QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name())
             );
-            query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
             return parentTaskDAO.getParentTaskInfos(tx, query);
         });
     }
@@ -380,7 +380,7 @@ public class ManagementStatsService {
             query.setQueryCondition(
                     QueryCondition.isIn(ChildTaskQuery.COMPARE_FIELD_ID, queuedChildTaskIds)
             );
-            query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
             return childTaskDAO.getChildTaskInfos(tx, query);
         });
     }
@@ -392,7 +392,7 @@ public class ManagementStatsService {
             query.setQueryCondition(
                     QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.AWAITING_RETRY.name())
             );
-            query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
             return childTaskDAO.getChildTaskInfos(tx, query);
         });
     }
@@ -403,7 +403,7 @@ public class ManagementStatsService {
             query.setQueryCondition(
                     QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name())
             );
-            query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
             return childTaskDAO.getChildTaskInfos(tx, query);
         });
     }
@@ -416,7 +416,7 @@ public class ManagementStatsService {
             query.setQueryCondition(
                     QueryCondition.isEqual(TopTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name())
             );
-            query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
             return topTaskDAO.getTopTaskInfos(tx, query);
         });
     }
@@ -428,7 +428,7 @@ public class ManagementStatsService {
             query.setQueryCondition(
                     QueryCondition.isEqual(TopTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.COMPLETED.name())
             );
-            query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.DESC);
             query.setLimit(limit);
             return topTaskDAO.getTopTaskInfos(tx, query);
         });
@@ -440,7 +440,7 @@ public class ManagementStatsService {
             query.setQueryCondition(
                     QueryCondition.isEqual(TopTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.FAILED.name())
             );
-            query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, FilesQueryBuilder.SortOrder.ASC);
+            query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.DESC);
             query.setLimit(limit);
             return topTaskDAO.getTopTaskInfos(tx, query);
         });

@@ -9,7 +9,7 @@ import org.jooq.impl.DSL;
 import java.util.List;
 
 public class FilesDAOHelper {
-    public <R extends Record> List<R> fetch(DAOTransactionContext context, FilesQueryBuilder<R> query) throws DAOException {
+    public <R extends Record> List<R> fetch(DAOTransactionContext context, QueryBuilder<R> query) throws DAOException {
         DSLContext db = DSL.using(context.getConnection());
         var select = db.selectFrom(query.getTable())
                 .where(query.getCondition())
@@ -23,7 +23,7 @@ public class FilesDAOHelper {
         return select.fetch();
     }
 
-    public <R extends Record> R fetchOne(DAOTransactionContext context, FilesQueryBuilder<R> query) throws DAOException {
+    public <R extends Record> R fetchOne(DAOTransactionContext context, QueryBuilder<R> query) throws DAOException {
         DSLContext db = DSL.using(context.getConnection());
         var select = db.selectFrom(query.getTable())
                 .where(query.getCondition())
@@ -37,7 +37,7 @@ public class FilesDAOHelper {
         return select.fetchOne();
     }
 
-    public <R extends Record> int fetchCount(DAOTransactionContext context, FilesQueryBuilder<R> query) throws DAOException {
+    public <R extends Record> int fetchCount(DAOTransactionContext context, QueryBuilder<R> query) throws DAOException {
         DSLContext db = DSL.using(context.getConnection());
         return db.fetchCount(query.getTable(), query.getCondition());
     }

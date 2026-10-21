@@ -8,22 +8,23 @@ import edu.utexas.tacc.tapis.files.gen.jooq.Public;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.SshSessionLogRecord;
 
 import java.time.LocalDateTime;
-import java.util.function.Function;
+import java.util.Collection;
 
+import org.jooq.Condition;
 import org.jooq.Field;
-import org.jooq.ForeignKey;
-import org.jooq.Function4;
 import org.jooq.JSONB;
 import org.jooq.Name;
-import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row4;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -62,19 +63,14 @@ public class SshSessionLog extends TableImpl<SshSessionLogRecord> {
     /**
      * The column <code>public.ssh_session_log.created</code>.
      */
-    public final TableField<SshSessionLogRecord, LocalDateTime> CREATED = createField(DSL.name("created"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field("(now() AT TIME ZONE 'utc'::text)", SQLDataType.LOCALDATETIME)), this, "");
-
-    /**
-     * The column <code>public.ssh_session_log.updated</code>.
-     */
-    public final TableField<SshSessionLogRecord, LocalDateTime> UPDATED = createField(DSL.name("updated"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field("(now() AT TIME ZONE 'utc'::text)", SQLDataType.LOCALDATETIME)), this, "");
+    public final TableField<SshSessionLogRecord, LocalDateTime> CREATED = createField(DSL.name("created"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field(DSL.raw("(now() AT TIME ZONE 'utc'::text)"), SQLDataType.LOCALDATETIME)), this, "");
 
     private SshSessionLog(Name alias, Table<SshSessionLogRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private SshSessionLog(Name alias, Table<SshSessionLogRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private SshSessionLog(Name alias, Table<SshSessionLogRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -96,10 +92,6 @@ public class SshSessionLog extends TableImpl<SshSessionLogRecord> {
      */
     public SshSessionLog() {
         this(DSL.name("ssh_session_log"), null);
-    }
-
-    public <O extends Record> SshSessionLog(Table<O> child, ForeignKey<O, SshSessionLogRecord> key) {
-        super(child, key, SSH_SESSION_LOG);
     }
 
     @Override
@@ -146,27 +138,87 @@ public class SshSessionLog extends TableImpl<SshSessionLogRecord> {
         return new SshSessionLog(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row4 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row4<JSONB, String, LocalDateTime, LocalDateTime> fieldsRow() {
-        return (Row4) super.fieldsRow();
+    public SshSessionLog where(Condition condition) {
+        return new SshSessionLog(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function4<? super JSONB, ? super String, ? super LocalDateTime, ? super LocalDateTime, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public SshSessionLog where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function4<? super JSONB, ? super String, ? super LocalDateTime, ? super LocalDateTime, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public SshSessionLog where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public SshSessionLog where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public SshSessionLog where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public SshSessionLog where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public SshSessionLog where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public SshSessionLog where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public SshSessionLog whereExists(TableLike<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public SshSessionLog whereNotExists(TableLike<?> select) {
+        return where(DSL.notExists(select));
     }
 }

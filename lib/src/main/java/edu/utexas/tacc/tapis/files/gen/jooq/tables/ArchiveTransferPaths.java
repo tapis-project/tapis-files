@@ -7,26 +7,32 @@ package edu.utexas.tacc.tapis.files.gen.jooq.tables;
 import edu.utexas.tacc.tapis.files.gen.jooq.Indexes;
 import edu.utexas.tacc.tapis.files.gen.jooq.Keys;
 import edu.utexas.tacc.tapis.files.gen.jooq.Public;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransfers.ArchiveTransfersPath;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.ArchiveTransferPathsRecord;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function2;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.Name;
+import org.jooq.Path;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
 import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row2;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -64,11 +70,11 @@ public class ArchiveTransferPaths extends TableImpl<ArchiveTransferPathsRecord> 
     public final TableField<ArchiveTransferPathsRecord, String> PATH = createField(DSL.name("path"), SQLDataType.VARCHAR(4096).nullable(false), this, "");
 
     private ArchiveTransferPaths(Name alias, Table<ArchiveTransferPathsRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private ArchiveTransferPaths(Name alias, Table<ArchiveTransferPathsRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private ArchiveTransferPaths(Name alias, Table<ArchiveTransferPathsRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -94,8 +100,37 @@ public class ArchiveTransferPaths extends TableImpl<ArchiveTransferPathsRecord> 
         this(DSL.name("archive_transfer_paths"), null);
     }
 
-    public <O extends Record> ArchiveTransferPaths(Table<O> child, ForeignKey<O, ArchiveTransferPathsRecord> key) {
-        super(child, key, ARCHIVE_TRANSFER_PATHS);
+    public <O extends Record> ArchiveTransferPaths(Table<O> path, ForeignKey<O, ArchiveTransferPathsRecord> childPath, InverseForeignKey<O, ArchiveTransferPathsRecord> parentPath) {
+        super(path, childPath, parentPath, ARCHIVE_TRANSFER_PATHS);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class ArchiveTransferPathsPath extends ArchiveTransferPaths implements Path<ArchiveTransferPathsRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> ArchiveTransferPathsPath(Table<O> path, ForeignKey<O, ArchiveTransferPathsRecord> childPath, InverseForeignKey<O, ArchiveTransferPathsRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private ArchiveTransferPathsPath(Name alias, Table<ArchiveTransferPathsRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public ArchiveTransferPathsPath as(String alias) {
+            return new ArchiveTransferPathsPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public ArchiveTransferPathsPath as(Name alias) {
+            return new ArchiveTransferPathsPath(alias, this);
+        }
+
+        @Override
+        public ArchiveTransferPathsPath as(Table<?> alias) {
+            return new ArchiveTransferPathsPath(alias.getQualifiedName(), this);
+        }
     }
 
     @Override
@@ -113,15 +148,15 @@ public class ArchiveTransferPaths extends TableImpl<ArchiveTransferPathsRecord> 
         return Arrays.asList(Keys.ARCHIVE_TRANSFER_PATHS__ARCHIVE_TRANSFER_PATHS_ARCHIVE_TRANSFER_ID_FKEY);
     }
 
-    private transient ArchiveTransfers _archiveTransfers;
+    private transient ArchiveTransfersPath _archiveTransfers;
 
     /**
      * Get the implicit join path to the <code>public.archive_transfers</code>
      * table.
      */
-    public ArchiveTransfers archiveTransfers() {
+    public ArchiveTransfersPath archiveTransfers() {
         if (_archiveTransfers == null)
-            _archiveTransfers = new ArchiveTransfers(this, Keys.ARCHIVE_TRANSFER_PATHS__ARCHIVE_TRANSFER_PATHS_ARCHIVE_TRANSFER_ID_FKEY);
+            _archiveTransfers = new ArchiveTransfersPath(this, Keys.ARCHIVE_TRANSFER_PATHS__ARCHIVE_TRANSFER_PATHS_ARCHIVE_TRANSFER_ID_FKEY, null);
 
         return _archiveTransfers;
     }
@@ -165,27 +200,87 @@ public class ArchiveTransferPaths extends TableImpl<ArchiveTransferPathsRecord> 
         return new ArchiveTransferPaths(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row2 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row2<Integer, String> fieldsRow() {
-        return (Row2) super.fieldsRow();
+    public ArchiveTransferPaths where(Condition condition) {
+        return new ArchiveTransferPaths(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function2<? super Integer, ? super String, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public ArchiveTransferPaths where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function2<? super Integer, ? super String, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public ArchiveTransferPaths where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public ArchiveTransferPaths where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ArchiveTransferPaths where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ArchiveTransferPaths where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ArchiveTransferPaths where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ArchiveTransferPaths where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public ArchiveTransferPaths whereExists(TableLike<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public ArchiveTransferPaths whereNotExists(TableLike<?> select) {
+        return where(DSL.notExists(select));
     }
 }

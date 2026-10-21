@@ -7,28 +7,34 @@ package edu.utexas.tacc.tapis.files.gen.jooq.tables;
 import edu.utexas.tacc.tapis.files.gen.jooq.Indexes;
 import edu.utexas.tacc.tapis.files.gen.jooq.Keys;
 import edu.utexas.tacc.tapis.files.gen.jooq.Public;
+import edu.utexas.tacc.tapis.files.gen.jooq.tables.ArchiveTransfers.ArchiveTransfersPath;
 import edu.utexas.tacc.tapis.files.gen.jooq.tables.records.ArchiveTransferLogRecord;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
+import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function2;
 import org.jooq.Index;
+import org.jooq.InverseForeignKey;
 import org.jooq.JSONB;
 import org.jooq.Name;
+import org.jooq.Path;
+import org.jooq.PlainSQL;
+import org.jooq.QueryPart;
 import org.jooq.Record;
-import org.jooq.Records;
-import org.jooq.Row2;
+import org.jooq.SQL;
 import org.jooq.Schema;
-import org.jooq.SelectField;
+import org.jooq.Stringly;
 import org.jooq.Table;
 import org.jooq.TableField;
+import org.jooq.TableLike;
 import org.jooq.TableOptions;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;
+import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
@@ -65,11 +71,11 @@ public class ArchiveTransferLog extends TableImpl<ArchiveTransferLogRecord> {
     public final TableField<ArchiveTransferLogRecord, JSONB> LOG_ENTRIES = createField(DSL.name("log_entries"), SQLDataType.JSONB, this, "");
 
     private ArchiveTransferLog(Name alias, Table<ArchiveTransferLogRecord> aliased) {
-        this(alias, aliased, null);
+        this(alias, aliased, (Field<?>[]) null, null);
     }
 
-    private ArchiveTransferLog(Name alias, Table<ArchiveTransferLogRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table());
+    private ArchiveTransferLog(Name alias, Table<ArchiveTransferLogRecord> aliased, Field<?>[] parameters, Condition where) {
+        super(alias, null, aliased, parameters, DSL.comment(""), TableOptions.table(), where);
     }
 
     /**
@@ -95,8 +101,37 @@ public class ArchiveTransferLog extends TableImpl<ArchiveTransferLogRecord> {
         this(DSL.name("archive_transfer_log"), null);
     }
 
-    public <O extends Record> ArchiveTransferLog(Table<O> child, ForeignKey<O, ArchiveTransferLogRecord> key) {
-        super(child, key, ARCHIVE_TRANSFER_LOG);
+    public <O extends Record> ArchiveTransferLog(Table<O> path, ForeignKey<O, ArchiveTransferLogRecord> childPath, InverseForeignKey<O, ArchiveTransferLogRecord> parentPath) {
+        super(path, childPath, parentPath, ARCHIVE_TRANSFER_LOG);
+    }
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    public static class ArchiveTransferLogPath extends ArchiveTransferLog implements Path<ArchiveTransferLogRecord> {
+
+        private static final long serialVersionUID = 1L;
+        public <O extends Record> ArchiveTransferLogPath(Table<O> path, ForeignKey<O, ArchiveTransferLogRecord> childPath, InverseForeignKey<O, ArchiveTransferLogRecord> parentPath) {
+            super(path, childPath, parentPath);
+        }
+        private ArchiveTransferLogPath(Name alias, Table<ArchiveTransferLogRecord> aliased) {
+            super(alias, aliased);
+        }
+
+        @Override
+        public ArchiveTransferLogPath as(String alias) {
+            return new ArchiveTransferLogPath(DSL.name(alias), this);
+        }
+
+        @Override
+        public ArchiveTransferLogPath as(Name alias) {
+            return new ArchiveTransferLogPath(alias, this);
+        }
+
+        @Override
+        public ArchiveTransferLogPath as(Table<?> alias) {
+            return new ArchiveTransferLogPath(alias.getQualifiedName(), this);
+        }
     }
 
     @Override
@@ -119,15 +154,15 @@ public class ArchiveTransferLog extends TableImpl<ArchiveTransferLogRecord> {
         return Arrays.asList(Keys.ARCHIVE_TRANSFER_LOG__ARCHIVE_TRANSFER_LOG_ARCHIVE_TRANSFER_ID_FKEY);
     }
 
-    private transient ArchiveTransfers _archiveTransfers;
+    private transient ArchiveTransfersPath _archiveTransfers;
 
     /**
      * Get the implicit join path to the <code>public.archive_transfers</code>
      * table.
      */
-    public ArchiveTransfers archiveTransfers() {
+    public ArchiveTransfersPath archiveTransfers() {
         if (_archiveTransfers == null)
-            _archiveTransfers = new ArchiveTransfers(this, Keys.ARCHIVE_TRANSFER_LOG__ARCHIVE_TRANSFER_LOG_ARCHIVE_TRANSFER_ID_FKEY);
+            _archiveTransfers = new ArchiveTransfersPath(this, Keys.ARCHIVE_TRANSFER_LOG__ARCHIVE_TRANSFER_LOG_ARCHIVE_TRANSFER_ID_FKEY, null);
 
         return _archiveTransfers;
     }
@@ -171,27 +206,87 @@ public class ArchiveTransferLog extends TableImpl<ArchiveTransferLogRecord> {
         return new ArchiveTransferLog(name.getQualifiedName(), null);
     }
 
-    // -------------------------------------------------------------------------
-    // Row2 type methods
-    // -------------------------------------------------------------------------
-
+    /**
+     * Create an inline derived table from this table
+     */
     @Override
-    public Row2<Integer, JSONB> fieldsRow() {
-        return (Row2) super.fieldsRow();
+    public ArchiveTransferLog where(Condition condition) {
+        return new ArchiveTransferLog(getQualifiedName(), aliased() ? this : null, null, Internal.condition(this, condition));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Function2<? super Integer, ? super JSONB, ? extends U> from) {
-        return convertFrom(Records.mapping(from));
+    @Override
+    public ArchiveTransferLog where(Collection<? extends Condition> conditions) {
+        return where(DSL.and(conditions));
     }
 
     /**
-     * Convenience mapping calling {@link SelectField#convertFrom(Class,
-     * Function)}.
+     * Create an inline derived table from this table
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function2<? super Integer, ? super JSONB, ? extends U> from) {
-        return convertFrom(toType, Records.mapping(from));
+    @Override
+    public ArchiveTransferLog where(Condition... conditions) {
+        return where(DSL.and(conditions));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public ArchiveTransferLog where(Field<Boolean> condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ArchiveTransferLog where(SQL condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ArchiveTransferLog where(@Stringly.SQL String condition) {
+        return where(DSL.condition(condition));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ArchiveTransferLog where(@Stringly.SQL String condition, Object... binds) {
+        return where(DSL.condition(condition, binds));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    @PlainSQL
+    public ArchiveTransferLog where(@Stringly.SQL String condition, QueryPart... parts) {
+        return where(DSL.condition(condition, parts));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public ArchiveTransferLog whereExists(TableLike<?> select) {
+        return where(DSL.exists(select));
+    }
+
+    /**
+     * Create an inline derived table from this table
+     */
+    @Override
+    public ArchiveTransferLog whereNotExists(TableLike<?> select) {
+        return where(DSL.notExists(select));
     }
 }

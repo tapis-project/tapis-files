@@ -18,7 +18,7 @@ import edu.utexas.tacc.tapis.files.lib.services.FileShareService;
 import edu.utexas.tacc.tapis.files.lib.services.FileUtilsService;
 import edu.utexas.tacc.tapis.files.lib.providers.ServiceClientsFactory;
 import edu.utexas.tacc.tapis.files.api.resources.*;
-import edu.utexas.tacc.tapis.files.lib.services.ManagementStatsService;
+import edu.utexas.tacc.tapis.files.lib.services.AppStatusService;
 import edu.utexas.tacc.tapis.files.lib.transfers.FilesAppContext;
 import edu.utexas.tacc.tapis.files.lib.services.PostItsService;
 import edu.utexas.tacc.tapis.files.lib.utils.LibUtils;
@@ -198,7 +198,7 @@ public class FilesApplication extends ResourceConfig
           bindAsContract(FileUtilsService.class).in(Singleton.class);
           bindAsContract(FileTransfersDAO.class);
           bindAsContract(TransfersService.class);
-          bindAsContract(ManagementStatsService.class);
+          bindAsContract(AppStatusService.class);
           bindAsContract(ArchiveTransfersService.class);
           bindAsContract(SystemsCache.class).in(Singleton.class);
           bindAsContract(SystemsCacheNoAuth.class).in(Singleton.class);
