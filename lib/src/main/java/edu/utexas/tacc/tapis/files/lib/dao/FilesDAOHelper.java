@@ -12,7 +12,7 @@ public class FilesDAOHelper {
     public <R extends Record> List<R> fetch(DAOTransactionContext context, FilesQueryBuilder<R> query) throws DAOException {
         DSLContext db = DSL.using(context.getConnection());
         var select = db.selectFrom(query.getTable())
-                .where(query.buildCondition())
+                .where(query.getCondition())
                 .orderBy(query.buildSortFields());
         if (query.getOffset() != null) {
             select.offset(query.getOffset());
@@ -26,7 +26,7 @@ public class FilesDAOHelper {
     public <R extends Record> R fetchOne(DAOTransactionContext context, FilesQueryBuilder<R> query) throws DAOException {
         DSLContext db = DSL.using(context.getConnection());
         var select = db.selectFrom(query.getTable())
-                .where(query.buildCondition())
+                .where(query.getCondition())
                 .orderBy(query.buildSortFields());
         if (query.getOffset() != null) {
             select.offset(query.getOffset());
@@ -39,6 +39,6 @@ public class FilesDAOHelper {
 
     public <R extends Record> int fetchCount(DAOTransactionContext context, FilesQueryBuilder<R> query) throws DAOException {
         DSLContext db = DSL.using(context.getConnection());
-        return db.fetchCount(query.getTable(), query.buildCondition());
+        return db.fetchCount(query.getTable(), query.getCondition());
     }
 }
