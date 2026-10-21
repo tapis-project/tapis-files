@@ -12,11 +12,11 @@ public class TopTaskQuery extends FilesQueryBuilder<TransferTasksRecord> {
             new SortableField<TransferTasksRecord, OffsetDateTime>(TRANSFER_TASKS.CREATED);
 
     public static final QueryCondition.ComparableField<TransferTasksRecord, Integer> COMPARE_FIELD_ID =
-            new QueryCondition.ComparableField<>(TRANSFER_TASKS.ID);
+            new QueryCondition.ComparableField(TRANSFER_TASKS.ID);
     public static final QueryCondition.ComparableField<TransferTasksRecord, UUID> COMPARE_FIELD_UUID =
-            new QueryCondition.ComparableField<>(TRANSFER_TASKS.UUID);
+            new QueryCondition.ComparableField(TRANSFER_TASKS.UUID);
     public static final QueryCondition.ComparableField<TransferTasksRecord, String> COMPARE_FIELD_STATUS =
-            new QueryCondition.ComparableField<>(TRANSFER_TASKS.STATUS);
+            new QueryCondition.ComparableField(TRANSFER_TASKS.STATUS);
 
     public TopTaskQuery() {
         super(TRANSFER_TASKS);

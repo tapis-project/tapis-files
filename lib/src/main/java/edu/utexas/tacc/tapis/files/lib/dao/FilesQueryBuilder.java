@@ -37,12 +37,6 @@ public abstract class FilesQueryBuilder<R extends Record> {
             super(jooqField);
         }
     }
-//
-//    public static class ComparableField<R extends Record, T> extends MappedField<R, T>{
-//        public ComparableField(TableField<R, T> jooqField) {
-//            super(jooqField);
-//        }
-//    }
 
     private final Table<R> table;
     private List<SortField<?>> sortFields = new ArrayList<>();
@@ -58,7 +52,7 @@ public abstract class FilesQueryBuilder<R extends Record> {
         return jooqCondition;
     }
 
-    public void setQueryCondition(QueryCondition queryCondition) {
+    public void setQueryCondition(QueryCondition<R> queryCondition) {
         this.jooqCondition = queryCondition.getCondition();
     }
 
