@@ -38,6 +38,12 @@ public abstract class FilesQueryBuilder<R extends Record> {
         }
     }
 
+    public static class ComparableField<R extends Record, T> extends FilesQueryBuilder.MappedField<R, T> {
+        public ComparableField(TableField<R, T> jooqField) {
+            super(jooqField);
+        }
+    }
+
     private final Table<R> table;
     private List<SortField<?>> sortFields = new ArrayList<>();
     Condition jooqCondition = DSL.noCondition();

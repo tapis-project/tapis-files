@@ -3,13 +3,13 @@ package edu.utexas.tacc.tapis.files.lib.dao;
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.Record;
-import org.jooq.TableField;
 import org.jooq.impl.DSL;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import static edu.utexas.tacc.tapis.files.lib.dao.FilesQueryBuilder.ComparableField;
 public class QueryCondition<R extends Record> {
     public enum Comparator {
         EQUALS,
@@ -52,6 +52,38 @@ public class QueryCondition<R extends Record> {
         return new QueryCondition<R>(field.getJooqField().compare(getJooqComparator(Comparator.GREATER_OR_EQUAL), value));
     };
 
+    public static <R extends Record, T> QueryCondition<R> isDistinctFrom(ComparableField<R, T> field, T value) {
+        return new QueryCondition<R>(field.getJooqField().compare(getJooqComparator(Comparator.IS_DISTINCT_FROM), value));
+    };
+
+    public static <R extends Record, T> QueryCondition<R> isNotDistinctFrom(ComparableField<R, T> field, T value) {
+        return new QueryCondition<R>(field.getJooqField().compare(getJooqComparator(Comparator.IS_NOT_DISTINCT_FROM), value));
+    };
+
+    public static <R extends Record, T> QueryCondition<R> isLike(ComparableField<R, T> field, T value) {
+        return new QueryCondition<R>(field.getJooqField().compare(getJooqComparator(Comparator.LIKE), value));
+    };
+
+    public static <R extends Record, T> QueryCondition<R> isNotLike(ComparableField<R, T> field, T value) {
+        return new QueryCondition<R>(field.getJooqField().compare(getJooqComparator(Comparator.NOT_LIKE), value));
+    };
+
+    public static <R extends Record, T> QueryCondition<R> isLikeIgnoreCase(ComparableField<R, T> field, T value) {
+        return new QueryCondition<R>(field.getJooqField().compare(getJooqComparator(Comparator.LIKE_IGNORE_CASE), value));
+    };
+
+    public static <R extends Record, T> QueryCondition<R> isNotLikeIgnoreCase(ComparableField<R, T> field, T value) {
+        return new QueryCondition<R>(field.getJooqField().compare(getJooqComparator(Comparator.NOT_LIKE_IGNORE_CASE), value));
+    };
+
+    public static <R extends Record, T> QueryCondition<R> isSimilarTo(ComparableField<R, T> field, T value) {
+        return new QueryCondition<R>(field.getJooqField().compare(getJooqComparator(Comparator.SIMILAR_TO), value));
+    };
+
+    public static <R extends Record, T> QueryCondition<R> isNotSimilarTo(ComparableField<R, T> field, T value) {
+        return new QueryCondition<R>(field.getJooqField().compare(getJooqComparator(Comparator.NOT_SIMILAR_TO), value));
+    };
+
     public static <R extends Record, T> QueryCondition<R> isNull(ComparableField<R, T> field) {
         return new QueryCondition<R>(field.getJooqField().isNull());
     }
@@ -92,12 +124,6 @@ public class QueryCondition<R extends Record> {
         return jooqList;
     }
     private Condition condition = DSL.noCondition();
-
-    public static class ComparableField<R extends Record, T> extends FilesQueryBuilder.MappedField<R, T> {
-        public ComparableField(TableField<R, T> jooqField) {
-            super(jooqField);
-        }
-    }
 
     private QueryCondition(Condition condition) {
         this.condition = condition;
