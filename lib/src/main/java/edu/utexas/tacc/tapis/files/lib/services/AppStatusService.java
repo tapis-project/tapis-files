@@ -141,10 +141,10 @@ public class AppStatusService {
         }
     }
 
-    public TopTaskDetails getTopTaskDetails(int successLimit, int errorLimit) throws ServiceException {
+    public TopTaskDetails getTopTaskDetails(int limit, int successLimit, int errorLimit) throws ServiceException {
         TopTaskDetails topTaskDetails = new TopTaskDetails();
         try {
-            topTaskDetails.getTopInProgress().addAll(getTopInProgressTasks());
+            topTaskDetails.getTopInProgress().addAll(getTopInProgressTasks(limit));
             topTaskDetails.getRecentSuccesses().addAll(getTopTaskRecentSuccesses(successLimit));
             topTaskDetails.getRecentErrors().addAll(getTopTaskRecentErrors(errorLimit));
         } catch (Exception ex) {
@@ -154,16 +154,16 @@ public class AppStatusService {
         return topTaskDetails;
     }
 
-    public ParentTaskDetails getParentTaskDetails() throws ServiceException {
+    public ParentTaskDetails getParentTaskDetails(int limitPerType) throws ServiceException {
         ParentTaskDetails parentTaskDetails = new ParentTaskDetails();
         try {
             Set<TransferWorkerInfo> transferWorkers = getTransferWorkers();
 
             List<Integer> queuedParentTaskIds = schedulingPolicy.getQueuedParentTaskIds();
-            parentTaskDetails.getQueuedParentTasks().addAll(getQueuedParentTasks(queuedParentTaskIds));
-            parentTaskDetails.getParentTasksAwaitingRetry().addAll(getParentTasksWaitingForRetry());
-            parentTaskDetails.getAssignedParentTasks().addAll(getAssignedParentTasks(transferWorkers));
-            parentTaskDetails.getParentInProgress().addAll(getParentInProgressTasks());
+            parentTaskDetails.getQueuedParentTasks().addAll(getQueuedParentTasks(queuedParentTaskIds, limitPerType));
+            parentTaskDetails.getParentTasksAwaitingRetry().addAll(getParentTasksWaitingForRetry(limitPerType));
+            parentTaskDetails.getAssignedParentTasks().addAll(getAssignedParentTasks(transferWorkers, limitPerType));
+            parentTaskDetails.getParentInProgress().addAll(getParentInProgressTasks(limitPerType));
 
         } catch (Exception ex) {
             throw new ServiceException("Error retrieving parent task details", ex);
@@ -172,16 +172,16 @@ public class AppStatusService {
         return parentTaskDetails;
     }
 
-    public ChildTaskDetails getChildTaskDetails() throws ServiceException {
+    public ChildTaskDetails getChildTaskDetails(int limitPerType) throws ServiceException {
         ChildTaskDetails childTaskDetails = new ChildTaskDetails();
         try {
             Set<TransferWorkerInfo> transferWorkers = getTransferWorkers();
 
             List<Integer> queuedChildTaskIds = schedulingPolicy.getQueuedChildTaskIds();
-            childTaskDetails.getQueuedChildTasks().addAll(getQueuedChildTasks(queuedChildTaskIds));
-            childTaskDetails.getChildTasksAwaitingRetry().addAll(getChildTasksWaitingForRetry());
-            childTaskDetails.getAssignedChildTasks().addAll(getAssignedChildTasks(transferWorkers));
-            childTaskDetails.getChildInProgress().addAll(getChildInProgressTasks());
+            childTaskDetails.getQueuedChildTasks().addAll(getQueuedChildTasks(queuedChildTaskIds, limitPerType));
+            childTaskDetails.getChildTasksAwaitingRetry().addAll(getChildTasksWaitingForRetry(limitPerType));
+            childTaskDetails.getAssignedChildTasks().addAll(getAssignedChildTasks(transferWorkers, limitPerType));
+            childTaskDetails.getChildInProgress().addAll(getChildInProgressTasks(limitPerType));
         } catch (Exception ex) {
             throw new ServiceException("Error retrieving child task details", ex);
         }
@@ -293,14 +293,14 @@ public class AppStatusService {
     }
 
     /* ******************* Parent Task Stuff ****************** */
-    private List<AssignedParentTaskInfo> getAssignedParentTasks(Set<TransferWorkerInfo> transferWorkers) throws SchedulingPolicyException {
+    private List<AssignedParentTaskInfo> getAssignedParentTasks(Set<TransferWorkerInfo> transferWorkers, int limit) throws SchedulingPolicyException {
         return transferWorkers.stream().flatMap(transferWorker -> {
             try {
                 return getAssignedParentTasksForWorker(transferWorker).stream();
             } catch (SchedulingPolicyException e) {
                 throw new RuntimeException(e);
             }
-        }).toList();
+        }).limit(limit).toList();
     }
     private List<AssignedParentTaskInfo> getAssignedParentTasksForWorker(TransferWorkerInfo transferWorker) throws SchedulingPolicyException {
         List<AssignedParentTaskInfo> assignedParentTaskInfos = schedulingPolicy.getParentTasksForWorker(
@@ -311,7 +311,7 @@ public class AppStatusService {
         return assignedParentTaskInfos;
     }
 
-    private List<ParentTaskInfo> getQueuedParentTasks(List<Integer> queuedParentTaskIds) throws DAOException {
+    private List<ParentTaskInfo> getQueuedParentTasks(List<Integer> queuedParentTaskIds, int limit) throws DAOException {
         TransferTaskParentDAO parentTaskDAO = new TransferTaskParentDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
             ParentTaskQuery query = new ParentTaskQuery();
@@ -322,11 +322,12 @@ public class AppStatusService {
                     QueryCondition.isIn(ParentTaskQuery.COMPARE_FIELD_ID, queuedParentTaskIds)
             );
             query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
+            query.setLimit(limit);
             return parentTaskDAO.getParentTaskInfos(tx, query);
         });
     }
 
-    private List<ParentTaskInfo> getParentTasksWaitingForRetry() throws DAOException {
+    private List<ParentTaskInfo> getParentTasksWaitingForRetry(int limit) throws DAOException {
         TransferTaskParentDAO parentTaskDAO = new TransferTaskParentDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
             ParentTaskQuery query = new ParentTaskQuery();
@@ -334,30 +335,32 @@ public class AppStatusService {
                     QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.AWAITING_RETRY.name())
             );
             query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
+            query.setLimit(limit);
             return parentTaskDAO.getParentTaskInfos(tx, query);
         });
     }
-    private List<ParentTaskInfo> getParentInProgressTasks() throws DAOException {
+    private List<ParentTaskInfo> getParentInProgressTasks(int limit) throws DAOException {
         TransferTaskParentDAO parentTaskDAO = new TransferTaskParentDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
             ParentTaskQuery query = new ParentTaskQuery();
             query.setQueryCondition(
-                    QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name())
+                    QueryCondition.isEqual(ParentTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.STAGED.name())
             );
             query.addSortField(ParentTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
+            query.setLimit(limit);
             return parentTaskDAO.getParentTaskInfos(tx, query);
         });
     }
 
     /* ******************* Child Task Stuff ****************** */
-    private List<AssignedChildTaskInfo> getAssignedChildTasks(Set<TransferWorkerInfo> transferWorkers) throws SchedulingPolicyException {
+    private List<AssignedChildTaskInfo> getAssignedChildTasks(Set<TransferWorkerInfo> transferWorkers, int limit) throws SchedulingPolicyException {
         return transferWorkers.stream().flatMap(transferWorker -> {
             try {
                 return getAssignedChildTasksForWorker(transferWorker).stream();
             } catch (SchedulingPolicyException e) {
                 throw new RuntimeException(e);
             }
-        }).toList();
+        }).limit(limit).toList();
     }
     private List<AssignedChildTaskInfo> getAssignedChildTasksForWorker(TransferWorkerInfo transferWorker) throws SchedulingPolicyException {
         List<AssignedChildTaskInfo> assignedChildTaskInfos = schedulingPolicy.getChildTasksForWorker(
@@ -368,7 +371,7 @@ public class AppStatusService {
         return assignedChildTaskInfos;
     }
 
-    private List<ChildTaskInfo> getQueuedChildTasks(List<Integer> queuedChildTaskIds) throws DAOException {
+    private List<ChildTaskInfo> getQueuedChildTasks(List<Integer> queuedChildTaskIds, int limit) throws DAOException {
         TransferTaskChildDAO childTaskDAO = new TransferTaskChildDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
             ChildTaskQuery query = new ChildTaskQuery();
@@ -381,11 +384,12 @@ public class AppStatusService {
                     QueryCondition.isIn(ChildTaskQuery.COMPARE_FIELD_ID, queuedChildTaskIds)
             );
             query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
+            query.setLimit(limit);
             return childTaskDAO.getChildTaskInfos(tx, query);
         });
     }
 
-    private List<ChildTaskInfo> getChildTasksWaitingForRetry() throws DAOException {
+    private List<ChildTaskInfo> getChildTasksWaitingForRetry(int limit) throws DAOException {
         TransferTaskChildDAO childTaskDAO = new TransferTaskChildDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
             ChildTaskQuery query = new ChildTaskQuery();
@@ -393,10 +397,11 @@ public class AppStatusService {
                     QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.AWAITING_RETRY.name())
             );
             query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
+            query.setLimit(limit);
             return childTaskDAO.getChildTaskInfos(tx, query);
         });
     }
-    private List<ChildTaskInfo> getChildInProgressTasks() throws DAOException {
+    private List<ChildTaskInfo> getChildInProgressTasks(int limit) throws DAOException {
         TransferTaskChildDAO childTaskDAO = new TransferTaskChildDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
             ChildTaskQuery query = new ChildTaskQuery();
@@ -404,12 +409,13 @@ public class AppStatusService {
                     QueryCondition.isEqual(ChildTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name())
             );
             query.addSortField(ChildTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
+            query.setLimit(limit);
             return childTaskDAO.getChildTaskInfos(tx, query);
         });
     }
 
     /* ******************* Top Task Stuff ****************** */
-    private List<TopTaskInfo> getTopInProgressTasks() throws DAOException {
+    private List<TopTaskInfo> getTopInProgressTasks(int limit) throws DAOException {
         FileTransfersDAO topTaskDAO = new FileTransfersDAO();
         return DAOTransactionContext.doInTransaction(tx -> {
             TopTaskQuery query = new TopTaskQuery();
@@ -417,6 +423,7 @@ public class AppStatusService {
                     QueryCondition.isEqual(TopTaskQuery.COMPARE_FIELD_STATUS, TransferTaskStatus.IN_PROGRESS.name())
             );
             query.addSortField(TopTaskQuery.SORT_FIELD_CREATED, QueryBuilder.SortOrder.ASC);
+            query.setLimit(limit);
             return topTaskDAO.getTopTaskInfos(tx, query);
         });
     }

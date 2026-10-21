@@ -72,9 +72,7 @@ public class ManagementStatsResource
   @GET
   @Path("/summary")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response summaryStatus(@QueryParam("limitPerType") @DefaultValue("1000") @Min(1) @Max(100000) int limitPerType,
-                             @QueryParam("status") @DefaultValue("all") String statusString,
-                             @Context SecurityContext securityContext)
+  public Response summaryStatus(@Context SecurityContext securityContext)
   {
     String opName = "tasksStats";
     ResourceRequestUser rUser = checkAdminRequest(securityContext, opName);
@@ -99,7 +97,8 @@ public class ManagementStatsResource
   @GET
   @Path("/tasks/top")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response getTopTaskDetails(@QueryParam("successLimit") @DefaultValue("100") @Min(1) @Max(100000) int successLimit,
+  public Response getTopTaskDetails( @QueryParam("limit") @DefaultValue("10000") @Min(1) @Max(100000) int limit,
+                                     @QueryParam("successLimit") @DefaultValue("100") @Min(1) @Max(100000) int successLimit,
                                     @QueryParam("errorLimit") @DefaultValue("100") @Min(1) @Max(100000) int errorLimit,
                                     @Context SecurityContext securityContext)
   {
@@ -108,7 +107,7 @@ public class ManagementStatsResource
 
     TopTaskDetails topTaskDetails = null;
     try {
-      topTaskDetails = statusService.getTopTaskDetails(successLimit, errorLimit);
+      topTaskDetails = statusService.getTopTaskDetails(limit, successLimit, errorLimit);
     } catch (ServiceException e) {
       String msg = ApiUtils.getMsgAuth("FAPI_OP_ERROR", rUser, opName, e.getMessage());
       log.error(msg, e);
@@ -131,7 +130,7 @@ public class ManagementStatsResource
 
     ParentTaskDetails parentTaskDetails = null;
     try {
-      parentTaskDetails = statusService.getParentTaskDetails();
+      parentTaskDetails = statusService.getParentTaskDetails(limitPerType);
     } catch (ServiceException e) {
       String msg = ApiUtils.getMsgAuth("FAPI_OP_ERROR", rUser, opName, e.getMessage());
       log.error(msg, e);
@@ -154,7 +153,7 @@ public class ManagementStatsResource
 
     ChildTaskDetails childTaskDetails = null;
     try {
-      childTaskDetails = statusService.getChildTaskDetails();
+      childTaskDetails = statusService.getChildTaskDetails(limitPerType);
     } catch (ServiceException e) {
       String msg = ApiUtils.getMsgAuth("FAPI_OP_ERROR", rUser, opName, e.getMessage());
       log.error(msg, e);
