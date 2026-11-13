@@ -832,7 +832,7 @@ public class FileShareService
           throws WebApplicationException
   {
     try {
-      return getSKClient(oboTenant, oboUser).isAdmin(oboTenant, oboUser);
+      return !getSKClient(oboTenant, oboUser).isAdmin(oboTenant, oboUser);
     }
     catch (TapisClientException ex) {
       String msg = LibUtils.getMsg("FILES_CLIENT_GETSK_ERR", oboTenant, oboUser, "FileShareSvc", sysId,
