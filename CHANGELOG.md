@@ -23,7 +23,7 @@ Incremental improvements, security patches in shared libraries.
 - None
 
 ---------------------------------------------------------------------------
-## 26Q2.1 - 2026-08-12
+## 26Q3.0 - 2026-09-18
 
 Incremental improvements and new features.  
 
